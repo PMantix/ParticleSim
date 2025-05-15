@@ -1,4 +1,4 @@
-pub const K_E: f32 = 8.988e1;  // Coulomb's constant
+pub const K_E: f32 = 8.988e2;  // Coulomb's constant
 use crate::{body::Body, quadtree::Quadtree, utils};
 
 use broccoli::aabb::Rect;
@@ -11,6 +11,7 @@ pub struct Simulation {
     pub bodies: Vec<Body>,
     pub quadtree: Quadtree,
     pub bounds: f32, // half size of the bounding box
+    pub rewound_flags: Vec<bool>,
 }
 
 impl Simulation {
@@ -22,26 +23,38 @@ impl Simulation {
         let leaf_capacity = 1;
         let thread_capacity = 1024;
 
-        let bounds = 1000.0;
+        let bounds = 350.0;
 
         let bodies: Vec<Body> = utils::uniform_disc(n);
         let quadtree = Quadtree::new(theta, epsilon, leaf_capacity, thread_capacity);
+        let rewound_flags = vec![false; bodies.len()];
 
         Self {
             dt,
             frame: 0,
             bodies,
             quadtree,
-            bounds
+            bounds,
+            rewound_flags,
         }
     }
 
     pub fn step(&mut self) {
+        //reset the rewound flags, allowing particles to be "hit" again
+        for flag in &mut self.rewound_flags {
+            *flag = false;
+        }
+
+
         self.dt = *crate::renderer::TIMESTEP.lock();
 
         self.iterate();
-        self.collide();
+        let num_passes = *crate::renderer::COLLISION_PASSES.lock();
+        for _ in 1..num_passes  {
+            self.collide();
+        }
         self.attract();
+
         self.frame += 1;
     }
 
@@ -89,17 +102,19 @@ impl Simulation {
 
         let ptr = self as *mut Self as usize;
         
+        let num_passes = *crate::renderer::COLLISION_PASSES.lock();
+
         broccoli.par_find_colliding_pairs(|i, j| {
             let sim = unsafe { &mut *(ptr as *mut Self) };
 
             let i = *i.unpack_inner();
             let j = *j.unpack_inner();
 
-            sim.resolve(i, j);
+            sim.resolve(i, j, num_passes);
         });
     }
 
-    fn resolve(&mut self, i: usize, j: usize) {
+    fn resolve(&mut self, i: usize, j: usize, num_passes: usize) {
         let b1 = &self.bodies[i];
         let b2 = &self.bodies[j];
 
@@ -140,7 +155,10 @@ impl Simulation {
         let d_sq = d.mag_sq();
         let r_sq = r * r;
 
-        let t = (d_dot_v + (d_dot_v * d_dot_v - v_sq * (d_sq - r_sq)).max(0.0).sqrt()) / v_sq;
+        let correction_scale = 1.0 / num_passes as f32; // e.g. 0.5 if running 2 passes
+        let t = correction_scale * (d_dot_v + (d_dot_v * d_dot_v - v_sq * (d_sq - r_sq)).max(0.0).sqrt()) / v_sq;
+
+        //let t = (d_dot_v + (d_dot_v * d_dot_v - v_sq * (d_sq - r_sq)).max(0.0).sqrt()) / v_sq;
 
         self.bodies[i].pos -= v1 * t;
         self.bodies[j].pos -= v2 * t;
@@ -159,5 +177,65 @@ impl Simulation {
         self.bodies[j].vel = v2;
         self.bodies[i].pos += v1 * t;
         self.bodies[j].pos += v2 * t;
+
     }
+
+// Soft Spring Collision Code (didn't really work all that well)
+//     fn resolve(&mut self, i: usize, j: usize) {
+//     let (b1, b2) = {
+//         let (left, right) = self.bodies.split_at_mut(j.max(i));
+//         if i < j {
+//             (&mut left[i], &mut right[0])
+//         } else {
+//             (&mut right[0], &mut left[j])
+//         }
+//     };
+
+//     let delta = b2.pos - b1.pos;
+//     let dist_sq = delta.mag_sq();
+//     let min_dist = b1.radius + b2.radius;
+
+//     // Avoid computing square root unless definitely overlapping
+//     if dist_sq >= min_dist * min_dist {
+//         return;
+//     }
+
+//     let dist = dist_sq.sqrt().max(1e-6); // avoid divide-by-zero
+//     let overlap = min_dist - dist;
+
+//     let normal = delta / dist; // direction from b1 to b2
+
+//     // === Spring force ===
+//     let stiffness = 200.0; //ne this: how strongly they push apart
+//     let force_mag = stiffness * overlap;
+
+//     // === Damping force ===
+//     let rel_vel = b1.vel - b2.vel;
+//     let damping = 1.0; //tune this too
+//     //let damp_mag = rel_vel.dot(normal) * damping;
+
+//     let damping_force = damping * rel_vel.dot(normal).min(0.0); // only damp when approaching
+
+
+//     //let total_force = normal * (force_mag + damp_mag);
+//     let total_force = normal * (force_mag + damping_force);
+
+
+//     //debug
+//     // if overlap > 0.0 {
+//     //     println!(
+//     //         "Overlap: {:.3}, SpringForce: {:.2}, BeforeAcc: {:?}, AfterAcc: {:?}",
+//     //         overlap,
+//     //         total_force.mag(),
+//     //         b1.acc,
+//     //         b1.acc - total_force / b1.mass
+//     //     );
+//     // }
+
+//     // Apply equal and opposite accelerations
+//     b1.acc -= total_force / b1.mass;
+//     b2.acc += total_force / b2.mass;
+
+// }
+
 }

@@ -3,12 +3,16 @@
   "WorkspaceRootPath": "C:\\Users\\Phillip\\source\\repos\\barnes-hut\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Phillip\\source\\repos\\barnes-hut\\src\\utils.rs||{3B902123-F8A7-4915-9F01-361F908088D0}",
-      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:src\\utils.rs||{3B902123-F8A7-4915-9F01-361F908088D0}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Phillip\\source\\repos\\barnes-hut\\src\\simulation.rs||{3B902123-F8A7-4915-9F01-361F908088D0}",
       "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:src\\simulation.rs||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Phillip\\source\\repos\\barnes-hut\\src\\body.rs||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:src\\body.rs||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Phillip\\source\\repos\\barnes-hut\\src\\utils.rs||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:src\\utils.rs||{3B902123-F8A7-4915-9F01-361F908088D0}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Phillip\\source\\repos\\barnes-hut\\src\\renderer.rs||{3B902123-F8A7-4915-9F01-361F908088D0}",
@@ -25,10 +29,6 @@
     {
       "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Phillip\\source\\repos\\barnes-hut\\Cargo.toml||{8B382828-6202-11D1-8870-0000F87579D2}",
       "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Cargo.toml||{8B382828-6202-11D1-8870-0000F87579D2}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Phillip\\source\\repos\\barnes-hut\\src\\body.rs||{3B902123-F8A7-4915-9F01-361F908088D0}",
-      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:src\\body.rs||{3B902123-F8A7-4915-9F01-361F908088D0}"
     }
   ],
   "DocumentGroupContainers": [
@@ -38,50 +38,37 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 1,
+          "SelectedChildIndex": 5,
           "Children": [
             {
               "$type": "Document",
-              "DocumentIndex": 6,
+              "DocumentIndex": 1,
               "Title": "body.rs",
               "DocumentMoniker": "C:\\Users\\Phillip\\source\\repos\\barnes-hut\\src\\body.rs",
               "RelativeDocumentMoniker": "src\\body.rs",
               "ToolTip": "C:\\Users\\Phillip\\source\\repos\\barnes-hut\\src\\body.rs",
               "RelativeToolTip": "src\\body.rs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAUAAAASAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
               "WhenOpened": "2025-05-13T18:04:00.491Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 2,
               "Title": "utils.rs",
               "DocumentMoniker": "C:\\Users\\Phillip\\source\\repos\\barnes-hut\\src\\utils.rs",
               "RelativeDocumentMoniker": "src\\utils.rs",
               "ToolTip": "C:\\Users\\Phillip\\source\\repos\\barnes-hut\\src\\utils.rs",
               "RelativeToolTip": "src\\utils.rs",
-              "ViewState": "AgIAAAYAAACAzMzMzAwswBMAAAAlAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAUAAAAWAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
               "WhenOpened": "2025-05-13T18:02:13.09Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
-              "Title": "main.rs",
-              "DocumentMoniker": "C:\\Users\\Phillip\\source\\repos\\barnes-hut\\src\\main.rs",
-              "RelativeDocumentMoniker": "src\\main.rs",
-              "ToolTip": "C:\\Users\\Phillip\\source\\repos\\barnes-hut\\src\\main.rs",
-              "RelativeToolTip": "src\\main.rs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
-              "WhenOpened": "2025-05-13T18:02:08.944Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 5,
               "Title": "Cargo.lock",
               "DocumentMoniker": "C:\\Users\\Phillip\\source\\repos\\barnes-hut\\Cargo.lock",
               "RelativeDocumentMoniker": "Cargo.lock",
@@ -89,12 +76,11 @@
               "RelativeToolTip": "Cargo.lock",
               "ViewState": "AgIAAB8AAAAAMjMzMzMrwAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
-              "WhenOpened": "2025-05-13T18:01:52.313Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-05-13T18:01:52.313Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
+              "DocumentIndex": 6,
               "Title": "Cargo.toml",
               "DocumentMoniker": "C:\\Users\\Phillip\\source\\repos\\barnes-hut\\Cargo.toml",
               "RelativeDocumentMoniker": "Cargo.toml",
@@ -102,12 +88,11 @@
               "RelativeToolTip": "Cargo.toml",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
-              "WhenOpened": "2025-05-13T18:01:43.01Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-05-13T18:01:43.01Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 3,
               "Title": "renderer.rs",
               "DocumentMoniker": "C:\\Users\\Phillip\\source\\repos\\barnes-hut\\src\\renderer.rs",
               "RelativeDocumentMoniker": "src\\renderer.rs",
@@ -120,16 +105,28 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 0,
               "Title": "simulation.rs",
               "DocumentMoniker": "C:\\Users\\Phillip\\source\\repos\\barnes-hut\\src\\simulation.rs",
               "RelativeDocumentMoniker": "src\\simulation.rs",
               "ToolTip": "C:\\Users\\Phillip\\source\\repos\\barnes-hut\\src\\simulation.rs",
               "RelativeToolTip": "src\\simulation.rs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABgAAAAWAAAAAAAAAA==",
+              "ViewState": "AgIAAF4AAAAAAAAAAAAuwGwAAAAbAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
               "WhenOpened": "2025-05-13T00:04:57.944Z",
               "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "main.rs",
+              "DocumentMoniker": "C:\\Users\\Phillip\\source\\repos\\barnes-hut\\src\\main.rs",
+              "RelativeDocumentMoniker": "src\\main.rs",
+              "ToolTip": "C:\\Users\\Phillip\\source\\repos\\barnes-hut\\src\\main.rs",
+              "RelativeToolTip": "src\\main.rs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-05-13T18:02:08.944Z"
             }
           ]
         }

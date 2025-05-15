@@ -26,6 +26,9 @@ pub static QUADTREE: Lazy<Mutex<Vec<Node>>> = Lazy::new(|| Mutex::new(Vec::new()
 
 pub static SPAWN: Lazy<Mutex<Vec<Body>>> = Lazy::new(|| Mutex::new(Vec::new()));
 
+pub static COLLISION_PASSES: once_cell::sync::Lazy<parking_lot::Mutex<usize>> =
+    once_cell::sync::Lazy::new(|| parking_lot::Mutex::new(3));
+
 pub struct Renderer {
     pos: Vec2,
     scale: f32,
@@ -272,11 +275,21 @@ impl quarkstrom::Renderer for Renderer {
         egui::Window::new("")
             .open(&mut self.settings_window_open)
             .show(ctx, |ui| {
+                //Show bodies GUI
                 ui.checkbox(&mut self.show_bodies, "Show Bodies");
+                //Show quadtree GUI
                 ui.checkbox(&mut self.show_quadtree, "Show Quadtree");
+                //Timestep GUI
                 ui.add(
                     egui::Slider::new(&mut *crate::renderer::TIMESTEP.lock(), 0.001..=0.2)
                         .text("Timestep (dt)"),
+                );
+                //collision passes GUI
+                let mut passes = crate::renderer::COLLISION_PASSES.lock();
+                ui.add(
+                    egui::Slider::new(&mut *passes, 1..=5)
+                        .text("Collision Passes")
+                        .clamp_to_range(true),
                 );
                 if self.show_quadtree {
                     let range = &mut self.depth_range;

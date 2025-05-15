@@ -1,9 +1,7 @@
 {
   "ExpandedNodes": [
     "",
-    "\\src",
-    "\\target\\release"
+    "\\src"
   ],
-  "SelectedNode": "\\src\\body.rs",
   "PreviewInSolutionExplorer": false
 }
