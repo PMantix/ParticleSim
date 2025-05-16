@@ -16,7 +16,7 @@ pub struct Simulation {
 
 impl Simulation {
     pub fn new() -> Self {
-        let dt = 0.01;
+        let dt = 0.0025;
         let n = 50000;
         let theta = 1.0;
         let epsilon = 2.0;

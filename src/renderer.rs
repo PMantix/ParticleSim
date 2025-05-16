@@ -1,4 +1,4 @@
-pub static TIMESTEP: Lazy<Mutex<f32>> = Lazy::new(|| Mutex::new(0.05)); // match Simulation::new()
+pub static TIMESTEP: Lazy<Mutex<f32>> = Lazy::new(|| Mutex::new(0.015)); // match Simulation::new()
 
 use std::{
     f32::consts::{PI, TAU},
@@ -48,6 +48,9 @@ pub struct Renderer {
 
     bodies: Vec<Body>,
     quadtree: Vec<Node>,
+
+    interacting_with_existing: bool,
+    selected_body_index: Option<usize>,
 }
 
 impl quarkstrom::Renderer for Renderer {
@@ -71,6 +74,9 @@ impl quarkstrom::Renderer for Renderer {
 
             bodies: Vec::new(),
             quadtree: Vec::new(),
+
+            interacting_with_existing: false,
+            selected_body_index: None,
         }
     }
 
@@ -117,7 +123,7 @@ impl quarkstrom::Renderer for Renderer {
             mouse * self.scale + self.pos
         };
 
-        if input.mouse_pressed(1) {
+        /*if input.mouse_pressed(1) {
             let mouse = world_mouse();
             self.spawn_body = Some(Body::new(mouse, Vec2::zero(), 1.0, 1.0, 0.0));
             self.angle = None;
@@ -144,7 +150,104 @@ impl quarkstrom::Renderer for Renderer {
             }
         } else if input.mouse_released(1) {
             self.confirmed_bodies = self.spawn_body.take();
+        }*/
+
+        //Adjut charge of helf particle
+        if let Some(body) = &mut self.spawn_body {
+            if input.key_pressed(VirtualKeyCode::C) {
+                body.charge += 0.1;
+            } else if input.key_pressed(VirtualKeyCode::X) {
+                body.charge -= 0.1;
+            }
         }
+
+        if input.mouse_pressed(0) {
+            let mouse = world_mouse();
+            for (i, body) in self.bodies.iter().enumerate() {
+                if (body.pos - mouse).mag() <= body.radius {
+                    self.interacting_with_existing = true;
+                    self.selected_body_index = Some(i);
+                    break;
+                }
+            }
+        }
+
+        if input.mouse_held(0) {
+            let mouse = world_mouse();
+            if self.interacting_with_existing {
+                if let Some(index) = self.selected_body_index {
+                    let body = &mut self.bodies[index];
+                    body.pos = mouse;
+                    body.vel = Vec2::zero(); // You can make this the drag velocity if desired
+                }
+            }
+        }
+
+        if input.mouse_released(0) {
+            self.interacting_with_existing = false;
+            self.selected_body_index = None;
+        }
+
+        if input.mouse_pressed(1) {
+            let mouse = world_mouse();
+
+            // Try to pick an existing particle first
+            self.interacting_with_existing = false;
+            self.selected_body_index = None;
+
+            for (i, body) in self.bodies.iter().enumerate() {
+                if (body.pos - mouse).mag() <= body.radius {
+                    self.spawn_body = Some(body.clone());
+                    self.interacting_with_existing = true;
+                    self.selected_body_index = Some(i);
+                    self.angle = None;
+                    self.total = Some(0.0);
+                    break;
+                }
+            }
+
+            // If nothing was selected, create a new one
+            if self.spawn_body.is_none() {
+                self.spawn_body = Some(Body::new(mouse, Vec2::zero(), 1.0, 1.0, 0.0));
+                self.angle = None;
+                self.total = Some(0.0);
+            }
+
+        } else if input.mouse_held(1) {
+            if let Some(body) = &mut self.spawn_body {
+                let mouse = world_mouse();
+                if let Some(angle) = self.angle {
+                    let d = mouse - body.pos;
+                    let angle2 = d.y.atan2(d.x);
+                    let a = angle2 - angle;
+                    let a = (a + PI).rem_euclid(TAU) - PI;
+                    let total = self.total.unwrap() - a;
+                    body.mass = (total / TAU).exp2();
+                    self.angle = Some(angle2);
+                    self.total = Some(total);
+                } else {
+                    let d = mouse - body.pos;
+                    let angle = d.y.atan2(d.x);
+                    self.angle = Some(angle);
+                }
+                body.radius = body.mass.cbrt();
+                body.vel = mouse - body.pos;
+            }
+
+        } else if input.mouse_released(1) {
+            if let Some(new_body) = self.spawn_body.take() {
+                if self.interacting_with_existing {
+                    if let Some(index) = self.selected_body_index {
+                        self.bodies[index] = new_body;
+                    }
+                } else {
+                    self.confirmed_bodies = Some(new_body);
+                }
+            }
+            self.interacting_with_existing = false;
+            self.selected_body_index = None;
+        }
+
     }
 
     fn render(&mut self, ctx: &mut quarkstrom::RenderContext) {
@@ -281,13 +384,13 @@ impl quarkstrom::Renderer for Renderer {
                 ui.checkbox(&mut self.show_quadtree, "Show Quadtree");
                 //Timestep GUI
                 ui.add(
-                    egui::Slider::new(&mut *crate::renderer::TIMESTEP.lock(), 0.001..=0.2)
+                    egui::Slider::new(&mut *crate::renderer::TIMESTEP.lock(), 0.001..=0.5)
                         .text("Timestep (dt)"),
                 );
                 //collision passes GUI
                 let mut passes = crate::renderer::COLLISION_PASSES.lock();
                 ui.add(
-                    egui::Slider::new(&mut *passes, 1..=5)
+                    egui::Slider::new(&mut *passes, 1..=10)
                         .text("Collision Passes")
                         .clamp_to_range(true),
                 );
