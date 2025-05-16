@@ -1,4 +1,6 @@
 pub static TIMESTEP: Lazy<Mutex<f32>> = Lazy::new(|| Mutex::new(0.05)); // match Simulation::new()
+pub static FIELD_MAGNITUDE: Lazy<Mutex<f32>> = Lazy::new(|| Mutex::new(0.0));   // default 0
+pub static FIELD_DIRECTION: Lazy<Mutex<f32>> = Lazy::new(|| Mutex::new(0.0));
 
 use std::{
     f32::consts::{PI, TAU},
@@ -275,6 +277,26 @@ impl quarkstrom::Renderer for Renderer {
         egui::Window::new("")
             .open(&mut self.settings_window_open)
             .show(ctx, |ui| {
+                // read‐modify‐write magnitude
+                let mut mag = *FIELD_MAGNITUDE.lock();
+                ui.add(
+                    egui::Slider::new(&mut mag, 0.0..=1000.0)
+                        .text("Field |E|")
+                        .clamp_to_range(true),
+                );
+                *FIELD_MAGNITUDE.lock() = mag;
+
+                // read‐modify‐write direction
+                let mut dir = *FIELD_DIRECTION.lock();
+                ui.add(
+                    egui::Slider::new(&mut dir, 0.0..=360.0)
+                        .text("Field θ (deg)")
+                        .clamp_to_range(true),
+                );
+                *FIELD_DIRECTION.lock() = dir;
+
+
+
                 //Show bodies GUI
                 ui.checkbox(&mut self.show_bodies, "Show Bodies");
                 //Show quadtree GUI

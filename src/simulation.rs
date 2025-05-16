@@ -12,6 +12,8 @@ pub struct Simulation {
     pub quadtree: Quadtree,
     pub bounds: f32, // half size of the bounding box
     pub rewound_flags: Vec<bool>,
+    //uniform background E field F = q*E
+    pub background_e_field: Vec2
 }
 
 impl Simulation {
@@ -36,15 +38,21 @@ impl Simulation {
             quadtree,
             bounds,
             rewound_flags,
+            background_e_field:Vec2::zero(),
         }
     }
 
     pub fn step(&mut self) {
+        //read the E-field sliders and update the uniform field ——
+        {
+            let mag   = *crate::renderer::FIELD_MAGNITUDE.lock();
+            let theta = (*crate::renderer::FIELD_DIRECTION.lock()).to_radians();
+            self.background_e_field = Vec2::new(theta.cos(), theta.sin()) * mag;
+        }
         //reset the rewound flags, allowing particles to be "hit" again
         for flag in &mut self.rewound_flags {
             *flag = false;
         }
-
 
         self.dt = *crate::renderer::TIMESTEP.lock();
 
@@ -61,6 +69,11 @@ impl Simulation {
     pub fn attract(&mut self) {
         self.quadtree.build(&mut self.bodies);
         self.quadtree.acc(&mut self.bodies, K_E);
+
+        // now add the uniform E-field term:  F = q E  ⇒  “acc” += q * E
+        for body in &mut self.bodies {
+            body.acc += body.charge * self.background_e_field;
+        }
     }
 
     pub fn iterate(&mut self) {
