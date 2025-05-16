@@ -162,16 +162,25 @@ impl Quadtree {
         for &node in self.parents[..len].iter().rev() {
             let i = self.nodes[node].children;
 
+            //Sum the weighted positions
             self.nodes[node].pos = self.nodes[i].pos
                 + self.nodes[i + 1].pos
                 + self.nodes[i + 2].pos
                 + self.nodes[i + 3].pos;
 
+            //Sum the weighted mass
             self.nodes[node].mass = self.nodes[i].mass
                 + self.nodes[i + 1].mass
                 + self.nodes[i + 2].mass
                 + self.nodes[i + 3].mass;
+
+            //Sum the charge so branch nodes carry total charge
+            self.nodes[node].charge = self.nodes[i].charge
+                + self.nodes[i + 1].charge
+                + self.nodes[i + 2].charge
+                + self.nodes[i + 3].charge;
         }
+        //Normalize positions by mass
         self.nodes[0..len * 4 + 1].par_iter_mut().for_each(|node| {
             node.pos /= node.mass.max(f32::MIN_POSITIVE);
         });
@@ -237,8 +246,9 @@ impl Quadtree {
 							}
 
 							quadtree.nodes[node].mass = total_mass;
-							quadtree.nodes[node].pos = weighted_pos / total_mass;
-							quadtree.nodes[node].charge = total_charge;
+							//quadtree.nodes[node].pos = weighted_pos / total_mass;
+							quadtree.nodes[node].pos = weighted_pos;
+                            quadtree.nodes[node].charge = total_charge;
                             continue;
                         }
                         let children = quadtree.subdivide(node, bodies, range);
