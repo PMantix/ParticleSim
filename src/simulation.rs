@@ -1,5 +1,11 @@
+// Contains the simulation struct and its methods
+// for updating the simulation. The simulation struct contains the bodies, quadtree, and other parameters.
+// Handles the simulation step, collision detection, and resolution.
+
+
 pub const K_E: f32 = 8.988e2;  // Coulomb's constant
 use crate::{body::Body, quadtree::Quadtree, utils};
+use crate::renderer::state::{FIELD_MAGNITUDE, FIELD_DIRECTION, TIMESTEP, COLLISION_PASSES};
 
 use broccoli::aabb::Rect;
 use broccoli_rayon::{build::RayonBuildPar, prelude::RayonQueryPar};
@@ -45,8 +51,8 @@ impl Simulation {
     pub fn step(&mut self) {
         //read the E-field sliders and update the uniform field ——
         {
-            let mag   = *crate::renderer::FIELD_MAGNITUDE.lock();
-            let theta = (*crate::renderer::FIELD_DIRECTION.lock()).to_radians();
+            let mag   = *FIELD_MAGNITUDE.lock();
+            let theta = (*FIELD_DIRECTION.lock()).to_radians();
             self.background_e_field = Vec2::new(theta.cos(), theta.sin()) * mag;
         }
         //reset the rewound flags, allowing particles to be "hit" again
@@ -54,10 +60,10 @@ impl Simulation {
             *flag = false;
         }
 
-        self.dt = *crate::renderer::TIMESTEP.lock();
+        self.dt = *TIMESTEP.lock();
 
         self.iterate();
-        let num_passes = *crate::renderer::COLLISION_PASSES.lock();
+        let num_passes = *COLLISION_PASSES.lock();
         for _ in 1..num_passes  {
             self.collide();
         }
@@ -115,7 +121,7 @@ impl Simulation {
 
         let ptr = self as *mut Self as usize;
         
-        let num_passes = *crate::renderer::COLLISION_PASSES.lock();
+        let num_passes = *COLLISION_PASSES.lock();
 
         broccoli.par_find_colliding_pairs(|i, j| {
             let sim = unsafe { &mut *(ptr as *mut Self) };

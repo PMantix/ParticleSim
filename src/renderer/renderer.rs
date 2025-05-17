@@ -1,4 +1,8 @@
-pub static TIMESTEP: Lazy<Mutex<f32>> = Lazy::new(|| Mutex::new(0.05)); // match Simulation::new()
+// Handles rendering and GUI for the simulation.
+// // Handles the simulation step, collision detection, and resolution.
+
+
+pub static TIMESTEP: Lazy<Mutex<f32>> = Lazy::new(|| Mutex::new(0.015)); // match Simulation::new()
 pub static FIELD_MAGNITUDE: Lazy<Mutex<f32>> = Lazy::new(|| Mutex::new(0.0));   // default 0
 pub static FIELD_DIRECTION: Lazy<Mutex<f32>> = Lazy::new(|| Mutex::new(0.0));
 
@@ -29,7 +33,7 @@ pub static QUADTREE: Lazy<Mutex<Vec<Node>>> = Lazy::new(|| Mutex::new(Vec::new()
 pub static SPAWN: Lazy<Mutex<Vec<Body>>> = Lazy::new(|| Mutex::new(Vec::new()));
 
 pub static COLLISION_PASSES: once_cell::sync::Lazy<parking_lot::Mutex<usize>> =
-    once_cell::sync::Lazy::new(|| parking_lot::Mutex::new(3));
+    once_cell::sync::Lazy::new(|| parking_lot::Mutex::new(4));
 
 pub struct Renderer {
     pos: Vec2,
@@ -295,21 +299,22 @@ impl quarkstrom::Renderer for Renderer {
                 );
                 *FIELD_DIRECTION.lock() = dir;
 
-
-
                 //Show bodies GUI
                 ui.checkbox(&mut self.show_bodies, "Show Bodies");
+
                 //Show quadtree GUI
                 ui.checkbox(&mut self.show_quadtree, "Show Quadtree");
+
                 //Timestep GUI
                 ui.add(
                     egui::Slider::new(&mut *crate::renderer::TIMESTEP.lock(), 0.001..=0.2)
                         .text("Timestep (dt)"),
                 );
+
                 //collision passes GUI
                 let mut passes = crate::renderer::COLLISION_PASSES.lock();
                 ui.add(
-                    egui::Slider::new(&mut *passes, 1..=5)
+                    egui::Slider::new(&mut *passes, 1..=10)
                         .text("Collision Passes")
                         .clamp_to_range(true),
                 );

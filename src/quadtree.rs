@@ -1,3 +1,8 @@
+// Implementation of a quadtree for 2D space partitioning
+// This quadtree is used to accelerate the simulation of bodies in a 2D space
+/// It is used to calculate the acceleration of each body based on the positions and masses of other bodies
+/// in the simulation.      
+
 use std::{
     ops::Range,
     sync::atomic::{AtomicUsize, Ordering},
