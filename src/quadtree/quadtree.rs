@@ -1,105 +1,11 @@
-// Implementation of a quadtree for 2D space partitioning
-// This quadtree is used to accelerate the simulation of bodies in a 2D space
-/// It is used to calculate the acceleration of each body based on the positions and masses of other bodies
-/// in the simulation.      
-
-use std::{
-    ops::Range,
-    sync::atomic::{AtomicUsize, Ordering},
-};
-
-use crate::{body::Body, partition::Partition};
+use super::node::Node;
+use super::quad::Quad;
+use crate::body::Body;
 use ultraviolet::Vec2;
-
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::ops::Range;
 use rayon::prelude::*;
-
-#[derive(Clone, Copy)]
-pub struct Quad {
-    pub center: Vec2,
-    pub size: f32,
-}
-
-impl Quad {
-    pub fn new_containing(bodies: &[Body]) -> Self {
-        let mut min_x = f32::MAX;
-        let mut min_y = f32::MAX;
-        let mut max_x = f32::MIN;
-        let mut max_y = f32::MIN;
-
-        for body in bodies {
-            min_x = min_x.min(body.pos.x);
-            min_y = min_y.min(body.pos.y);
-            max_x = max_x.max(body.pos.x);
-            max_y = max_y.max(body.pos.y);
-        }
-
-        let center = Vec2::new(min_x + max_x, min_y + max_y) * 0.5;
-        let size = (max_x - min_x).max(max_y - min_y);
-
-        Self { center, size }
-    }
-
-    pub fn into_quadrant(mut self, quadrant: usize) -> Self {
-        self.size *= 0.5;
-        self.center.x += ((quadrant & 1) as f32 - 0.5) * self.size;
-        self.center.y += ((quadrant >> 1) as f32 - 0.5) * self.size;
-        self
-    }
-
-    pub fn subdivide(&self) -> [Quad; 4] {
-        [0, 1, 2, 3].map(|i| self.into_quadrant(i))
-    }
-}
-
-#[derive(Clone)]
-pub struct Node {
-    pub children: usize,
-    pub next: usize,
-    pub pos: Vec2,
-    pub mass: f32,
-    pub quad: Quad,
-    pub bodies: Range<usize>,
-	pub charge: f32,
-}
-
-impl Node {
-    pub const ZEROED: Self = Self {
-        children: 0,
-        next: 0,
-        pos: Vec2 { x: 0.0, y: 0.0 },
-        mass: 0.0,
-        quad: Quad {
-            center: Vec2 { x: 0.0, y: 0.0 },
-            size: 0.0,
-        },
-        bodies: 0..0,
-		charge: 0.0,
-    };
-
-    pub fn new(next: usize, quad: Quad, bodies: Range<usize>) -> Self {
-        Self {
-            children: 0,
-            next,
-            pos: Vec2::zero(),
-            mass: 0.0,
-            quad,
-            bodies,
-			charge: 0.0,
-        }
-    }
-
-    pub fn is_leaf(&self) -> bool {
-        self.children == 0
-    }
-
-    pub fn is_branch(&self) -> bool {
-        self.children != 0
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.mass == 0.0
-    }
-}
+use crate::partition::Partition;
 
 pub struct Quadtree {
     pub t_sq: f32,
@@ -167,25 +73,21 @@ impl Quadtree {
         for &node in self.parents[..len].iter().rev() {
             let i = self.nodes[node].children;
 
-            //Sum the weighted positions
             self.nodes[node].pos = self.nodes[i].pos
                 + self.nodes[i + 1].pos
                 + self.nodes[i + 2].pos
                 + self.nodes[i + 3].pos;
 
-            //Sum the weighted mass
             self.nodes[node].mass = self.nodes[i].mass
                 + self.nodes[i + 1].mass
                 + self.nodes[i + 2].mass
                 + self.nodes[i + 3].mass;
 
-            //Sum the charge so branch nodes carry total charge
             self.nodes[node].charge = self.nodes[i].charge
                 + self.nodes[i + 1].charge
                 + self.nodes[i + 2].charge
                 + self.nodes[i + 3].charge;
         }
-        //Normalize positions by mass
         self.nodes[0..len * 4 + 1].par_iter_mut().for_each(|node| {
             node.pos /= node.mass.max(f32::MIN_POSITIVE);
         });
@@ -236,23 +138,18 @@ impl Quadtree {
                     while let Some(node) = stack.pop() {
                         let range = quadtree.nodes[node].bodies.clone();
                         if range.len() <= quadtree.leaf_capacity {
-                            //quadtree.nodes[node].pos =
-                            //    bodies[range.clone()].iter().map(|b| b.pos * b.mass).sum();
-                            //quadtree.nodes[node].mass =
-                            //    bodies[range.clone()].iter().map(|b| b.mass).sum();
-							let mut total_mass = 0.0;
-							let mut weighted_pos = Vec2::zero();
-							let mut total_charge = 0.0;
+                            let mut total_mass = 0.0;
+                            let mut weighted_pos = Vec2::zero();
+                            let mut total_charge = 0.0;
 
-							for body in &bodies[range.clone()] {
-								total_mass += body.mass;
-								weighted_pos += body.pos * body.mass;
-								total_charge += body.charge;
-							}
+                            for body in &bodies[range.clone()] {
+                                total_mass += body.mass;
+                                weighted_pos += body.pos * body.mass;
+                                total_charge += body.charge;
+                            }
 
-							quadtree.nodes[node].mass = total_mass;
-							//quadtree.nodes[node].pos = weighted_pos / total_mass;
-							quadtree.nodes[node].pos = weighted_pos;
+                            quadtree.nodes[node].mass = total_mass;
+                            quadtree.nodes[node].pos = weighted_pos;
                             quadtree.nodes[node].charge = total_charge;
                             continue;
                         }
@@ -281,10 +178,8 @@ impl Quadtree {
             let d_sq = d.mag_sq();
 
             if n.quad.size * n.quad.size < d_sq * self.t_sq {
-                //let denom = (d_sq + self.e_sq) * d_sq.sqrt();
-                //acc += d * (n.mass / denom);
-				let denom = (d_sq + self.e_sq) * d_sq.sqrt(); // softened r^3
-				acc += d * (k_e * q * n.charge / denom);
+                let denom = (d_sq + self.e_sq) * d_sq.sqrt();
+                acc += d * (k_e * q * n.charge / denom);
 
                 if n.next == 0 {
                     break;
@@ -292,18 +187,17 @@ impl Quadtree {
                 node = n.next;
             } else if n.is_leaf() {
                 for i in n.bodies {
-					let body = &bodies[i];
+                    let body = &bodies[i];
 
-					// ✅ Skip self-interaction
-					if (body.pos - pos).mag_sq() < 1e-6 {
-						continue;
-					}
+                    if (body.pos - pos).mag_sq() < 1e-6 {
+                        continue;
+                    }
 
-					let d = pos - body.pos;
-					let d_sq = d.mag_sq();
-					let denom = (d_sq + self.e_sq) * d_sq.sqrt();
-					acc += d * (k_e * q * body.charge / denom).min(f32::MAX);
-				}
+                    let d = pos - body.pos;
+                    let d_sq = d.mag_sq();
+                    let denom = (d_sq + self.e_sq) * d_sq.sqrt();
+                    acc += d * (k_e * q * body.charge / denom).min(f32::MAX);
+                }
 
                 if n.next == 0 {
                     break;
@@ -322,7 +216,7 @@ impl Quadtree {
 
         bodies.par_iter_mut().for_each(|body| {
             let bodies = unsafe { &*(bodies_ptr as *const Vec<Body>) };
-            body.acc = self.acc_pos(body.pos, body.charge, bodies,k_e);
+            body.acc = self.acc_pos(body.pos, body.charge, bodies, k_e);
         });
     }
 }
