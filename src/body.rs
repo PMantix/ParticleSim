@@ -1,3 +1,6 @@
+// Defines the body struct (position, velocity, acceleration, mass, radius, charge) and its methods
+// for updating position and velocity. The charge is used to calculate the electric field and force on the body.
+
 use ultraviolet::Vec2;
 
 #[derive(Clone, Copy)]

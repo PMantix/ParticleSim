@@ -1,4 +1,11 @@
+// Entry point for the simulation.
+// Sets up threading, simulation, and rendering loop. 
+// Handles synchronization between simulation and renderer.
+
 use std::sync::atomic::Ordering;
+use crate::renderer::state::{
+    PAUSED, UPDATE_LOCK, SPAWN, BODIES, QUADTREE,
+};
 
 mod body;
 mod partition;
@@ -26,7 +33,7 @@ fn main() {
 
     std::thread::spawn(move || {
 	    loop {
-	        if renderer::PAUSED.load(Ordering::Relaxed) {
+	        if PAUSED.load(Ordering::Relaxed) {
 	            std::thread::yield_now();
 	        } else {
 	            simulation.step();
@@ -39,19 +46,19 @@ fn main() {
 }
 
 fn render(simulation: &mut Simulation) {
-    let mut lock = renderer::UPDATE_LOCK.lock();
+    let mut lock = UPDATE_LOCK.lock();
 	
 	//if new body was created, add to simulation
-    for body in renderer::SPAWN.lock().drain(..) {
+    for body in SPAWN.lock().drain(..) {
         simulation.bodies.push(body);
     }
     {
-        let mut lock = renderer::BODIES.lock();
+        let mut lock = BODIES.lock();
         lock.clear();
         lock.extend_from_slice(&simulation.bodies);
     }
     {
-        let mut lock = renderer::QUADTREE.lock();
+        let mut lock = QUADTREE.lock();
         lock.clear();
         lock.extend_from_slice(&simulation.quadtree.nodes);
     }

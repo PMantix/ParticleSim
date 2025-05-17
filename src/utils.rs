@@ -1,3 +1,12 @@
+// Handles the generation of the initial conditions for the simulation.
+//
+// This module generates a uniform distribution of particles in a disc.
+// The particles are assigned random positions, velocities, and masses.
+// The particles are then sorted by their distance from the center of the disc.
+// The mass of each particle is calculated based on its radius.
+// The velocity of each particle is calculated based on the mass of the particles
+
+
 use crate::body::Body;
 use ultraviolet::Vec2;
 //use rand::{rngs::ThreadRng};
