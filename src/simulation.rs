@@ -3,7 +3,7 @@
 // Handles the simulation step, collision detection, and resolution.
 
 
-pub const K_E: f32 = 8.988e2;  // Coulomb's constant
+pub const K_E: f32 = 8.988e1*0.5;  // Coulomb's constant
 use crate::{body::Body, quadtree::Quadtree, utils};
 use crate::renderer::state::{FIELD_MAGNITUDE, FIELD_DIRECTION, TIMESTEP, COLLISION_PASSES};
 
@@ -19,7 +19,9 @@ pub struct Simulation {
     pub bounds: f32, // half size of the bounding box
     pub rewound_flags: Vec<bool>,
     //uniform background E field F = q*E
-    pub background_e_field: Vec2
+    pub background_e_field: Vec2,
+    pub efield_timer: f32,
+    pub efield_state: bool,
 }
 
 impl Simulation {
@@ -45,20 +47,53 @@ impl Simulation {
             bounds,
             rewound_flags,
             background_e_field:Vec2::zero(),
+            efield_timer: 0.0,
+            efield_state: false,
         }
     }
 
     pub fn step(&mut self) {
         //read the E-field sliders and update the uniform field ——
         {
-            let mag   = *FIELD_MAGNITUDE.lock();
+            // Update E field timer and toggle strength if needed
+            self.efield_timer += self.dt;
+            if self.efield_timer > 15.0 {
+                self.efield_timer = 0.0;
+                self.efield_state = !self.efield_state;
+            }
+            let field_strength = if self.efield_state { 35.0 } else { 5.0 };
+
+            // Update the global FIELD_MAGNITUDE so the menu reflects the change
+            *FIELD_MAGNITUDE.lock() = field_strength;
+
             let theta = (*FIELD_DIRECTION.lock()).to_radians();
-            self.background_e_field = Vec2::new(theta.cos(), theta.sin()) * mag;
+            self.background_e_field = Vec2::new(theta.cos(), theta.sin()) * field_strength;
         }
         //reset the rewound flags, allowing particles to be "hit" again
         for flag in &mut self.rewound_flags {
             *flag = false;
         }
+
+        // Update E field timer
+        self.efield_timer += self.dt;
+        if self.efield_timer > 5.0 {
+            self.efield_timer = 0.0;
+            self.efield_state = !self.efield_state;
+        }
+        let field_strength = if self.efield_state { 20.0 } else { -20.0 };
+        let theta = (*FIELD_DIRECTION.lock()).to_radians();
+        self.background_e_field = Vec2::new(theta.cos(), theta.sin()) * field_strength;
+
+            // Rotate the E field direction periodically
+        /*{
+            let mut dir = FIELD_DIRECTION.lock();
+            // Rotate by 5 degrees per second (adjust as needed)
+            *dir += 2.0 * self.dt;
+            // Keep angle in [0, 360)
+            if *dir >= 360.0 {
+                *dir -= 360.0;
+            }
+        } */
 
         self.dt = *TIMESTEP.lock();
 
@@ -71,6 +106,8 @@ impl Simulation {
 
         self.frame += 1;
     }
+
+    
 
     pub fn attract(&mut self) {
         self.quadtree.build(&mut self.bodies);

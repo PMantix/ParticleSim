@@ -1,30 +1,74 @@
-# Barnes-Hut
-This is the official repository for the code shown in [How to make HUGE N-Body Simulations (N=1,000,000+)](https://youtu.be/nZHjD3cI-EU)
+# Barnes-Hut N-Body Simulation (Rust)
 
-This repository consists of three branches:
-1. [The master branch](https://github.com/DeadlockCode/barnes-hut).
-    
-    This is the code shown in the video and is my (mostly) faithful implementation of the original algorithm as described in the Barnes-Hut paper.
-2. [The improved branch](https://github.com/DeadlockCode/barnes-hut/tree/improved).
-    
-    This modifies the original algorithm by a) storing the nodes in a cache friendly order and b) allowing multiple bodies to inhabit the same leaf node.
-3. [The parallel branch](https://github.com/DeadlockCode/barnes-hut/tree/parallel).
-    
-    This is a crude attempt at parallelizing the improved branch to show its potential.
+This repository contains a modular, parallelized, and extensible implementation of the Barnes-Hut algorithm for simulating large-scale N-body systems in 2D, written in Rust.  
+It is designed for high performance, clarity, and ease of extension, with a focus on modern Rust best practices and code organization.
+End goal is to develop a particle based simulator of electrochemical charging and discharging processes
 
-## Guide
-1. Install [Rust](https://www.rust-lang.org/tools/install)
-2. Clone the repository
-3. If you're **not** on Windows, follow [this](https://github.com/DeadlockCode/n-body/issues/1)
-4. Checkout the desired branch
-5. Open the folder in a terminal
-6. Run 'cargo run --release'
-7. Enjoy
+---
+
+## Features
+
+- **Barnes-Hut Quadtree**: Efficient spatial partitioning for O(N log N) force calculation.
+- **Parallel Simulation**: Uses Rayon for multi-threaded computation.
+- **Modular Codebase**: Clean separation of simulation, quadtree, rendering, and state management.
+- **Interactive GUI**: Real-time visualization and controls via [quarkstrom](https://github.com/DeadlockCode/quarkstrom).
+- **Configurable Parameters**: Easily adjust simulation size, physics constants, and visualization options.
+- **Extensible**: Well-structured for adding new physics, force laws, or visualization features.
+- Draws heavily from original source: https://github.com/DeadlockCode/barnes-hut.git
+
+---
+
+## Getting Started
+
+1. **Install [Rust](https://www.rust-lang.org/tools/install)**
+2. Clone this repository:
+3. Build and run:
+   ```sh
+   cargo run --release
+   ```
+   > **Note:** On non-Windows platforms, see [this issue](https://github.com/DeadlockCode/n-body/issues/1) for dependencies.
+
+---
 
 ## Controls
-- Scroll to zoom
-- Middle mouse button to grab view
-- Right mouse button to spawn a body
-- To change the mass of the body, wind the mouse around it while holding right click
-- Space to pause/continue
-- E to open a menu where you can enable the quadtree visualization
+
+- **Scroll**: Zoom in/out
+- **Middle Mouse Button**: Pan the view
+- **Right Mouse Button**: Spawn a new body
+- **Move Mouse (while holding right click)**: Adjust mass of spawned body
+- **Space**: Pause/resume simulation
+- **E**: Open settings menu (toggle quadtree visualization, etc.)
+
+---
+
+## Project Structure
+
+- `src/renderer/` — Rendering and GUI logic (modularized)
+- `src/quadtree/` — Quadtree spatial partitioning (split into node, quad, traits, and main logic)
+- `src/simulation.rs` — Simulation step logic and physics
+- `src/body.rs` — Body struct and related methods
+- `src/partition.rs` — Utilities for partitioning and parallelization
+- `src/main.rs` — Entry point, threading, and main loop
+
+---
+
+## Extending
+
+- Add new force laws or physics in `src/simulation.rs` or as new modules.
+- Extend the GUI in `src/renderer/gui.rs`.
+- Implement new spatial partitioning strategies in `src/quadtree/`.
+
+---
+
+## License
+
+MIT License
+
+---
+
+## Credits
+
+- Based on the original Barnes-Hut algorithm and heavily based on: https://github.com/DeadlockCode/barnes-hut.git [DeadlockCode's video](https://youtu.be/nZHjD3cI-EU).
+- Uses [quarkstrom](https://github.com/DeadlockCode/quarkstrom) for rendering and GUI.
+
+---

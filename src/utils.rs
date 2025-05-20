@@ -54,29 +54,3 @@ pub fn uniform_disc(n: usize) -> Vec<Body> {
 
     bodies
 }
-
-//use crate::body::Body;
-//use ultraviolet::Vec2;
-
-// pub fn uniform_disc(_n: usize) -> Vec<Body> {
-//     let mut bodies = Vec::new();
-
-//     // Particle A — stationary in the center
-//     let pos_a = Vec2::new(0.0, 0.0);
-//     let vel_a = Vec2::zero();
-//     let mass_a = 1.0;
-//     let radius_a = 10.0;
-//     let charge_a = 1.0;
-
-//     // Particle B — slightly overlapping, moving left
-//     let pos_b = Vec2::new(15.0, 0.0); // slightly overlaps (10 + 10 = 20 > 15)
-//     let vel_b = Vec2::new(-1.0, 0.0);
-//     let mass_b = 1.0;
-//     let radius_b = 10.0;
-//     let charge_b = 0.0;
-
-//     bodies.push(Body::new(pos_a, vel_a, mass_a, radius_a, charge_a));
-//     bodies.push(Body::new(pos_b, vel_b, mass_b, radius_b, charge_b));
-
-//     bodies
-// }
