@@ -3,6 +3,8 @@ use palette::{Hsluv, IntoColor, Srgba};
 use ultraviolet::Vec2;
 use crate::quadtree::Quadtree;
 
+//const MIN_SCREEN_RADIUS: f32 = 1.5; // Adjust as needed
+
 impl super::Renderer {
     pub fn draw(&mut self, ctx: &mut quarkstrom::RenderContext) {
         {
@@ -50,18 +52,51 @@ impl super::Renderer {
 					];
 
 					ctx.draw_circle(body.pos, body.radius, color);
+                    //ctx.draw_circle(body.pos, (body.radius * self.scale).max(MIN_SCREEN_RADIUS), color);
+                    //let screen_radius = (body.radius).max(MIN_SCREEN_RADIUS);
+                    //ctx.draw_circle(body.pos, screen_radius, color);
 				}
 			}
 
 
             if let Some(body) = &self.confirmed_bodies {
+                    /*let charge = body.charge;
+                    let max_charge = 1.0;
+                    let norm = (charge / max_charge).clamp(-1.0, 1.0);
+                    let r = norm.max(0.0);
+                    let g = 1.0 - norm.abs();
+                    let b = (-norm).max(0.0);
+                    let color = [
+                        (r * 255.0) as u8,
+                        (g * 255.0) as u8,
+                        (b * 255.0) as u8,
+                        255,
+                    ];*/
                 ctx.draw_circle(body.pos, body.radius, [0xff; 4]);
+                //ctx.draw_circle(body.pos, (body.radius * self.scale).max(MIN_SCREEN_RADIUS), color);
                 ctx.draw_line(body.pos, body.pos + body.vel, [0xff; 4]);
+                //let screen_radius = (body.radius).max(MIN_SCREEN_RADIUS);
+                //ctx.draw_circle(body.pos, screen_radius, color);
             }
 
             if let Some(body) = &self.spawn_body {
+                    /*let charge = body.charge;
+                    let max_charge = 1.0;
+                    let norm = (charge / max_charge).clamp(-1.0, 1.0);
+                    let r = norm.max(0.0);
+                    let g = 1.0 - norm.abs();
+                    let b = (-norm).max(0.0);
+                    let color = [
+                        (r * 255.0) as u8,
+                        (g * 255.0) as u8,
+                        (b * 255.0) as u8,
+                        255,
+                    ];*/
                 ctx.draw_circle(body.pos, body.radius, [0xff; 4]);
+                //ctx.draw_circle(body.pos, (body.radius * self.scale).max(MIN_SCREEN_RADIUS), color);
                 ctx.draw_line(body.pos, body.pos + body.vel, [0xff; 4]);
+                //let screen_radius = (body.radius).max(MIN_SCREEN_RADIUS);
+                //ctx.draw_circle(body.pos, screen_radius, color);
             }
         }
 
