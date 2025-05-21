@@ -3,7 +3,7 @@
 // Handles the simulation step, collision detection, and resolution.
 
 
-pub const K_E: f32 = 8.988e2;  // Coulomb's constant
+pub const K_E: f32 = 8.988e1*0.5;  // Coulomb's constant
 use crate::{body::Body, quadtree::Quadtree, utils};
 use crate::renderer::state::{FIELD_MAGNITUDE, FIELD_DIRECTION, TIMESTEP, COLLISION_PASSES};
 

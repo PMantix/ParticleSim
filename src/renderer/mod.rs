@@ -33,7 +33,7 @@ impl quarkstrom::Renderer for Renderer {
     fn new() -> Self {
         Self {
             pos: Vec2::zero(),
-            scale: 3600.0,
+            scale: 500.0,
             settings_window_open: false,
             show_bodies: true,
             show_quadtree: false,

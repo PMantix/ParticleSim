@@ -33,8 +33,8 @@ pub fn uniform_disc(n: usize) -> Vec<Body> {
 		
         //let vel = Vec2::new(sin, -cos);
 		let vel = Vec2::new(0.0,0.0);
-        let mass = 1.0f32;
-        let radius = mass.cbrt();
+        let mass = 0.5f32;
+        let radius = 1.0*mass.cbrt();
 
 		let charge = if pos.x < 0.0 { 1.0 } else { -1.0 };
         bodies.push(Body::new(pos, vel, mass, radius, charge));

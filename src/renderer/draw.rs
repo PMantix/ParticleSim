@@ -25,11 +25,6 @@ impl super::Renderer {
         ctx.set_view_scale(self.scale);
 
         if !self.bodies.is_empty() {
-            //if self.show_bodies {
-            //    for i in 0..self.bodies.len() {
-            //        ctx.draw_circle(self.bodies[i].pos, self.bodies[i].radius, [0xff; 4]);
-            //    }
-            //}
 			if self.show_bodies {
 				for body in &self.bodies {
 					// Map charge to RGB color: red for positive, blue for negative, white for 0
