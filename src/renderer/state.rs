@@ -1,7 +1,7 @@
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 use std::sync::atomic::AtomicBool;
-use std::sync::mpsc::{Sender, Receiver, channel};
+use std::sync::mpsc::{Sender};
 
 use crate::body::Body;
 use crate::quadtree::Node;
