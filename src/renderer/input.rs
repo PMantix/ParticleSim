@@ -5,9 +5,9 @@ use std::f32::consts::{PI, TAU};
 use crate::body::Body;
 use ultraviolet::Vec2;
 use quarkstrom::winit_input_helper::WinitInputHelper;
- 
- 
- impl super::Renderer {
+use super::state::{SIM_COMMAND_SENDER, SimCommand};
+
+impl super::Renderer {
     pub fn handle_input(&mut self, input: &WinitInputHelper, width: u16, height: u16) {
         self.settings_window_open ^= input.key_pressed(VirtualKeyCode::E);
 
@@ -16,6 +16,11 @@ use quarkstrom::winit_input_helper::WinitInputHelper;
             PAUSED.store(!val, Ordering::Relaxed)
         }
 
+        if input.key_pressed(VirtualKeyCode::NumpadEnter) {
+            self.selected_particle_id = None;
+        }
+
+        // Camera zoom and pan
         if let Some((mx, my)) = input.mouse() {
             // Scroll steps to double/halve the scale
             let steps = 5.0;
@@ -29,18 +34,33 @@ use quarkstrom::winit_input_helper::WinitInputHelper;
 
             // Move view position based on target
             self.pos += target * self.scale * (1.0 - zoom);
-
-            // Zoom
             self.scale *= zoom;
         }
 
-        // Grab
+        // Edit charge of selected particle by id
+        if let Some(id) = self.selected_particle_id {
+            let mut delta = 0.0;
+            if input.key_pressed(VirtualKeyCode::Minus) {
+                delta = -1.0;
+            }
+            if input.key_pressed(VirtualKeyCode::Equals) {
+                delta = 1.0;
+            }
+            if delta != 0.0 {
+                if let Some(sender) = SIM_COMMAND_SENDER.lock().as_ref() {
+                    let _ = sender.send(SimCommand::ChangeCharge { id, delta });
+                }
+            }
+        }
+
+        // Camera grab
         if input.mouse_held(2) {
             let (mdx, mdy) = input.mouse_diff();
             self.pos.x -= mdx / height as f32 * self.scale * 2.0;
             self.pos.y += mdy / height as f32 * self.scale * 2.0;
         }
 
+        // Mouse to world conversion
         let world_mouse = || -> Vec2 {
             let (mx, my) = input.mouse().unwrap_or_default();
             let mut mouse = Vec2::new(mx, my);
@@ -52,10 +72,32 @@ use quarkstrom::winit_input_helper::WinitInputHelper;
         };
 
         if input.mouse_pressed(1) {
-            let mouse = world_mouse();
-            self.spawn_body = Some(Body::new(mouse, Vec2::zero(), 1.0, 1.0, 0.0));
-            self.angle = None;
-            self.total = Some(0.0);
+            if self.spawn_body.is_none() {
+
+                // If shift is held, select a particle
+                if input.key_held(VirtualKeyCode::LShift) || input.key_held(VirtualKeyCode::RShift) {
+                    let mouse_pos = world_mouse();
+                    let mut closest = None;
+                    let mut min_dist = f32::MAX;
+                    for body in &self.bodies {
+                        let dist = (body.pos - mouse_pos).mag();
+                        if dist < min_dist && dist < body.radius * 2.0 {
+                            min_dist = dist;
+                            closest = Some(body.id);
+                        }
+                    }
+                    self.selected_particle_id = closest;
+
+                // If shift is not held, spawn a new body    
+                } else {
+                    // Spawning logic (no shift)
+                    let mouse = world_mouse();
+                    self.spawn_body = Some(Body::new(mouse, Vec2::zero(), 1.0, 1.0, 0.0));
+                    self.angle = None;
+                    self.total = Some(0.0);
+                }
+            }
+            // If we are already spawning a body, set the mass
         } else if input.mouse_held(1) {
             if let Some(body) = &mut self.spawn_body {
                 let mouse = world_mouse();
@@ -68,6 +110,7 @@ use quarkstrom::winit_input_helper::WinitInputHelper;
                     body.mass = (total / TAU).exp2();
                     self.angle = Some(angle2);
                     self.total = Some(total);
+                    // Update the velocity based on the angle
                 } else {
                     let d = mouse - body.pos;
                     let angle = d.y.atan2(d.x);
@@ -76,6 +119,7 @@ use quarkstrom::winit_input_helper::WinitInputHelper;
                 body.radius = body.mass.cbrt();
                 body.vel = mouse - body.pos;
             }
+        // If the mouse is released, confirm the body
         } else if input.mouse_released(1) {
             self.confirmed_bodies = self.spawn_body.take();
         }
