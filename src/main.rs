@@ -15,6 +15,8 @@ mod simulation;
 mod utils;
 
 use renderer::Renderer;
+use renderer::state::{SIM_COMMAND_SENDER, SimCommand};
+use std::sync::mpsc::channel;
 use simulation::Simulation;
 
 fn main() {
@@ -29,10 +31,26 @@ fn main() {
         window_mode: quarkstrom::WindowMode::Windowed(900, 900),
     };
 
+    let (tx, rx) = channel();
+    *SIM_COMMAND_SENDER.lock() = Some(tx);
+
     let mut simulation = Simulation::new();
 
     std::thread::spawn(move || {
 	    loop {
+
+            // Handle commands
+            while let Ok(cmd) = rx.try_recv() {
+                match cmd {
+                    SimCommand::ChangeCharge { id, delta } => {
+                        if let Some(body) = simulation.bodies.iter_mut().find(|b| b.id == id) {
+                            body.charge += delta;
+                            println!("Particle {} new charge: {}", id, body.charge);
+                        }
+                    }
+                }
+            }
+
 	        if PAUSED.load(Ordering::Relaxed) {
 	            std::thread::yield_now();
 	        } else {

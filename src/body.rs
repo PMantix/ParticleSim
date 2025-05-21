@@ -11,7 +11,11 @@ pub struct Body {
     pub mass: f32,
     pub radius: f32,
 	pub charge: f32, 	// electric charge
+    pub id: u64,
 }
+
+use std::sync::atomic::{AtomicU64, Ordering};
+static NEXT_ID: AtomicU64 = AtomicU64::new(1);
 
 impl Body {
     pub fn new(pos: Vec2, vel: Vec2, mass: f32, radius: f32, charge: f32) -> Self {
@@ -22,6 +26,7 @@ impl Body {
             mass,
             radius,
 			charge,
+            id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
         }
     }
 

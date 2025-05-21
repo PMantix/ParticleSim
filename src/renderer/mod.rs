@@ -27,6 +27,8 @@ pub struct Renderer {
 
     bodies: Vec<Body>,
     quadtree: Vec<Node>,
+
+    selected_particle_id: Option<u64>,
 }
 
 impl quarkstrom::Renderer for Renderer {
@@ -44,6 +46,7 @@ impl quarkstrom::Renderer for Renderer {
             confirmed_bodies: None,
             bodies: Vec::new(),
             quadtree: Vec::new(),
+            selected_particle_id: None,
         }
     }
 
