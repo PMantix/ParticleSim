@@ -7,7 +7,7 @@
 // The velocity of each particle is calculated based on the mass of the particles
 
 
-use crate::body::Body;
+use crate::body::{Body, Species};
 use ultraviolet::Vec2;
 //use rand::{rngs::ThreadRng};
 
@@ -37,7 +37,16 @@ pub fn uniform_disc(n: usize) -> Vec<Body> {
         let radius = 1.0*mass.cbrt();
 
 		let charge = if pos.x < 0.0 { 1.0 } else { -1.0 };
-        bodies.push(Body::new(pos, vel, mass, radius, charge));
+
+        let species = if charge > 0.5 {
+            Species::LithiumIon
+            } else if charge < -0.5 {
+                Species::Electron
+            } else {
+                Species::LithiumMetal
+        };
+
+        bodies.push(Body::new(pos, vel, mass, radius, charge, species));
     }
 
     bodies.sort_by(|a, b| a.pos.mag_sq().total_cmp(&b.pos.mag_sq()));

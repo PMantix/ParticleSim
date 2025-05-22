@@ -45,9 +45,14 @@ fn main() {
                     SimCommand::ChangeCharge { id, delta } => {
                         if let Some(body) = simulation.bodies.iter_mut().find(|b| b.id == id) {
                             body.charge += delta;
+                            body.update_species();
                             println!("Particle {} new charge: {}", id, body.charge);
                         }
                     }
+                    //SimCommand::Plate { foil_id, amount } => { /* ... */ }
+                    //SimCommand::Strip { foil_id, amount } => { /* ... */ }
+                    //SimCommand::AddElectron { pos, vel } => { /* ... */ }
+                    //SimCommand::RemoveElectron { id } => { /* ... */ }
                 }
             }
 

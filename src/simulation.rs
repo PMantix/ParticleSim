@@ -6,6 +6,7 @@
 pub const K_E: f32 = 8.988e1*0.5;  // Coulomb's constant
 use crate::{body::Body, quadtree::Quadtree, utils};
 use crate::renderer::state::{FIELD_MAGNITUDE, FIELD_DIRECTION, TIMESTEP, COLLISION_PASSES};
+use crate::body::Species;
 
 use broccoli::aabb::Rect;
 use broccoli_rayon::{build::RayonBuildPar, prelude::RayonQueryPar};
@@ -49,26 +50,37 @@ impl Simulation {
     }
 
     pub fn step(&mut self) {
-        //read the E-field sliders and update the uniform field ——
+        //1.read the E-field sliders and update the uniform field ——
         {
             let mag   = *FIELD_MAGNITUDE.lock();
             let theta = (*FIELD_DIRECTION.lock()).to_radians();
             self.background_e_field = Vec2::new(theta.cos(), theta.sin()) * mag;
         }
-        //reset the rewound flags, allowing particles to be "hit" again
+        //2.reset the rewound flags, allowing particles to be "hit" again
         for flag in &mut self.rewound_flags {
             *flag = false;
         }
 
         self.dt = *TIMESTEP.lock();
 
+        // 3. Reset all accelerations
+        for body in &mut self.bodies {
+            body.acc = Vec2::zero();
+        }
+
+        //4. compute the forces on the particles
+        self.attract();
+        self.apply_lj_forces();
+
+        //5. Integrate the equations of motion
         self.iterate();
+
+        // 6. Check for collisions
         let num_passes = *COLLISION_PASSES.lock();
         for _ in 1..num_passes  {
             self.collide();
         }
-        self.attract();
-
+        
         self.frame += 1;
     }
 
@@ -82,11 +94,41 @@ impl Simulation {
         }
     }
 
-    pub fn iterate(&mut self) {
-        for body in &mut self.bodies {
-            body.update(self.dt);
+    pub fn apply_lj_forces(&mut self) {
+        let sigma = 1.0;   // tune for your system
+        let epsilon = 80.0; // tune for your system
 
-            // Reflect from walls
+        for i in 0..self.bodies.len() {
+            for j in (i + 1)..self.bodies.len() {
+                let (a, b) = {
+                    let (left, right) = self.bodies.split_at_mut(j);
+                    (&mut left[i], &mut right[0])
+                };
+                // All code using a and b must be inside this block!
+                if a.species == Species::LithiumMetal && b.species == Species::LithiumMetal {
+                    let r_vec = b.pos - a.pos;
+                    let r = r_vec.mag();
+                    let cutoff = 2.5 * sigma;
+                    if r < cutoff && r > 1e-6 {
+                        let sr6 = (sigma / r).powi(6);
+                        let force_mag = 24.0 * epsilon * (2.0 * sr6 * sr6 - sr6) / r;
+                        let force = force_mag * r_vec.normalized();
+                        a.acc -= force / a.mass;
+                        b.acc += force / b.mass;
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn iterate(&mut self) {
+        let damping = 0.995; // Try 0.999 or 0.995 for stronger damping
+        for body in &mut self.bodies {
+            body.vel += body.acc * self.dt;
+            body.vel *= damping; // <-- Damping applied here
+            body.pos += body.vel * self.dt;
+
+            // Reflect from walls (existing code)
             for axis in 0..2 {
                 let pos = if axis == 0 { &mut body.pos.x } else { &mut body.pos.y };
                 let vel = if axis == 0 { &mut body.vel.x } else { &mut body.vel.y };
@@ -99,7 +141,6 @@ impl Simulation {
                     *vel = -(*vel);
                 }
             }
-            
         }
     }
 
@@ -198,63 +239,47 @@ impl Simulation {
         self.bodies[j].pos += v2 * t;
 
     }
+}
 
-// Soft Spring Collision Code (didn't really work all that well)
-//     fn resolve(&mut self, i: usize, j: usize) {
-//     let (b1, b2) = {
-//         let (left, right) = self.bodies.split_at_mut(j.max(i));
-//         if i < j {
-//             (&mut left[i], &mut right[0])
-//         } else {
-//             (&mut right[0], &mut left[j])
-//         }
-//     };
+#[test]
+fn test_body_id_unique() {
+    use crate::body::{Body, Species};
+    use ultraviolet::Vec2;
+    let b1 = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::LithiumMetal);
+    let b2 = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::LithiumMetal);
+    assert_ne!(b1.id, b2.id);
+}
 
-//     let delta = b2.pos - b1.pos;
-//     let dist_sq = delta.mag_sq();
-//     let min_dist = b1.radius + b2.radius;
+#[test]
+fn test_lj_force_repulsion() {
+    use crate::simulation::Simulation;
+    use crate::body::{Body, Species};
+    use ultraviolet::Vec2;
+    let mut sim = Simulation::new();
+    sim.bodies = vec![
+        Body::new(Vec2::new(0.0, 0.0), Vec2::zero(), 1.0, 1.0, 0.0, Species::LithiumMetal),
+        Body::new(Vec2::new(0.9, 0.0), Vec2::zero(), 1.0, 1.0, 0.0, Species::LithiumMetal),
+    ];
+    sim.apply_lj_forces();
+    // Should have nonzero acceleration in opposite directions
+    assert!(sim.bodies[0].acc.x < 0.0);
+    assert!(sim.bodies[1].acc.x > 0.0);
+}
 
-//     // Avoid computing square root unless definitely overlapping
-//     if dist_sq >= min_dist * min_dist {
-//         return;
-//     }
-
-//     let dist = dist_sq.sqrt().max(1e-6); // avoid divide-by-zero
-//     let overlap = min_dist - dist;
-
-//     let normal = delta / dist; // direction from b1 to b2
-
-//     // === Spring force ===
-//     let stiffness = 200.0; //ne this: how strongly they push apart
-//     let force_mag = stiffness * overlap;
-
-//     // === Damping force ===
-//     let rel_vel = b1.vel - b2.vel;
-//     let damping = 1.0; //tune this too
-//     //let damp_mag = rel_vel.dot(normal) * damping;
-
-//     let damping_force = damping * rel_vel.dot(normal).min(0.0); // only damp when approaching
-
-
-//     //let total_force = normal * (force_mag + damp_mag);
-//     let total_force = normal * (force_mag + damping_force);
-
-
-//     //debug
-//     // if overlap > 0.0 {
-//     //     println!(
-//     //         "Overlap: {:.3}, SpringForce: {:.2}, BeforeAcc: {:?}, AfterAcc: {:?}",
-//     //         overlap,
-//     //         total_force.mag(),
-//     //         b1.acc,
-//     //         b1.acc - total_force / b1.mass
-//     //     );
-//     // }
-
-//     // Apply equal and opposite accelerations
-//     b1.acc -= total_force / b1.mass;
-//     b2.acc += total_force / b2.mass;
-
-// }
-
+#[test]
+fn test_change_charge_command() {
+    use crate::renderer::state::{SimCommand};
+    use crate::body::{Body, Species};
+    use ultraviolet::Vec2;
+    let mut body = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::LithiumMetal);
+    let id = body.id;
+    let mut bodies = vec![body];
+    let cmd = SimCommand::ChangeCharge { id, delta: 2.0 };
+    if let SimCommand::ChangeCharge { id, delta } = cmd {
+        if let Some(b) = bodies.iter_mut().find(|b| b.id == id) {
+            b.charge += delta;
+            body.update_species();
+        }
+    }
+    assert_eq!(bodies[0].charge, 2.0);
 }

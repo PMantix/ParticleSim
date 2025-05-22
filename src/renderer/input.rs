@@ -2,7 +2,7 @@ use super::state::*;
 use quarkstrom::winit::event::VirtualKeyCode;
 use std::sync::atomic::Ordering;
 use std::f32::consts::{PI, TAU};
-use crate::body::Body;
+use crate::body::{Body, Species};
 use ultraviolet::Vec2;
 use quarkstrom::winit_input_helper::WinitInputHelper;
 use super::state::{SIM_COMMAND_SENDER, SimCommand};
@@ -16,7 +16,7 @@ impl super::Renderer {
             PAUSED.store(!val, Ordering::Relaxed)
         }
 
-        if input.key_pressed(VirtualKeyCode::NumpadEnter) {
+        if input.key_pressed(VirtualKeyCode::Back) {
             self.selected_particle_id = None;
         }
 
@@ -24,14 +24,11 @@ impl super::Renderer {
         if let Some((mx, my)) = input.mouse() {
             // Scroll steps to double/halve the scale
             let steps = 5.0;
-
             // Modify input
             let zoom = (-input.scroll_diff() / steps).exp2();
-
             // Screen space -> view space
             let target =
                 Vec2::new(mx * 2.0 - width as f32, height as f32 - my * 2.0) / height as f32;
-
             // Move view position based on target
             self.pos += target * self.scale * (1.0 - zoom);
             self.scale *= zoom;
@@ -92,7 +89,7 @@ impl super::Renderer {
                 } else {
                     // Spawning logic (no shift)
                     let mouse = world_mouse();
-                    self.spawn_body = Some(Body::new(mouse, Vec2::zero(), 1.0, 1.0, 0.0));
+                    self.spawn_body = Some(Body::new(mouse, Vec2::zero(), 1.0, 1.0, 0.0, Species::LithiumMetal));
                     self.angle = None;
                     self.total = Some(0.0);
                 }
