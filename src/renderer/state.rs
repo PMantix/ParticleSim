@@ -20,6 +20,10 @@ pub static COLLISION_PASSES: Lazy<Mutex<usize>> = Lazy::new(|| Mutex::new(4));
 // These are used to send commands to the simulation thread from the GUI thread
 pub enum SimCommand {
     ChangeCharge {id: u64, delta: f32},
+    //Plate { foil_id: u64, amount: usize },    // Example: plate Li on a foil
+    //Strip { foil_id: u64, amount: usize },    // Example: strip Li from a foil
+    //AddElectron { pos: Vec2, vel: Vec2 },
+    //RemoveElectron { id: u64 },
 }
 
 pub static SIM_COMMAND_SENDER: Lazy<Mutex<Option<Sender<SimCommand>>>> = Lazy::new(|| Mutex::new(None));
