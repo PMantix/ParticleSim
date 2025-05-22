@@ -2,7 +2,7 @@
 
 This repository contains a modular, parallelized, and extensible implementation of the Barnes-Hut algorithm for simulating large-scale N-body systems in 2D, written in Rust.  
 It is designed for high performance, clarity, and ease of extension, with a focus on modern Rust best practices and code organization.
-End goal is to develop a particle based simulator of electrochemical charging and discharging processes
+End goal is to develop a particle based simulator of electrochemical charging and discharging processes, **now with explicit electron polarization and field-driven electron dynamics**.
 
 ---
 
@@ -10,6 +10,8 @@ End goal is to develop a particle based simulator of electrochemical charging an
 
 - **Barnes-Hut Quadtree**: Efficient spatial partitioning for O(N log N) force calculation.
 - **Parallel Simulation**: Uses Rayon for multi-threaded computation.
+- **Explicit Electron Polarization**: Lithium metal particles now have explicit valence electrons that polarize in response to the net electric field (background + all other charges), visualizing local charge separation and field effects.
+- **Physically Accurate Field Handling**: Electron polarization is based on the true net field at each lithium metal atom, not just background or local random motion.
 - **Modular Codebase**: Clean separation of simulation, quadtree, rendering, and state management.
 - **Interactive GUI**: Real-time visualization and controls via [quarkstrom](https://github.com/DeadlockCode/quarkstrom).
 - **Particle Selection & Editing**: Select particles with Shift+Left Click and adjust their charge using keyboard shortcuts (`+`/`-`).
@@ -52,7 +54,7 @@ End goal is to develop a particle based simulator of electrochemical charging an
 - `src/renderer/` — Rendering and GUI logic (modularized)
 - `src/quadtree/` — Quadtree spatial partitioning (split into node, quad, traits, and main logic)
 - `src/simulation.rs` — Simulation step logic and physics
-- `src/body.rs` — Body struct and related methods
+- `src/body.rs` — Body struct and related methods (now includes explicit electrons and polarization)
 - `src/partition.rs` — Utilities for partitioning and parallelization
 - `src/main.rs` — Entry point, threading, and main loop
 
