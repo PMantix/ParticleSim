@@ -12,8 +12,11 @@ End goal is to develop a particle based simulator of electrochemical charging an
 - **Parallel Simulation**: Uses Rayon for multi-threaded computation.
 - **Modular Codebase**: Clean separation of simulation, quadtree, rendering, and state management.
 - **Interactive GUI**: Real-time visualization and controls via [quarkstrom](https://github.com/DeadlockCode/quarkstrom).
+- **Particle Selection & Editing**: Select particles with Shift+Left Click and adjust their charge using keyboard shortcuts (`+`/`-`).
+- **Live Particle Editing**: Changes to particle properties (e.g., charge) are applied robustly during simulation via a command system.
 - **Configurable Parameters**: Easily adjust simulation size, physics constants, and visualization options.
 - **Extensible**: Well-structured for adding new physics, force laws, or visualization features.
+- **Visual Debugging**: See selected particles highlighted with a halo and view live charge values.
 - Draws heavily from original source: https://github.com/DeadlockCode/barnes-hut.git
 
 ---
@@ -34,6 +37,9 @@ End goal is to develop a particle based simulator of electrochemical charging an
 
 - **Scroll**: Zoom in/out
 - **Middle Mouse Button**: Pan the view
+- **Shift + Left Click**: Select a particle
+- **+ / -**: Increase/decrease charge of selected particle
+- **Escape**: Deselect particle
 - **Right Mouse Button**: Spawn a new body
 - **Move Mouse (while holding right click)**: Adjust mass of spawned body
 - **Space**: Pause/resume simulation
