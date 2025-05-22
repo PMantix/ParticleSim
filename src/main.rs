@@ -46,6 +46,7 @@ fn main() {
                         if let Some(body) = simulation.bodies.iter_mut().find(|b| b.id == id) {
                             body.charge += delta;
                             body.update_species();
+                            body.set_electron_count();
                             println!("Particle {} new charge: {}", id, body.charge);
                         }
                     }

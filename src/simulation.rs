@@ -80,6 +80,13 @@ impl Simulation {
         for _ in 1..num_passes  {
             self.collide();
         }
+
+        // 5b. Update electrons for each Li metal atom
+        for body in &mut self.bodies {
+            body.set_electron_count();
+            // Use the net field (acceleration) already computed for this body
+            body.update_electrons(body.e_field, self.dt);
+        }
         
         self.frame += 1;
     }
@@ -88,9 +95,14 @@ impl Simulation {
         self.quadtree.build(&mut self.bodies);
         self.quadtree.acc(&mut self.bodies, K_E);
 
-        // now add the uniform E-field term:  F = q E  ⇒  “acc” += q * E
+        // Add the uniform E-field term: F = qE
         for body in &mut self.bodies {
             body.acc += body.charge * self.background_e_field;
+        }
+
+        // Store the net electric field (Coulomb + background) for electron polarization
+        for body in &mut self.bodies {
+            body.e_field = body.acc; // Save before LJ is applied!
         }
     }
 
@@ -122,7 +134,7 @@ impl Simulation {
     }
 
     pub fn iterate(&mut self) {
-        let damping = 0.995; // Try 0.999 or 0.995 for stronger damping
+        let damping = 0.999; // Try 0.999 or 0.995 for stronger damping
         for body in &mut self.bodies {
             body.vel += body.acc * self.dt;
             body.vel *= damping; // <-- Damping applied here
@@ -278,7 +290,7 @@ fn test_change_charge_command() {
     if let SimCommand::ChangeCharge { id, delta } = cmd {
         if let Some(b) = bodies.iter_mut().find(|b| b.id == id) {
             b.charge += delta;
-            body.update_species();
+            b.update_species(); // <-- fix here
         }
     }
     assert_eq!(bodies[0].charge, 2.0);
