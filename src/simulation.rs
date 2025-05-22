@@ -93,16 +93,18 @@ impl Simulation {
 
     pub fn attract(&mut self) {
         self.quadtree.build(&mut self.bodies);
-        self.quadtree.acc(&mut self.bodies, K_E);
 
-        // Add the uniform E-field term: F = qE
+        // Compute the net electric field at each body's position (from all other charges)
+        self.quadtree.field(&mut self.bodies, K_E);
+
+        // Add the uniform E-field to the net field
         for body in &mut self.bodies {
-            body.acc += body.charge * self.background_e_field;
+            body.e_field += self.background_e_field;
         }
 
-        // Store the net electric field (Coulomb + background) for electron polarization
+        // Now compute the force/acceleration for each body
         for body in &mut self.bodies {
-            body.e_field = body.acc; // Save before LJ is applied!
+            body.acc = body.charge * body.e_field;
         }
     }
 
