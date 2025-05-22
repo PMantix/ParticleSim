@@ -219,4 +219,14 @@ impl Quadtree {
             body.acc = self.acc_pos(body.pos, body.charge, bodies, k_e);
         });
     }
+
+    pub fn field(&self, bodies: &mut Vec<Body>, k_e: f32) {
+        let bodies_ptr = std::ptr::addr_of_mut!(*bodies) as usize;
+
+        bodies.par_iter_mut().for_each(|body| {
+            let bodies = unsafe { &*(bodies_ptr as *const Vec<Body>) };
+            // Use test charge q = 1.0 to get the field
+            body.e_field = self.acc_pos(body.pos, 1.0, bodies, k_e);
+        });
+    }
 }
