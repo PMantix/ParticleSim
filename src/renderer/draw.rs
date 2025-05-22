@@ -2,6 +2,7 @@ use super::state::*;
 use palette::{Hsluv, IntoColor, Srgba};
 use ultraviolet::Vec2;
 use crate::quadtree::Quadtree;
+use crate::body::Species;
 
 impl super::Renderer {
     pub fn draw(&mut self, ctx: &mut quarkstrom::RenderContext) {
@@ -12,8 +13,8 @@ impl super::Renderer {
                 std::mem::swap(&mut self.quadtree, &mut QUADTREE.lock());
             }
             if let Some(body) = self.confirmed_bodies.take() {
-                self.bodies.push(body);
-                SPAWN.lock().push(body);
+                self.bodies.push(body.clone());
+                SPAWN.lock().push(body.clone());
             }
             *lock = false;
         }
@@ -45,7 +46,14 @@ impl super::Renderer {
 					];
 
 					ctx.draw_circle(body.pos, body.radius, color);
-				}
+
+                    if body.species == Species::LithiumMetal {
+                        for electron in &body.electrons {
+                            let electron_pos = body.pos + electron.rel_pos;
+                            ctx.draw_circle(electron_pos, body.radius * 0.3, [0, 128, 255, 255]); // blue
+                        }
+                    }
+				}   
 			}
 
 
