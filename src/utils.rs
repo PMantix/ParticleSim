@@ -9,7 +9,7 @@
 use crate::body::{Body, Species};
 use ultraviolet::Vec2;
 
-pub fn uniform_disc(n: usize) -> Vec<Body> {
+pub fn _uniform_disc(n: usize) -> Vec<Body> {
     fastrand::seed(0);
     let inner_radius = 0.0;
     let outer_radius = (n as f32).sqrt() * 1.50;
@@ -68,6 +68,8 @@ pub fn two_lithium_clumps_with_ions(
     let left_center = Vec2::new(-domain_half_width * 0.6, 0.0);
     // Right clump center
     let right_center = Vec2::new(domain_half_width * 0.6, 0.0);
+    // Middle clump center
+    let center = Vec2::new(domain_half_width * 0.0, 0.0);
 
     // Helper to generate a random point in a disc
     let random_in_disc = |center: Vec2| {
@@ -95,6 +97,16 @@ pub fn two_lithium_clumps_with_ions(
         let radius = 1.0 * mass.cbrt();
         let charge = 0.0;
         bodies.push(Body::new(pos, vel, mass, radius, charge, Species::LithiumMetal));
+    }
+
+    // Generate middle lump
+    for _ in 0..clump_size {
+        let pos = random_in_disc(center);
+        let vel = Vec2::zero();
+        let mass:f32 = 1.0;
+        let radius = 1.0 * mass.cbrt();
+        let charge = 1.0;
+        bodies.push(Body::new(pos, vel, mass, radius, charge, Species::LithiumIon));
     }
 
     /*// Fill the rest with ions, randomly distributed

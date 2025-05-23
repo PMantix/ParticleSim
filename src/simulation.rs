@@ -35,7 +35,7 @@ impl Simulation {
         //let bounds = 350.0;
 
         //let bodies: Vec<Body> = utils::uniform_disc(n);
-        let clump_size = 500; // or as desired
+        let clump_size = 1000; // or as desired
         let clump_radius = 20.0;
         let bounds = 350.0;
         let bodies = utils::two_lithium_clumps_with_ions(n, clump_size, clump_radius, bounds);
@@ -114,7 +114,7 @@ impl Simulation {
 
     pub fn apply_lj_forces(&mut self) {
         let sigma = 1.0;   // tune for your system
-        let epsilon = 80.0; // tune for your system
+        let epsilon = 180.0; // tune for your system
 
         for i in 0..self.bodies.len() {
             for j in (i + 1)..self.bodies.len() {
@@ -144,7 +144,7 @@ impl Simulation {
     }
 
     pub fn iterate(&mut self) {
-        let damping = 0.999; // Try 0.999 or 0.995 for stronger damping
+        let damping = 0.99; // Try 0.999 or 0.995 for stronger damping
         for body in &mut self.bodies {
             body.vel += body.acc * self.dt;
             body.vel *= damping; // <-- Damping applied here
