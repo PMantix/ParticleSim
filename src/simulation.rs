@@ -32,9 +32,13 @@ impl Simulation {
         let leaf_capacity = 1;
         let thread_capacity = 1024;
 
-        let bounds = 350.0;
+        //let bounds = 350.0;
 
-        let bodies: Vec<Body> = utils::uniform_disc(n);
+        //let bodies: Vec<Body> = utils::uniform_disc(n);
+        let clump_size = 500; // or as desired
+        let clump_radius = 20.0;
+        let bounds = 350.0;
+        let bodies = utils::two_lithium_clumps_with_ions(n, clump_size, clump_radius, bounds);
         let quadtree = Quadtree::new(theta, epsilon, leaf_capacity, thread_capacity);
         let rewound_flags = vec![false; bodies.len()];
 

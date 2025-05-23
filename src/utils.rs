@@ -6,10 +6,8 @@
 // The mass of each particle is calculated based on its radius.
 // The velocity of each particle is calculated based on the mass of the particles
 
-
 use crate::body::{Body, Species};
 use ultraviolet::Vec2;
-//use rand::{rngs::ThreadRng};
 
 pub fn uniform_disc(n: usize) -> Vec<Body> {
     fastrand::seed(0);
@@ -17,12 +15,6 @@ pub fn uniform_disc(n: usize) -> Vec<Body> {
     let outer_radius = (n as f32).sqrt() * 1.50;
 
     let mut bodies: Vec<Body> = Vec::with_capacity(n);
-	
-    //let m = 1e9;
-	//let rng: ThreadRng = rand::rng(); // new replacement for thread_rng()
-    //let center = Body::new(Vec2::zero(), Vec2::zero(), m as f32, inner_radius, 1.0);
-    //let center = Body::new(Vec2 {x:-100.0, y:0.00}, Vec2::zero(), m as f32, inner_radius, 1.0);
-   // bodies.push(center);
 
     while bodies.len() < n {
         let a = fastrand::f32() * std::f32::consts::TAU;
@@ -30,20 +22,19 @@ pub fn uniform_disc(n: usize) -> Vec<Body> {
         let t = inner_radius / outer_radius;
         let r = fastrand::f32() * (1.0 - t * t) + t * t;
         let pos = Vec2::new(cos, sin) * outer_radius * r.sqrt();
-		
-        //let vel = Vec2::new(sin, -cos);
-		let vel = Vec2::new(0.0,0.0);
-        let mass = 0.5f32;
-        let radius = 1.0*mass.cbrt();
 
-		let charge = if pos.x < 0.0 { 1.0 } else { -1.0 };
+        let vel = Vec2::new(0.0, 0.0);
+        let mass = 0.5f32;
+        let radius = 1.0 * mass.cbrt();
+
+        let charge = if pos.x < 0.0 { 1.0 } else { -1.0 };
 
         let species = if charge > 0.5 {
             Species::LithiumIon
-            } else if charge < -0.5 {
-                Species::Electron
-            } else {
-                Species::LithiumMetal
+        } else if charge < -0.5 {
+            Species::Electron
+        } else {
+            Species::LithiumMetal
         };
 
         bodies.push(Body::new(pos, vel, mass, radius, charge, species));
@@ -60,6 +51,64 @@ pub fn uniform_disc(n: usize) -> Vec<Body> {
         let v = (mass / bodies[i].pos.mag()).sqrt();
         bodies[i].vel *= v;
     }
+
+    bodies
+}
+
+pub fn two_lithium_clumps_with_ions(
+    n: usize,
+    clump_size: usize,
+    clump_radius: f32,
+    domain_half_width: f32,
+) -> Vec<Body> {
+    fastrand::seed(0);
+    let mut bodies = Vec::with_capacity(n);
+
+    // Left clump center
+    let left_center = Vec2::new(-domain_half_width * 0.6, 0.0);
+    // Right clump center
+    let right_center = Vec2::new(domain_half_width * 0.6, 0.0);
+
+    // Helper to generate a random point in a disc
+    let random_in_disc = |center: Vec2| {
+        let a = fastrand::f32() * std::f32::consts::TAU;
+        let (sin, cos) = a.sin_cos();
+        let r = fastrand::f32().sqrt() * clump_radius;
+        center + Vec2::new(cos, sin) * r
+    };
+
+    // Generate left clump
+    for _ in 0..clump_size {
+        let pos = random_in_disc(left_center);
+        let vel = Vec2::zero();
+        let mass:f32 = 1.0;
+        let radius:f32 = 1.0 * mass.cbrt();
+        let charge = 0.0;
+        bodies.push(Body::new(pos, vel, mass, radius, charge, Species::LithiumMetal));
+    }
+
+    // Generate right clump
+    for _ in 0..clump_size {
+        let pos = random_in_disc(right_center);
+        let vel = Vec2::zero();
+        let mass:f32 = 1.0;
+        let radius = 1.0 * mass.cbrt();
+        let charge = 0.0;
+        bodies.push(Body::new(pos, vel, mass, radius, charge, Species::LithiumMetal));
+    }
+
+    /*// Fill the rest with ions, randomly distributed
+    let ions_to_add = n.saturating_sub(2 * clump_size);
+    for _ in 0..ions_to_add {
+        let x = fastrand::f32() * 2.0 * domain_half_width - domain_half_width;
+        let y = (fastrand::f32() - 0.5) * 2.0 * domain_half_width;
+        let pos = Vec2::new(x, y);
+        let vel = Vec2::zero();
+        let mass:f32 = 0.5;
+        let radius = 1.0 * mass.cbrt();
+        let charge = 1.0;
+        bodies.push(Body::new(pos, vel, mass, radius, charge, Species::LithiumIon));
+    }*/
 
     bodies
 }
