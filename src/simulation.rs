@@ -125,8 +125,12 @@ impl Simulation {
                     let cutoff = 2.5 * sigma;
                     if r < cutoff && r > 1e-6 {
                         let sr6 = (sigma / r).powi(6);
-                        let force_mag = 24.0 * epsilon * (2.0 * sr6 * sr6 - sr6) / r;
+
+                        let max_lj_force = 100.0; // Tune this value as needed
+                        let unclamped_force_mag = 24.0 * epsilon * (2.0 * sr6 * sr6 - sr6) / r;
+                        let force_mag = unclamped_force_mag.clamp(-max_lj_force, max_lj_force);
                         let force = force_mag * r_vec.normalized();
+
                         a.acc -= force / a.mass;
                         b.acc += force / b.mass;
                     }
