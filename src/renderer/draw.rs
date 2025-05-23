@@ -29,7 +29,7 @@ impl super::Renderer {
 			if self.show_bodies {
 				for body in &self.bodies {
 					// Map charge to RGB color: red for positive, blue for negative, white for 0
-					let charge = body.charge;
+					/*let charge = body.charge;
 					let max_charge = 1.0; // adjust if needed
 
 					let norm = (charge / max_charge).clamp(-1.0, 1.0);
@@ -43,7 +43,13 @@ impl super::Renderer {
 						(g * 255.0) as u8,
 						(b * 255.0) as u8,
 						255,
-					];
+					];*/
+
+                    let color = match body.species {
+                        Species::LithiumIon => [255, 255, 0, 255],      // Yellow
+                        Species::Electron => [255, 0, 0, 255],        // Rd
+                        Species::LithiumMetal => [192, 192, 192, 255],// Silverish
+                    };
 
 					ctx.draw_circle(body.pos, body.radius, color);
 

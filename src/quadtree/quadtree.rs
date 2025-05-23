@@ -211,7 +211,7 @@ impl Quadtree {
         acc
     }
 
-    pub fn acc(&self, bodies: &mut Vec<Body>, k_e: f32) {
+    pub fn _acc(&self, bodies: &mut Vec<Body>, k_e: f32) {
         let bodies_ptr = std::ptr::addr_of_mut!(*bodies) as usize;
 
         bodies.par_iter_mut().for_each(|body| {

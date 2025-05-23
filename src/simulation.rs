@@ -285,15 +285,15 @@ fn test_change_charge_command() {
     use crate::renderer::state::{SimCommand};
     use crate::body::{Body, Species};
     use ultraviolet::Vec2;
-    let mut body = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::LithiumMetal);
+    let body = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::LithiumMetal);
     let id = body.id;
     let mut bodies = vec![body];
     let cmd = SimCommand::ChangeCharge { id, delta: 2.0 };
-    if let SimCommand::ChangeCharge { id, delta } = cmd {
-        if let Some(b) = bodies.iter_mut().find(|b| b.id == id) {
-            b.charge += delta;
-            b.update_species(); // <-- fix here
-        }
+    let SimCommand::ChangeCharge { id, delta } = cmd;
+    if let Some(b) = bodies.iter_mut().find(|b| b.id == id) {
+        b.charge += delta;
+        b.update_species(); 
     }
+    
     assert_eq!(bodies[0].charge, 2.0);
 }

@@ -60,28 +60,26 @@ impl Body {
     }
 
     pub fn update_electrons(&mut self, net_field: Vec2, _dt: f32) {
-        let threshold = 0.1; // Tune this threshold for "strong" field
-        let max_dist = self.radius * 1.2;
 
-        // Net force direction (use the total field at this particle)
         let net_force = -1.0 * net_field; // electron charge = -1
 
-        let force_mag = net_force.mag();
+        let stiffness = 0.05; // Tune this value for how "stiff" the response is
+        let max_dist = self.radius * 1.2;
 
-        let direction = if force_mag > threshold {
-            net_force.normalized()
+        let offset = net_force * stiffness;
+        let offset_mag = offset.mag().min(max_dist);
+
+        let direction = if offset.mag() > 1e-8 {
+            offset.normalized()
         } else {
             Vec2::zero()
         };
 
         for electron in &mut self.electrons {
-            if force_mag > threshold {
-                electron.rel_pos = direction * max_dist;
-            } else {
-                electron.rel_pos = Vec2::zero();
-            }
+            electron.rel_pos = direction * offset_mag;
             electron.vel = Vec2::zero(); // No velocity
         }
+
     }
 
     pub fn set_electron_count(&mut self) {
