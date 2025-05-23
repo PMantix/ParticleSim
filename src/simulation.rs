@@ -3,7 +3,7 @@
 // Handles the simulation step, collision detection, and resolution.
 
 
-pub const K_E: f32 = 8.988e1*0.5;  // Coulomb's constant
+pub const K_E: f32 = 8.988e2*0.5;  // Coulomb's constant
 use crate::{body::Body, quadtree::Quadtree, utils};
 use crate::renderer::state::{FIELD_MAGNITUDE, FIELD_DIRECTION, TIMESTEP, COLLISION_PASSES};
 use crate::body::Species;
@@ -32,11 +32,18 @@ impl Simulation {
         let leaf_capacity = 1;
         let thread_capacity = 1024;
 
-        let bounds = 350.0;
+        //let bounds = 350.0;
 
-        let bodies: Vec<Body> = utils::uniform_disc(n);
+        //let bodies: Vec<Body> = utils::uniform_disc(n);
+        let clump_size = 1000; // or as desired
+        let clump_radius = 20.0;
+        let bounds = 350.0;
+        //let bodies = utils::three_metal_clumps_with_ions(n, clump_size, clump_radius, bounds);
+        let bodies = utils::two_lithium_clumps_with_ions(n, clump_size, clump_radius, bounds);
         let quadtree = Quadtree::new(theta, epsilon, leaf_capacity, thread_capacity);
         let rewound_flags = vec![false; bodies.len()];
+
+        
 
         Self {
             dt,
@@ -109,8 +116,8 @@ impl Simulation {
     }
 
     pub fn apply_lj_forces(&mut self) {
-        let sigma = 1.0;   // tune for your system
-        let epsilon = 80.0; // tune for your system
+        let sigma = 0.8;   // tune for your system
+        let epsilon = 500.0; // tune for your system
 
         for i in 0..self.bodies.len() {
             for j in (i + 1)..self.bodies.len() {
@@ -125,8 +132,12 @@ impl Simulation {
                     let cutoff = 2.5 * sigma;
                     if r < cutoff && r > 1e-6 {
                         let sr6 = (sigma / r).powi(6);
-                        let force_mag = 24.0 * epsilon * (2.0 * sr6 * sr6 - sr6) / r;
+
+                        let max_lj_force = 100.0; // Tune this value as needed
+                        let unclamped_force_mag = 24.0 * epsilon * (2.0 * sr6 * sr6 - sr6) / r;
+                        let force_mag = unclamped_force_mag.clamp(-max_lj_force, max_lj_force);
                         let force = force_mag * r_vec.normalized();
+
                         a.acc -= force / a.mass;
                         b.acc += force / b.mass;
                     }
