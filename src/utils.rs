@@ -100,7 +100,7 @@ pub fn two_lithium_clumps_with_ions(
     }
 
     // Generate middle lump
-    for _ in 0..clump_size {
+    for _ in 0..clump_size*2 {
         let pos = random_in_disc(center);
         let vel = Vec2::zero();
         let mass:f32 = 1.0;
@@ -108,6 +108,7 @@ pub fn two_lithium_clumps_with_ions(
         let charge = 1.0;
         bodies.push(Body::new(pos, vel, mass, radius, charge, Species::LithiumIon));
     }
+
 
     /*// Fill the rest with ions, randomly distributed
     let ions_to_add = n.saturating_sub(2 * clump_size);

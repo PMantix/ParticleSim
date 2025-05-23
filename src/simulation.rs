@@ -3,7 +3,7 @@
 // Handles the simulation step, collision detection, and resolution.
 
 
-pub const K_E: f32 = 8.988e1*0.5;  // Coulomb's constant
+pub const K_E: f32 = 8.988e2*0.5;  // Coulomb's constant
 use crate::{body::Body, quadtree::Quadtree, utils};
 use crate::renderer::state::{FIELD_MAGNITUDE, FIELD_DIRECTION, TIMESTEP, COLLISION_PASSES};
 use crate::body::Species;
@@ -38,9 +38,12 @@ impl Simulation {
         let clump_size = 1000; // or as desired
         let clump_radius = 20.0;
         let bounds = 350.0;
+        //let bodies = utils::three_metal_clumps_with_ions(n, clump_size, clump_radius, bounds);
         let bodies = utils::two_lithium_clumps_with_ions(n, clump_size, clump_radius, bounds);
         let quadtree = Quadtree::new(theta, epsilon, leaf_capacity, thread_capacity);
         let rewound_flags = vec![false; bodies.len()];
+
+        
 
         Self {
             dt,
@@ -113,8 +116,8 @@ impl Simulation {
     }
 
     pub fn apply_lj_forces(&mut self) {
-        let sigma = 1.0;   // tune for your system
-        let epsilon = 180.0; // tune for your system
+        let sigma = 0.8;   // tune for your system
+        let epsilon = 500.0; // tune for your system
 
         for i in 0..self.bodies.len() {
             for j in (i + 1)..self.bodies.len() {
@@ -144,7 +147,7 @@ impl Simulation {
     }
 
     pub fn iterate(&mut self) {
-        let damping = 0.99; // Try 0.999 or 0.995 for stronger damping
+        let damping = 0.999; // Try 0.999 or 0.995 for stronger damping
         for body in &mut self.bodies {
             body.vel += body.acc * self.dt;
             body.vel *= damping; // <-- Damping applied here
