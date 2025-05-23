@@ -45,8 +45,18 @@ fn main() {
                     SimCommand::ChangeCharge { id, delta } => {
                         if let Some(body) = simulation.bodies.iter_mut().find(|b| b.id == id) {
                             body.charge += delta;
-                            body.update_species();
-                            body.set_electron_count();
+
+                            if body.species == body::Species::LithiumMetal && body.charge > 0.0{
+                                body.update_species(); // Update species to ion
+                                println!("Particle {} new species: {:?}", id, body.species);
+                            }
+
+                            if body.species == body::Species::LithiumIon && body.charge < 1.0{
+                                body.update_species(); // Update species to ion
+                                println!("Particle {} new species: {:?}", id, body.species);
+                            }
+
+                            body.set_electron_count(); //
                             println!("Particle {} new charge: {}", id, body.charge);
                         }
                     }
