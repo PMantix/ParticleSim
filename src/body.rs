@@ -52,10 +52,10 @@ impl Body {
     pub fn update_species(&mut self) {
         if self.charge > 0.5 {
             self.species = Species::LithiumIon;
-            println!("Species: LithiumIon");
+            //println!("Species: LithiumIon");
         } else if self.charge <= 0.0 {
             self.species = Species::LithiumMetal;
-            println!("Species: LithiumMetal");
+            //println!("Species: LithiumMetal");
         }
     }
 
@@ -98,5 +98,46 @@ impl Body {
         } else {
             self.electrons.clear();
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ion_becomes_metal_when_charge_high() {
+        let mut b = Body {
+            pos: Vec2::zero(),
+            vel: Vec2::zero(),
+            acc: Vec2::zero(),
+            mass: 1.0,
+            radius: 1.0,
+            charge: 0.00, //above the threshold to become "lithium metal"
+            id: 0,
+            species: Species::LithiumIon,
+            electrons: Vec::new(),
+            e_field: Vec2::zero(),
+        };
+        b.update_species();
+        assert_eq!(b.species, Species::LithiumMetal);
+    }
+
+    #[test]
+    fn metal_becomes_ion_when_charge_low() {
+        let mut b = Body {
+                       pos: Vec2::zero(),
+            vel: Vec2::zero(),
+            acc: Vec2::zero(),
+            mass: 1.0,
+            radius: 1.0,
+            charge: 1.0,                     // below your ion‐threshold (0.0)
+            id: 0,
+            species: Species::LithiumMetal,
+            electrons: Vec::new(),
+            e_field: Vec2::zero(),
+        };
+        b.update_species();
+        assert_eq!(b.species, Species::LithiumIon);
     }
 }

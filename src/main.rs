@@ -46,13 +46,17 @@ fn main() {
                         if let Some(body) = simulation.bodies.iter_mut().find(|b| b.id == id) {
                             body.charge += delta;
 
-                            if body.species == body::Species::LithiumMetal && body.charge > 0.0{
+                            if body.species == body::Species::LithiumMetal && body.charge >= 1.0{
                                 body.update_species(); // Update species to ion
+                                println!();
+                                println!("Should become ion below...");
                                 println!("Particle {} new species: {:?}", id, body.species);
                             }
 
-                            if body.species == body::Species::LithiumIon && body.charge < 1.0{
-                                body.update_species(); // Update species to ion
+                            if body.species == body::Species::LithiumIon && body.charge <= 0.0{
+                                body.update_species(); // Update species to metal
+                                println!();
+                                println!("Shound become metal below...");
                                 println!("Particle {} new species: {:?}", id, body.species);
                             }
 

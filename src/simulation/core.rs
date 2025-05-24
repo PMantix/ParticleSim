@@ -72,6 +72,7 @@ impl Simulation {
         for body in &mut self.bodies {
             body.set_electron_count();
             body.update_electrons(body.e_field, self.dt);
+            body.update_species();
         }
         self.frame += 1;
     }
