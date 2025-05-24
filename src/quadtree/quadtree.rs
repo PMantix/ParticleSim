@@ -229,4 +229,44 @@ impl Quadtree {
             body.e_field = self.acc_pos(body.pos, 1.0, bodies, k_e);
         });
     }
+
+    /// Find indices of bodies within `cutoff` distance of body at index `i` (excluding `i` itself)
+    pub fn find_neighbors_within(&self, bodies: &[Body], i: usize, cutoff: f32) -> Vec<usize> {
+        let mut neighbors = Vec::new();
+        let pos = bodies[i].pos;
+        let cutoff_sq = cutoff * cutoff;
+
+        let mut stack = vec![Self::ROOT];
+        while let Some(node_idx) = stack.pop() {
+            let node = &self.nodes[node_idx];
+            // Compute min squared distance from pos to node's quad
+            let quad = &node.quad;
+            let half = quad.size * 0.5;
+            let min = quad.center - Vec2::one() * half;
+            let max = quad.center + Vec2::one() * half;
+            let mut d2 = 0.0;
+            for k in 0..2 {
+                let p = if k == 0 { pos.x } else { pos.y };
+                let mn = if k == 0 { min.x } else { min.y };
+                let mx = if k == 0 { max.x } else { max.y };
+                if p < mn { d2 += (mn - p).powi(2); }
+                else if p > mx { d2 += (p - mx).powi(2); }
+            }
+            if d2 > cutoff_sq {
+                continue;
+            }
+            if node.is_leaf() {
+                for idx in node.bodies.clone() {
+                    if idx != i && (bodies[idx].pos - pos).mag_sq() < cutoff_sq {
+                        neighbors.push(idx);
+                    }
+                }
+            } else {
+                for c in 0..4 {
+                    stack.push(node.children + c);
+                }
+            }
+        }
+        neighbors
+    }
 }

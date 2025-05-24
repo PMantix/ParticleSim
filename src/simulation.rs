@@ -118,18 +118,25 @@ impl Simulation {
     pub fn apply_lj_forces(&mut self) {
         let sigma = 0.8;   // tune for your system
         let epsilon = 500.0; // tune for your system
+        let cutoff = 2.5 * sigma;
 
+        // Use the already-built quadtree for neighbor search
         for i in 0..self.bodies.len() {
-            for j in (i + 1)..self.bodies.len() {
+            if self.bodies[i].species != Species::LithiumMetal {
+                continue;
+            }
+            // Find neighbors within cutoff (excluding self)
+            let neighbors = self.quadtree.find_neighbors_within(&self.bodies, i, cutoff);
+            for &j in &neighbors {
+                if j <= i { continue; } // Avoid double-counting and self
                 let (a, b) = {
                     let (left, right) = self.bodies.split_at_mut(j);
                     (&mut left[i], &mut right[0])
                 };
-                // All code using a and b must be inside this block!
+                // Both must be LithiumMetal
                 if a.species == Species::LithiumMetal && b.species == Species::LithiumMetal {
                     let r_vec = b.pos - a.pos;
                     let r = r_vec.mag();
-                    let cutoff = 2.5 * sigma;
                     if r < cutoff && r > 1e-6 {
                         let sr6 = (sigma / r).powi(6);
 
