@@ -2,9 +2,7 @@
 // Contains force calculation functions (attract, apply_lj_forces)
 
 use crate::body::Species;
-use crate::body::Body;
-use crate::quadtree::Quadtree;
-use ultraviolet::Vec2;
+// Removed unused imports: Body, Quadtree, Vec2
 use super::core::Simulation;
 
 pub const K_E: f32 = 8.988e2 * 0.5;

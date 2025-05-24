@@ -1,7 +1,7 @@
 // simulation/collision.rs
 // Contains collision detection and resolution functions
 
-use crate::body::Body;
+// Removed unused import: Body
 use crate::renderer::state::COLLISION_PASSES;
 use broccoli::aabb::Rect;
 use broccoli_rayon::{build::RayonBuildPar, prelude::RayonQueryPar};

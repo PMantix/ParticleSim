@@ -7,7 +7,7 @@ use ultraviolet::Vec2;
 pub enum Species {
     LithiumIon,
     LithiumMetal,
-    Electron,
+    // Electron, // Not constructed, so commented out to avoid dead_code warning
 }
 
 #[derive(Clone)]
@@ -17,7 +17,7 @@ pub struct Body { //Body is a struct that represents a particle in the simulatio
     pub acc: Vec2,
     pub mass: f32,
     pub radius: f32,
-	pub charge: f32, 	// electric charge
+    pub charge: f32, 	// electric charge
     pub id: u64,
     pub species: Species,
     pub electrons: Vec<Electron>,
@@ -41,7 +41,7 @@ impl Body {
             acc: Vec2::zero(),
             mass,
             radius,
-			charge,
+            charge,
             id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
             species,
             electrons: Vec::new(),
