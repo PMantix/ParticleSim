@@ -2,6 +2,7 @@
 // Contains force calculation functions (attract, apply_lj_forces)
 
 use crate::body::Species;
+use crate::config;
 // Removed unused imports: Body, Quadtree, Vec2
 use super::core::Simulation;
 
@@ -38,7 +39,7 @@ pub fn apply_lj_forces(sim: &mut Simulation) {
                 let r = r_vec.mag();
                 if r < cutoff && r > 1e-6 {
                     let sr6 = (sigma / r).powi(6);
-                    let max_lj_force = 100.0;
+                    let max_lj_force = config::COLLISION_PASSES as f32 * 33.33; // Or use a new config value if you want
                     let unclamped_force_mag = 24.0 * epsilon * (2.0 * sr6 * sr6 - sr6) / r;
                     let force_mag = unclamped_force_mag.clamp(-max_lj_force, max_lj_force);
                     let force = force_mag * r_vec.normalized();

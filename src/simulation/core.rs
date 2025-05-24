@@ -6,6 +6,7 @@ use crate::renderer::state::{FIELD_MAGNITUDE, FIELD_DIRECTION, TIMESTEP, COLLISI
 use ultraviolet::Vec2;
 use super::forces;
 use super::collision;
+use crate::config;
 
 pub struct Simulation {
     pub dt: f32,
@@ -19,15 +20,15 @@ pub struct Simulation {
 
 impl Simulation {
     pub fn new() -> Self {
-        let dt = 0.0025;
-        let n = 50000;
-        let theta = 1.0;
-        let epsilon = 2.0;
-        let leaf_capacity = 1;
-        let thread_capacity = 1024;
-        let clump_size = 1000;
-        let clump_radius = 20.0;
-        let bounds = 350.0;
+        let dt = config::DEFAULT_DT;
+        let n = config::DEFAULT_PARTICLE_COUNT;
+        let theta = config::QUADTREE_THETA;
+        let epsilon = config::QUADTREE_EPSILON;
+        let leaf_capacity = config::QUADTREE_LEAF_CAPACITY;
+        let thread_capacity = config::QUADTREE_THREAD_CAPACITY;
+        let clump_size = config::CLUMP_SIZE;
+        let clump_radius = config::CLUMP_RADIUS;
+        let bounds = config::DOMAIN_BOUNDS;
         let bodies = utils::two_lithium_clumps_with_ions(n, clump_size, clump_radius, bounds);
         let quadtree = Quadtree::new(theta, epsilon, leaf_capacity, thread_capacity);
         let rewound_flags = vec![false; bodies.len()];

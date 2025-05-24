@@ -2,6 +2,7 @@
 // for updating position and velocity. The charge is used to calculate the electric field and force on the body.
 
 use ultraviolet::Vec2;
+use crate::config; // <-- Add this line
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Species {
@@ -50,74 +51,39 @@ impl Body {
     }
 
     pub fn update_species(&mut self) {
-        if self.charge > 0.5 {
+        if self.charge > config::LITHIUM_ION_THRESHOLD {
             self.species = Species::LithiumIon;
-            //println!("Species: LithiumIon");
         } else if self.charge <= 0.0 {
             self.species = Species::LithiumMetal;
-            //println!("Species: LithiumMetal");
         }
     }
-
-    /*pub fn update_electrons_OLD(&mut self, net_field: Vec2, _dt: f32) {
-
-        let net_force = -1.0 * net_field; // electron charge = -1
-
-        let stiffness = 0.05; // Tune this value for how "stiff" the response is
-        let max_dist = self.radius * 1.2;
-
-        let offset = net_force * stiffness;
-        let offset_mag = offset.mag().min(max_dist);
-
-        let direction = if offset.mag() > 1e-8 {
-            offset.normalized()
-        } else {
-            Vec2::zero()
-        };
-
-        for electron in &mut self.electrons {
-            electron.rel_pos = direction * offset_mag;
-            electron.vel = Vec2::zero(); // No velocity
-        }
-
-    }*/
 
     pub fn update_electrons(&mut self, net_field: Vec2, dt: f32) {
-    // Spring‐constant–style stiffness for electron response
-    let k = 0.05;
+        let k = config::ELECTRON_SPRING_K;
 
-    for e in &mut self.electrons {
-       // 1) Compute acceleration = −k × field
-       let acc = -net_field * k;
-
-       // 2) Integrate velocity, clamping its magnitude
-       e.vel += acc * dt;
-       let speed     = e.vel.mag();
-       let max_speed = 1.2 * self.radius / dt;
-       if speed > max_speed {
-           e.vel = e.vel / speed * max_speed;
-       }
-
-       // 3) Move electron by its velocity
-       e.rel_pos += e.vel * dt;
-
-       // 4) Clamp electron within drift radius (1.2× body radius)
-       let max_dist = 1.2 * self.radius;
-       if e.rel_pos.mag() > max_dist {
-           e.rel_pos = e.rel_pos.normalized() * max_dist;
-       }
+        for e in &mut self.electrons {
+            let acc = -net_field * k;
+            e.vel += acc * dt;
+            let speed = e.vel.mag();
+            let max_speed = config::ELECTRON_MAX_SPEED_FACTOR * self.radius / dt;
+            if speed > max_speed {
+                e.vel = e.vel / speed * max_speed;
+            }
+            e.rel_pos += e.vel * dt;
+            let max_dist = config::ELECTRON_DRIFT_RADIUS_FACTOR * self.radius;
+            if e.rel_pos.mag() > max_dist {
+                e.rel_pos = e.rel_pos.normalized() * max_dist;
+            }
+        }
     }
-}
     
 
     pub fn set_electron_count(&mut self) {
-        // For Li metal: 1 electron for charge 0, 2 for -1, 3 for -2, etc.
         if self.species == Species::LithiumMetal {
             let desired = 1 + (-self.charge).round() as usize;
             while self.electrons.len() < desired {
-                // Spawn at random angle near parent
                 let angle = fastrand::f32() * std::f32::consts::TAU;
-                let rel_pos = Vec2::new(angle.cos(), angle.sin()) * self.radius * 1.2;
+                let rel_pos = Vec2::new(angle.cos(), angle.sin()) * self.radius * config::ELECTRON_DRIFT_RADIUS_FACTOR;
                 self.electrons.push(Electron { rel_pos, vel: Vec2::zero() });
             }
             while self.electrons.len() > desired {

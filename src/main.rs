@@ -13,6 +13,7 @@ mod quadtree;
 mod renderer;
 mod simulation;
 mod utils;
+mod config;
 
 use renderer::Renderer;
 use renderer::state::{SIM_COMMAND_SENDER, SimCommand};
@@ -21,14 +22,15 @@ use simulation::core::Simulation;
 
 fn main() {
     // Creates a global thread pool (using rayon) with threads = max(3, total cores - 2). Leaves 1-2 cores free to avoid hogging system resources.
-    let threads = std::thread::available_parallelism().unwrap().get().max(3) - 2;
+    let threads = std::thread::available_parallelism().unwrap().get().max(config::MIN_THREADS) - config::THREADS_LEAVE_FREE;
     rayon::ThreadPoolBuilder::new()
         .num_threads(threads)
         .build_global()
         .unwrap();
 
+    // Example: update window config
     let config = quarkstrom::Config {
-        window_mode: quarkstrom::WindowMode::Windowed(900, 900),
+        window_mode: quarkstrom::WindowMode::Windowed(config::WINDOW_WIDTH, config::WINDOW_HEIGHT),
     };
 
     let (tx, rx) = channel();
