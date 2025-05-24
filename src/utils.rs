@@ -31,10 +31,10 @@ pub fn _uniform_disc(n: usize) -> Vec<Body> {
 
         let species = if charge > 0.5 {
             Species::LithiumIon
-        } else if charge < -0.5 {
-            Species::Electron
-        } else {
+        } else if charge <= 0.0 {
             Species::LithiumMetal
+        } else {
+            Species::LithiumIon
         };
 
         bodies.push(Body::new(pos, vel, mass, radius, charge, species));

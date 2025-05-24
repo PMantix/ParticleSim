@@ -17,10 +17,10 @@ mod utils;
 use renderer::Renderer;
 use renderer::state::{SIM_COMMAND_SENDER, SimCommand};
 use std::sync::mpsc::channel;
-use simulation::Simulation;
+use simulation::core::Simulation;
 
 fn main() {
-	// Creates a global thread pool (using rayon) with threads = max(3, total cores - 2). Leaves 1-2 cores free to avoid hogging system resources.
+    // Creates a global thread pool (using rayon) with threads = max(3, total cores - 2). Leaves 1-2 cores free to avoid hogging system resources.
     let threads = std::thread::available_parallelism().unwrap().get().max(3) - 2;
     rayon::ThreadPoolBuilder::new()
         .num_threads(threads)
@@ -37,7 +37,7 @@ fn main() {
     let mut simulation = Simulation::new();
 
     std::thread::spawn(move || {
-	    loop {
+        loop {
 
             // Handle commands
             while let Ok(cmd) = rx.try_recv() {
@@ -67,13 +67,13 @@ fn main() {
                 }
             }
 
-	        if PAUSED.load(Ordering::Relaxed) {
-	            std::thread::yield_now();
-	        } else {
-	            simulation.step();
-	        }
-	        render(&mut simulation);
-	    }
+            if PAUSED.load(Ordering::Relaxed) {
+                std::thread::yield_now();
+            } else {
+                simulation.step();
+            }
+            render(&mut simulation);
+        }
     });
 
     quarkstrom::run::<Renderer>(config);
@@ -81,8 +81,8 @@ fn main() {
 
 fn render(simulation: &mut Simulation) {
     let mut lock = UPDATE_LOCK.lock();
-	
-	//if new body was created, add to simulation
+    
+    //if new body was created, add to simulation
     for body in SPAWN.lock().drain(..) {
         simulation.bodies.push(body);
     }
