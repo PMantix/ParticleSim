@@ -59,7 +59,7 @@ impl Body {
         }
     }
 
-    pub fn update_electrons(&mut self, net_field: Vec2, _dt: f32) {
+    /*pub fn update_electrons_OLD(&mut self, net_field: Vec2, _dt: f32) {
 
         let net_force = -1.0 * net_field; // electron charge = -1
 
@@ -80,7 +80,35 @@ impl Body {
             electron.vel = Vec2::zero(); // No velocity
         }
 
+    }*/
+
+    pub fn update_electrons(&mut self, net_field: Vec2, dt: f32) {
+    // Spring‐constant–style stiffness for electron response
+    let k = 0.05;
+
+    for e in &mut self.electrons {
+       // 1) Compute acceleration = −k × field
+       let acc = -net_field * k;
+
+       // 2) Integrate velocity, clamping its magnitude
+       e.vel += acc * dt;
+       let speed     = e.vel.mag();
+       let max_speed = 1.2 * self.radius / dt;
+       if speed > max_speed {
+           e.vel = e.vel / speed * max_speed;
+       }
+
+       // 3) Move electron by its velocity
+       e.rel_pos += e.vel * dt;
+
+       // 4) Clamp electron within drift radius (1.2× body radius)
+       let max_dist = 1.2 * self.radius;
+       if e.rel_pos.mag() > max_dist {
+           e.rel_pos = e.rel_pos.normalized() * max_dist;
+       }
     }
+}
+    
 
     pub fn set_electron_count(&mut self) {
         // For Li metal: 1 electron for charge 0, 2 for -1, 3 for -2, etc.
@@ -139,5 +167,33 @@ mod tests {
         };
         b.update_species();
         assert_eq!(b.species, Species::LithiumIon);
+    }
+
+    #[cfg(test)]
+    mod electron_tests {
+        use super::*;
+
+        #[test]
+        fn electron_moves_under_field() {
+            let mut b = Body::new(
+                Vec2::zero(),
+                Vec2::zero(),
+                1.0,1.0,
+                0.0,
+                Species::LithiumMetal,
+            );
+            //exactly one electrode at center
+            b.electrons=vec![Electron {rel_pos:Vec2::zero(),vel:Vec2::zero()}];
+
+            //apply a rightward field
+            let field = Vec2::new(1.0, 0.0);
+            b.update_electrons(field, 0.1);
+
+            // the electron should have moved positively in x
+            assert!(b.electrons[0].rel_pos.x < 0.0, 
+                "Expected electrion to drift left (x < 0), but rel_pos.x = {}", b.electrons[0].rel_pos.x);
+        }
+
+        
     }
 }
