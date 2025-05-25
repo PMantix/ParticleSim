@@ -130,6 +130,8 @@ impl Simulation {
     pub fn perform_electron_hopping(&mut self) {
         let n = self.bodies.len();
         let mut hops: Vec<(usize, usize)> = vec![];
+        // Track which bodies have already received an electron this pass
+        let mut received_electron = vec![false; n];
 
         // Identify all valid electron hops for this step
         for src_idx in 0..n {
@@ -145,6 +147,7 @@ impl Simulation {
                 .enumerate()
                 .filter(|&(j, b)| {
                     j != src_idx &&
+                    !received_electron[j] && // skip if already received this pass
                     (
                         (b.species == Species::LithiumMetal && b.electrons.len() < src_body.electrons.len() && b.charge > src_body.charge)
                         ||
@@ -166,6 +169,7 @@ impl Simulation {
                 let dst_body = &self.bodies[dst_idx];
                 if dst_body.charge - src_body.charge >= HOP_CHARGE_THRESHOLD {
                     hops.push((src_idx, dst_idx));
+                    received_electron[dst_idx] = true; // mark as having received
                 }
             }
         }
@@ -183,11 +187,11 @@ impl Simulation {
             if src.electrons.len() > 1 {
                 if let Some(e) = src.electrons.pop() {
                     // Debug output for tracing electron hops
-                    println!("-------------------");
+                    /*println!("-------------------");
                     println!("Electron hopping: src={} (charge={}), dst={} (charge={})", src_idx, src.charge, dst_idx, dst.charge);
                     println!("Electron hopping: src species={:?}, dst species={:?}", src.species, dst.species);
                     println!("Electron hopping: src electrons={}, dst electrons={}", src.electrons.len(), dst.electrons.len());
-                    println!("-------------------");
+                    println!("-------------------");*/
                     dst.electrons.push(e);
                     src.apply_redox();
                     dst.apply_redox();
@@ -284,5 +288,123 @@ mod redox_tests {
         let b = &sim.bodies[0];
         assert_eq!(b.species, Species::LithiumIon, "Metal with no electrons should become ion");
         assert_eq!(b.charge, 1.0, "Ion with no electrons should have charge +1");
+    }
+
+    #[test]
+    fn multi_electron_ion_remains_ion_and_charge_decreases() {
+        let mut ion = Body::new(
+            Vec2::zero(),
+            Vec2::zero(),
+            1.0,
+            1.0,
+            0.0,
+            Species::LithiumIon,
+        );
+        // Add two electrons (should still be an ion, charge = -1)
+        ion.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+        ion.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+        ion.update_charge_from_electrons();
+        assert_eq!(ion.species, Species::LithiumIon);
+        assert_eq!(ion.charge, -1.0);
+        // Now apply redox (should become metal, as it has ≥1 electron)
+        ion.apply_redox();
+        assert_eq!(ion.species, Species::LithiumMetal);
+        assert_eq!(ion.electrons.len(), 2);
+        assert_eq!(ion.charge, -1.0);
+    }
+
+    #[test]
+    fn repeated_redox_transitions_cycle_species() {
+        let mut body = Body::new(
+            Vec2::zero(),
+            Vec2::zero(),
+            1.0,
+            1.0,
+            0.0,
+            Species::LithiumIon,
+        );
+        // Add one electron, should become metal
+        body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+        body.update_charge_from_electrons();
+        body.apply_redox();
+        assert_eq!(body.species, Species::LithiumMetal);
+        // Remove electron, should become ion again
+        body.electrons.clear();
+        body.update_charge_from_electrons();
+        body.apply_redox();
+        assert_eq!(body.species, Species::LithiumIon);
+    }
+
+    #[test]
+    fn electron_hop_between_metals_conserves_electrons_and_charge() {
+        // Metal A: 2 electrons, Metal B: 1 electron
+        let mut a = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::LithiumMetal);
+        let mut b = Body::new(Vec2::new(1.0, 0.0), Vec2::zero(), 1.0, 1.0, 0.0, Species::LithiumMetal);
+        a.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+        a.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+        a.update_charge_from_electrons();
+        b.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+        b.update_charge_from_electrons();
+        let total_electrons = a.electrons.len() + b.electrons.len();
+        let total_charge = a.charge + b.charge;
+        // Simulate hop
+        let mut sim = Simulation {
+            dt: 0.1,
+            frame: 0,
+            bodies: vec![a, b],
+            quadtree: Quadtree::new(
+                config::QUADTREE_THETA,
+                config::QUADTREE_EPSILON,
+                config::QUADTREE_LEAF_CAPACITY,
+                config::QUADTREE_THREAD_CAPACITY,
+            ),
+            bounds: 10.0,
+            rewound_flags: vec![false; 2],
+            background_e_field: Vec2::zero(),
+        };
+        sim.perform_electron_hopping();
+        let a = &sim.bodies[0];
+        let b = &sim.bodies[1];
+        assert_eq!(a.electrons.len() + b.electrons.len(), total_electrons);
+        assert!((a.charge + b.charge - total_charge).abs() < 1e-6);
+    }
+
+    #[test]
+    fn electrons_conserved_after_multiple_hops_and_redox() {
+        // Metal A: 3 electrons, Metal B: 1 electron, Ion: 0 electrons
+        let mut a = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::LithiumMetal);
+        let mut b = Body::new(Vec2::new(1.0, 0.0), Vec2::zero(), 1.0, 1.0, 0.0, Species::LithiumMetal);
+        let mut ion = Body::new(Vec2::new(2.0, 0.0), Vec2::zero(), 1.0, 1.0, 1.0, Species::LithiumIon);
+        for _ in 0..3 { a.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }); }
+        a.update_charge_from_electrons();
+        b.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+        b.update_charge_from_electrons();
+        ion.electrons.clear();
+        ion.update_charge_from_electrons();
+        let total_electrons = a.electrons.len() + b.electrons.len() + ion.electrons.len();
+        let mut sim = Simulation {
+            dt: 0.1,
+            frame: 0,
+            bodies: vec![a, b, ion],
+            quadtree: Quadtree::new(
+                config::QUADTREE_THETA,
+                config::QUADTREE_EPSILON,
+                config::QUADTREE_LEAF_CAPACITY,
+                config::QUADTREE_THREAD_CAPACITY,
+            ),
+            bounds: 10.0,
+            rewound_flags: vec![false; 3],
+            background_e_field: Vec2::zero(),
+        };
+        // Multiple hops
+        sim.perform_electron_hopping();
+        sim.perform_electron_hopping();
+        // Redox transitions
+        for b in &mut sim.bodies { b.apply_redox(); }
+        let sum_electrons = sim.bodies.iter().map(|b| b.electrons.len()).sum::<usize>();
+        println!("DEBUG: electrons: {:?}", sim.bodies.iter().map(|b| b.electrons.len()).collect::<Vec<_>>());
+        println!("DEBUG: sum_electrons = {}, expected = {}", sum_electrons, total_electrons);
+        assert_eq!(sum_electrons, total_electrons);
+        // Note: charge is not conserved due to redox transitions
     }
 }
