@@ -200,13 +200,18 @@ mod reactions {
         use ultraviolet::Vec2;
 
         #[test]
-        fn always_hop_when_rate_infinite() {
+        fn always_hop_when_activation_nearly_0() {
             // two metals apart but within hop radius
             let mut a = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, -1.0, Species::LithiumMetal);
             let mut b = Body::new(Vec2::new(1.0,0.0), Vec2::zero(), 1.0, 1.0,  0.0, Species::LithiumMetal);
-            a.electrons = vec![Electron{ rel_pos: Vec2::zero(), vel: Vec2::zero() }]; // at least one electron
+            a.electrons = vec! [
+                Electron{ rel_pos: Vec2::zero(), vel: Vec2::zero() },
+                Electron{ rel_pos: Vec2::zero(), vel: Vec2::zero() }
+            ];
             a.update_charge_from_electrons();
             b.update_charge_from_electrons();
+            //println!("DEBUG: a.electrons.len() = {}, b.electrons.len() = {}", a.electrons.len(), b.electrons.len());
+            //println!("DEBUG: a.charge = {}, b.charge = {}", a.charge, b.charge);
 
             // force p_hop ≈ 1 by zeroing thermal energy
             //crate::config::HOP_ACTIVATION_ENERGY = 1e-8_f32; 
@@ -230,18 +235,77 @@ mod reactions {
                 },
             };
             sim.perform_electron_hopping();
+            sim.bodies[0].update_charge_from_electrons();   
+            sim.bodies[1].update_charge_from_electrons();   
+
+            //println!("DEBUG: after hopping, a.electrons.len() = {}, b.electrons.len() = {}", sim.bodies[0].electrons.len(), sim.bodies[1].electrons.len());
+            //println!("DEBUG: after hopping, a.charge = {}, b.charge = {}", sim.bodies[0].charge, sim.bodies[1].charge);
+
             // after one hop, a should lose an electron, b should gain one
-            assert_eq!(sim.bodies[0].electrons.len(), 0);
-            assert_eq!(sim.bodies[1].electrons.len(), 2);
+            assert_eq!(sim.bodies[0].electrons.len(), 1);
+            assert_eq!(sim.bodies[1].electrons.len(), 1);
+        }
+
+        #[test]
+        fn never_hop_when_activation_infinite() {
+            // two metals apart but within hop radius
+            let mut a = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, -1.0, Species::LithiumMetal);
+            let mut b = Body::new(Vec2::new(1.0,0.0), Vec2::zero(), 1.0, 1.0,  0.0, Species::LithiumMetal);
+            a.electrons = vec! [
+                Electron{ rel_pos: Vec2::zero(), vel: Vec2::zero() },
+                Electron{ rel_pos: Vec2::zero(), vel: Vec2::zero() }
+            ];
+            a.update_charge_from_electrons();
+            b.update_charge_from_electrons();
+            //println!("DEBUG: a.electrons.len() = {}, b.electrons.len() = {}", a.electrons.len(), b.electrons.len());
+            //println!("DEBUG: a.charge = {}, b.charge = {}", a.charge, b.charge);
+
+            // force p_hop ≈ 1 by zeroing thermal energy
+            //crate::config::HOP_ACTIVATION_ENERGY = 1e-8_f32; 
+
+            let mut sim = Simulation {
+                dt: 0.1,
+                frame: 0,
+                bodies: vec![a, b],
+                quadtree: Quadtree::new(
+                    config::QUADTREE_THETA,
+                    config::QUADTREE_EPSILON,
+                    config::QUADTREE_LEAF_CAPACITY,
+                    config::QUADTREE_THREAD_CAPACITY,
+                ),
+                bounds: 10.0,
+                rewound_flags: vec![false; 2],
+                background_e_field: Vec2::zero(),
+                config: SimConfig {
+                    hop_activation_energy: 1e15_f32, // very large activation energy for testing
+                    ..Default::default()
+                },
+            };
+            sim.perform_electron_hopping();
+            sim.bodies[0].update_charge_from_electrons();   
+            sim.bodies[1].update_charge_from_electrons();   
+
+            //println!("DEBUG: after hopping, a.electrons.len() = {}, b.electrons.len() = {}", sim.bodies[0].electrons.len(), sim.bodies[1].electrons.len());
+            //println!("DEBUG: after hopping, a.charge = {}, b.charge = {}", sim.bodies[0].charge, sim.bodies[1].charge);
+
+            // after one hop, a should lose an electron, b should gain one
+            assert_eq!(sim.bodies[0].electrons.len(), 2);
+            assert_eq!(sim.bodies[1].electrons.len(), 0);
         }
 
         #[test]
         fn never_hop_when_rate_zero() {
+            // two metals apart but within hop radius
             let mut a = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, -1.0, Species::LithiumMetal);
             let mut b = Body::new(Vec2::new(1.0,0.0), Vec2::zero(), 1.0, 1.0,  0.0, Species::LithiumMetal);
-            a.electrons = vec![Electron{ rel_pos: Vec2::zero(), vel: Vec2::zero() }];
+            a.electrons = vec! [
+                Electron{ rel_pos: Vec2::zero(), vel: Vec2::zero() },
+                Electron{ rel_pos: Vec2::zero(), vel: Vec2::zero() }
+            ];
             a.update_charge_from_electrons();
             b.update_charge_from_electrons();
+            //println!("DEBUG: a.electrons.len() = {}, b.electrons.len() = {}", a.electrons.len(), b.electrons.len());
+            //println!("DEBUG: a.charge = {}, b.charge = {}", a.charge, b.charge);
 
             // force p_hop = 0
             //crate::config::HOP_RATE_K0 = 0.0;
@@ -260,15 +324,62 @@ mod reactions {
                 rewound_flags: vec![false; 2],
                 background_e_field: Vec2::zero(),
                 config: SimConfig {
-                    hop_rate_k0: 0.0, // zero rate for testing
+                    hop_rate_k0: 0.0, // zero rate constant for testing
                     ..Default::default()
                 },
             };
             sim.perform_electron_hopping();
+            //println!("DEBUG: after hopping, a.electrons.len() = {}, b.electrons.len() = {}", sim.bodies[0].electrons.len(), sim.bodies[1].electrons.len());
+            //println!("DEBUG: after hopping, a.charge = {}, b.charge = {}", sim.bodies[0].charge, sim.bodies[1].charge);
+
+            // no change
+            assert_eq!(sim.bodies[0].electrons.len(), 2);
+            assert_eq!(sim.bodies[1].electrons.len(), 0);
+        }
+
+        #[test]
+        fn always_hop_when_rate_infinite() {
+            // two metals apart but within hop radius
+            let mut a = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, -1.0, Species::LithiumMetal);
+            let mut b = Body::new(Vec2::new(1.0,0.0), Vec2::zero(), 1.0, 1.0,  0.0, Species::LithiumMetal);
+            a.electrons = vec! [
+                Electron{ rel_pos: Vec2::zero(), vel: Vec2::zero() },
+                Electron{ rel_pos: Vec2::zero(), vel: Vec2::zero() }
+            ];
+            a.update_charge_from_electrons();
+            b.update_charge_from_electrons();
+            //println!("DEBUG: a.electrons.len() = {}, b.electrons.len() = {}", a.electrons.len(), b.electrons.len());
+            //println!("DEBUG: a.charge = {}, b.charge = {}", a.charge, b.charge);
+
+            // force p_hop = 0
+            //crate::config::HOP_RATE_K0 = 0.0;
+
+            let mut sim = Simulation {
+                dt: 0.1,
+                frame: 0,
+                bodies: vec![a, b],
+                quadtree: Quadtree::new(
+                    config::QUADTREE_THETA,
+                    config::QUADTREE_EPSILON,
+                    config::QUADTREE_LEAF_CAPACITY,
+                    config::QUADTREE_THREAD_CAPACITY,
+                ),
+                bounds: 10.0,
+                rewound_flags: vec![false; 2],
+                background_e_field: Vec2::zero(),
+                config: SimConfig {
+                    hop_rate_k0: 1e15_f32, // large rate constant for testing
+                    ..Default::default()
+                },
+            };
+            sim.perform_electron_hopping();
+            //println!("DEBUG: after hopping, a.electrons.len() = {}, b.electrons.len() = {}", sim.bodies[0].electrons.len(), sim.bodies[1].electrons.len());
+            //println!("DEBUG: after hopping, a.charge = {}, b.charge = {}", sim.bodies[0].charge, sim.bodies[1].charge);
+
             // no change
             assert_eq!(sim.bodies[0].electrons.len(), 1);
             assert_eq!(sim.bodies[1].electrons.len(), 1);
         }
-}
 
+    }
 }
