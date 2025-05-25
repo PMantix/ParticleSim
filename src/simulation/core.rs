@@ -118,9 +118,19 @@ impl Simulation {
             if let Some(dst_idx) = self.bodies
                 .iter()
                 .enumerate()
-                .filter(|&(j, b)| j != src_idx && b.species == Species::LithiumMetal)
+                .filter(|&(j, b)| {
+                    j != src_idx &&
+                    (
+                        (b.species == Species::LithiumMetal && b.electrons.len() < src_body.electrons.len() && b.charge > src_body.charge)
+                        ||
+                        (b.species == Species::LithiumIon)
+                    )
+                })
                 .filter(|(_, b)| (b.pos - src_body.pos).mag() <= hop_radius)
-                .filter(|(_, b)| b.charge > src_body.charge) // dst is less negative
+                .filter(|(_, b)| {
+                    // Only hop if destination has fewer electrons or is at higher potential
+                    (b.charge > src_body.charge) && (b.electrons.len() < src_body.electrons.len())
+                })
                 .min_by(|(_, a), (_, b)| {
                     let da = a.charge - src_body.charge;
                     let db = b.charge - src_body.charge;
@@ -141,13 +151,118 @@ impl Simulation {
 
         // Apply hops
         for (src_idx, dst_idx) in hops {
-            if self.bodies[src_idx].electrons.len() > 1 {
-                if let Some(e) = self.bodies[src_idx].electrons.pop() {
-                    self.bodies[dst_idx].electrons.push(e);
-                    self.bodies[src_idx].update_charge_from_electrons();
-                    self.bodies[dst_idx].update_charge_from_electrons();
+            // To avoid double mutable borrow, split the borrow using split_at_mut
+            let (first, second) = self.bodies.split_at_mut(std::cmp::max(src_idx, dst_idx));
+            let (src, dst) = if src_idx < dst_idx {
+                (&mut first[src_idx], &mut second[0])
+            } else {
+                (&mut second[0], &mut first[dst_idx])
+            };
+            // Redox: transfer electron and update redox state
+            if src.electrons.len() > 1 {
+                if let Some(e) = src.electrons.pop() {
+                    println!("-------------------");
+                    println!("Electron hopping: src={} (charge={}), dst={} (charge={})", src_idx, src.charge, dst_idx, dst.charge);
+                    println!("Electron hopping: src species={:?}, dst species={:?}", src.species, dst.species);
+                    println!("Electron hopping: src electrons={}, dst electrons={}", src.electrons.len(), dst.electrons.len());
+                    println!("-------------------");
+                    dst.electrons.push(e);
+                    src.apply_redox();
+                    dst.apply_redox();
                 }
             }
         }
+
+
+    }
+
+}
+
+#[cfg(test)]
+mod redox_tests {
+    use super::*; // for Simulation, Species
+    use crate::body::{Body, Electron};
+    use ultraviolet::Vec2;
+
+    #[test]
+    fn ion_reduces_to_metal_on_electron_arrival() {
+        // Setup: one ion with one electron attached
+        let mut ion = Body::new(
+            Vec2::zero(),
+            Vec2::zero(),
+            1.0,
+            1.0,
+            0.0,
+            Species::LithiumIon,
+        );
+        //ion.update_charge_from_electrons();
+        //println!("Start --- Ion charge: {}, Ion electrons: {}", ion.charge, ion.electrons.len());
+        ion.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+        ion.update_charge_from_electrons();
+        //println!("After Charge --- Ion charge: {}, Ion electrons: {}", ion.charge, ion.electrons.len());
+
+        let mut sim = Simulation {
+            dt: 0.1,
+            frame: 0,
+            bodies: vec![ion],
+            quadtree: Quadtree::new(
+                config::QUADTREE_THETA,
+                config::QUADTREE_EPSILON,
+                config::QUADTREE_LEAF_CAPACITY,
+                config::QUADTREE_THREAD_CAPACITY,
+            ),
+            bounds: 1.0,
+            rewound_flags: vec![false],
+            background_e_field: Vec2::zero(),
+        };
+
+        
+        //sim.perform_redox();
+        let b = &mut sim.bodies[0];
+        b.apply_redox();
+        //println!("After Redox --- Ion charge: {}, Ion electrons: {}", b.charge, b.electrons.len());
+
+        assert_eq!(b.species, Species::LithiumMetal, "Ion with electron should become metal");
+        assert_eq!(b.electrons.len(), 1, "Should have one valence electron");
+        assert_eq!(b.charge, 0.0, "Neutral metal should have charge 0");
+    }
+
+    #[test]
+    fn metal_oxidizes_to_ion_when_bare() {
+        // Setup: one metal with zero electrons
+        let metal = Body::new(
+            Vec2::zero(),
+            Vec2::zero(),
+            1.0,
+            1.0,
+            0.0,
+            Species::LithiumMetal,
+        );
+        let mut sim = Simulation {
+            dt: 0.1,
+            frame: 0,
+            bodies: vec![metal],
+            quadtree: Quadtree::new(
+                config::QUADTREE_THETA,
+                config::QUADTREE_EPSILON,
+                config::QUADTREE_LEAF_CAPACITY,
+                config::QUADTREE_THREAD_CAPACITY,
+            ),
+            bounds: 1.0,
+            rewound_flags: vec![false],
+            background_e_field: Vec2::zero(),
+        };
+
+        //println!("Start --- Metal charge: {}, Metal electrons: {}", sim.bodies[0].charge, sim.bodies[0].electrons.len());
+        //println!("Metal species: {:?}", sim.bodies[0].species);
+        //sim.perform_redox();
+        let b = &mut sim.bodies[0];
+        b.apply_redox();
+        //println!("After Redox --- Metal charge: {}, Metal electrons: {}", b.charge, b.electrons.len());
+        //println!("Metal species: {:?}", b.species);
+
+        let b = &sim.bodies[0];
+        assert_eq!(b.species, Species::LithiumIon, "Metal with no electrons should become ion");
+        assert_eq!(b.charge, 1.0, "Ion with no electrons should have charge +1");
     }
 }

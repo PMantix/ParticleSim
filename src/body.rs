@@ -76,7 +76,6 @@ impl Body {
             }
         }
     }
-    
 
     pub fn _set_electron_count(&mut self) {
         if self.species == Species::LithiumMetal {
@@ -95,10 +94,35 @@ impl Body {
     }
 
     pub fn update_charge_from_electrons(&mut self) {
-        if self.species == Species::LithiumMetal {
-            self.charge = -(self.electrons.len() as f32 - 1.0);
-        } else if self.species == Species::LithiumIon {
-            self.charge = 1.0; 
+        match self.species {
+            Species::LithiumMetal => {
+                self.charge = -(self.electrons.len() as f32 - 1.0);
+            }
+            Species::LithiumIon => {
+                // Ion charge is 1.0 if it has electrons, 0.0 if it has none
+                self.charge = 1.0 - self.electrons.len() as f32;
+            }
+        }
+    }
+
+    /// If this is an ion with ≥1 electron → consume one and become metal.
+    /// If this is a metal with 0 electrons → become ion (charge is recomputed).
+    pub fn apply_redox(&mut self) {
+        match self.species {
+            Species::LithiumIon => {
+                if !self.electrons.is_empty() {
+                    // Ion with at least one electron becomes metal
+                    self.species = Species::LithiumMetal;
+                    self.update_charge_from_electrons();
+                }
+            }
+            Species::LithiumMetal => {
+                if self.electrons.is_empty() {
+                    // Metal with no electrons becomes ion
+                    self.species = Species::LithiumIon;
+                    self.update_charge_from_electrons();
+                }
+            }
         }
     }
 }

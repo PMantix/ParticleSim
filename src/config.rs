@@ -40,7 +40,7 @@ pub const QUADTREE_THREAD_CAPACITY: usize = 1024;       // Max bodies per thread
 // ====================
 // Initialization/Clumping
 // ====================
-pub const CLUMP_SIZE: usize = 1000;                     // Number of particles per clump
+pub const CLUMP_SIZE: usize = 50;                     // Number of particles per clump
 pub const CLUMP_RADIUS: f32 = 20.0;                     // Radius of each clump
 pub const DOMAIN_BOUNDS: f32 = 350.0;                   // Simulation domain boundary
 
