@@ -11,6 +11,7 @@ pub const HOP_RADIUS_FACTOR: f32 = 2.1;                      // Hopping radius a
 pub const HOP_RATE_K0: f32 = 1.0;            /// Base hop‐rate constant (per unit time) at zero overpotential
 pub const HOP_TRANSFER_COEFF: f32 = 0.5;            /// Transfer coefficient α (unitless, ~0.5)   
 pub const HOP_ACTIVATION_ENERGY: f32 = 0.025;      /// Thermal energy k_BT (in your same charge‐units)
+pub const CLUSTER_DISTANCE: f32 = 1.2;                // Distance threshold for clustering
 
 // ====================
 // LJ Force Parameters
@@ -59,12 +60,22 @@ pub const THREADS_LEAVE_FREE: usize = 2;                // Number of logical cor
 pub const WINDOW_WIDTH: u32 = 900;                      // Window width in pixels
 pub const WINDOW_HEIGHT: u32 = 900;                     // Window height in pixels
 
+// ====================
+// DISPLAY/GUI Parameters
+// ====================
+pub const SHOW_FIELD_ISOLINES: bool = false;        /// Show electric field isolines/// Show electric-field isolines
+pub const SHOW_VELOCITY_VECTORS: bool = false;      /// Show velocity vectors
+pub const SHOW_ELECTRON_DENSITY: bool = false;      /// Show electron-density heatmap
+
 #[derive(Clone, Debug)]
 pub struct SimConfig {
     pub hop_rate_k0: f32,
     pub hop_transfer_coeff: f32,
     pub hop_activation_energy: f32,
     pub hop_radius_factor: f32,
+    pub show_field_isolines: bool,
+    pub show_velocity_vectors: bool,
+    pub show_electron_density: bool,
     // Add other parameters as needed
 }
 
@@ -75,6 +86,9 @@ impl Default for SimConfig {
             hop_transfer_coeff: HOP_TRANSFER_COEFF,
             hop_activation_energy: HOP_ACTIVATION_ENERGY,
             hop_radius_factor: HOP_RADIUS_FACTOR,
+            show_field_isolines: false,
+            show_velocity_vectors: false,
+            show_electron_density: false,
         }
     }
 }

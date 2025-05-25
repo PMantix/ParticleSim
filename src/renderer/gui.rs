@@ -52,6 +52,12 @@ impl super::Renderer {
                         ui.add(egui::DragValue::new(&mut range.1).speed(0.05));
                     });
                 }
+
+                ui.separator();
+                ui.label("Visualization Overlays:");
+                ui.checkbox(&mut self.sim_config.show_field_isolines, "Show Field Isolines");
+                ui.checkbox(&mut self.sim_config.show_velocity_vectors, "Show Velocity Vectors");
+                ui.checkbox(&mut self.sim_config.show_electron_density, "Show Electron Density");
             });
     }
 }

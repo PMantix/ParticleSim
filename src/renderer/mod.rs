@@ -4,6 +4,7 @@ pub mod gui;
 pub mod draw;
 
 use crate::body::Body;
+use crate::config::SimConfig;
 use crate::quadtree::Node;
 use ultraviolet::Vec2;
 use quarkstrom::winit_input_helper::WinitInputHelper;
@@ -29,6 +30,7 @@ pub struct Renderer {
     quadtree: Vec<Node>,
 
     selected_particle_id: Option<u64>,
+    sim_config: SimConfig,
 }
 
 impl quarkstrom::Renderer for Renderer {
@@ -47,6 +49,7 @@ impl quarkstrom::Renderer for Renderer {
             bodies: Vec::new(),
             quadtree: Vec::new(),
             selected_particle_id: None,
+            sim_config: SimConfig::default(),
         }
     }
 
