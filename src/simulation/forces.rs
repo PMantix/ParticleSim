@@ -27,16 +27,10 @@ pub fn apply_lj_forces(sim: &mut Simulation) {
             metal_indices.push(i);
         }
     }
-    /*println!(
-        "LJ DEBUG: Total bodies = {}, LithiumMetal count = {}",//, indices = {:?}",
-        sim.bodies.len(),
-        metal_indices.len(),
-        //metal_indices
-    );*/
 
-    let sigma = 1.1;
-    let epsilon = 500.0;
-    let cutoff = 2.5 * sigma;
+    let sigma = config::LJ_FORCE_SIGMA;
+    let epsilon = config::LJ_FORCE_EPSILON;
+    let cutoff = config::LJ_FORCE_CUTOFF * sigma;
     for i in 0..sim.bodies.len() {
         if sim.bodies[i].species != Species::LithiumMetal {
             continue;
@@ -53,7 +47,7 @@ pub fn apply_lj_forces(sim: &mut Simulation) {
                 let r = r_vec.mag();
                 if r < cutoff && r > 1e-6 {
                     let sr6 = (sigma / r).powi(6);
-                    let max_lj_force = config::COLLISION_PASSES as f32 * 33.33; // Or use a new config value if you want
+                    let max_lj_force = config::COLLISION_PASSES as f32 * config::LJ_FORCE_MAX; // Or use a new config value if you want
                     let unclamped_force_mag = 24.0 * epsilon * (2.0 * sr6 * sr6 - sr6) / r;
                     let force_mag = unclamped_force_mag.clamp(-max_lj_force, max_lj_force);
                     let force = force_mag * r_vec.normalized();

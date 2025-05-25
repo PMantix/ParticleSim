@@ -10,6 +10,14 @@ pub const HOP_CHARGE_THRESHOLD: f32 = 0.2;                     // Charge thresho
 pub const HOP_RADIUS_FACTOR: f32 = 2.1;                      // Hopping radius as a factor of body radius
 
 // ====================
+// LJ Force Parameters
+// ====================
+pub const LJ_FORCE_EPSILON: f32 = 500.0;                  // Lennard-Jones epsilon parameter
+pub const LJ_FORCE_SIGMA: f32 = 1.1;                    // Lennard-Jones sigma parameter
+pub const LJ_FORCE_CUTOFF: f32 = 2.5;                  // Lennard-Jones cutoff distance
+pub const LJ_FORCE_MAX: f32 = 33.33;                   // Max Lennard-Jones force magnitude
+
+// ====================
 // Species/Body Parameters
 // ====================
 pub const LITHIUM_ION_THRESHOLD: f32 = 0.5;             // Charge threshold for lithium ion/metal transition
