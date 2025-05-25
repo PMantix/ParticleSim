@@ -2,7 +2,7 @@
 // Contains all tests for Body, including electron and hopping tests
 
 #[cfg(test)]
-mod tests {
+mod physics {
     use crate::body::{Body, Species, Electron};
     use crate::Simulation;
     use crate::quadtree::Quadtree;

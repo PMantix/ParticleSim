@@ -9,7 +9,7 @@ use crate::config::SimConfig;
 use ultraviolet::Vec2;
 
 #[cfg(test)]
-mod redox_tests {
+mod reactions {
     use super::*;
 
     #[test]
