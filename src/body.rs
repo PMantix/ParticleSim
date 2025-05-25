@@ -1,33 +1,48 @@
-// Defines the body struct (position, velocity, acceleration, mass, radius, charge) and its methods
-// for updating position and velocity. The charge is used to calculate the electric field and force on the body.
+//! Defines the `Body` struct and related types for representing particles (lithium ions and metals) in the simulation.
+//!
+//! Each `Body` tracks its position, velocity, charge, species (ion/metal), and associated electrons.
+//! The module provides methods for updating physical state, handling redox transitions, and simulating electron dynamics.
 
 use ultraviolet::Vec2;
-use crate::config; // <-- Add this line
+use crate::config;
 
+/// The chemical species of a particle: either a lithium ion or lithium metal.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Species {
+    /// A lithium ion (Li+), typically with charge +1 and no electrons.
     LithiumIon,
+    /// A lithium metal atom (Li), typically with charge 0 and one valence electron.
     LithiumMetal,
-    // Electron, // Not constructed, so commented out to avoid dead_code warning
 }
 
+/// Represents a particle in the simulation (either a lithium ion or metal atom).
+///
+/// - `pos`, `vel`, `acc`: Physical state in 2D space.
+/// - `mass`, `radius`: Physical properties.
+/// - `charge`: Electric charge, always derived from electron count and species.
+/// - `species`: Ion or metal.
+/// - `electrons`: List of valence electrons (usually 0 or 1 for Li).
+/// - `e_field`: Local electric field at the particle's position.
 #[derive(Clone)]
-pub struct Body { //Body is a struct that represents a particle in the simulation, which is either a lithium ion, lithium metal
+pub struct Body {
     pub pos: Vec2,
     pub vel: Vec2,
     pub acc: Vec2,
     pub mass: f32,
     pub radius: f32,
-    pub charge: f32, 	// electric charge
+    pub charge: f32,
     pub id: u64,
     pub species: Species,
     pub electrons: Vec<Electron>,
     pub e_field: Vec2,
 }
 
+/// Represents a valence electron bound to a metal atom.
 #[derive(Clone, Debug)]
 pub struct Electron {
+    /// Position relative to the parent atom.
     pub rel_pos: Vec2,
+    /// Velocity of the electron (for simulating drift).
     pub vel: Vec2,
 }
 
@@ -35,6 +50,8 @@ use std::sync::atomic::{AtomicU64, Ordering};
 static NEXT_ID: AtomicU64 = AtomicU64::new(1);
 
 impl Body {
+    /// Create a new particle (ion or metal) with the given properties.
+    /// Note: electrons should be initialized separately for metals.
     pub fn new(pos: Vec2, vel: Vec2, mass: f32, radius: f32, charge: f32, species: Species) -> Self {
         Self {
             pos,
@@ -50,6 +67,8 @@ impl Body {
         }
     }
 
+    /// Update the species (ion/metal) based on the current charge.
+    /// Used for legacy compatibility; prefer using `apply_redox` for physical accuracy.
     pub fn update_species(&mut self) {
         if self.charge > config::LITHIUM_ION_THRESHOLD {
             self.species = Species::LithiumIon;
@@ -58,6 +77,7 @@ impl Body {
         }
     }
 
+    /// Update the positions and velocities of all valence electrons under the given net field.
     pub fn update_electrons(&mut self, net_field: Vec2, dt: f32) {
         let k = config::ELECTRON_SPRING_K;
 
@@ -77,6 +97,8 @@ impl Body {
         }
     }
 
+    /// Set the number of valence electrons for a metal atom based on its charge.
+    /// For Li metal: 1 electron is neutral, >1 is anionic, <1 is cationic.
     pub fn _set_electron_count(&mut self) {
         if self.species == Species::LithiumMetal {
             let desired = 1 + (-self.charge).round() as usize;
@@ -93,20 +115,24 @@ impl Body {
         }
     }
 
+    /// Update the charge based on the number of electrons and species.
+    /// - For Li metal: charge = -(n_electrons - 1)
+    /// - For Li ion: charge = 1 - n_electrons
     pub fn update_charge_from_electrons(&mut self) {
         match self.species {
             Species::LithiumMetal => {
                 self.charge = -(self.electrons.len() as f32 - 1.0);
             }
             Species::LithiumIon => {
-                // Ion charge is 1.0 if it has electrons, 0.0 if it has none
                 self.charge = 1.0 - self.electrons.len() as f32;
             }
         }
     }
 
-    /// If this is an ion with ≥1 electron → consume one and become metal.
-    /// If this is a metal with 0 electrons → become ion (charge is recomputed).
+    /// Apply redox transitions based on electron count:
+    /// - Ion with ≥1 electron becomes metal (no electron is consumed; the electron causes reduction).
+    /// - Metal with 0 electrons becomes ion.
+    /// Always updates charge after transition.
     pub fn apply_redox(&mut self) {
         match self.species {
             Species::LithiumIon => {
@@ -193,8 +219,6 @@ mod tests {
             assert!(b.electrons[0].rel_pos.x < 0.0, 
                 "Expected electrion to drift left (x < 0), but rel_pos.x = {}", b.electrons[0].rel_pos.x);
         }
-
-        
     }
 
     #[cfg(test)]
