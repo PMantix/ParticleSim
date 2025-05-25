@@ -18,7 +18,7 @@ mod config;
 use renderer::Renderer;
 use renderer::state::{SIM_COMMAND_SENDER, SimCommand};
 use std::sync::mpsc::channel;
-use simulation::core::Simulation;
+use simulation::Simulation;
 use crate::body::Electron;
 use ultraviolet::Vec2;
 

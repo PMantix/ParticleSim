@@ -6,7 +6,7 @@ use crate::renderer::state::COLLISION_PASSES;
 use broccoli::aabb::Rect;
 use broccoli_rayon::{build::RayonBuildPar, prelude::RayonQueryPar};
 use ultraviolet::Vec2;
-use super::core::Simulation;
+use crate::simulation::Simulation;
 
 pub fn collide(sim: &mut Simulation) {
     let mut rects = sim
