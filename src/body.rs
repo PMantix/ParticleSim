@@ -78,7 +78,7 @@ impl Body {
     }
     
 
-    pub fn set_electron_count(&mut self) {
+    pub fn _set_electron_count(&mut self) {
         if self.species == Species::LithiumMetal {
             let desired = 1 + (-self.charge).round() as usize;
             while self.electrons.len() < desired {
@@ -91,6 +91,14 @@ impl Body {
             }
         } else {
             self.electrons.clear();
+        }
+    }
+
+    pub fn update_charge_from_electrons(&mut self) {
+        if self.species == Species::LithiumMetal {
+            self.charge = -(self.electrons.len() as f32 - 1.0);
+        } else {
+            self.charge = 0.0; // or whatever is appropriate for ions
         }
     }
 }
@@ -179,16 +187,21 @@ mod tests {
                 1.0,
                 Species::LithiumMetal,
             );  
-            let b = Body::new(
+            let mut b = Body::new(
                 Vec2::new(1.0, 0.0),
                 Vec2::zero(),
                 1.0, 1.0,
-                0.0,
+                -2.0,
                 Species::LithiumMetal,
             );
 
-            //Attach one electron to A
-            a.electrons = vec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }];
+            a.update_charge_from_electrons();    
+
+            for _e in 0..3 {
+                b.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+            }
+            b.update_charge_from_electrons();
+
             let mut sim = Simulation {
                 bodies: vec![a, b],
                 dt: 0.1,
@@ -205,12 +218,16 @@ mod tests {
                 // Add any other required fields with dummy/test values as needed
             };
 
+            // Before hop, A should have 0 electrons, B should have 3
+            assert_eq!(sim.bodies[0].electrons.len(), 0);
+            assert_eq!(sim.bodies[1].electrons.len(), 3);
+            
             // Run a single sim step (you may need to call only the hop logic)
             sim.perform_electron_hopping();
 
-            // After hop, A should have 0 electrons, B should have 1
-            assert_eq!(sim.bodies[0].electrons.len(), 0);
-            assert_eq!(sim.bodies[1].electrons.len(), 1);
+            // After hop, A should have 1 electrons, B should have 2
+            assert_eq!(sim.bodies[0].electrons.len(), 1);
+            assert_eq!(sim.bodies[1].electrons.len(), 2);
         }
     }
 }

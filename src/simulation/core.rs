@@ -72,8 +72,9 @@ impl Simulation {
         }
         // Update electrons for each Li metal atom
         for body in &mut self.bodies {
-            body.set_electron_count();
+            //body.set_electron_count();
             body.update_electrons(body.e_field, self.dt);
+            body.update_charge_from_electrons();
         }
 
         // Perform electron hopping pass
@@ -104,50 +105,49 @@ impl Simulation {
     }
 
     pub fn perform_electron_hopping(&mut self) {
-        // -------------Electron hopping pass --------------
-        // We'll collect all hops this frame, then apply them.
-        let mut hops: Vec<(usize /*src_idx*/, usize /*dst_idx*/, usize /*e_idx*/)> = vec![];
         let n = self.bodies.len();
+        let mut hops: Vec<(usize, usize)> = vec![];
 
         for src_idx in 0..n {
-            let body = &self.bodies[src_idx];
-            if body.species != Species::LithiumMetal {
+            let src_body = &self.bodies[src_idx];
+            if src_body.species != Species::LithiumMetal || src_body.electrons.len() <= 1 {
                 continue;
             }
-            // For each electron in this metal
-            for (e_idx, e) in body.electrons.iter().enumerate() {
-                // Compute electron’s world position
-                let e_world = body.pos + e.rel_pos;
-                let hop_radius = HOP_RADIUS_FACTOR * body.radius;
-
-                // Find a candidate neighbor metal within hop_radius
-                if let Some((dst_idx, dst_body)) = self.bodies
-                    .iter()
-                    .enumerate()
-                    .filter(|&(j, b)| j != src_idx && b.species == Species::LithiumMetal)
-                    .filter(|(_, b)| (b.pos - e_world).mag() <= hop_radius)
-                    // pick the *most favorable* neighbor: largest potential drop
-                    .max_by(|(_, a), (_, b)| {
-                        let da = body.charge - a.charge;
-                        let db = body.charge - b.charge;
-                        da.partial_cmp(&db).unwrap()
-                    })
-                {
-                    // Only hop if the charge difference exceeds threshold
-                    if body.charge - dst_body.charge >= HOP_CHARGE_THRESHOLD {
-                        hops.push((src_idx, dst_idx, e_idx));
-                    }
+            let hop_radius = HOP_RADIUS_FACTOR * src_body.radius;
+            // Find a neighbor with higher charge (less negative)
+            if let Some(dst_idx) = self.bodies
+                .iter()
+                .enumerate()
+                .filter(|&(j, b)| j != src_idx && b.species == Species::LithiumMetal)
+                .filter(|(_, b)| (b.pos - src_body.pos).mag() <= hop_radius)
+                .filter(|(_, b)| b.charge > src_body.charge) // dst is less negative
+                .min_by(|(_, a), (_, b)| {
+                    let da = a.charge - src_body.charge;
+                    let db = b.charge - src_body.charge;
+                    da.partial_cmp(&db).unwrap()
+                })
+                .map(|(j, _)| j)
+            {
+                let dst_body = &self.bodies[dst_idx];
+                if dst_body.charge - src_body.charge >= HOP_CHARGE_THRESHOLD {
+                    println!(
+                        "Trying hop: src={} (charge={}), dst={} (charge={}), dist={}",
+                        src_idx, src_body.charge, dst_idx, dst_body.charge, (src_body.pos - dst_body.pos).mag()
+                    );
+                    hops.push((src_idx, dst_idx));
                 }
             }
         }
 
         // Apply hops
-        for (src_idx, dst_idx, e_idx) in hops.into_iter().rev() {
-            // Remove the electron from the source
-            let e = self.bodies[src_idx].electrons.remove(e_idx);
-            // Add it to the destination
-            self.bodies[dst_idx].electrons.push(e);
+        for (src_idx, dst_idx) in hops {
+            if self.bodies[src_idx].electrons.len() > 1 {
+                if let Some(e) = self.bodies[src_idx].electrons.pop() {
+                    self.bodies[dst_idx].electrons.push(e);
+                    self.bodies[src_idx].update_charge_from_electrons();
+                    self.bodies[dst_idx].update_charge_from_electrons();
+                }
+            }
         }
-        // -------- END HOP PASS --------
     }
 }

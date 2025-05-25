@@ -2,7 +2,7 @@ use super::state::*;
 use quarkstrom::winit::event::VirtualKeyCode;
 use std::sync::atomic::Ordering;
 use std::f32::consts::{PI, TAU};
-use crate::body::{Body, Species};
+use crate::body::{Body, Species, Electron};
 use ultraviolet::Vec2;
 use quarkstrom::winit_input_helper::WinitInputHelper;
 use super::state::{SIM_COMMAND_SENDER, SimCommand};
@@ -85,11 +85,25 @@ impl super::Renderer {
                     }
                     self.selected_particle_id = closest;
 
+                    if let Some(id) = closest {
+                        if let Some(body) = self.bodies.iter().find(|b| b.id == id) {
+                            println!(
+                                "Selected particle: id={:?}, pos={:?}, radius={:.3}, charge={:.3}, electrons={}, species={:?}",
+                                body.id, body.pos, body.radius, body.charge, body.electrons.len(), body.species
+                            );
+                        }
+                    }
+
+                    println!()
+
                 // If shift is not held, spawn a new body    
                 } else {
                     // Spawning logic (no shift)
                     let mouse = world_mouse();
-                    self.spawn_body = Some(Body::new(mouse, Vec2::zero(), 1.0, 1.0, 0.0, Species::LithiumMetal));
+                    let mut body = Body::new(mouse, Vec2::zero(), 1.0, 1.0, 0.0, Species::LithiumMetal);
+                    body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+                    body.update_charge_from_electrons();
+                    self.spawn_body = Some(body);
                     self.angle = None;
                     self.total = Some(0.0);
                 }
@@ -118,7 +132,11 @@ impl super::Renderer {
             }
         // If the mouse is released, confirm the body
         } else if input.mouse_released(1) {
-            self.confirmed_bodies = self.spawn_body.take();
+            if let Some(body) = self.spawn_body.take() {
+                if let Some(sender) = SIM_COMMAND_SENDER.lock().as_ref() {
+                    let _ = sender.send(SimCommand::AddBody { body });
+                }
+            }
         }
     }
 }

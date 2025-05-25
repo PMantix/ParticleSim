@@ -7,7 +7,7 @@ pub const ELECTRON_SPRING_K: f32 = 0.05;                // Spring constant for e
 pub const ELECTRON_DRIFT_RADIUS_FACTOR: f32 = 1.2;      // Max drift radius as a factor of body radius
 pub const ELECTRON_MAX_SPEED_FACTOR: f32 = 1.2;         // Max electron speed as a factor of body radius per dt
 pub const HOP_CHARGE_THRESHOLD: f32 = 0.2;                     // Charge threshold for hopping
-pub const HOP_RADIUS_FACTOR: f32 = 1.2;                      // Hopping radius as a factor of body radius
+pub const HOP_RADIUS_FACTOR: f32 = 2.1;                      // Hopping radius as a factor of body radius
 
 // ====================
 // Species/Body Parameters

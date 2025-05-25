@@ -19,6 +19,8 @@ use renderer::Renderer;
 use renderer::state::{SIM_COMMAND_SENDER, SimCommand};
 use std::sync::mpsc::channel;
 use simulation::core::Simulation;
+use crate::body::Electron;
+use ultraviolet::Vec2;
 
 fn main() {
     // Creates a global thread pool (using rayon) with threads = max(3, total cores - 2). Leaves 1-2 cores free to avoid hogging system resources.
@@ -46,25 +48,52 @@ fn main() {
                 match cmd {
                     SimCommand::ChangeCharge { id, delta } => {
                         if let Some(body) = simulation.bodies.iter_mut().find(|b| b.id == id) {
-                            body.charge += delta;
+                            // Add or remove electrons based on delta
+                            if delta > 0.0 {
+                                // Remove electrons (increase charge)
+                                for _ in 0..delta.round() as usize {
+                                    body.electrons.pop();
+                                }
+                            } else if delta < 0.0 {
+                                // Add electrons (decrease charge)
+                                for _ in 0..(-delta).round() as usize {
+                                    let angle = fastrand::f32() * std::f32::consts::TAU;
+                                    let rel_pos = ultraviolet::Vec2::new(angle.cos(), angle.sin()) * body.radius * crate::config::ELECTRON_DRIFT_RADIUS_FACTOR;
+                                    body.electrons.push(crate::body::Electron { rel_pos, vel: ultraviolet::Vec2::zero() });
+                                }
+                            }
+                            body.update_charge_from_electrons();
+                            println!("Particle {} new charge: {}", id, body.charge);
+                            println!("Particle {} new electron count: {}", id, body.electrons.len());
+                            println!("Particle {} new species: {:?}", id, body.species);
 
-                            if body.species == body::Species::LithiumMetal && body.charge >= 1.0{
-                                body.update_species(); // Update species to ion
+                            // Update species if charge crosses threshold
+                            let was_metal = body.species == body::Species::LithiumMetal;
+                            let was_ion = body.species == body::Species::LithiumIon;
+                            body.update_species();
+
+                            if was_metal && body.species == body::Species::LithiumIon {
                                 println!();
                                 println!("Should become ion below...");
                                 println!("Particle {} new species: {:?}", id, body.species);
                             }
-
-                            if body.species == body::Species::LithiumIon && body.charge <= 0.0{
-                                body.update_species(); // Update species to metal
+                            if was_ion && body.species == body::Species::LithiumMetal {
                                 println!();
-                                println!("Shound become metal below...");
+                                println!("Should become metal below...");
                                 println!("Particle {} new species: {:?}", id, body.species);
                             }
 
-                            body.set_electron_count(); //
                             println!("Particle {} new charge: {}", id, body.charge);
                         }
+                    }
+
+                    SimCommand::AddBody { mut body } => {
+                        // ensure 1 valence electron, correct charge & species:
+                        body.electrons.clear();
+                        body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+                        body.update_charge_from_electrons();
+                        body.update_species();
+                        simulation.bodies.push(body);
                     }
                     //SimCommand::Plate { foil_id, amount } => { /* ... */ }
                     //SimCommand::Strip { foil_id, amount } => { /* ... */ }
