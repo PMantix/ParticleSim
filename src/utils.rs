@@ -1,14 +1,18 @@
-// Handles the generation of the initial conditions for the simulation.
-//
-// This module generates a uniform distribution of particles in a disc.
-// The particles are assigned random positions, velocities, and masses.
-// The particles are then sorted by their distance from the center of the disc.
-// The mass of each particle is calculated based on its radius.
-// The velocity of each particle is calculated based on the mass of the particles
+//! Utility functions for generating initial conditions and particle distributions for the simulation.
+//!
+//! Provides helpers to create uniform discs and clustered lithium/ion arrangements for testing and visualization.
 
 use crate::body::{Body, Species, Electron};
 use ultraviolet::Vec2;
 
+/// Generate a uniform disc of `n` bodies (ions/metals) with random positions and velocities.
+///
+/// - Positions are distributed in a disc of radius proportional to sqrt(n).
+/// - Each body is assigned a random charge and species based on its x-position.
+/// - Bodies are sorted by distance from the center.
+/// - Velocities are scaled by mass and distance.
+///
+/// Note: This is mainly for legacy or test/demo purposes.
 pub fn _uniform_disc(n: usize) -> Vec<Body> {
     fastrand::seed(0);
     let inner_radius = 0.0;
@@ -55,6 +59,15 @@ pub fn _uniform_disc(n: usize) -> Vec<Body> {
     bodies
 }
 
+/// Generate two lithium metal clumps (left/right) and a central clump of ions.
+///
+/// - `clump_size`: Number of metals in each clump.
+/// - `clump_radius`: Radius of each clump.
+/// - `domain_half_width`: Controls spacing between clumps.
+/// - Each metal is initialized with a valence electron.
+/// - Ions are placed in the center with no electrons.
+///
+/// Returns a vector of initialized `Body` objects.
 pub fn two_lithium_clumps_with_ions(
     n: usize,
     clump_size: usize,

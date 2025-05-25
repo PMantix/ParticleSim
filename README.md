@@ -80,3 +80,26 @@ MIT License
 - Uses [quarkstrom](https://github.com/DeadlockCode/quarkstrom) for rendering and GUI.
 
 ---
+
+## Physical Model: Electrons, Redox, and Charge Conservation
+
+This simulation models lithium ions (Li⁺) and lithium metal (Li) with explicit valence electrons:
+
+- **Redox Transitions**: Ions become metals if they gain ≥1 electron (the electron causes reduction; no electron is consumed in the transition). Metals become ions if they lose all electrons. Charge is always recalculated from the electron count and species.
+- **Electron Hopping**: Electrons can hop between metals and ions, but only down the potential gradient and only if the destination has fewer electrons. Electron conservation is strictly enforced.
+- **Physically Accurate Charge**: For Li metal, charge = -(n_electrons - 1). For Li ion, charge = 1 - n_electrons. This ensures correct redox and charge behavior.
+- **Debugging**: The code includes debug print statements to trace electron hopping and redox transitions.
+
+---
+
+## Documentation & Testing
+
+- All major modules and functions are documented with clear doc comments.
+- The codebase is organized for maintainability and extensibility.
+- Tests cover redox transitions, electron hopping, and edge cases. To run tests:
+
+```powershell
+cargo test
+```
+
+---

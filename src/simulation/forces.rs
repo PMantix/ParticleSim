@@ -1,13 +1,20 @@
-// simulation/forces.rs
-// Contains force calculation functions (attract, apply_lj_forces)
+//! Force calculation functions for the particle simulation.
+//!
+//! Provides routines for computing electric (Coulomb) forces and Lennard-Jones (LJ) forces between bodies.
+//! Used by the main simulation loop to update accelerations and fields.
 
 use crate::body::Species;
 use crate::config;
-// Removed unused imports: Body, Quadtree, Vec2
 use super::core::Simulation;
 
+/// Coulomb's constant (scaled for simulation units).
 pub const K_E: f32 = 8.988e2 * 0.5;
 
+/// Compute electric field and force on all bodies using the quadtree.
+///
+/// - Builds the quadtree for the current body positions.
+/// - Computes the electric field at each body due to all others.
+/// - Adds background field and updates acceleration (F = qE).
 pub fn attract(sim: &mut Simulation) {
     sim.quadtree.build(&mut sim.bodies);
     sim.quadtree.field(&mut sim.bodies, K_E);
@@ -19,6 +26,11 @@ pub fn attract(sim: &mut Simulation) {
     }
 }
 
+/// Apply Lennard-Jones (LJ) repulsive/attractive forces between lithium metals.
+///
+/// - Only applies to pairs of lithium metal atoms within a cutoff distance.
+/// - Uses the quadtree to find neighbors efficiently.
+/// - Forces are clamped to avoid instability.
 pub fn apply_lj_forces(sim: &mut Simulation) {
     // Debug: Print all lithium metals in the simulation
     let mut metal_indices = vec![];

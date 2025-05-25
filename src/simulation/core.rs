@@ -9,17 +9,29 @@ use super::collision;
 use crate::config;
 use crate::config::{HOP_RADIUS_FACTOR, HOP_CHARGE_THRESHOLD};
 
+/// The main simulation state and logic for the particle system.
+/// 
+/// Holds all particles (bodies), manages the simulation step, and handles physics such as
+/// force calculation, electron hopping, redox reactions, and integration.
 pub struct Simulation {
+    /// Simulation timestep (seconds per frame)
     pub dt: f32,
+    /// Current frame number
     pub frame: usize,
+    /// All particles in the simulation
     pub bodies: Vec<Body>,
+    /// Quadtree for spatial partitioning (used for force calculations)
     pub quadtree: Quadtree,
-    pub bounds: f32, // half size of the bounding box
+    /// Half-size of the simulation bounding box
+    pub bounds: f32,
+    /// Flags for rewinding (used for undo/rewind features)
     pub rewound_flags: Vec<bool>,
+    /// Uniform background electric field (set by GUI)
     pub background_e_field: Vec2,
 }
 
 impl Simulation {
+    /// Create a new simulation with default parameters and initial particle configuration.
     pub fn new() -> Self {
         let dt = config::DEFAULT_DT;
         let n = config::DEFAULT_PARTICLE_COUNT;
@@ -44,6 +56,10 @@ impl Simulation {
         }
     }
 
+    /// Advance the simulation by one timestep.
+    ///
+    /// This updates the electric field, resets flags, computes forces, integrates motion,
+    /// handles collisions, updates electron states, and performs electron hopping.
     pub fn step(&mut self) {
         // Update uniform E-field from sliders
         {
@@ -83,6 +99,8 @@ impl Simulation {
         self.frame += 1;
     }
 
+    /// Integrate equations of motion for all bodies (velocity Verlet with damping).
+    /// Handles wall reflections.
     pub fn iterate(&mut self) {
         let damping = 0.999;
         for body in &mut self.bodies {
@@ -104,12 +122,19 @@ impl Simulation {
         }
     }
 
+    /// Perform electron hopping between eligible lithium metal and ion particles.
+    ///
+    /// This function finds pairs of particles where an electron can hop from a metal atom
+    /// (with more than one electron) to a neighbor (metal with fewer electrons or an ion),
+    /// within a certain radius and charge threshold. After hopping, redox state is updated.
     pub fn perform_electron_hopping(&mut self) {
         let n = self.bodies.len();
         let mut hops: Vec<(usize, usize)> = vec![];
 
+        // Identify all valid electron hops for this step
         for src_idx in 0..n {
             let src_body = &self.bodies[src_idx];
+            // Only lithium metal atoms with more than one electron can donate
             if src_body.species != Species::LithiumMetal || src_body.electrons.len() <= 1 {
                 continue;
             }
@@ -140,16 +165,12 @@ impl Simulation {
             {
                 let dst_body = &self.bodies[dst_idx];
                 if dst_body.charge - src_body.charge >= HOP_CHARGE_THRESHOLD {
-                    /*println!(
-                        "Trying hop: src={} (charge={}), dst={} (charge={}), dist={}",
-                        src_idx, src_body.charge, dst_idx, dst_body.charge, (src_body.pos - dst_body.pos).mag()
-                    );*/
                     hops.push((src_idx, dst_idx));
                 }
             }
         }
 
-        // Apply hops
+        // Apply all hops (transfer electrons and update redox state)
         for (src_idx, dst_idx) in hops {
             // To avoid double mutable borrow, split the borrow using split_at_mut
             let (first, second) = self.bodies.split_at_mut(std::cmp::max(src_idx, dst_idx));
@@ -161,6 +182,7 @@ impl Simulation {
             // Redox: transfer electron and update redox state
             if src.electrons.len() > 1 {
                 if let Some(e) = src.electrons.pop() {
+                    // Debug output for tracing electron hops
                     println!("-------------------");
                     println!("Electron hopping: src={} (charge={}), dst={} (charge={})", src_idx, src.charge, dst_idx, dst.charge);
                     println!("Electron hopping: src species={:?}, dst species={:?}", src.species, dst.species);
@@ -172,8 +194,6 @@ impl Simulation {
                 }
             }
         }
-
-
     }
 
 }
