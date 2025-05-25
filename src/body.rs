@@ -98,6 +98,8 @@ impl Body {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Simulation; // Only imported for tests
+    use crate::quadtree::Quadtree; // Only imported for tests
 
     #[test]
     fn ion_becomes_metal_when_charge_high() {
@@ -161,5 +163,54 @@ mod tests {
         }
 
         
+    }
+
+    #[cfg(test)]
+    mod hopping_tests {
+        use super::*;
+
+        #[test]
+        fn electron_hops_to_lower_potential_metal() {
+            //Create two metals side by side
+            let mut a = Body::new(
+                Vec2::new(0.0, 0.0),
+                Vec2::zero(),
+                1.0, 1.0,
+                1.0,
+                Species::LithiumMetal,
+            );  
+            let b = Body::new(
+                Vec2::new(1.0, 0.0),
+                Vec2::zero(),
+                1.0, 1.0,
+                0.0,
+                Species::LithiumMetal,
+            );
+
+            //Attach one electron to A
+            a.electrons = vec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }];
+            let mut sim = Simulation {
+                bodies: vec![a, b],
+                dt: 0.1,
+                background_e_field: Vec2::zero(),
+                bounds: 100.0,
+                frame: 0,
+                quadtree: Quadtree::new(
+                    config::QUADTREE_THETA,
+                    config::QUADTREE_EPSILON,
+                    config::QUADTREE_LEAF_CAPACITY,
+                    config::QUADTREE_THREAD_CAPACITY,
+                ),
+                rewound_flags: vec![false; 2],
+                // Add any other required fields with dummy/test values as needed
+            };
+
+            // Run a single sim step (you may need to call only the hop logic)
+            sim.perform_electron_hopping();
+
+            // After hop, A should have 0 electrons, B should have 1
+            assert_eq!(sim.bodies[0].electrons.len(), 0);
+            assert_eq!(sim.bodies[1].electrons.len(), 1);
+        }
     }
 }

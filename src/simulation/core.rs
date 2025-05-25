@@ -1,12 +1,13 @@
 // simulation/core.rs
 // Contains the Simulation struct and main methods (new, step)
 
-use crate::{body::Body, quadtree::Quadtree, utils};
+use crate::{body::{Body, Species}, quadtree::Quadtree, utils};
 use crate::renderer::state::{FIELD_MAGNITUDE, FIELD_DIRECTION, TIMESTEP, COLLISION_PASSES};
 use ultraviolet::Vec2;
 use super::forces;
 use super::collision;
 use crate::config;
+use crate::config::{HOP_RADIUS_FACTOR, HOP_CHARGE_THRESHOLD};
 
 pub struct Simulation {
     pub dt: f32,
@@ -74,6 +75,10 @@ impl Simulation {
             body.set_electron_count();
             body.update_electrons(body.e_field, self.dt);
         }
+
+        // Perform electron hopping pass
+        self.perform_electron_hopping();
+
         self.frame += 1;
     }
 
@@ -96,5 +101,53 @@ impl Simulation {
                 }
             }
         }
+    }
+
+    pub fn perform_electron_hopping(&mut self) {
+        // -------------Electron hopping pass --------------
+        // We'll collect all hops this frame, then apply them.
+        let mut hops: Vec<(usize /*src_idx*/, usize /*dst_idx*/, usize /*e_idx*/)> = vec![];
+        let n = self.bodies.len();
+
+        for src_idx in 0..n {
+            let body = &self.bodies[src_idx];
+            if body.species != Species::LithiumMetal {
+                continue;
+            }
+            // For each electron in this metal
+            for (e_idx, e) in body.electrons.iter().enumerate() {
+                // Compute electron’s world position
+                let e_world = body.pos + e.rel_pos;
+                let hop_radius = HOP_RADIUS_FACTOR * body.radius;
+
+                // Find a candidate neighbor metal within hop_radius
+                if let Some((dst_idx, dst_body)) = self.bodies
+                    .iter()
+                    .enumerate()
+                    .filter(|&(j, b)| j != src_idx && b.species == Species::LithiumMetal)
+                    .filter(|(_, b)| (b.pos - e_world).mag() <= hop_radius)
+                    // pick the *most favorable* neighbor: largest potential drop
+                    .max_by(|(_, a), (_, b)| {
+                        let da = body.charge - a.charge;
+                        let db = body.charge - b.charge;
+                        da.partial_cmp(&db).unwrap()
+                    })
+                {
+                    // Only hop if the charge difference exceeds threshold
+                    if body.charge - dst_body.charge >= HOP_CHARGE_THRESHOLD {
+                        hops.push((src_idx, dst_idx, e_idx));
+                    }
+                }
+            }
+        }
+
+        // Apply hops
+        for (src_idx, dst_idx, e_idx) in hops.into_iter().rev() {
+            // Remove the electron from the source
+            let e = self.bodies[src_idx].electrons.remove(e_idx);
+            // Add it to the destination
+            self.bodies[dst_idx].electrons.push(e);
+        }
+        // -------- END HOP PASS --------
     }
 }
