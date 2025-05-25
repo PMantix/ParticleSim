@@ -2,6 +2,7 @@
 // for updating position and velocity. The charge is used to calculate the electric field and force on the body.
 
 use ultraviolet::Vec2;
+use crate::config; // <-- Add this line
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Species {
@@ -50,46 +51,38 @@ impl Body {
     }
 
     pub fn update_species(&mut self) {
-        if self.charge > 0.5 {
+        if self.charge > config::LITHIUM_ION_THRESHOLD {
             self.species = Species::LithiumIon;
-            println!("Species: LithiumIon");
         } else if self.charge <= 0.0 {
             self.species = Species::LithiumMetal;
-            println!("Species: LithiumMetal");
         }
     }
 
-    pub fn update_electrons(&mut self, net_field: Vec2, _dt: f32) {
+    pub fn update_electrons(&mut self, net_field: Vec2, dt: f32) {
+        let k = config::ELECTRON_SPRING_K;
 
-        let net_force = -1.0 * net_field; // electron charge = -1
-
-        let stiffness = 0.05; // Tune this value for how "stiff" the response is
-        let max_dist = self.radius * 1.2;
-
-        let offset = net_force * stiffness;
-        let offset_mag = offset.mag().min(max_dist);
-
-        let direction = if offset.mag() > 1e-8 {
-            offset.normalized()
-        } else {
-            Vec2::zero()
-        };
-
-        for electron in &mut self.electrons {
-            electron.rel_pos = direction * offset_mag;
-            electron.vel = Vec2::zero(); // No velocity
+        for e in &mut self.electrons {
+            let acc = -net_field * k;
+            e.vel += acc * dt;
+            let speed = e.vel.mag();
+            let max_speed = config::ELECTRON_MAX_SPEED_FACTOR * self.radius / dt;
+            if speed > max_speed {
+                e.vel = e.vel / speed * max_speed;
+            }
+            e.rel_pos += e.vel * dt;
+            let max_dist = config::ELECTRON_DRIFT_RADIUS_FACTOR * self.radius;
+            if e.rel_pos.mag() > max_dist {
+                e.rel_pos = e.rel_pos.normalized() * max_dist;
+            }
         }
-
     }
 
-    pub fn set_electron_count(&mut self) {
-        // For Li metal: 1 electron for charge 0, 2 for -1, 3 for -2, etc.
+    pub fn _set_electron_count(&mut self) {
         if self.species == Species::LithiumMetal {
             let desired = 1 + (-self.charge).round() as usize;
             while self.electrons.len() < desired {
-                // Spawn at random angle near parent
                 let angle = fastrand::f32() * std::f32::consts::TAU;
-                let rel_pos = Vec2::new(angle.cos(), angle.sin()) * self.radius * 1.2;
+                let rel_pos = Vec2::new(angle.cos(), angle.sin()) * self.radius * config::ELECTRON_DRIFT_RADIUS_FACTOR;
                 self.electrons.push(Electron { rel_pos, vel: Vec2::zero() });
             }
             while self.electrons.len() > desired {
@@ -97,6 +90,168 @@ impl Body {
             }
         } else {
             self.electrons.clear();
+        }
+    }
+
+    pub fn update_charge_from_electrons(&mut self) {
+        match self.species {
+            Species::LithiumMetal => {
+                self.charge = -(self.electrons.len() as f32 - 1.0);
+            }
+            Species::LithiumIon => {
+                // Ion charge is 1.0 if it has electrons, 0.0 if it has none
+                self.charge = 1.0 - self.electrons.len() as f32;
+            }
+        }
+    }
+
+    /// If this is an ion with ≥1 electron → consume one and become metal.
+    /// If this is a metal with 0 electrons → become ion (charge is recomputed).
+    pub fn apply_redox(&mut self) {
+        match self.species {
+            Species::LithiumIon => {
+                if !self.electrons.is_empty() {
+                    // Ion with at least one electron becomes metal
+                    self.species = Species::LithiumMetal;
+                    self.update_charge_from_electrons();
+                }
+            }
+            Species::LithiumMetal => {
+                if self.electrons.is_empty() {
+                    // Metal with no electrons becomes ion
+                    self.species = Species::LithiumIon;
+                    self.update_charge_from_electrons();
+                }
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Simulation; // Only imported for tests
+    use crate::quadtree::Quadtree; // Only imported for tests
+
+    #[test]
+    fn ion_becomes_metal_when_charge_high() {
+        let mut b = Body {
+            pos: Vec2::zero(),
+            vel: Vec2::zero(),
+            acc: Vec2::zero(),
+            mass: 1.0,
+            radius: 1.0,
+            charge: 0.00, //above the threshold to become "lithium metal"
+            id: 0,
+            species: Species::LithiumIon,
+            electrons: Vec::new(),
+            e_field: Vec2::zero(),
+        };
+        b.update_species();
+        assert_eq!(b.species, Species::LithiumMetal);
+    }
+
+    #[test]
+    fn metal_becomes_ion_when_charge_low() {
+        let mut b = Body {
+                       pos: Vec2::zero(),
+            vel: Vec2::zero(),
+            acc: Vec2::zero(),
+            mass: 1.0,
+            radius: 1.0,
+            charge: 1.0,                     // below your ion‐threshold (0.0)
+            id: 0,
+            species: Species::LithiumMetal,
+            electrons: Vec::new(),
+            e_field: Vec2::zero(),
+        };
+        b.update_species();
+        assert_eq!(b.species, Species::LithiumIon);
+    }
+
+    #[cfg(test)]
+    mod electron_tests {
+        use super::*;
+
+        #[test]
+        fn electron_moves_under_field() {
+            let mut b = Body::new(
+                Vec2::zero(),
+                Vec2::zero(),
+                1.0,1.0,
+                0.0,
+                Species::LithiumMetal,
+            );
+            //exactly one electrode at center
+            b.electrons=vec![Electron {rel_pos:Vec2::zero(),vel:Vec2::zero()}];
+
+            //apply a rightward field
+            let field = Vec2::new(1.0, 0.0);
+            b.update_electrons(field, 0.1);
+
+            // the electron should have moved positively in x
+            assert!(b.electrons[0].rel_pos.x < 0.0, 
+                "Expected electrion to drift left (x < 0), but rel_pos.x = {}", b.electrons[0].rel_pos.x);
+        }
+
+        
+    }
+
+    #[cfg(test)]
+    mod hopping_tests {
+        use super::*;
+
+        #[test]
+        fn electron_hops_to_lower_potential_metal() {
+            //Create two metals side by side
+            let mut a = Body::new(
+                Vec2::new(0.0, 0.0),
+                Vec2::zero(),
+                1.0, 1.0,
+                1.0,
+                Species::LithiumMetal,
+            );  
+            let mut b = Body::new(
+                Vec2::new(1.0, 0.0),
+                Vec2::zero(),
+                1.0, 1.0,
+                -2.0,
+                Species::LithiumMetal,
+            );
+
+            a.update_charge_from_electrons();    
+
+            for _e in 0..3 {
+                b.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+            }
+            b.update_charge_from_electrons();
+
+            let mut sim = Simulation {
+                bodies: vec![a, b],
+                dt: 0.1,
+                background_e_field: Vec2::zero(),
+                bounds: 100.0,
+                frame: 0,
+                quadtree: Quadtree::new(
+                    config::QUADTREE_THETA,
+                    config::QUADTREE_EPSILON,
+                    config::QUADTREE_LEAF_CAPACITY,
+                    config::QUADTREE_THREAD_CAPACITY,
+                ),
+                rewound_flags: vec![false; 2],
+                // Add any other required fields with dummy/test values as needed
+            };
+
+            // Before hop, A should have 0 electrons, B should have 3
+            assert_eq!(sim.bodies[0].electrons.len(), 0);
+            assert_eq!(sim.bodies[1].electrons.len(), 3);
+            
+            // Run a single sim step (you may need to call only the hop logic)
+            sim.perform_electron_hopping();
+
+            // After hop, A should have 1 electrons, B should have 2
+            assert_eq!(sim.bodies[0].electrons.len(), 1);
+            assert_eq!(sim.bodies[1].electrons.len(), 2);
         }
     }
 }

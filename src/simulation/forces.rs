@@ -2,6 +2,7 @@
 // Contains force calculation functions (attract, apply_lj_forces)
 
 use crate::body::Species;
+use crate::config;
 // Removed unused imports: Body, Quadtree, Vec2
 use super::core::Simulation;
 
@@ -19,9 +20,17 @@ pub fn attract(sim: &mut Simulation) {
 }
 
 pub fn apply_lj_forces(sim: &mut Simulation) {
-    let sigma = 0.8;
-    let epsilon = 500.0;
-    let cutoff = 2.5 * sigma;
+    // Debug: Print all lithium metals in the simulation
+    let mut metal_indices = vec![];
+    for (i, b) in sim.bodies.iter().enumerate() {
+        if b.species == Species::LithiumMetal {
+            metal_indices.push(i);
+        }
+    }
+
+    let sigma = config::LJ_FORCE_SIGMA;
+    let epsilon = config::LJ_FORCE_EPSILON;
+    let cutoff = config::LJ_FORCE_CUTOFF * sigma;
     for i in 0..sim.bodies.len() {
         if sim.bodies[i].species != Species::LithiumMetal {
             continue;
@@ -38,7 +47,7 @@ pub fn apply_lj_forces(sim: &mut Simulation) {
                 let r = r_vec.mag();
                 if r < cutoff && r > 1e-6 {
                     let sr6 = (sigma / r).powi(6);
-                    let max_lj_force = 100.0;
+                    let max_lj_force = config::COLLISION_PASSES as f32 * config::LJ_FORCE_MAX; // Or use a new config value if you want
                     let unclamped_force_mag = 24.0 * epsilon * (2.0 * sr6 * sr6 - sr6) / r;
                     let force_mag = unclamped_force_mag.clamp(-max_lj_force, max_lj_force);
                     let force = force_mag * r_vec.normalized();
