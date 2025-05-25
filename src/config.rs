@@ -6,8 +6,11 @@
 pub const ELECTRON_SPRING_K: f32 = 0.05;                // Spring constant for electron drift
 pub const ELECTRON_DRIFT_RADIUS_FACTOR: f32 = 1.2;      // Max drift radius as a factor of body radius
 pub const ELECTRON_MAX_SPEED_FACTOR: f32 = 1.2;         // Max electron speed as a factor of body radius per dt
-pub const HOP_CHARGE_THRESHOLD: f32 = 0.2;                     // Charge threshold for hopping
+pub const _HOP_CHARGE_THRESHOLD: f32 = 0.2;                     // Charge threshold for hopping
 pub const HOP_RADIUS_FACTOR: f32 = 2.1;                      // Hopping radius as a factor of body radius
+pub const HOP_RATE_K0: f32 = 1.0;            /// Base hop‐rate constant (per unit time) at zero overpotential
+pub const HOP_TRANSFER_COEFF: f32 = 0.5;            /// Transfer coefficient α (unitless, ~0.5)   
+pub const HOP_ACTIVATION_ENERGY: f32 = 0.025;      /// Thermal energy k_BT (in your same charge‐units)
 
 // ====================
 // LJ Force Parameters
@@ -55,3 +58,23 @@ pub const THREADS_LEAVE_FREE: usize = 2;                // Number of logical cor
 // ====================
 pub const WINDOW_WIDTH: u32 = 900;                      // Window width in pixels
 pub const WINDOW_HEIGHT: u32 = 900;                     // Window height in pixels
+
+#[derive(Clone, Debug)]
+pub struct SimConfig {
+    pub hop_rate_k0: f32,
+    pub hop_transfer_coeff: f32,
+    pub hop_activation_energy: f32,
+    pub hop_radius_factor: f32,
+    // Add other parameters as needed
+}
+
+impl Default for SimConfig {
+    fn default() -> Self {
+        Self {
+            hop_rate_k0: HOP_RATE_K0,
+            hop_transfer_coeff: HOP_TRANSFER_COEFF,
+            hop_activation_energy: HOP_ACTIVATION_ENERGY,
+            hop_radius_factor: HOP_RADIUS_FACTOR,
+        }
+    }
+}

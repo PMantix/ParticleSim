@@ -5,6 +5,7 @@ use super::simulation::Simulation;
 use crate::body::{Body, Electron, Species};
 use crate::quadtree::Quadtree;
 use crate::config;
+use crate::config::SimConfig;
 use ultraviolet::Vec2;
 
 #[cfg(test)]
@@ -37,6 +38,7 @@ mod redox_tests {
             bounds: 1.0,
             rewound_flags: vec![false],
             background_e_field: Vec2::zero(),
+            config: Default::default(),
         };
         let b = &mut sim.bodies[0];
         b.apply_redox();
@@ -69,6 +71,7 @@ mod redox_tests {
             bounds: 1.0,
             rewound_flags: vec![false],
             background_e_field: Vec2::zero(),
+            config: Default::default(),
         };
         let b = &mut sim.bodies[0];
         b.apply_redox();
@@ -145,6 +148,7 @@ mod redox_tests {
             bounds: 10.0,
             rewound_flags: vec![false; 2],
             background_e_field: Vec2::zero(),
+            config: Default::default(),
         };
         sim.perform_electron_hopping();
         let a = &sim.bodies[0];
@@ -179,6 +183,7 @@ mod redox_tests {
             bounds: 10.0,
             rewound_flags: vec![false; 3],
             background_e_field: Vec2::zero(),
+            config: Default::default(),
         };
         sim.perform_electron_hopping();
         sim.perform_electron_hopping();
@@ -188,4 +193,82 @@ mod redox_tests {
         //println!("DEBUG: sum_electrons = {}, expected = {}", sum_electrons, total_electrons);
         assert_eq!(sum_electrons, total_electrons);
     }
+    #[cfg(test)]
+    mod hopping_kinetics_tests {
+        use super::*;
+        use crate::body::{Body, Electron};
+        use ultraviolet::Vec2;
+
+        #[test]
+        fn always_hop_when_rate_infinite() {
+            // two metals apart but within hop radius
+            let mut a = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, -1.0, Species::LithiumMetal);
+            let mut b = Body::new(Vec2::new(1.0,0.0), Vec2::zero(), 1.0, 1.0,  0.0, Species::LithiumMetal);
+            a.electrons = vec![Electron{ rel_pos: Vec2::zero(), vel: Vec2::zero() }]; // at least one electron
+            a.update_charge_from_electrons();
+            b.update_charge_from_electrons();
+
+            // force p_hop ≈ 1 by zeroing thermal energy
+            //crate::config::HOP_ACTIVATION_ENERGY = 1e-8_f32; 
+
+            let mut sim = Simulation {
+                dt: 0.1,
+                frame: 0,
+                bodies: vec![a, b],
+                quadtree: Quadtree::new(
+                    config::QUADTREE_THETA,
+                    config::QUADTREE_EPSILON,
+                    config::QUADTREE_LEAF_CAPACITY,
+                    config::QUADTREE_THREAD_CAPACITY,
+                ),
+                bounds: 10.0,
+                rewound_flags: vec![false; 2],
+                background_e_field: Vec2::zero(),
+                config: SimConfig {
+                    hop_activation_energy: 1e-8_f32, // nearly zero activation energy for testing
+                    ..Default::default()
+                },
+            };
+            sim.perform_electron_hopping();
+            // after one hop, a should lose an electron, b should gain one
+            assert_eq!(sim.bodies[0].electrons.len(), 0);
+            assert_eq!(sim.bodies[1].electrons.len(), 2);
+        }
+
+        #[test]
+        fn never_hop_when_rate_zero() {
+            let mut a = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, -1.0, Species::LithiumMetal);
+            let mut b = Body::new(Vec2::new(1.0,0.0), Vec2::zero(), 1.0, 1.0,  0.0, Species::LithiumMetal);
+            a.electrons = vec![Electron{ rel_pos: Vec2::zero(), vel: Vec2::zero() }];
+            a.update_charge_from_electrons();
+            b.update_charge_from_electrons();
+
+            // force p_hop = 0
+            //crate::config::HOP_RATE_K0 = 0.0;
+
+            let mut sim = Simulation {
+                dt: 0.1,
+                frame: 0,
+                bodies: vec![a, b],
+                quadtree: Quadtree::new(
+                    config::QUADTREE_THETA,
+                    config::QUADTREE_EPSILON,
+                    config::QUADTREE_LEAF_CAPACITY,
+                    config::QUADTREE_THREAD_CAPACITY,
+                ),
+                bounds: 10.0,
+                rewound_flags: vec![false; 2],
+                background_e_field: Vec2::zero(),
+                config: SimConfig {
+                    hop_rate_k0: 0.0, // zero rate for testing
+                    ..Default::default()
+                },
+            };
+            sim.perform_electron_hopping();
+            // no change
+            assert_eq!(sim.bodies[0].electrons.len(), 1);
+            assert_eq!(sim.bodies[1].electrons.len(), 1);
+        }
+}
+
 }
