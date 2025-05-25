@@ -14,20 +14,13 @@ use crate::config::{HOP_RADIUS_FACTOR, HOP_CHARGE_THRESHOLD};
 /// Holds all particles (bodies), manages the simulation step, and handles physics such as
 /// force calculation, electron hopping, redox reactions, and integration.
 pub struct Simulation {
-    /// Simulation timestep (seconds per frame)
-    pub dt: f32,
-    /// Current frame number
-    pub frame: usize,
-    /// All particles in the simulation
-    pub bodies: Vec<Body>,
-    /// Quadtree for spatial partitioning (used for force calculations)
-    pub quadtree: Quadtree,
-    /// Half-size of the simulation bounding box
-    pub bounds: f32,
-    /// Flags for rewinding (used for undo/rewind features)
-    pub rewound_flags: Vec<bool>,
-    /// Uniform background electric field (set by GUI)
-    pub background_e_field: Vec2,
+    pub dt: f32,                    /// Simulation timestep (seconds per frame)
+    pub frame: usize,               /// Current frame number
+    pub bodies: Vec<Body>,          /// All particles in the simulation
+    pub quadtree: Quadtree,         /// Quadtree for spatial partitioning (used for force calculations)
+    pub bounds: f32,                /// Half-size of the simulation bounding box
+    pub rewound_flags: Vec<bool>,   /// Flags for rewinding (used for undo/rewind features)
+    pub background_e_field: Vec2,   /// Uniform background electric field (set by GUI)
 }
 
 impl Simulation {
