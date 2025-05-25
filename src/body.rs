@@ -97,8 +97,8 @@ impl Body {
     pub fn update_charge_from_electrons(&mut self) {
         if self.species == Species::LithiumMetal {
             self.charge = -(self.electrons.len() as f32 - 1.0);
-        } else {
-            self.charge = 0.0; // or whatever is appropriate for ions
+        } else if self.species == Species::LithiumIon {
+            self.charge = 1.0; 
         }
     }
 }

@@ -109,7 +109,7 @@ pub fn two_lithium_clumps_with_ions(
         let vel = Vec2::zero();
         let mass:f32 = 1.0;
         let radius = 1.0 * mass.cbrt();
-        let mut body = Body::new(pos, vel, mass, radius, 0.0, Species::LithiumIon);
+        let mut body = Body::new(pos, vel, mass, radius, 1.0, Species::LithiumIon);
         body.electrons.clear();
         body.update_charge_from_electrons();
         bodies.push(body);

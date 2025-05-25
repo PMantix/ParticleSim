@@ -130,10 +130,10 @@ impl Simulation {
             {
                 let dst_body = &self.bodies[dst_idx];
                 if dst_body.charge - src_body.charge >= HOP_CHARGE_THRESHOLD {
-                    println!(
+                    /*println!(
                         "Trying hop: src={} (charge={}), dst={} (charge={}), dist={}",
                         src_idx, src_body.charge, dst_idx, dst_body.charge, (src_body.pos - dst_body.pos).mag()
-                    );
+                    );*/
                     hops.push((src_idx, dst_idx));
                 }
             }

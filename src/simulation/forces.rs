@@ -20,7 +20,21 @@ pub fn attract(sim: &mut Simulation) {
 }
 
 pub fn apply_lj_forces(sim: &mut Simulation) {
-    let sigma = 0.8;
+    // Debug: Print all lithium metals in the simulation
+    let mut metal_indices = vec![];
+    for (i, b) in sim.bodies.iter().enumerate() {
+        if b.species == Species::LithiumMetal {
+            metal_indices.push(i);
+        }
+    }
+    /*println!(
+        "LJ DEBUG: Total bodies = {}, LithiumMetal count = {}",//, indices = {:?}",
+        sim.bodies.len(),
+        metal_indices.len(),
+        //metal_indices
+    );*/
+
+    let sigma = 1.1;
     let epsilon = 500.0;
     let cutoff = 2.5 * sigma;
     for i in 0..sim.bodies.len() {
