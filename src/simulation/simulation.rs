@@ -1,5 +1,5 @@
-// simulation/core.rs
-// Contains the Simulation struct and main methods (new, step)
+// simulation/simulation.rs
+// Contains the Simulation struct and main methods (new, step, iterate, perform_electron_hopping)
 
 use crate::{body::{Body, Species}, quadtree::Quadtree, utils};
 use crate::renderer::state::{FIELD_MAGNITUDE, FIELD_DIRECTION, TIMESTEP, COLLISION_PASSES};
@@ -10,28 +10,17 @@ use crate::config;
 use crate::config::{HOP_RADIUS_FACTOR, HOP_CHARGE_THRESHOLD};
 
 /// The main simulation state and logic for the particle system.
-/// 
-/// Holds all particles (bodies), manages the simulation step, and handles physics such as
-/// force calculation, electron hopping, redox reactions, and integration.
 pub struct Simulation {
-    /// Simulation timestep (seconds per frame)
     pub dt: f32,
-    /// Current frame number
     pub frame: usize,
-    /// All particles in the simulation
     pub bodies: Vec<Body>,
-    /// Quadtree for spatial partitioning (used for force calculations)
     pub quadtree: Quadtree,
-    /// Half-size of the simulation bounding box
     pub bounds: f32,
-    /// Flags for rewinding (used for undo/rewind features)
     pub rewound_flags: Vec<bool>,
-    /// Uniform background electric field (set by GUI)
     pub background_e_field: Vec2,
 }
 
 impl Simulation {
-    /// Create a new simulation with default parameters and initial particle configuration.
     pub fn new() -> Self {
         let dt = config::DEFAULT_DT;
         let n = config::DEFAULT_PARTICLE_COUNT;
@@ -56,58 +45,39 @@ impl Simulation {
         }
     }
 
-    /// Advance the simulation by one timestep.
-    ///
-    /// This updates the electric field, resets flags, computes forces, integrates motion,
-    /// handles collisions, updates electron states, and performs electron hopping.
     pub fn step(&mut self) {
-        // Update uniform E-field from sliders
-        {
-            let mag = *FIELD_MAGNITUDE.lock();
-            let theta = (*FIELD_DIRECTION.lock()).to_radians();
-            self.background_e_field = Vec2::new(theta.cos(), theta.sin()) * mag;
-        }
-        // Reset rewound flags
+        // ...existing code...
+        let mag = *FIELD_MAGNITUDE.lock();
+        let theta = (*FIELD_DIRECTION.lock()).to_radians();
+        self.background_e_field = Vec2::new(theta.cos(), theta.sin()) * mag;
         for flag in &mut self.rewound_flags {
             *flag = false;
         }
         self.dt = *TIMESTEP.lock();
-        // Reset all accelerations
         for body in &mut self.bodies {
             body.acc = Vec2::zero();
         }
-        // Compute forces
         forces::attract(self);
         forces::apply_lj_forces(self);
-        // Integrate equations of motion
         self.iterate();
-        // Collision passes
         let num_passes = *COLLISION_PASSES.lock();
         for _ in 1..num_passes {
             collision::collide(self);
         }
-        // Update electrons for each Li metal atom
         for body in &mut self.bodies {
-            //body.set_electron_count();
             body.update_electrons(body.e_field, self.dt);
             body.update_charge_from_electrons();
         }
-
-        // Perform electron hopping pass
         self.perform_electron_hopping();
-
         self.frame += 1;
     }
 
-    /// Integrate equations of motion for all bodies (velocity Verlet with damping).
-    /// Handles wall reflections.
     pub fn iterate(&mut self) {
         let damping = 0.999;
         for body in &mut self.bodies {
             body.vel += body.acc * self.dt;
             body.vel *= damping;
             body.pos += body.vel * self.dt;
-            // Reflect from walls
             for axis in 0..2 {
                 let pos = if axis == 0 { &mut body.pos.x } else { &mut body.pos.y };
                 let vel = if axis == 0 { &mut body.vel.x } else { &mut body.vel.y };
@@ -122,32 +92,22 @@ impl Simulation {
         }
     }
 
-    /// Perform electron hopping between eligible lithium metal and ion particles.
-    ///
-    /// This function finds pairs of particles where an electron can hop from a metal atom
-    /// (with more than one electron) to a neighbor (metal with fewer electrons or an ion),
-    /// within a certain radius and charge threshold. After hopping, redox state is updated.
     pub fn perform_electron_hopping(&mut self) {
         let n = self.bodies.len();
         let mut hops: Vec<(usize, usize)> = vec![];
-        // Track which bodies have already received an electron this pass
         let mut received_electron = vec![false; n];
-
-        // Identify all valid electron hops for this step
         for src_idx in 0..n {
             let src_body = &self.bodies[src_idx];
-            // Only lithium metal atoms with more than one electron can donate
             if src_body.species != Species::LithiumMetal || src_body.electrons.len() <= 1 {
                 continue;
             }
             let hop_radius = HOP_RADIUS_FACTOR * src_body.radius;
-            // Find a neighbor with higher charge (less negative)
             if let Some(dst_idx) = self.bodies
                 .iter()
                 .enumerate()
                 .filter(|&(j, b)| {
                     j != src_idx &&
-                    !received_electron[j] && // skip if already received this pass
+                    !received_electron[j] &&
                     (
                         (b.species == Species::LithiumMetal && b.electrons.len() < src_body.electrons.len() && b.charge > src_body.charge)
                         ||
@@ -156,7 +116,6 @@ impl Simulation {
                 })
                 .filter(|(_, b)| (b.pos - src_body.pos).mag() <= hop_radius)
                 .filter(|(_, b)| {
-                    // Only hop if destination has fewer electrons or is at higher potential
                     (b.charge > src_body.charge) && (b.electrons.len() < src_body.electrons.len())
                 })
                 .min_by(|(_, a), (_, b)| {
@@ -169,29 +128,19 @@ impl Simulation {
                 let dst_body = &self.bodies[dst_idx];
                 if dst_body.charge - src_body.charge >= HOP_CHARGE_THRESHOLD {
                     hops.push((src_idx, dst_idx));
-                    received_electron[dst_idx] = true; // mark as having received
+                    received_electron[dst_idx] = true;
                 }
             }
         }
-
-        // Apply all hops (transfer electrons and update redox state)
         for (src_idx, dst_idx) in hops {
-            // To avoid double mutable borrow, split the borrow using split_at_mut
             let (first, second) = self.bodies.split_at_mut(std::cmp::max(src_idx, dst_idx));
             let (src, dst) = if src_idx < dst_idx {
                 (&mut first[src_idx], &mut second[0])
             } else {
                 (&mut second[0], &mut first[dst_idx])
             };
-            // Redox: transfer electron and update redox state
             if src.electrons.len() > 1 {
                 if let Some(e) = src.electrons.pop() {
-                    // Debug output for tracing electron hops
-                    /*println!("-------------------");
-                    println!("Electron hopping: src={} (charge={}), dst={} (charge={})", src_idx, src.charge, dst_idx, dst.charge);
-                    println!("Electron hopping: src species={:?}, dst species={:?}", src.species, dst.species);
-                    println!("Electron hopping: src electrons={}, dst electrons={}", src.electrons.len(), dst.electrons.len());
-                    println!("-------------------");*/
                     dst.electrons.push(e);
                     src.apply_redox();
                     dst.apply_redox();
@@ -199,5 +148,4 @@ impl Simulation {
             }
         }
     }
-
 }

@@ -5,7 +5,7 @@
 
 use crate::body::Species;
 use crate::config;
-use super::core::Simulation;
+use crate::simulation::Simulation;
 
 /// Coulomb's constant (scaled for simulation units).
 pub const K_E: f32 = 8.988e2 * 0.5;
