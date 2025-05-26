@@ -3,7 +3,7 @@ pub mod input;
 pub mod gui;
 pub mod draw;
 
-use crate::body::Body;
+use crate::body::{Body, Species};
 use crate::config::SimConfig;
 use crate::quadtree::Node;
 use ultraviolet::Vec2;
@@ -12,25 +12,22 @@ use quarkstrom::winit_input_helper::WinitInputHelper;
 pub struct Renderer {
     pos: Vec2,
     scale: f32,
-
     settings_window_open: bool,
-
     show_bodies: bool,
     show_quadtree: bool,
-
     depth_range: (usize, usize),
-
     spawn_body: Option<Body>,
     angle: Option<f32>,
     total: Option<f32>,
-
     confirmed_bodies: Option<Body>,
-
     bodies: Vec<Body>,
     quadtree: Vec<Node>,
-
     selected_particle_id: Option<u64>,
     sim_config: SimConfig,
+    scenario_radius: f32,
+    scenario_x: f32,
+    scenario_y: f32,
+    scenario_species: Species,
 }
 
 impl quarkstrom::Renderer for Renderer {
@@ -50,6 +47,10 @@ impl quarkstrom::Renderer for Renderer {
             quadtree: Vec::new(),
             selected_particle_id: None,
             sim_config: SimConfig::default(),
+            scenario_radius: 1.0,
+            scenario_x: 0.0,
+            scenario_y: 0.0,
+            scenario_species: Species::LithiumIon,
         }
     }
 

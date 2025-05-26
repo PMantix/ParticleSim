@@ -1,12 +1,14 @@
 use super::state::*;
 use quarkstrom::egui;
+use crate::renderer::Species;
 
 impl super::Renderer {
     pub fn show_gui(&mut self, ctx: &quarkstrom::egui::Context) {
         egui::Window::new("")
             .open(&mut self.settings_window_open)
             .show(ctx, |ui| {
-                // read‐modify‐write magnitude
+                // --- Field Controls ---
+                ui.label("Field Controls:");
                 let mut mag = *FIELD_MAGNITUDE.lock();
                 ui.add(
                     egui::Slider::new(&mut mag, 0.0..=1000.0)
@@ -15,7 +17,6 @@ impl super::Renderer {
                 );
                 *FIELD_MAGNITUDE.lock() = mag;
 
-                // read‐modify‐write direction
                 let mut dir = *FIELD_DIRECTION.lock();
                 ui.add(
                     egui::Slider::new(&mut dir, 0.0..=360.0)
@@ -24,25 +25,29 @@ impl super::Renderer {
                 );
                 *FIELD_DIRECTION.lock() = dir;
 
-                //Show bodies GUI
-                ui.checkbox(&mut self.show_bodies, "Show Bodies");
+                ui.separator();
 
-                //Show quadtree GUI
+                // --- Display Options ---
+                ui.label("Display Options:");
+                ui.checkbox(&mut self.show_bodies, "Show Bodies");
                 ui.checkbox(&mut self.show_quadtree, "Show Quadtree");
 
-                //Timestep GUI
+                ui.separator();
+
+                // --- Simulation Controls ---
+                ui.label("Simulation Controls:");
                 ui.add(
                     egui::Slider::new(&mut *TIMESTEP.lock(), 0.001..=0.2)
                         .text("Timestep (dt)"),
                 );
 
-                //collision passes GUI
                 let mut passes = COLLISION_PASSES.lock();
                 ui.add(
                     egui::Slider::new(&mut *passes, 1..=10)
                         .text("Collision Passes")
                         .clamp_to_range(true),
                 );
+
                 if self.show_quadtree {
                     let range = &mut self.depth_range;
                     ui.horizontal(|ui| {
@@ -54,10 +59,44 @@ impl super::Renderer {
                 }
 
                 ui.separator();
+
+                // --- Visualization Overlays ---
                 ui.label("Visualization Overlays:");
                 ui.checkbox(&mut self.sim_config.show_field_isolines, "Show Field Isolines");
                 ui.checkbox(&mut self.sim_config.show_velocity_vectors, "Show Velocity Vectors");
                 ui.checkbox(&mut self.sim_config.show_electron_density, "Show Electron Density");
+
+                ui.separator();
+
+                // --- Scenario Controls ---
+                ui.label("Scenario:");
+                if ui.button("Delete All Particles").clicked() {
+                    SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::DeleteAll).unwrap();
+                }
+                ui.horizontal(|ui| {
+                    ui.label("Add Circle:");
+                    ui.label("Radius:");
+                    ui.add(egui::DragValue::new(&mut self.scenario_radius).speed(0.1));
+                    ui.label("X:");
+                    ui.add(egui::DragValue::new(&mut self.scenario_x).speed(0.1));
+                    ui.label("Y:");
+                    ui.add(egui::DragValue::new(&mut self.scenario_y).speed(0.1));
+                    egui::ComboBox::from_label("Species")
+                        .selected_text(format!("{:?}", self.scenario_species))
+                        .show_ui(ui, |ui| {
+                            ui.selectable_value(&mut self.scenario_species, Species::LithiumMetal, "Metal");
+                            ui.selectable_value(&mut self.scenario_species, Species::LithiumIon, "Ion");
+                        });
+                    if ui.button("Add").clicked() {
+                        SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::AddCircle {
+                            radius: self.scenario_radius,
+                            x: self.scenario_x,
+                            y: self.scenario_y,
+                            count: 10, // Make configurable if you want
+                            species: self.scenario_species,
+                        }).unwrap();
+                    }
+                });
             });
     }
 }
