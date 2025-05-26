@@ -49,6 +49,19 @@ End goal is to develop a particle based simulator of electrochemical charging an
 
 ---
 
+## Scenario Controls (New!)
+
+The GUI now features a **Scenario** section for rapid simulation setup and prototyping:
+
+- **Delete All Particles**: Instantly clear the simulation space.
+- **Add Circle**: Spawn a ring of particles at any position, with configurable radius, species (Metal or Ion), and (optionally) count.
+    - Set the desired radius, X/Y position, and species using the GUI controls.
+    - Click "Add" to create a circle of particles in the simulation.
+
+This enables quick experimentation with different initial conditions and system configurations, all from the GUI.
+
+---
+
 ## Project Structure
 
 - `src/renderer/` — Rendering and GUI logic (modularized)

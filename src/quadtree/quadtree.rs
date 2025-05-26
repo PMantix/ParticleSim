@@ -269,4 +269,10 @@ impl Quadtree {
         }
         neighbors
     }
+
+    /// Compute the electric field at an arbitrary point using the quadtree (Barnes-Hut).
+    pub fn field_at_point(&self, bodies: &[Body], pos: Vec2, k_e: f32) -> Vec2 {
+        // This should use the same logic as acc_pos, but with test charge q=1.0
+        self.acc_pos(pos, 1.0, bodies, k_e)
+    }
 }

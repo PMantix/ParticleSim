@@ -15,6 +15,7 @@ mod simulation;
 mod utils;
 mod config;
 
+use crate::body::Species;
 use renderer::Renderer;
 use renderer::state::{SIM_COMMAND_SENDER, SimCommand};
 use std::sync::mpsc::channel;
@@ -46,6 +47,7 @@ fn main() {
             // Handle commands
             while let Ok(cmd) = rx.try_recv() {
                 match cmd {
+                    // Change charge of a particle by id
                     SimCommand::ChangeCharge { id, delta } => {
                         if let Some(body) = simulation.bodies.iter_mut().find(|b| b.id == id) {
                             // Add or remove electrons based on delta
@@ -87,6 +89,7 @@ fn main() {
                         }
                     }
 
+                    // Add a new body with 1 valence electron, correct charge & species
                     SimCommand::AddBody { mut body } => {
                         // ensure 1 valence electron, correct charge & species:
                         body.electrons.clear();
@@ -95,6 +98,105 @@ fn main() {
                         body.update_species();
                         simulation.bodies.push(body);
                     }
+
+                    // Delete all bodies in the simulation
+                    SimCommand::DeleteAll => {
+                        simulation.bodies.clear();
+                        // Optionally clear other simulation state if needed
+                    }
+
+                    // Add a circle of bodies with given radius, position, count, and species
+                    SimCommand::AddCircle { body, x, y, radius } => {
+                        let center = Vec2::new(x, y);
+                        let particle_radius = body.radius;
+                        let particle_diameter = 2.0 * particle_radius;
+                        let mut r = particle_radius;
+                        while r <= radius {
+                            let circumference = 2.0 * std::f32::consts::PI * r;
+                            let count = (circumference / particle_diameter).floor() as usize;
+                            if count == 0 { r += particle_diameter; continue; }
+                            for i in 0..count {
+                                let angle = (i as f32) * std::f32::consts::TAU / (count as f32);
+                                let offset = Vec2::new(angle.cos(), angle.sin()) * r;
+                                let mut new_body = crate::body::Body::new(
+                                center + offset,
+                                Vec2::zero(),
+                                body.mass,
+                                body.radius,
+                                0.0,
+                                body.species,
+                            );
+                            new_body.electrons.clear();
+                            if new_body.species == Species::LithiumMetal {
+                                new_body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+                            }
+                            new_body.update_charge_from_electrons();
+                            new_body.update_species();
+                            simulation.bodies.push(new_body);
+                        }
+                            r += particle_diameter;
+                        }
+                    },
+
+                    SimCommand::AddRing { body, x, y, radius } => {
+                        let center = Vec2::new(x, y);
+                        let particle_radius = body.radius;
+                        let particle_diameter = 2.0 * particle_radius;
+                        let circumference = 2.0 * std::f32::consts::PI * radius;
+                        let count = (circumference / particle_diameter).floor() as usize;
+                        for i in 0..count {
+                            let angle = (i as f32) * std::f32::consts::TAU / (count as f32);
+                            let offset = Vec2::new(angle.cos(), angle.sin()) * radius;
+                            let mut new_body = crate::body::Body::new(
+                                center + offset,
+                                Vec2::zero(),
+                                body.mass,
+                                body.radius,
+                                0.0,
+                                body.species,
+                            );
+                            new_body.electrons.clear();
+                            if new_body.species == Species::LithiumMetal {
+                                new_body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+                            }
+                            new_body.update_charge_from_electrons();
+                            new_body.update_species();
+                            simulation.bodies.push(new_body);
+                        }
+                    },
+
+                    SimCommand::AddRectangle { body, x, y, width, height } => {
+                        let origin = Vec2::new(x, y);
+                        let particle_radius = body.radius;
+                        let particle_diameter = 2.0 * particle_radius;
+                        let cols = (width / particle_diameter).floor() as usize;
+                        let rows = (height / particle_diameter).floor() as usize;
+                        for row in 0..rows {
+                            for col in 0..cols {
+                                let pos = origin
+                                    + Vec2::new(
+                                        (col as f32 + 0.5) * particle_diameter,
+                                        (row as f32 + 0.5) * particle_diameter,
+                                    );
+                                let mut new_body = crate::body::Body::new(
+                                    pos,
+                                    Vec2::zero(),
+                                    body.mass,
+                                    body.radius,
+                                    0.0,
+                                    body.species,
+                                );
+                                new_body.electrons.clear();
+                                if new_body.species == Species::LithiumMetal {
+                                    new_body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+                                }
+                                new_body.update_charge_from_electrons();
+                                new_body.update_species();
+                                simulation.bodies.push(new_body);
+                            }
+                        }
+                    },
+
                     //SimCommand::Plate { foil_id, amount } => { /* ... */ }
                     //SimCommand::Strip { foil_id, amount } => { /* ... */ }
                     //SimCommand::AddElectron { pos, vel } => { /* ... */ }

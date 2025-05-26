@@ -13,10 +13,15 @@ pub struct Electron {
 use super::types::Body;
 
 impl Body {
-    pub fn update_electrons(&mut self, net_field: Vec2, dt: f32) {
+    pub fn update_electrons<F>(&mut self, field_at: F, dt: f32)
+    where
+        F: Fn(Vec2) -> Vec2,
+    {
         let k = config::ELECTRON_SPRING_K;
         for e in &mut self.electrons {
-            let acc = -net_field * k;
+            let electron_pos = self.pos + e.rel_pos;
+            let local_field = field_at(electron_pos);
+            let acc = -local_field * k;
             e.vel += acc * dt;
             let speed = e.vel.mag();
             let max_speed = config::ELECTRON_MAX_SPEED_FACTOR * self.radius / dt;

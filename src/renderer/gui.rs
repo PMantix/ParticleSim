@@ -1,12 +1,17 @@
 use super::state::*;
 use quarkstrom::egui;
+use crate::renderer::Species;
+use ultraviolet::Vec2;
+use crate::renderer::Body;
+use crate::Electron;
 
 impl super::Renderer {
     pub fn show_gui(&mut self, ctx: &quarkstrom::egui::Context) {
         egui::Window::new("")
             .open(&mut self.settings_window_open)
             .show(ctx, |ui| {
-                // read‐modify‐write magnitude
+                // --- Field Controls ---
+                ui.label("Field Controls:");
                 let mut mag = *FIELD_MAGNITUDE.lock();
                 ui.add(
                     egui::Slider::new(&mut mag, 0.0..=1000.0)
@@ -15,7 +20,6 @@ impl super::Renderer {
                 );
                 *FIELD_MAGNITUDE.lock() = mag;
 
-                // read‐modify‐write direction
                 let mut dir = *FIELD_DIRECTION.lock();
                 ui.add(
                     egui::Slider::new(&mut dir, 0.0..=360.0)
@@ -24,25 +28,29 @@ impl super::Renderer {
                 );
                 *FIELD_DIRECTION.lock() = dir;
 
-                //Show bodies GUI
-                ui.checkbox(&mut self.show_bodies, "Show Bodies");
+                ui.separator();
 
-                //Show quadtree GUI
+                // --- Display Options ---
+                ui.label("Display Options:");
+                ui.checkbox(&mut self.show_bodies, "Show Bodies");
                 ui.checkbox(&mut self.show_quadtree, "Show Quadtree");
 
-                //Timestep GUI
+                ui.separator();
+
+                // --- Simulation Controls ---
+                ui.label("Simulation Controls:");
                 ui.add(
                     egui::Slider::new(&mut *TIMESTEP.lock(), 0.001..=0.2)
                         .text("Timestep (dt)"),
                 );
 
-                //collision passes GUI
                 let mut passes = COLLISION_PASSES.lock();
                 ui.add(
                     egui::Slider::new(&mut *passes, 1..=10)
                         .text("Collision Passes")
                         .clamp_to_range(true),
                 );
+
                 if self.show_quadtree {
                     let range = &mut self.depth_range;
                     ui.horizontal(|ui| {
@@ -52,6 +60,131 @@ impl super::Renderer {
                         ui.add(egui::DragValue::new(&mut range.1).speed(0.05));
                     });
                 }
+
+                ui.separator();
+
+                // --- Visualization Overlays ---
+                ui.label("Visualization Overlays:");
+                ui.checkbox(&mut self.sim_config.show_field_isolines, "Show Field Isolines");
+                ui.checkbox(&mut self.sim_config.show_velocity_vectors, "Show Velocity Vectors");
+                ui.checkbox(&mut self.sim_config.show_electron_density, "Show Electron Density");
+                ui.checkbox(&mut self.sim_config.show_field_vectors, "Show Field Vectors"); // NEW
+
+                ui.separator();
+
+                // --- Scenario Controls ---
+                ui.label("Scenario:");
+
+                if ui.button("Delete All Particles").clicked() {
+                    SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::DeleteAll).unwrap();
+                }
+
+                // Common controls for all Add scenarios
+                ui.horizontal(|ui| {
+                    ui.label("X:");
+                    ui.add(egui::DragValue::new(&mut self.scenario_x).speed(0.1));
+                    ui.label("Y:");
+                    ui.add(egui::DragValue::new(&mut self.scenario_y).speed(0.1));
+                    ui.label("Particle Radius:");
+                    ui.add(egui::DragValue::new(&mut self.scenario_particle_radius).speed(0.05));
+                    ui.label("Charge:");
+                    ui.add(egui::DragValue::new(&mut self.scenario_charge).clamp_range(-3..=1));
+                    egui::ComboBox::from_label("Species")
+                        .selected_text(format!("{:?}", self.scenario_species))
+                        .show_ui(ui, |ui| {
+                            ui.selectable_value(&mut self.scenario_species, Species::LithiumMetal, "Metal");
+                            ui.selectable_value(&mut self.scenario_species, Species::LithiumIon, "Ion");
+                        });
+                });
+
+                // Add Ring / Filled Circle
+                ui.horizontal(|ui| {
+                    ui.label("Radius:");
+                    ui.add(egui::DragValue::new(&mut self.scenario_radius).speed(0.1));
+                    if ui.button("Add Ring").clicked() {
+                        let body = make_body_with_charge(
+                            ultraviolet::Vec2::zero(),
+                            ultraviolet::Vec2::zero(),
+                            1.0,
+                            self.scenario_particle_radius,
+                            self.scenario_charge,
+                        );
+                        SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::AddRing {
+                            body,
+                            x: self.scenario_x,
+                            y: self.scenario_y,
+                            radius: self.scenario_radius,
+                        }).unwrap();
+                    }
+                    if ui.button("Add Filled Circle").clicked() {
+                        let body = crate::body::Body::new(
+                            ultraviolet::Vec2::zero(),
+                            ultraviolet::Vec2::zero(),
+                            1.0,
+                            self.scenario_particle_radius,
+                            0.0,
+                            self.scenario_species,
+                        );
+                        SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::AddCircle {
+                            body,
+                            x: self.scenario_x,
+                            y: self.scenario_y,
+                            radius: self.scenario_radius,
+                        }).unwrap();
+                    }
+                });
+
+                // Add Rectangle
+                ui.horizontal(|ui| {
+                    ui.label("Width:");
+                    ui.add(egui::DragValue::new(&mut self.scenario_width).speed(0.1));
+                    ui.label("Height:");
+                    ui.add(egui::DragValue::new(&mut self.scenario_height).speed(0.1));
+                    if ui.button("Add Rectangle").clicked() {
+                        let body = crate::body::Body::new(
+                            ultraviolet::Vec2::zero(),
+                            ultraviolet::Vec2::zero(),
+                            1.0,
+                            self.scenario_particle_radius,
+                            0.0,
+                            self.scenario_species,
+                        );
+                        SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::AddRectangle {
+                            body,
+                            x: self.scenario_x,
+                            y: self.scenario_y,
+                            width: self.scenario_width,
+                            height: self.scenario_height,
+                        }).unwrap();
+                    }
+                });
             });
     }
+}
+
+fn make_body_with_charge(pos: Vec2, vel: Vec2, mass: f32, radius: f32, charge: i32) -> Body {
+    let mut body = Body::new(pos, vel, mass, radius, 0.0, Species::LithiumMetal); // temp species
+    body.electrons.clear();
+    match charge {
+        1 => { // Li+
+            body.species = Species::LithiumIon;
+            // 0 electrons
+        }
+        0 => { // Li
+            body.species = Species::LithiumMetal;
+            body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+        }
+        n if n < 0 => { // Li with extra electrons
+            body.species = Species::LithiumMetal;
+            for _ in 0..(1 - n) { // e.g. charge -1 => 2 electrons
+                body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+            }
+        }
+        _ => { // fallback to ion
+            body.species = Species::LithiumIon;
+        }
+    }
+    body.update_charge_from_electrons();
+    body.update_species();
+    body
 }

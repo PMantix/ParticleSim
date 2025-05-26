@@ -7,7 +7,7 @@ use ultraviolet::Vec2;
 use super::forces;
 use super::collision;
 use crate::config;
-use crate::config::{HOP_RADIUS_FACTOR, HOP_CHARGE_THRESHOLD};
+use rand::seq::SliceRandom; // Add this at the top of the file if not already present
 
 /// The main simulation state and logic for the particle system.
 pub struct Simulation {
@@ -18,6 +18,7 @@ pub struct Simulation {
     pub bounds: f32,
     pub rewound_flags: Vec<bool>,
     pub background_e_field: Vec2,
+    pub config:config::SimConfig, // 
 }
 
 impl Simulation {
@@ -42,6 +43,7 @@ impl Simulation {
             bounds,
             rewound_flags,
             background_e_field: Vec2::zero(),
+            config: config::SimConfig::default(), // <-- Initialize with default config
         }
     }
 
@@ -64,8 +66,15 @@ impl Simulation {
         for _ in 1..num_passes {
             collision::collide(self);
         }
+        let quadtree = &self.quadtree;
+        let k_e = crate::simulation::forces::K_E;
+        // Clone the bodies' positions and charges needed for field calculation
+        let bodies_snapshot = self.bodies.clone();
         for body in &mut self.bodies {
-            body.update_electrons(body.e_field, self.dt);
+            body.update_electrons(
+                |pos| quadtree.field_at_point(&bodies_snapshot, pos, k_e) + self.background_e_field,
+                self.dt,
+            );
             body.update_charge_from_electrons();
         }
         self.perform_electron_hopping();
@@ -101,37 +110,53 @@ impl Simulation {
             if src_body.species != Species::LithiumMetal || src_body.electrons.len() <= 1 {
                 continue;
             }
-            let hop_radius = HOP_RADIUS_FACTOR * src_body.radius;
-            if let Some(dst_idx) = self.bodies
-                .iter()
-                .enumerate()
-                .filter(|&(j, b)| {
-                    j != src_idx &&
-                    !received_electron[j] &&
-                    (
-                        (b.species == Species::LithiumMetal && b.electrons.len() < src_body.electrons.len() && b.charge > src_body.charge)
-                        ||
-                        (b.species == Species::LithiumIon)
-                    )
-                })
-                .filter(|(_, b)| (b.pos - src_body.pos).mag() <= hop_radius)
-                .filter(|(_, b)| {
-                    (b.charge > src_body.charge) && (b.electrons.len() < src_body.electrons.len())
-                })
-                .min_by(|(_, a), (_, b)| {
-                    let da = a.charge - src_body.charge;
-                    let db = b.charge - src_body.charge;
-                    da.partial_cmp(&db).unwrap()
-                })
-                .map(|(j, _)| j)
-            {
+            let hop_radius = self.config.hop_radius_factor * src_body.radius;
+
+            // 1️⃣ Collect all valid neighbor indices
+            let mut candidate_neighbors = Vec::new();
+            for (dst_idx, dst_body) in self.bodies.iter().enumerate() {
+                if dst_idx == src_idx || received_electron[dst_idx] {
+                    continue;
+                }
+                let d = (dst_body.pos - src_body.pos).mag();
+                if d > hop_radius {
+                    continue;
+                }
+                let can_accept = (dst_body.species == Species::LithiumMetal
+                                    && dst_body.electrons.len() < src_body.electrons.len())
+                                    || dst_body.species == Species::LithiumIon;
+                if !can_accept {
+                    continue;
+                }
+                candidate_neighbors.push(dst_idx);
+            }
+
+            // 2️⃣ Shuffle the neighbor list to remove directional bias
+            let mut rng = rand::rng();
+            candidate_neighbors.shuffle(&mut rng);
+
+            // 3️⃣ Now process in random order
+            for &dst_idx in &candidate_neighbors {
                 let dst_body = &self.bodies[dst_idx];
-                if dst_body.charge - src_body.charge >= HOP_CHARGE_THRESHOLD {
+
+                // compute overpotential Δφ
+                let d_phi = dst_body.charge - src_body.charge;
+                if d_phi <= 0.0 {
+                    continue;
+                }
+
+                let rate = self.config.hop_rate_k0 * (self.config.hop_transfer_coeff * d_phi / self.config.hop_activation_energy).exp();
+                let p_hop = 1.0 - (-rate * self.dt).exp();
+                if rand::random::<f32>() < p_hop {
                     hops.push((src_idx, dst_idx));
                     received_electron[dst_idx] = true;
+                    // If you want to allow only one hop per src per step, uncomment the next line:
+                    // break;
                 }
             }
         }
+
+        // Perform the hops
         for (src_idx, dst_idx) in hops {
             let (first, second) = self.bodies.split_at_mut(std::cmp::max(src_idx, dst_idx));
             let (src, dst) = if src_idx < dst_idx {
