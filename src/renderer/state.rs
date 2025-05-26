@@ -22,11 +22,25 @@ pub enum SimCommand {
     ChangeCharge {id: u64, delta: f32},
     AddBody { body: Body },
     DeleteAll,
-    AddCircle { radius: f32, x: f32, y: f32, count: i32, species: Species },
-    //Plate { foil_id: u64, amount: usize },    // Example: plate Li on a foil
-    //Strip { foil_id: u64, amount: usize },    // Example: strip Li from a foil
-    //AddElectron { pos: Vec2, vel: Vec2 },
-    //RemoveElectron { id: u64 },
+    AddCircle {
+        body: crate::body::Body,
+        x: f32,
+        y: f32,
+        radius: f32, 
+    },
+    AddRing {
+        body: crate::body::Body,
+        x: f32,
+        y: f32,
+        radius: f32, 
+    },
+    AddRectangle {
+        body: crate::body::Body,
+        width: f32,
+        height: f32,
+        x: f32,
+        y: f32,
+    },
 }
 
 pub static SIM_COMMAND_SENDER: Lazy<Mutex<Option<Sender<SimCommand>>>> = Lazy::new(|| Mutex::new(None));

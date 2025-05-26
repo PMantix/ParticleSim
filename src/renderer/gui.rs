@@ -73,8 +73,10 @@ impl super::Renderer {
                 if ui.button("Delete All Particles").clicked() {
                     SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::DeleteAll).unwrap();
                 }
+
+                // Add Ring
                 ui.horizontal(|ui| {
-                    ui.label("Add Circle:");
+                    ui.label("Add Ring:");
                     ui.label("Radius:");
                     ui.add(egui::DragValue::new(&mut self.scenario_radius).speed(0.1));
                     ui.label("X:");
@@ -87,13 +89,95 @@ impl super::Renderer {
                             ui.selectable_value(&mut self.scenario_species, Species::LithiumMetal, "Metal");
                             ui.selectable_value(&mut self.scenario_species, Species::LithiumIon, "Ion");
                         });
+                    ui.label("Particle Radius:");
+                    ui.add(egui::DragValue::new(&mut self.scenario_particle_radius).speed(0.05));
                     if ui.button("Add").clicked() {
-                        SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::AddCircle {
-                            radius: self.scenario_radius,
+                        let body = crate::body::Body::new(
+                            ultraviolet::Vec2::zero(),
+                            ultraviolet::Vec2::zero(),
+                            1.0,
+                            self.scenario_particle_radius,
+                            0.0,
+                            self.scenario_species,
+                        );
+                        SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::AddRing {
+                            body,
                             x: self.scenario_x,
                             y: self.scenario_y,
-                            count: 10, // Make configurable if you want
-                            species: self.scenario_species,
+                            radius: self.scenario_radius, // from GUI
+                        }).unwrap();
+                    }
+                });
+
+                // Add Filled Circle
+                ui.horizontal(|ui| {
+                    ui.label("Add Filled Circle:");
+                    ui.label("Radius:");
+                    ui.add(egui::DragValue::new(&mut self.scenario_radius).speed(0.1));
+                    ui.label("X:");
+                    ui.add(egui::DragValue::new(&mut self.scenario_x).speed(0.1));
+                    ui.label("Y:");
+                    ui.add(egui::DragValue::new(&mut self.scenario_y).speed(0.1));
+                    egui::ComboBox::from_label("Species")
+                        .selected_text(format!("{:?}", self.scenario_species))
+                        .show_ui(ui, |ui| {
+                            ui.selectable_value(&mut self.scenario_species, Species::LithiumMetal, "Metal");
+                            ui.selectable_value(&mut self.scenario_species, Species::LithiumIon, "Ion");
+                        });
+                    ui.label("Particle Radius:");
+                    ui.add(egui::DragValue::new(&mut self.scenario_particle_radius).speed(0.05));
+                    if ui.button("Add").clicked() {
+                        let body = crate::body::Body::new(
+                            ultraviolet::Vec2::zero(),
+                            ultraviolet::Vec2::zero(),
+                            1.0,
+                            self.scenario_particle_radius,
+                            0.0,
+                            self.scenario_species,
+                        );
+                        SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::AddCircle {
+                            body,
+                            x: self.scenario_x,
+                            y: self.scenario_y,
+                            radius: self.scenario_radius, // from GUI
+                        }).unwrap();
+                    }
+                });
+
+                // Add Rectangle
+                ui.horizontal(|ui| {
+                    ui.label("Add Rectangle:");
+                    ui.label("Width:");
+                    ui.add(egui::DragValue::new(&mut self.scenario_width).speed(0.1));
+                    ui.label("Height:");
+                    ui.add(egui::DragValue::new(&mut self.scenario_height).speed(0.1));
+                    ui.label("X:");
+                    ui.add(egui::DragValue::new(&mut self.scenario_x).speed(0.1));
+                    ui.label("Y:");
+                    ui.add(egui::DragValue::new(&mut self.scenario_y).speed(0.1));
+                    egui::ComboBox::from_label("Species")
+                        .selected_text(format!("{:?}", self.scenario_species))
+                        .show_ui(ui, |ui| {
+                            ui.selectable_value(&mut self.scenario_species, Species::LithiumMetal, "Metal");
+                            ui.selectable_value(&mut self.scenario_species, Species::LithiumIon, "Ion");
+                        });
+                    ui.label("Particle Radius:");
+                    ui.add(egui::DragValue::new(&mut self.scenario_particle_radius).speed(0.05));
+                    if ui.button("Add").clicked() {
+                        let body = crate::body::Body::new(
+                            ultraviolet::Vec2::zero(),
+                            ultraviolet::Vec2::zero(),
+                            1.0,
+                            self.scenario_particle_radius,
+                            0.0,
+                            self.scenario_species,
+                        );
+                        SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::AddRectangle {
+                            body,
+                            x: self.scenario_x,
+                            y: self.scenario_y,
+                            width: self.scenario_width,
+                            height: self.scenario_height,
                         }).unwrap();
                     }
                 });

@@ -24,10 +24,14 @@ pub struct Renderer {
     quadtree: Vec<Node>,
     selected_particle_id: Option<u64>,
     sim_config: SimConfig,
+    // Scenario controls
     scenario_radius: f32,
     scenario_x: f32,
     scenario_y: f32,
     scenario_species: Species,
+    scenario_particle_radius: f32, 
+    scenario_width: f32,           
+    scenario_height: f32,          
 }
 
 impl quarkstrom::Renderer for Renderer {
@@ -51,6 +55,9 @@ impl quarkstrom::Renderer for Renderer {
             scenario_x: 0.0,
             scenario_y: 0.0,
             scenario_species: Species::LithiumIon,
+            scenario_particle_radius: 1.0, 
+            scenario_width: 5.0,           
+            scenario_height: 5.0,          
         }
     }
 

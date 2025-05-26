@@ -105,19 +105,71 @@ fn main() {
                     }
 
                     // Add a circle of bodies with given radius, position, count, and species
-                    SimCommand::AddCircle { radius, x, y, count, species } => {
+                    SimCommand::AddCircle { body, x, y, radius } => {
                         let center = Vec2::new(x, y);
+                        let particle_radius = body.radius;
+                        let particle_diameter = 2.0 * particle_radius;
+                        let mut r = particle_radius;
+                        while r <= radius {
+                            let circumference = 2.0 * std::f32::consts::PI * r;
+                            let count = (circumference / particle_diameter).floor() as usize;
+                            if count == 0 { r += particle_diameter; continue; }
+                            for i in 0..count {
+                                let angle = (i as f32) * std::f32::consts::TAU / (count as f32);
+                                let offset = Vec2::new(angle.cos(), angle.sin()) * r;
+                                let mut new_body = body.clone();
+                                new_body.pos = center + offset;
+                                new_body.electrons.clear();
+                                new_body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+                                new_body.update_charge_from_electrons();
+                                new_body.update_species();
+                                simulation.bodies.push(new_body);
+                            }
+                            r += particle_diameter;
+                        }
+                    },
+
+                    SimCommand::AddRing { body, x, y, radius } => {
+                        let center = Vec2::new(x, y);
+                        let particle_radius = body.radius;
+                        let particle_diameter = 2.0 * particle_radius;
+                        let circumference = 2.0 * std::f32::consts::PI * radius;
+                        let count = (circumference / particle_diameter).floor() as usize;
                         for i in 0..count {
                             let angle = (i as f32) * std::f32::consts::TAU / (count as f32);
                             let offset = Vec2::new(angle.cos(), angle.sin()) * radius;
-                            let mut new_body = crate::body::Body::new(center + offset, Vec2::zero(), 1.0, 1.0, 0.0, species);
-                            // Optionally initialize electrons, charge, etc. here
+                            let mut new_body = body.clone();
+                            new_body.pos = center + offset;
+                            new_body.electrons.clear();
                             new_body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
                             new_body.update_charge_from_electrons();
                             new_body.update_species();
                             simulation.bodies.push(new_body);
                         }
-                    }
+                    },
+
+                    SimCommand::AddRectangle { body, x, y, width, height } => {
+                        let origin = Vec2::new(x, y);
+                        let particle_radius = body.radius;
+                        let particle_diameter = 2.0 * particle_radius;
+                        let cols = (width / particle_diameter).floor() as usize;
+                        let rows = (height / particle_diameter).floor() as usize;
+                        for row in 0..rows {
+                            for col in 0..cols {
+                                let mut new_body = body.clone();
+                                new_body.pos = origin
+                                    + Vec2::new(
+                                        (col as f32 + 0.5) * particle_diameter,
+                                        (row as f32 + 0.5) * particle_diameter,
+                                    );
+                                new_body.electrons.clear();
+                                new_body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+                                new_body.update_charge_from_electrons();
+                                new_body.update_species();
+                                simulation.bodies.push(new_body);
+                            }
+                        }
+                    },
 
                     //SimCommand::Plate { foil_id, amount } => { /* ... */ }
                     //SimCommand::Strip { foil_id, amount } => { /* ... */ }
