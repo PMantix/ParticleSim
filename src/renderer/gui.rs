@@ -1,6 +1,9 @@
 use super::state::*;
 use quarkstrom::egui;
 use crate::renderer::Species;
+use ultraviolet::Vec2;
+use crate::renderer::Body;
+use crate::Electron;
 
 impl super::Renderer {
     pub fn show_gui(&mut self, ctx: &quarkstrom::egui::Context) {
@@ -83,6 +86,8 @@ impl super::Renderer {
                     ui.add(egui::DragValue::new(&mut self.scenario_y).speed(0.1));
                     ui.label("Particle Radius:");
                     ui.add(egui::DragValue::new(&mut self.scenario_particle_radius).speed(0.05));
+                    ui.label("Charge:");
+                    ui.add(egui::DragValue::new(&mut self.scenario_charge).clamp_range(-3..=1));
                     egui::ComboBox::from_label("Species")
                         .selected_text(format!("{:?}", self.scenario_species))
                         .show_ui(ui, |ui| {
@@ -91,18 +96,17 @@ impl super::Renderer {
                         });
                 });
 
-                // Add Ring
+                // Add Ring / Filled Circle
                 ui.horizontal(|ui| {
-                    ui.label("Ring Radius:");
+                    ui.label("Radius:");
                     ui.add(egui::DragValue::new(&mut self.scenario_radius).speed(0.1));
                     if ui.button("Add Ring").clicked() {
-                        let body = crate::body::Body::new(
+                        let body = make_body_with_charge(
                             ultraviolet::Vec2::zero(),
                             ultraviolet::Vec2::zero(),
                             1.0,
                             self.scenario_particle_radius,
-                            0.0,
-                            self.scenario_species,
+                            self.scenario_charge,
                         );
                         SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::AddRing {
                             body,
@@ -111,12 +115,6 @@ impl super::Renderer {
                             radius: self.scenario_radius,
                         }).unwrap();
                     }
-                });
-
-                // Add Filled Circle
-                ui.horizontal(|ui| {
-                    ui.label("Circle Radius:");
-                    ui.add(egui::DragValue::new(&mut self.scenario_radius).speed(0.1));
                     if ui.button("Add Filled Circle").clicked() {
                         let body = crate::body::Body::new(
                             ultraviolet::Vec2::zero(),
@@ -161,4 +159,31 @@ impl super::Renderer {
                 });
             });
     }
+}
+
+fn make_body_with_charge(pos: Vec2, vel: Vec2, mass: f32, radius: f32, charge: i32) -> Body {
+    let mut body = Body::new(pos, vel, mass, radius, 0.0, Species::LithiumMetal); // temp species
+    body.electrons.clear();
+    match charge {
+        1 => { // Li+
+            body.species = Species::LithiumIon;
+            // 0 electrons
+        }
+        0 => { // Li
+            body.species = Species::LithiumMetal;
+            body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+        }
+        n if n < 0 => { // Li with extra electrons
+            body.species = Species::LithiumMetal;
+            for _ in 0..(1 - n) { // e.g. charge -1 => 2 electrons
+                body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+            }
+        }
+        _ => { // fallback to ion
+            body.species = Species::LithiumIon;
+        }
+    }
+    body.update_charge_from_electrons();
+    body.update_species();
+    body
 }
