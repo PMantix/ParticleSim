@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod tests {
-    use super::*;
     use ultraviolet::Vec2;
     use crate::body::{Body, Species};
     use crate::quadtree::Quadtree;

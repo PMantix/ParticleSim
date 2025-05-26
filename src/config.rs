@@ -11,7 +11,7 @@ pub const HOP_RADIUS_FACTOR: f32 = 2.1;                      // Hopping radius a
 pub const HOP_RATE_K0: f32 = 1.0;            /// Base hop‐rate constant (per unit time) at zero overpotential
 pub const HOP_TRANSFER_COEFF: f32 = 0.5;            /// Transfer coefficient α (unitless, ~0.5)   
 pub const HOP_ACTIVATION_ENERGY: f32 = 0.025;      /// Thermal energy k_BT (in your same charge‐units)
-pub const CLUSTER_DISTANCE: f32 = 1.2;                // Distance threshold for clustering
+pub const _CLUSTER_DISTANCE: f32 = 1.2;                // Distance threshold for clustering
 
 // ====================
 // LJ Force Parameters

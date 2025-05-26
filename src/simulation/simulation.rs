@@ -132,7 +132,7 @@ impl Simulation {
             }
 
             // 2️⃣ Shuffle the neighbor list to remove directional bias
-            let mut rng = rand::thread_rng();
+            let mut rng = rand::rng();
             candidate_neighbors.shuffle(&mut rng);
 
             // 3️⃣ Now process in random order

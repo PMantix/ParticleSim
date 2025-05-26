@@ -176,7 +176,7 @@ impl super::Renderer {
 }
 
 // Helper function to compute the electric field at a point
-pub fn compute_field_at_point(bodies: &[Body], pos: Vec2, config: &crate::config::SimConfig) -> Vec2 {
+pub fn compute_field_at_point(bodies: &[Body], pos: Vec2, _config: &crate::config::SimConfig) -> Vec2 {
     let mut field = Vec2::zero();
     for body in bodies {
         let r = pos - body.pos;
