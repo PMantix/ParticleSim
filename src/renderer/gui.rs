@@ -68,6 +68,7 @@ impl super::Renderer {
                 ui.checkbox(&mut self.sim_config.show_field_isolines, "Show Field Isolines");
                 ui.checkbox(&mut self.sim_config.show_velocity_vectors, "Show Velocity Vectors");
                 ui.checkbox(&mut self.sim_config.show_electron_density, "Show Electron Density");
+                ui.checkbox(&mut self.sim_config.show_field_vectors, "Show Field Vectors"); // NEW
 
                 ui.separator();
 

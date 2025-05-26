@@ -2,7 +2,7 @@ use super::state::*;
 use palette::{Hsluv, IntoColor, Srgba};
 use ultraviolet::Vec2;
 use crate::quadtree::Quadtree;
-use crate::body::Species;
+use crate::body::{Species, Body};
 
 impl super::Renderer {
     pub fn draw(&mut self, ctx: &mut quarkstrom::RenderContext) {
@@ -147,5 +147,42 @@ impl super::Renderer {
                 }
             }
         }
+
+        // --- FIELD VECTOR VISUALIZATION ---
+        if self.sim_config.show_field_vectors {
+            let grid_spacing = 2.0; // simulation units
+            let field_scale = 2.0;   // much larger for debug
+            let color = [255, 0, 0, 255]; // opaque red for debug
+
+            // Compute visible bounds in world coordinates
+            let half_view = Vec2::new(self.scale, self.scale);
+            let min = self.pos - half_view;
+            let max = self.pos + half_view;
+
+            let mut x = min.x;
+            while x < max.x {
+                let mut y = min.y;
+                while y < max.y {
+                    let pos = Vec2::new(x, y);
+                    let field = compute_field_at_point(&self.bodies, pos, &self.sim_config);
+                    let end = pos + field * field_scale;
+                    ctx.draw_line(pos, end, color);
+                    y += grid_spacing;
+                }
+                x += grid_spacing;
+            }
+        }
     }
+}
+
+// Helper function to compute the electric field at a point
+pub fn compute_field_at_point(bodies: &[Body], pos: Vec2, config: &crate::config::SimConfig) -> Vec2 {
+    let mut field = Vec2::zero();
+    for body in bodies {
+        let r = pos - body.pos;
+        let dist2 = r.mag_sq().max(1e-4); // avoid div by zero
+        let e = body.charge * r / (dist2 * dist2.sqrt()); // Coulomb's law (unitless K)
+        field += e;
+    }
+    field
 }

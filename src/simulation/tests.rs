@@ -382,4 +382,184 @@ mod reactions {
         }
 
     }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use ultraviolet::Vec2;
+        use crate::body::Body;
+        use crate::renderer::draw::compute_field_at_point;
+
+        #[test]
+        fn test_field_centered_on_body() {
+            // Place a single positive charge at the origin
+            let body = Body {
+                pos: Vec2::zero(),
+                vel: Vec2::zero(),
+                acc: Vec2::zero(),
+                mass: 1.0,
+                radius: 1.0,
+                charge: 1.0,
+                species: Species::LithiumIon, // or another appropriate variant
+                electrons: Vec::new(),
+                id: 0,
+                e_field: Vec2::zero(),
+                // Add any other required fields here
+            };
+            let bodies = vec![body];
+            let config = crate::config::SimConfig::default();
+            //println!("Body position: {:?}", bodies[0].pos);
+            //println!("Body charge: {:?}", bodies[0].charge);
+
+            let positions = [
+                Vec2::new(1.0, 0.0),
+                Vec2::new(0.0, 1.0),
+                Vec2::new(-1.0, 0.0),
+                Vec2::new(0.0, -1.0),
+            ];
+            let expected = [
+                "right (+x)",
+                "up (+y)",
+                "left (-x)",
+                "down (-y)",
+            ];
+
+            let mut magnitudes = Vec::new();
+
+            for (i, pos) in positions.iter().enumerate() {
+                //println!("Inspecting point: {:?} ({})", pos, expected[i]);
+                let field = compute_field_at_point(&bodies, *pos, &config);
+                //println!("Field at this point: {:?}", field);
+
+                // Check direction
+                match i {
+                    0 => { // +x
+                        if !(field.x > 0.0) {
+                            println!("ASSERT FAIL: Field x should be positive, got {:?}", field);
+                        }
+                        if !(field.y.abs() < 1e-6) {
+                            println!("ASSERT FAIL: Field y should be ~0, got {:?}", field);
+                        }
+                        assert!(field.x > 0.0, "Field x should be positive");
+                        assert!(field.y.abs() < 1e-6, "Field y should be ~0");
+                    }
+                    1 => { // +y
+                        if !(field.y > 0.0) {
+                            println!("ASSERT FAIL: Field y should be positive, got {:?}", field);
+                        }
+                        if !(field.x.abs() < 1e-6) {
+                            println!("ASSERT FAIL: Field x should be ~0, got {:?}", field);
+                        }
+                        assert!(field.y > 0.0, "Field y should be positive");
+                        assert!(field.x.abs() < 1e-6, "Field x should be ~0");
+                    }
+                    2 => { // -x
+                        if !(field.x < 0.0) {
+                            println!("ASSERT FAIL: Field x should be negative, got {:?}", field);
+                        }
+                        if !(field.y.abs() < 1e-6) {
+                            println!("ASSERT FAIL: Field y should be ~0, got {:?}", field);
+                        }
+                        assert!(field.x < 0.0, "Field x should be negative");
+                        assert!(field.y.abs() < 1e-6, "Field y should be ~0");
+                    }
+                    3 => { // -y
+                        if !(field.y < 0.0) {
+                            println!("ASSERT FAIL: Field y should be negative, got {:?}", field);
+                        }
+                        if !(field.x.abs() < 1e-6) {
+                            println!("ASSERT FAIL: Field x should be ~0, got {:?}", field);
+                        }
+                        assert!(field.y < 0.0, "Field y should be negative");
+                        assert!(field.x.abs() < 1e-6, "Field x should be ~0");
+                    }
+                    _ => {}
+                }
+                magnitudes.push(field.mag());
+            }
+
+            // All magnitudes should be (nearly) equal
+            let avg_mag = magnitudes.iter().sum::<f32>() / magnitudes.len() as f32;
+            for (i, mag) in magnitudes.iter().enumerate() {
+                assert!(
+                    (mag - avg_mag).abs() < 1e-5,
+                    "Field magnitude at direction {} differs: {} vs avg {}",
+                    expected[i],
+                    mag,
+                    avg_mag
+                );
+            }
+        }
+
+        #[test]
+        fn test_field_centered_and_symmetric_quadtree() {
+            use crate::quadtree::Quadtree;
+            use crate::simulation::forces::K_E;
+
+            // Place a single positive charge at the origin
+            let body = Body {
+                pos: Vec2::zero(),
+                vel: Vec2::zero(),
+                acc: Vec2::zero(),
+                mass: 1.0,
+                radius: 1.0,
+                charge: 1.0,
+                species: Species::LithiumIon,
+                electrons: Vec::new(),
+                id: 0,
+                e_field: Vec2::zero(),
+                // ...other fields as needed...
+            };
+            let mut bodies = vec![body];
+
+            // Build a quadtree for the test
+            let mut quadtree = Quadtree::new(
+                config::QUADTREE_THETA,
+                config::QUADTREE_EPSILON,
+                config::QUADTREE_LEAF_CAPACITY,
+                config::QUADTREE_THREAD_CAPACITY,
+            );
+            quadtree.build(&mut bodies);
+
+            // Helper to get field at a point using the quadtree
+            fn field_at(quadtree: &Quadtree, bodies: &[Body], pos: Vec2, k_e: f32) -> Vec2 {
+                quadtree.field_at_point(bodies, pos, k_e) // You may need to implement or expose this
+            }
+
+            let positions = [
+                Vec2::new(1.0, 0.0),
+                Vec2::new(0.0, 1.0),
+                Vec2::new(-1.0, 0.0),
+                Vec2::new(0.0, -1.0),
+            ];
+
+            let mut magnitudes = Vec::new();
+
+            for pos in &positions {
+                let field = field_at(&quadtree, &bodies, *pos, K_E);
+                let expected_dir = (*pos).normalized();
+                let field_dir = field.normalized();
+                let dot = field_dir.dot(expected_dir);
+                assert!(
+                    (dot - 1.0).abs() < 1e-5,
+                    "Field at {:?} not pointing radially out: dot={}",
+                    pos,
+                    dot
+                );
+                magnitudes.push(field.mag());
+            }
+
+            // All magnitudes should be (nearly) equal
+            let avg_mag = magnitudes.iter().sum::<f32>() / magnitudes.len() as f32;
+            for (i, mag) in magnitudes.iter().enumerate() {
+                assert!(
+                    (mag - avg_mag).abs() < 1e-5,
+                    "Field magnitude at direction {} differs: {} vs avg {}",
+                    i,
+                    mag,
+                    avg_mag
+                );
+            }
+        }
+    }
 }

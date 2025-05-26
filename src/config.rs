@@ -66,6 +66,7 @@ pub const WINDOW_HEIGHT: u32 = 900;                     // Window height in pixe
 pub const SHOW_FIELD_ISOLINES: bool = false;        /// Show electric field isolines/// Show electric-field isolines
 pub const SHOW_VELOCITY_VECTORS: bool = false;      /// Show velocity vectors
 pub const SHOW_ELECTRON_DENSITY: bool = false;      /// Show electron-density heatmap
+pub const SHOW_FIELD_VECTORS: bool = false; // Show electric field vectors
 
 #[derive(Clone, Debug)]
 pub struct SimConfig {
@@ -76,6 +77,7 @@ pub struct SimConfig {
     pub show_field_isolines: bool,
     pub show_velocity_vectors: bool,
     pub show_electron_density: bool,
+    pub show_field_vectors: bool, // NEW: show field vectors
     // Add other parameters as needed
 }
 
@@ -86,9 +88,10 @@ impl Default for SimConfig {
             hop_transfer_coeff: HOP_TRANSFER_COEFF,
             hop_activation_energy: HOP_ACTIVATION_ENERGY,
             hop_radius_factor: HOP_RADIUS_FACTOR,
-            show_field_isolines: false,
-            show_velocity_vectors: false,
-            show_electron_density: false,
+            show_field_isolines: SHOW_FIELD_ISOLINES,
+            show_velocity_vectors: SHOW_VELOCITY_VECTORS,
+            show_electron_density: SHOW_ELECTRON_DENSITY,
+            show_field_vectors: SHOW_FIELD_VECTORS, // NEW
         }
     }
 }
