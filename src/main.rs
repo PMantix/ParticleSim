@@ -15,6 +15,7 @@ mod simulation;
 mod utils;
 mod config;
 
+use crate::body::Species;
 use renderer::Renderer;
 use renderer::state::{SIM_COMMAND_SENDER, SimCommand};
 use std::sync::mpsc::channel;
@@ -117,14 +118,22 @@ fn main() {
                             for i in 0..count {
                                 let angle = (i as f32) * std::f32::consts::TAU / (count as f32);
                                 let offset = Vec2::new(angle.cos(), angle.sin()) * r;
-                                let mut new_body = body.clone();
-                                new_body.pos = center + offset;
-                                new_body.electrons.clear();
+                                let mut new_body = crate::body::Body::new(
+                                center + offset,
+                                Vec2::zero(),
+                                body.mass,
+                                body.radius,
+                                0.0,
+                                body.species,
+                            );
+                            new_body.electrons.clear();
+                            if new_body.species == Species::LithiumMetal {
                                 new_body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
-                                new_body.update_charge_from_electrons();
-                                new_body.update_species();
-                                simulation.bodies.push(new_body);
                             }
+                            new_body.update_charge_from_electrons();
+                            new_body.update_species();
+                            simulation.bodies.push(new_body);
+                        }
                             r += particle_diameter;
                         }
                     },
@@ -138,10 +147,18 @@ fn main() {
                         for i in 0..count {
                             let angle = (i as f32) * std::f32::consts::TAU / (count as f32);
                             let offset = Vec2::new(angle.cos(), angle.sin()) * radius;
-                            let mut new_body = body.clone();
-                            new_body.pos = center + offset;
+                            let mut new_body = crate::body::Body::new(
+                                center + offset,
+                                Vec2::zero(),
+                                body.mass,
+                                body.radius,
+                                0.0,
+                                body.species,
+                            );
                             new_body.electrons.clear();
-                            new_body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+                            if new_body.species == Species::LithiumMetal {
+                                new_body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+                            }
                             new_body.update_charge_from_electrons();
                             new_body.update_species();
                             simulation.bodies.push(new_body);
@@ -156,14 +173,23 @@ fn main() {
                         let rows = (height / particle_diameter).floor() as usize;
                         for row in 0..rows {
                             for col in 0..cols {
-                                let mut new_body = body.clone();
-                                new_body.pos = origin
+                                let pos = origin
                                     + Vec2::new(
                                         (col as f32 + 0.5) * particle_diameter,
                                         (row as f32 + 0.5) * particle_diameter,
                                     );
+                                let mut new_body = crate::body::Body::new(
+                                    pos,
+                                    Vec2::zero(),
+                                    body.mass,
+                                    body.radius,
+                                    0.0,
+                                    body.species,
+                                );
                                 new_body.electrons.clear();
-                                new_body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+                                if new_body.species == Species::LithiumMetal {
+                                    new_body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+                                }
                                 new_body.update_charge_from_electrons();
                                 new_body.update_species();
                                 simulation.bodies.push(new_body);

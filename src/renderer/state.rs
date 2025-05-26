@@ -3,7 +3,7 @@ use parking_lot::Mutex;
 use std::sync::atomic::AtomicBool;
 use std::sync::mpsc::{Sender};
 
-use crate::body::{Body, Species};
+use crate::body::Body;
 use crate::quadtree::Node;
 
 pub static TIMESTEP: Lazy<Mutex<f32>> = Lazy::new(|| Mutex::new(0.010));
