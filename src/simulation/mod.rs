@@ -8,4 +8,4 @@ pub mod simulation;
 pub use simulation::*;
 
 #[cfg(test)]
-mod redox_tests;
+mod tests;

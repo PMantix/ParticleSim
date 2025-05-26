@@ -3,7 +3,7 @@ use parking_lot::Mutex;
 use std::sync::atomic::AtomicBool;
 use std::sync::mpsc::{Sender};
 
-use crate::body::Body;
+use crate::body::{Body, Species};
 use crate::quadtree::Node;
 
 pub static TIMESTEP: Lazy<Mutex<f32>> = Lazy::new(|| Mutex::new(0.010));
@@ -21,6 +21,8 @@ pub static COLLISION_PASSES: Lazy<Mutex<usize>> = Lazy::new(|| Mutex::new(3));
 pub enum SimCommand {
     ChangeCharge {id: u64, delta: f32},
     AddBody { body: Body },
+    DeleteAll,
+    AddCircle { radius: f32, x: f32, y: f32, count: i32, species: Species },
     //Plate { foil_id: u64, amount: usize },    // Example: plate Li on a foil
     //Strip { foil_id: u64, amount: usize },    // Example: strip Li from a foil
     //AddElectron { pos: Vec2, vel: Vec2 },

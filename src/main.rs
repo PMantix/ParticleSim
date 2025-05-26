@@ -46,6 +46,7 @@ fn main() {
             // Handle commands
             while let Ok(cmd) = rx.try_recv() {
                 match cmd {
+                    // Change charge of a particle by id
                     SimCommand::ChangeCharge { id, delta } => {
                         if let Some(body) = simulation.bodies.iter_mut().find(|b| b.id == id) {
                             // Add or remove electrons based on delta
@@ -87,6 +88,7 @@ fn main() {
                         }
                     }
 
+                    // Add a new body with 1 valence electron, correct charge & species
                     SimCommand::AddBody { mut body } => {
                         // ensure 1 valence electron, correct charge & species:
                         body.electrons.clear();
@@ -95,6 +97,28 @@ fn main() {
                         body.update_species();
                         simulation.bodies.push(body);
                     }
+
+                    // Delete all bodies in the simulation
+                    SimCommand::DeleteAll => {
+                        simulation.bodies.clear();
+                        // Optionally clear other simulation state if needed
+                    }
+
+                    // Add a circle of bodies with given radius, position, count, and species
+                    SimCommand::AddCircle { radius, x, y, count, species } => {
+                        let center = Vec2::new(x, y);
+                        for i in 0..count {
+                            let angle = (i as f32) * std::f32::consts::TAU / (count as f32);
+                            let offset = Vec2::new(angle.cos(), angle.sin()) * radius;
+                            let mut new_body = crate::body::Body::new(center + offset, Vec2::zero(), 1.0, 1.0, 0.0, species);
+                            // Optionally initialize electrons, charge, etc. here
+                            new_body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+                            new_body.update_charge_from_electrons();
+                            new_body.update_species();
+                            simulation.bodies.push(new_body);
+                        }
+                    }
+
                     //SimCommand::Plate { foil_id, amount } => { /* ... */ }
                     //SimCommand::Strip { foil_id, amount } => { /* ... */ }
                     //SimCommand::AddElectron { pos, vel } => { /* ... */ }
