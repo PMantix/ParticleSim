@@ -1,7 +1,7 @@
 // simulation/simulation.rs
 // Contains the Simulation struct and main methods (new, step, iterate, perform_electron_hopping)
 
-use crate::{body::{Body, Species}, quadtree::Quadtree, utils};
+use crate::{body::{Body, Species}, quadtree::Quadtree};
 use crate::renderer::state::{FIELD_MAGNITUDE, FIELD_DIRECTION, TIMESTEP, COLLISION_PASSES};
 use ultraviolet::Vec2;
 use super::forces;

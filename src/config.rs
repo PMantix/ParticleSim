@@ -30,7 +30,7 @@ pub const LITHIUM_ION_THRESHOLD: f32 = 0.5;             // Charge threshold for 
 // Simulation Parameters
 // ====================
 pub const DEFAULT_DT: f32 = 0.0025;                     // Default simulation timestep
-pub const DEFAULT_PARTICLE_COUNT: usize = 50000;        // Default number of particles
+pub const _DEFAULT_PARTICLE_COUNT: usize = 50000;        // Default number of particles
 pub const COLLISION_PASSES: usize = 3;                  // Number of collision resolution passes
 
 // ====================
@@ -44,7 +44,6 @@ pub const QUADTREE_THREAD_CAPACITY: usize = 1024;       // Max bodies per thread
 // ====================
 // Initialization/Clumping
 // ====================
-pub const CLUMP_SIZE: usize = 50;                     // Number of particles per clump
 pub const CLUMP_RADIUS: f32 = 20.0;                     // Radius of each clump
 pub const DOMAIN_BOUNDS: f32 = 350.0;                   // Simulation domain boundary
 

@@ -43,7 +43,7 @@ fn main() {
 
     // === Scenario setup: Add two 10mm lithium clumps and a central ion clump ===
     let bounds = config::DOMAIN_BOUNDS;
-    let clump_radius = 20.0;
+    let clump_radius = config::CLUMP_RADIUS;
     let left_center = Vec2::new(-bounds * 0.6, 0.0);
     let right_center = Vec2::new(bounds * 0.6, 0.0);
     let center = Vec2::zero();
