@@ -67,7 +67,13 @@ impl super::Renderer {
                 ui.label("Visualization Overlays:");
                 ui.checkbox(&mut self.sim_config.show_field_isolines, "Show Field Isolines");
                 ui.checkbox(&mut self.sim_config.show_velocity_vectors, "Show Velocity Vectors");
-                ui.checkbox(&mut self.sim_config.show_electron_density, "Show Electron Density");
+                egui::ComboBox::from_label("Electron Density")
+                    .selected_text(format!("{:?}", self.sim_config.electron_density_mode))
+                    .show_ui(ui, |ui| {
+                        ui.selectable_value(&mut self.sim_config.electron_density_mode, crate::config::ElectronDensityMode::Off, "Off");
+                        ui.selectable_value(&mut self.sim_config.electron_density_mode, crate::config::ElectronDensityMode::BodyColor, "BodyColor");
+                        ui.selectable_value(&mut self.sim_config.electron_density_mode, crate::config::ElectronDensityMode::Heatmap, "Heatmap");
+                    });
                 ui.checkbox(&mut self.sim_config.show_field_vectors, "Show Field Vectors"); // NEW
 
                 ui.separator();

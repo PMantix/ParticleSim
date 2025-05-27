@@ -19,6 +19,7 @@ End goal is to develop a particle based simulator of electrochemical charging an
 - **Configurable Parameters**: Easily adjust simulation size, physics constants, and visualization options.
 - **Extensible**: Well-structured for adding new physics, force laws, or visualization features.
 - **Visual Debugging**: See selected particles highlighted with a halo and view live charge values.
+- **Electron Density Modes**: Toggle between Off, BodyColor, and Heatmap to visualize electron distributions.
 - Draws heavily from original source: https://github.com/DeadlockCode/barnes-hut.git
 
 ---
@@ -59,6 +60,18 @@ The GUI now features a **Scenario** section for rapid simulation setup and proto
     - Click "Add" to create a circle of particles in the simulation.
 
 This enables quick experimentation with different initial conditions and system configurations, all from the GUI.
+
+---
+
+## Electron Density Visualization
+
+Use the **Electron Density** combo box in the settings window to choose how electrons are visualized:
+
+1. **Off** – default colors.
+2. **BodyColor** – lithium-metal particles are tinted based on their electron count.
+3. **Heatmap** – electrons accumulate on a grid and are drawn as a semi-transparent heatmap.
+
+Screenshots of BodyColor and Heatmap modes are provided in `docs/` (placeholders).
 
 ---
 

@@ -68,6 +68,13 @@ pub const SHOW_VELOCITY_VECTORS: bool = false;      /// Show velocity vectors
 pub const SHOW_ELECTRON_DENSITY: bool = false;      /// Show electron-density heatmap
 pub const SHOW_FIELD_VECTORS: bool = false; // Show electric field vectors
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ElectronDensityMode {
+    Off,
+    BodyColor,
+    Heatmap,
+}
+
 #[derive(Clone, Debug)]
 pub struct SimConfig {
     pub hop_rate_k0: f32,
@@ -77,6 +84,7 @@ pub struct SimConfig {
     pub show_field_isolines: bool,
     pub show_velocity_vectors: bool,
     pub show_electron_density: bool,
+    pub electron_density_mode: ElectronDensityMode,
     pub show_field_vectors: bool, // NEW: show field vectors
     // Add other parameters as needed
 }
@@ -91,6 +99,7 @@ impl Default for SimConfig {
             show_field_isolines: SHOW_FIELD_ISOLINES,
             show_velocity_vectors: SHOW_VELOCITY_VECTORS,
             show_electron_density: SHOW_ELECTRON_DENSITY,
+            electron_density_mode: ElectronDensityMode::Off,
             show_field_vectors: SHOW_FIELD_VECTORS, // NEW
         }
     }

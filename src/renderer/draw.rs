@@ -45,13 +45,26 @@ impl super::Renderer {
 						255,
 					];*/
 
-                    let color = match body.species {
-                        Species::LithiumIon => [255, 255, 0, 255],      // Yellow
-                        //Species::Electron => [255, 0, 0, 255],        // Rd
-                        Species::LithiumMetal => [192, 192, 192, 255],// Silverish
+                    let mut color = match body.species {
+                        Species::LithiumIon => [255, 255, 0, 255],
+                        Species::LithiumMetal => [192, 192, 192, 255],
                     };
 
-					ctx.draw_circle(body.pos, body.radius, color);
+                    if body.species == Species::LithiumMetal &&
+                        self.sim_config.electron_density_mode == crate::config::ElectronDensityMode::BodyColor {
+                        let electrons = body.electrons.len() as f32;
+                        let hue = (240.0 - electrons * 30.0).max(0.0);
+                        let c = Hsluv::new(hue, 100.0, 60.0);
+                        let rgba: Srgba = c.into_color();
+                        color = [
+                            (rgba.red * 255.0) as u8,
+                            (rgba.green * 255.0) as u8,
+                            (rgba.blue * 255.0) as u8,
+                            255,
+                        ];
+                    }
+
+                    ctx.draw_circle(body.pos, body.radius, color);
 
                     if body.species == Species::LithiumMetal {
                         for electron in &body.electrons {
@@ -59,8 +72,38 @@ impl super::Renderer {
                             ctx.draw_circle(electron_pos, body.radius * 0.3, [0, 128, 255, 255]); // blue
                         }
                     }
-				}   
-			}
+                }
+            }
+
+            if self.sim_config.electron_density_mode == crate::config::ElectronDensityMode::Heatmap {
+                use std::collections::HashMap;
+                let cell = 2.0f32;
+                let half_view = Vec2::new(self.scale, self.scale);
+                let min = self.pos - half_view;
+                let max = self.pos + half_view;
+
+                let mut grid: HashMap<(i32,i32), usize> = HashMap::new();
+                for body in &self.bodies {
+                    if body.species != Species::LithiumMetal { continue; }
+                    for e in &body.electrons {
+                        let p = body.pos + e.rel_pos;
+                        if p.x < min.x || p.x > max.x || p.y < min.y || p.y > max.y { continue; }
+                        let ix = ((p.x - min.x) / cell).floor() as i32;
+                        let iy = ((p.y - min.y) / cell).floor() as i32;
+                        *grid.entry((ix, iy)).or_insert(0) += 1;
+                    }
+                }
+
+                let max_count = grid.values().copied().max().unwrap_or(1) as f32;
+                for ((ix, iy), count) in grid {
+                    let center = Vec2::new(min.x + (ix as f32 + 0.5) * cell,
+                                          min.y + (iy as f32 + 0.5) * cell);
+                    let half = Vec2::new(cell/2.0, cell/2.0);
+                    let alpha = ((count as f32) / max_count * 200.0).clamp(20.0, 200.0) as u8;
+                    let color = [0, 0, 255, alpha];
+                    ctx.draw_rect(center - half, center + half, color);
+                }
+            }
 
 
             if let Some(body) = &self.confirmed_bodies {
