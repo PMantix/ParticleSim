@@ -56,11 +56,25 @@ impl super::Renderer {
                     if body.species == Species::LithiumMetal {
                         for electron in &body.electrons {
                             let electron_pos = body.pos + electron.rel_pos;
-                            ctx.draw_circle(electron_pos, body.radius * 0.3, [0, 128, 255, 255]); // blue
+                            ctx.draw_circle(
+                                electron_pos,
+                                body.radius * 0.3,
+                                [0, 128, 255, 255],
+                            ); // blue
                         }
                     }
-				}   
-			}
+                                }
+                        }
+
+            // --- Velocity Vector Overlay ---
+            if self.sim_config.show_velocity_vectors {
+                const SCALE: f32 = 5.0;
+                let color = [0, 255, 0, 255]; // green
+                for body in &self.bodies {
+                    let end = body.pos + body.vel * SCALE;
+                    ctx.draw_line(body.pos, end, color);
+                }
+            }
 
 
             if let Some(body) = &self.confirmed_bodies {
