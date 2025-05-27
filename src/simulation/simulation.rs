@@ -24,18 +24,16 @@ pub struct Simulation {
 impl Simulation {
     pub fn new() -> Self {
         let dt = config::DEFAULT_DT;
-        let n = config::DEFAULT_PARTICLE_COUNT;
         let theta = config::QUADTREE_THETA;
         let epsilon = config::QUADTREE_EPSILON;
         let leaf_capacity = config::QUADTREE_LEAF_CAPACITY;
         let thread_capacity = config::QUADTREE_THREAD_CAPACITY;
-        let clump_size = config::CLUMP_SIZE;
-        let clump_radius = config::CLUMP_RADIUS;
         let bounds = config::DOMAIN_BOUNDS;
-        let bodies = utils::two_lithium_clumps_with_ions(n, clump_size, clump_radius, bounds);
+        // Start with no bodies; scenario setup is now done via SimCommand AddCircle/AddBody
+        let bodies = Vec::new();
         let quadtree = Quadtree::new(theta, epsilon, leaf_capacity, thread_capacity);
-        let rewound_flags = vec![false; bodies.len()];
-        Self {
+        let rewound_flags = vec![];
+        let sim = Self {
             dt,
             frame: 0,
             bodies,
@@ -43,8 +41,19 @@ impl Simulation {
             bounds,
             rewound_flags,
             background_e_field: Vec2::zero(),
-            config: config::SimConfig::default(), // <-- Initialize with default config
-        }
+            config: config::SimConfig::default(),
+        };
+        // Example: scenario setup using SimCommand (pseudo-code, actual sending is done in main.rs or GUI)
+        // let left_center = Vec2::new(-bounds * 0.6, 0.0);
+        // let right_center = Vec2::new(bounds * 0.6, 0.0);
+        // let center = Vec2::zero();
+        // let clump_radius = 10.0;
+        // let metal_body = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::LithiumMetal);
+        // let ion_body = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 1.0, Species::LithiumIon);
+        // SimCommand::AddCircle { body: metal_body, x: left_center.x, y: left_center.y, radius: clump_radius }
+        // SimCommand::AddCircle { body: metal_body, x: right_center.x, y: right_center.y, radius: clump_radius }
+        // SimCommand::AddCircle { body: ion_body, x: center.x, y: center.y, radius: clump_radius }
+        sim
     }
 
     pub fn step(&mut self) {
