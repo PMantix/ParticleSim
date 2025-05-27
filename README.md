@@ -47,6 +47,7 @@ End goal is to develop a particle based simulator of electrochemical charging an
 - **Move Mouse (while holding right click)**: Adjust mass of spawned body
 - **Space**: Pause/resume simulation
 - **E**: Open settings menu (toggle quadtree visualization, etc.)
+- Enable "Show Field Isolines" in the settings to visualize the electric potential field
 
 ---
 
