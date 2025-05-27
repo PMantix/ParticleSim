@@ -58,8 +58,8 @@ mod physics {
         b.electrons=vec![Electron {rel_pos:Vec2::zero(),vel:Vec2::zero()}];
         let field = Vec2::new(1.0, 0.0);
         b.update_electrons(|_pos| field, 0.1);
-        assert!(b.electrons[0].rel_pos.x < 0.0, 
-            "Expected electrion to drift left (x < 0), but rel_pos.x = {}", b.electrons[0].rel_pos.x);
+        assert!(b.electrons[0].rel_pos.x < 0.0,
+            "Expected electron to drift left (x < 0), but rel_pos.x = {}", b.electrons[0].rel_pos.x);
     }
 
     #[test]
