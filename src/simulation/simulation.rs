@@ -1,7 +1,8 @@
 // simulation/simulation.rs
 // Contains the Simulation struct and main methods (new, step, iterate, perform_electron_hopping)
 
-use crate::{body::{Body, Species}, quadtree::Quadtree};
+use crate::{body::{Body, Species, Electron}, quadtree::Quadtree};
+use crate::foil::Foil;
 use crate::renderer::state::{FIELD_MAGNITUDE, FIELD_DIRECTION, TIMESTEP, COLLISION_PASSES};
 use ultraviolet::Vec2;
 use super::forces;
@@ -18,7 +19,8 @@ pub struct Simulation {
     pub bounds: f32,
     pub rewound_flags: Vec<bool>,
     pub background_e_field: Vec2,
-    pub config:config::SimConfig, // 
+    pub foils: Vec<crate::foil::Foil>,
+    pub config:config::SimConfig, //
 }
 
 impl Simulation {
@@ -41,6 +43,7 @@ impl Simulation {
             bounds,
             rewound_flags,
             background_e_field: Vec2::zero(),
+            foils: Vec::new(),
             config: config::SimConfig::default(),
         };
         // Example: scenario setup using SimCommand (pseudo-code, actual sending is done in main.rs or GUI)
@@ -75,6 +78,26 @@ impl Simulation {
         for _ in 1..num_passes {
             collision::collide(self);
         }
+
+        // Apply foil current sources/sinks
+        for foil in &mut self.foils {
+            foil.accum += foil.current * self.dt;
+            let mut rng = rand::rng();
+            while foil.accum >= 1.0 {
+                if let Some(&idx) = foil.body_indices.choose(&mut rng) {
+                    let body = &mut self.bodies[idx];
+                    body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+                }
+                foil.accum -= 1.0;
+            }
+            while foil.accum <= -1.0 {
+                if let Some(&idx) = foil.body_indices.choose(&mut rng) {
+                    let body = &mut self.bodies[idx];
+                    body.electrons.pop();
+                }
+                foil.accum += 1.0;
+            }
+        }
         let quadtree = &self.quadtree;
         let k_e = crate::simulation::forces::K_E;
         // Clone the bodies' positions and charges needed for field calculation
@@ -93,18 +116,20 @@ impl Simulation {
     pub fn iterate(&mut self) {
         let damping = 0.999;
         for body in &mut self.bodies {
-            body.vel += body.acc * self.dt;
-            body.vel *= damping;
-            body.pos += body.vel * self.dt;
+            if !body.fixed {
+                body.vel += body.acc * self.dt;
+                body.vel *= damping;
+                body.pos += body.vel * self.dt;
+            }
             for axis in 0..2 {
                 let pos = if axis == 0 { &mut body.pos.x } else { &mut body.pos.y };
                 let vel = if axis == 0 { &mut body.vel.x } else { &mut body.vel.y };
                 if *pos < -self.bounds {
                     *pos = -self.bounds;
-                    *vel = -(*vel);
+                    if !body.fixed { *vel = -*vel; }
                 } else if *pos > self.bounds {
                     *pos = self.bounds;
-                    *vel = -(*vel);
+                    if !body.fixed { *vel = -*vel; }
                 }
             }
         }

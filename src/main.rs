@@ -14,6 +14,7 @@ mod renderer;
 mod simulation;
 mod utils;
 mod config;
+mod foil;
 
 use crate::body::Species;
 use renderer::Renderer;
@@ -210,6 +211,37 @@ fn main() {
                                 simulation.bodies.push(new_body);
                             }
                         }
+                    },
+
+                    SimCommand::AddFoil { width, height, x, y, particle_radius, current } => {
+                        let origin = Vec2::new(x, y);
+                        let particle_diameter = 2.0 * particle_radius;
+                        let cols = (width / particle_diameter).floor() as usize;
+                        let rows = (height / particle_diameter).floor() as usize;
+                        let mut indices = Vec::new();
+                        for row in 0..rows {
+                            for col in 0..cols {
+                                let pos = origin
+                                    + Vec2::new(
+                                        (col as f32 + 0.5) * particle_diameter,
+                                        (row as f32 + 0.5) * particle_diameter,
+                                    );
+                                let mut new_body = crate::body::Body::new(
+                                    pos,
+                                    Vec2::zero(),
+                                    1.0,
+                                    particle_radius,
+                                    0.0,
+                                    Species::LithiumMetal,
+                                );
+                                new_body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+                                new_body.update_charge_from_electrons();
+                                new_body.fixed = true;
+                                indices.push(simulation.bodies.len());
+                                simulation.bodies.push(new_body);
+                            }
+                        }
+                        simulation.foils.push(crate::foil::Foil::new(indices, origin, width, height, current));
                     },
 
                     //SimCommand::Plate { foil_id, amount } => { /* ... */ }

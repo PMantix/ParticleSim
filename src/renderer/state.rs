@@ -41,6 +41,14 @@ pub enum SimCommand {
         x: f32,
         y: f32,
     },
+    AddFoil {
+        width: f32,
+        height: f32,
+        x: f32,
+        y: f32,
+        particle_radius: f32,
+        current: f32,
+    },
 }
 
 pub static SIM_COMMAND_SENDER: Lazy<Mutex<Option<Sender<SimCommand>>>> = Lazy::new(|| Mutex::new(None));

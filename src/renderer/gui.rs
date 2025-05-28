@@ -158,6 +158,26 @@ impl super::Renderer {
                         }).unwrap();
                     }
                 });
+
+                // Add Foil
+                ui.horizontal(|ui| {
+                    ui.label("Width:");
+                    ui.add(egui::DragValue::new(&mut self.scenario_width).speed(0.1));
+                    ui.label("Height:");
+                    ui.add(egui::DragValue::new(&mut self.scenario_height).speed(0.1));
+                    ui.label("Current:");
+                    ui.add(egui::DragValue::new(&mut self.scenario_current).speed(0.1));
+                    if ui.button("Add Foil").clicked() {
+                        SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::AddFoil {
+                            width: self.scenario_width,
+                            height: self.scenario_height,
+                            x: self.scenario_x,
+                            y: self.scenario_y,
+                            particle_radius: self.scenario_particle_radius,
+                            current: self.scenario_current,
+                        }).unwrap();
+                    }
+                });
             });
     }
 }
