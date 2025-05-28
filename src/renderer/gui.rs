@@ -208,3 +208,10 @@ fn make_body_with_charge(pos: Vec2, vel: Vec2, mass: f32, radius: f32, charge: i
     body.update_species();
     body
 }
+
+// In your rendering/drawing code, use:
+// let color = match body.species {
+//     Species::LithiumMetal => /* existing color */,
+//     Species::LithiumIon => /* existing color */,
+//     Species::FoilMetal => egui::Color32::from_rgb(255, 128, 0), // Orange or any distinct color
+// };

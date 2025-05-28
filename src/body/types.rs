@@ -9,6 +9,7 @@ use super::electron::Electron;
 pub enum Species {
     LithiumIon,
     LithiumMetal,
+    FoilMetal, // NEW
 }
 
 #[derive(Clone)]
@@ -31,6 +32,7 @@ static NEXT_ID: AtomicU64 = AtomicU64::new(1);
 
 impl Body {
     pub fn new(pos: Vec2, vel: Vec2, mass: f32, radius: f32, charge: f32, species: Species) -> Self {
+        let fixed = matches!(species, Species::FoilMetal);
         Self {
             pos,
             vel,
@@ -42,10 +44,15 @@ impl Body {
             species,
             electrons: Vec::new(),
             e_field: Vec2::zero(),
-            fixed: false,
+            fixed,
         }
     }
     pub fn update_species(&mut self) {
+        if self.species == Species::FoilMetal {
+            self.fixed = true;
+            // Don't auto-convert FoilMetal to other species
+            return;
+        }
         if self.charge > config::LITHIUM_ION_THRESHOLD {
             self.species = Species::LithiumIon;
         } else if self.charge <= 0.0 {

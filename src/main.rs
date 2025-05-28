@@ -232,11 +232,11 @@ fn main() {
                                     1.0,
                                     particle_radius,
                                     0.0,
-                                    Species::LithiumMetal,
+                                    Species::FoilMetal, // CHANGED
                                 );
                                 new_body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
                                 new_body.update_charge_from_electrons();
-                                new_body.fixed = true;
+                                new_body.fixed = true; // Redundant, but explicit
                                 indices.push(simulation.bodies.len());
                                 simulation.bodies.push(new_body);
                             }

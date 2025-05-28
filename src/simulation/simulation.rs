@@ -2,13 +2,12 @@
 // Contains the Simulation struct and main methods (new, step, iterate, perform_electron_hopping)
 
 use crate::{body::{Body, Species, Electron}, quadtree::Quadtree};
-use crate::foil::Foil;
 use crate::renderer::state::{FIELD_MAGNITUDE, FIELD_DIRECTION, TIMESTEP, COLLISION_PASSES};
 use ultraviolet::Vec2;
 use super::forces;
 use super::collision;
 use crate::config;
-use rand::seq::SliceRandom; // Add this at the top of the file if not already present
+use rand::prelude::*; // Import all prelude traits for rand 0.9+
 
 /// The main simulation state and logic for the particle system.
 pub struct Simulation {
@@ -81,19 +80,37 @@ impl Simulation {
 
         // Apply foil current sources/sinks
         for foil in &mut self.foils {
-            foil.accum += foil.current * self.dt;
+            println!(
+                "Foil: indices={:?}, current={}, accum={}",
+                foil.body_indices, foil.current, foil.accum
+            );
+            for &idx in &foil.body_indices {
+                println!(
+                    "  Body idx {}: species={:?}, electrons={}",
+                    idx, self.bodies[idx].species, self.bodies[idx].electrons.len()
+                );
+            }
             let mut rng = rand::rng();
             while foil.accum >= 1.0 {
-                if let Some(&idx) = foil.body_indices.choose(&mut rng) {
+                if let Some(&idx) = foil.body_indices.as_slice().choose(&mut rng) {
                     let body = &mut self.bodies[idx];
-                    body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+                    // Only add electrons to FoilMetal
+                    if body.species == Species::FoilMetal {
+                        println!("Adding electron to FoilMetal body at index {}", idx);
+                        body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+                        body.update_charge_from_electrons();
+                    }
                 }
                 foil.accum -= 1.0;
             }
             while foil.accum <= -1.0 {
-                if let Some(&idx) = foil.body_indices.choose(&mut rng) {
+                if let Some(&idx) = foil.body_indices.as_slice().choose(&mut rng) {
                     let body = &mut self.bodies[idx];
-                    body.electrons.pop();
+                    // Only remove electrons from FoilMetal
+                    if body.species == Species::FoilMetal && !body.electrons.is_empty() {
+                        body.electrons.pop();
+                        body.update_charge_from_electrons();
+                    }
                 }
                 foil.accum += 1.0;
             }
@@ -103,6 +120,10 @@ impl Simulation {
         // Clone the bodies' positions and charges needed for field calculation
         let bodies_snapshot = self.bodies.clone();
         for body in &mut self.bodies {
+            // Always enforce FoilMetal is fixed
+            if body.species == Species::FoilMetal {
+                body.fixed = true;
+            }
             body.update_electrons(
                 |pos| quadtree.field_at_point(&bodies_snapshot, pos, k_e) + self.background_e_field,
                 self.dt,
@@ -141,7 +162,7 @@ impl Simulation {
         let mut received_electron = vec![false; n];
         for src_idx in 0..n {
             let src_body = &self.bodies[src_idx];
-            if src_body.species != Species::LithiumMetal || src_body.electrons.len() <= 1 {
+            if !(src_body.species == Species::LithiumMetal || src_body.species == Species::FoilMetal) || src_body.electrons.len() <= 1 {
                 continue;
             }
             let hop_radius = self.config.hop_radius_factor * src_body.radius;
@@ -156,9 +177,10 @@ impl Simulation {
                 if d > hop_radius {
                     continue;
                 }
-                let can_accept = (dst_body.species == Species::LithiumMetal
-                                    && dst_body.electrons.len() < src_body.electrons.len())
-                                    || dst_body.species == Species::LithiumIon;
+                let can_accept = (
+                    (dst_body.species == Species::LithiumMetal || dst_body.species == Species::FoilMetal)
+                    && dst_body.electrons.len() < src_body.electrons.len()
+                ) || dst_body.species == Species::LithiumIon;
                 if !can_accept {
                     continue;
                 }
@@ -166,7 +188,7 @@ impl Simulation {
             }
 
             // 2️⃣ Shuffle the neighbor list to remove directional bias
-            let mut rng = rand::rng();
+            let mut rng = rand::rng(); // Use rand::rng() for rand 0.9+
             candidate_neighbors.shuffle(&mut rng);
 
             // 3️⃣ Now process in random order

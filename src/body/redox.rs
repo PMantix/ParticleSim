@@ -6,7 +6,7 @@ use super::types::{Body, Species};
 impl Body {
     pub fn update_charge_from_electrons(&mut self) {
         match self.species {
-            Species::LithiumMetal => {
+            Species::LithiumMetal | Species::FoilMetal => {
                 self.charge = -(self.electrons.len() as f32 - 1.0);
             }
             Species::LithiumIon => {
@@ -27,6 +27,9 @@ impl Body {
                     self.species = Species::LithiumIon;
                     self.update_charge_from_electrons();
                 }
+            }
+            Species::FoilMetal => {
+                // FoilMetal never changes species
             }
         }
     }
