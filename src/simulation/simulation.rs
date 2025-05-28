@@ -148,6 +148,14 @@ impl Simulation {
             for &dst_idx in &candidate_neighbors {
                 let dst_body = &self.bodies[dst_idx];
 
+                // If destination is an ion, always allow the hop (aggressive redox cycling)
+                if dst_body.species == Species::LithiumIon {
+                    hops.push((src_idx, dst_idx));
+                    received_electron[dst_idx] = true;
+                    // break; // Optionally only allow one hop per src per step
+                    continue;
+                }
+
                 // compute overpotential Δφ
                 let d_phi = dst_body.charge - src_body.charge;
                 if d_phi <= 0.0 {
@@ -159,7 +167,6 @@ impl Simulation {
                 if rand::random::<f32>() < p_hop {
                     hops.push((src_idx, dst_idx));
                     received_electron[dst_idx] = true;
-                    // If you want to allow only one hop per src per step, uncomment the next line:
                     // break;
                 }
             }
@@ -176,10 +183,12 @@ impl Simulation {
             if src.electrons.len() > 1 {
                 if let Some(e) = src.electrons.pop() {
                     dst.electrons.push(e);
-                    src.apply_redox();
-                    dst.apply_redox();
                 }
             }
+        }
+        // Aggressively apply redox after hopping
+        for body in &mut self.bodies {
+            body.apply_redox();
         }
     }
 }
