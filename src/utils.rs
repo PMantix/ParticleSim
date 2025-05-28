@@ -68,7 +68,7 @@ pub fn _uniform_disc(n: usize) -> Vec<Body> {
 /// - Ions are placed in the center with no electrons.
 ///
 /// Returns a vector of initialized `Body` objects.
-pub fn two_lithium_clumps_with_ions(
+pub fn _two_lithium_clumps_with_ions(
     n: usize,
     clump_size: usize,
     clump_radius: f32,

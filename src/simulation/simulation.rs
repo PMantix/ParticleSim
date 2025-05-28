@@ -1,7 +1,7 @@
 // simulation/simulation.rs
 // Contains the Simulation struct and main methods (new, step, iterate, perform_electron_hopping)
 
-use crate::{body::{Body, Species}, quadtree::Quadtree, utils};
+use crate::{body::{Body, Species}, quadtree::Quadtree};
 use crate::renderer::state::{FIELD_MAGNITUDE, FIELD_DIRECTION, TIMESTEP, COLLISION_PASSES};
 use ultraviolet::Vec2;
 use super::forces;
@@ -24,18 +24,16 @@ pub struct Simulation {
 impl Simulation {
     pub fn new() -> Self {
         let dt = config::DEFAULT_DT;
-        let n = config::DEFAULT_PARTICLE_COUNT;
         let theta = config::QUADTREE_THETA;
         let epsilon = config::QUADTREE_EPSILON;
         let leaf_capacity = config::QUADTREE_LEAF_CAPACITY;
         let thread_capacity = config::QUADTREE_THREAD_CAPACITY;
-        let clump_size = config::CLUMP_SIZE;
-        let clump_radius = config::CLUMP_RADIUS;
         let bounds = config::DOMAIN_BOUNDS;
-        let bodies = utils::two_lithium_clumps_with_ions(n, clump_size, clump_radius, bounds);
+        // Start with no bodies; scenario setup is now done via SimCommand AddCircle/AddBody
+        let bodies = Vec::new();
         let quadtree = Quadtree::new(theta, epsilon, leaf_capacity, thread_capacity);
-        let rewound_flags = vec![false; bodies.len()];
-        Self {
+        let rewound_flags = vec![];
+        let sim = Self {
             dt,
             frame: 0,
             bodies,
@@ -43,8 +41,19 @@ impl Simulation {
             bounds,
             rewound_flags,
             background_e_field: Vec2::zero(),
-            config: config::SimConfig::default(), // <-- Initialize with default config
-        }
+            config: config::SimConfig::default(),
+        };
+        // Example: scenario setup using SimCommand (pseudo-code, actual sending is done in main.rs or GUI)
+        // let left_center = Vec2::new(-bounds * 0.6, 0.0);
+        // let right_center = Vec2::new(bounds * 0.6, 0.0);
+        // let center = Vec2::zero();
+        // let clump_radius = 10.0;
+        // let metal_body = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::LithiumMetal);
+        // let ion_body = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 1.0, Species::LithiumIon);
+        // SimCommand::AddCircle { body: metal_body, x: left_center.x, y: left_center.y, radius: clump_radius }
+        // SimCommand::AddCircle { body: metal_body, x: right_center.x, y: right_center.y, radius: clump_radius }
+        // SimCommand::AddCircle { body: ion_body, x: center.x, y: center.y, radius: clump_radius }
+        sim
     }
 
     pub fn step(&mut self) {
@@ -139,6 +148,14 @@ impl Simulation {
             for &dst_idx in &candidate_neighbors {
                 let dst_body = &self.bodies[dst_idx];
 
+                // If destination is an ion, always allow the hop (aggressive redox cycling)
+                if dst_body.species == Species::LithiumIon {
+                    hops.push((src_idx, dst_idx));
+                    received_electron[dst_idx] = true;
+                    // break; // Optionally only allow one hop per src per step
+                    continue;
+                }
+
                 // compute overpotential Δφ
                 let d_phi = dst_body.charge - src_body.charge;
                 if d_phi <= 0.0 {
@@ -150,7 +167,6 @@ impl Simulation {
                 if rand::random::<f32>() < p_hop {
                     hops.push((src_idx, dst_idx));
                     received_electron[dst_idx] = true;
-                    // If you want to allow only one hop per src per step, uncomment the next line:
                     // break;
                 }
             }
@@ -167,10 +183,12 @@ impl Simulation {
             if src.electrons.len() > 1 {
                 if let Some(e) = src.electrons.pop() {
                     dst.electrons.push(e);
-                    src.apply_redox();
-                    dst.apply_redox();
                 }
             }
+        }
+        // Aggressively apply redox after hopping
+        for body in &mut self.bodies {
+            body.apply_redox();
         }
     }
 }
