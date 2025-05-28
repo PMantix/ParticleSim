@@ -234,7 +234,8 @@ fn main() {
                                     0.0,
                                     Species::FoilMetal, // CHANGED
                                 );
-                                new_body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+                                // Set default electrons for foil: 3 electrons
+                                new_body.electrons = vec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }; 3];
                                 new_body.update_charge_from_electrons();
                                 new_body.fixed = true; // Redundant, but explicit
                                 indices.push(simulation.bodies.len());

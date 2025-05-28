@@ -25,6 +25,8 @@ pub const LJ_FORCE_MAX: f32 = 33.33;                   // Max Lennard-Jones forc
 // Species/Body Parameters
 // ====================
 pub const LITHIUM_ION_THRESHOLD: f32 = 0.5;             // Charge threshold for lithium ion/metal transition
+pub const FOIL_NEUTRAL_ELECTRONS: usize = 3;
+pub const LITHIUM_METAL_NEUTRAL_ELECTRONS: usize = 1;
 
 // ====================
 // Simulation Parameters
