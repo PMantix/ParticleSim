@@ -26,8 +26,8 @@ impl super::Renderer {
         ctx.set_view_scale(self.scale);
 
         if !self.bodies.is_empty() {
-			if self.show_bodies {
-				for body in &self.bodies {
+                        if self.show_bodies {
+                                for body in &self.bodies {
 					// Map charge to RGB color: red for positive, blue for negative, white for 0
 					/*let charge = body.charge;
 					let max_charge = 1.0; // adjust if needed
@@ -57,8 +57,22 @@ impl super::Renderer {
                         for electron in &body.electrons {
                             let electron_pos = body.pos + electron.rel_pos;
                             ctx.draw_circle(electron_pos, body.radius * 0.3, [0, 128, 255, 255]); // blue
+                                }
+                        }
+
+            // --- ELECTRON DENSITY OVERLAY ---
+            if self.sim_config.show_electron_density {
+                let radius = crate::config::ELECTRON_DENSITY_RADIUS;
+                let color = [0, 0, 255, 64]; // translucent blue
+                for body in &self.bodies {
+                    if body.species == Species::LithiumMetal {
+                        for electron in &body.electrons {
+                            let pos = body.pos + electron.rel_pos;
+                            ctx.draw_circle(pos, radius, color);
                         }
                     }
+                }
+            }
 				}   
 			}
 
