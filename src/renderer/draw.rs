@@ -56,11 +56,25 @@ impl super::Renderer {
                     if body.species == Species::LithiumMetal {
                         for electron in &body.electrons {
                             let electron_pos = body.pos + electron.rel_pos;
-                            ctx.draw_circle(electron_pos, body.radius * 0.3, [0, 128, 255, 255]); // blue
+                            ctx.draw_circle(
+                                electron_pos,
+                                body.radius * 0.3,
+                                [0, 128, 255, 255],
+                            ); // blue
                         }
                     }
-				}   
-			}
+                                }
+                        }
+
+            // --- Velocity Vector Overlay ---
+            if self.sim_config.show_velocity_vectors {
+                const SCALE: f32 = 5.0;
+                let color = [0, 255, 0, 255]; // green
+                for body in &self.bodies {
+                    let end = body.pos + body.vel * SCALE;
+                    ctx.draw_line(body.pos, end, color);
+                }
+            }
 
 
             if let Some(body) = &self.confirmed_bodies {
@@ -148,6 +162,11 @@ impl super::Renderer {
             }
         }
 
+        // --- FIELD ISOLINE VISUALIZATION ---
+        if self.sim_config.show_field_isolines {
+            self.draw_field_isolines(ctx);
+        }
+
         // --- FIELD VECTOR VISUALIZATION ---
         if self.sim_config.show_field_vectors {
             let grid_spacing = 2.0; // simulation units
@@ -175,6 +194,78 @@ impl super::Renderer {
     }
 }
 
+impl super::Renderer {
+    /// Draw electric field isolines using a simple marching squares algorithm.
+    pub fn draw_field_isolines(&self, ctx: &mut quarkstrom::RenderContext) {
+        let grid_spacing = 5.0;
+        let iso_values = [-20.0, -10.0, -5.0, 0.0, 5.0, 10.0, 20.0];
+
+        let half_view = Vec2::new(self.scale, self.scale);
+        let min = self.pos - half_view;
+        let max = self.pos + half_view;
+
+        let nx = ((max.x - min.x) / grid_spacing).ceil() as usize + 1;
+        let ny = ((max.y - min.y) / grid_spacing).ceil() as usize + 1;
+
+        let mut samples = vec![0.0f32; nx * ny];
+        for ix in 0..nx {
+            for iy in 0..ny {
+                let x = min.x + ix as f32 * grid_spacing;
+                let y = min.y + iy as f32 * grid_spacing;
+                let pos = Vec2::new(x, y);
+                samples[iy * nx + ix] = compute_potential_at_point(&self.bodies, pos);
+            }
+        }
+
+        for iso in iso_values {
+            let color = [0, 255, 0, 255];
+            for ix in 0..nx - 1 {
+                for iy in 0..ny - 1 {
+                    let i00 = iy * nx + ix;
+                    let i10 = iy * nx + ix + 1;
+                    let i01 = (iy + 1) * nx + ix;
+                    let i11 = (iy + 1) * nx + ix + 1;
+
+                    let v00 = samples[i00];
+                    let v10 = samples[i10];
+                    let v01 = samples[i01];
+                    let v11 = samples[i11];
+
+                    let p00 = Vec2::new(min.x + ix as f32 * grid_spacing, min.y + iy as f32 * grid_spacing);
+                    let p10 = Vec2::new(min.x + (ix + 1) as f32 * grid_spacing, min.y + iy as f32 * grid_spacing);
+                    let p01 = Vec2::new(min.x + ix as f32 * grid_spacing, min.y + (iy + 1) as f32 * grid_spacing);
+                    let p11 = Vec2::new(min.x + (ix + 1) as f32 * grid_spacing, min.y + (iy + 1) as f32 * grid_spacing);
+
+                    let mut pts = Vec::new();
+                    if (v00 - iso) * (v10 - iso) < 0.0 {
+                        let t = (iso - v00) / (v10 - v00);
+                        pts.push(p00 + (p10 - p00) * t);
+                    }
+                    if (v10 - iso) * (v11 - iso) < 0.0 {
+                        let t = (iso - v10) / (v11 - v10);
+                        pts.push(p10 + (p11 - p10) * t);
+                    }
+                    if (v11 - iso) * (v01 - iso) < 0.0 {
+                        let t = (iso - v11) / (v01 - v11);
+                        pts.push(p11 + (p01 - p11) * t);
+                    }
+                    if (v01 - iso) * (v00 - iso) < 0.0 {
+                        let t = (iso - v01) / (v00 - v01);
+                        pts.push(p01 + (p00 - p01) * t);
+                    }
+
+                    if pts.len() == 2 {
+                        ctx.draw_line(pts[0], pts[1], color);
+                    } else if pts.len() == 4 {
+                        ctx.draw_line(pts[0], pts[1], color);
+                        ctx.draw_line(pts[2], pts[3], color);
+                    }
+                }
+            }
+        }
+    }
+}
+
 // Helper function to compute the electric field at a point
 pub fn compute_field_at_point(bodies: &[Body], pos: Vec2, _config: &crate::config::SimConfig) -> Vec2 {
     let mut field = Vec2::zero();
@@ -185,4 +276,15 @@ pub fn compute_field_at_point(bodies: &[Body], pos: Vec2, _config: &crate::confi
         field += e;
     }
     field
+}
+
+/// Compute the electric potential at a point due to all bodies.
+pub fn compute_potential_at_point(bodies: &[Body], pos: Vec2) -> f32 {
+    let mut potential = 0.0f32;
+    for body in bodies {
+        let r = pos - body.pos;
+        let dist = r.mag().max(1e-4);
+        potential += crate::simulation::forces::K_E * body.charge / dist;
+    }
+    potential
 }

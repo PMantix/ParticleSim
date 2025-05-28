@@ -19,6 +19,7 @@ End goal is to develop a particle based simulator of electrochemical charging an
 - **Configurable Parameters**: Easily adjust simulation size, physics constants, and visualization options.
 - **Extensible**: Well-structured for adding new physics, force laws, or visualization features.
 - **Visual Debugging**: See selected particles highlighted with a halo and view live charge values.
+- **Velocity Vector Overlay**: Toggle drawing of velocity vectors to visualize particle motion.
 - Draws heavily from original source: https://github.com/DeadlockCode/barnes-hut.git
 
 ---
@@ -46,6 +47,7 @@ End goal is to develop a particle based simulator of electrochemical charging an
 - **Move Mouse (while holding right click)**: Adjust mass of spawned body
 - **Space**: Pause/resume simulation
 - **E**: Open settings menu (toggle quadtree visualization, etc.)
+- Enable "Show Field Isolines" in the settings to visualize the electric potential field
 
 ---
 
