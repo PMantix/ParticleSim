@@ -14,7 +14,7 @@ impl Body {
                 self.charge = -(self.electrons.len() as f32 - LITHIUM_METAL_NEUTRAL_ELECTRONS as f32);
             }
             Species::LithiumIon => {
-                self.charge = (LITHIUM_METAL_NEUTRAL_ELECTRONS as f32 + 1.0) - self.electrons.len() as f32;
+                self.charge = 1.0 - (self.electrons.len() as f32);
             }
         }
     }

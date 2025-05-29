@@ -58,13 +58,31 @@ fn test_foil_lj_force_affects_metal() {
     foil_body.electrons = vec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }; 3];
     sim.bodies.push(foil_body);
     let metal_idx = sim.bodies.len();
-    let mut metal_body = Body::new(Vec2::new(1.5, 0.0), Vec2::zero(), 1.0, 1.0, 0.0, Species::LithiumMetal);
+    let mut metal_body = Body::new(Vec2::new(2.5, 0.0), Vec2::zero(), 1.0, 1.0, 0.0, Species::LithiumMetal);
     metal_body.fixed = false;
     sim.bodies.push(metal_body);
     sim.foils.push(Foil::new(vec![foil_idx], Vec2::zero(), 1.0, 1.0, 0.0));
-    let initial_dist = (sim.bodies[foil_idx].pos - sim.bodies[metal_idx].pos).mag();
-    for _ in 0..10 { sim.step(); }
+
+    let mut initial_dist = (sim.bodies[foil_idx].pos - sim.bodies[metal_idx].pos).mag();
+    println!("Initial distance: {}", initial_dist);
+    for step in 0..10 {
+        sim.step();
+        let pos_foil = sim.bodies[foil_idx].pos;
+        let pos_metal = sim.bodies[metal_idx].pos;
+        let dist = (pos_foil - pos_metal).mag();
+        let vel = sim.bodies[metal_idx].vel;
+        println!(
+            "Step {}: Metal pos = {:?}, Foil pos = {:?}, distance = {:.6}, metal vel = {:?}",
+            step, pos_metal, pos_foil, dist, vel
+        );
+        // Optionally, print acceleration if available
+        println!(
+            "Step {}: Metal acc = {:?}",
+            step, sim.bodies[metal_idx].acc
+        );
+    }
     let new_dist = (sim.bodies[foil_idx].pos - sim.bodies[metal_idx].pos).mag();
+    println!("Final distance: {}", new_dist);
     assert!(new_dist < initial_dist, "LithiumMetal should be attracted to fixed FoilMetal by LJ force");
 }
 

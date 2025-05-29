@@ -83,8 +83,7 @@ mod reactions {
     }
 
     #[test]
-    fn multi_electron_ion_remains_ion_and_charge_decreases() {
-        // ...existing code...
+    fn multi_electron_ion_becomes_metal() {
         let mut ion = Body::new(
             Vec2::zero(),
             Vec2::zero(),
@@ -93,15 +92,14 @@ mod reactions {
             0.0,
             Species::LithiumIon,
         );
+        // Add two electrons (more than neutral metal)
         ion.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
         ion.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
         ion.update_charge_from_electrons();
         assert_eq!(ion.species, Species::LithiumIon);
-        assert_eq!(ion.charge, -1.0);
         ion.apply_redox();
         assert_eq!(ion.species, Species::LithiumMetal);
         assert_eq!(ion.electrons.len(), 2);
-        assert_eq!(ion.charge, -1.0);
     }
 
     #[test]

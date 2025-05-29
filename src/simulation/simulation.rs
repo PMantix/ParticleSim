@@ -70,6 +70,12 @@ impl Simulation {
         for body in &mut self.bodies {
             body.acc = Vec2::zero();
         }
+        // Always enforce FoilMetal is fixed BEFORE integration
+        for body in &mut self.bodies {
+            if body.species == Species::FoilMetal {
+                body.fixed = true;
+            }
+        }
         forces::attract(self);
         forces::apply_lj_forces(self);
         self.iterate();
@@ -120,10 +126,6 @@ impl Simulation {
         // Clone the bodies' positions and charges needed for field calculation
         let bodies_snapshot = self.bodies.clone();
         for body in &mut self.bodies {
-            // Always enforce FoilMetal is fixed
-            if body.species == Species::FoilMetal {
-                body.fixed = true;
-            }
             body.update_electrons(
                 |pos| quadtree.field_at_point(&bodies_snapshot, pos, k_e) + self.background_e_field,
                 self.dt,
