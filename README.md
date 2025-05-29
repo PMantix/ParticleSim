@@ -20,6 +20,7 @@ End goal is to develop a particle based simulator of electrochemical charging an
 - **Extensible**: Well-structured for adding new physics, force laws, or visualization features.
 - **Visual Debugging**: See selected particles highlighted with a halo and view live charge values.
 - **Velocity Vector Overlay**: Toggle drawing of velocity vectors to visualize particle motion.
+- **Metal Foils**: Fixed rectangular foils can act as electron sources or sinks with adjustable current.
 - Draws heavily from original source: https://github.com/DeadlockCode/barnes-hut.git
 
 ---
@@ -59,6 +60,8 @@ The GUI now features a **Scenario** section for rapid simulation setup and proto
 - **Add Circle**: Spawn a ring of particles at any position, with configurable radius, species (Metal or Ion), and (optionally) count.
     - Set the desired radius, X/Y position, and species using the GUI controls.
     - Click "Add" to create a circle of particles in the simulation.
+- **Add Rectangle**: Spawn a rectangular block of particles.
+- **Add Foil**: Create a fixed rectangular metal foil that can source or sink electrons at a configurable current.
 
 This enables quick experimentation with different initial conditions and system configurations, all from the GUI.
 

@@ -44,7 +44,8 @@ pub fn apply_lj_forces(sim: &mut Simulation) {
     let epsilon = config::LJ_FORCE_EPSILON;
     let cutoff = config::LJ_FORCE_CUTOFF * sigma;
     for i in 0..sim.bodies.len() {
-        if sim.bodies[i].species != Species::LithiumMetal {
+        // Only apply LJ to LithiumMetal or FoilMetal
+        if !(sim.bodies[i].species == Species::LithiumMetal || sim.bodies[i].species == Species::FoilMetal) {
             continue;
         }
         let neighbors = sim.quadtree.find_neighbors_within(&sim.bodies, i, cutoff);
@@ -54,17 +55,24 @@ pub fn apply_lj_forces(sim: &mut Simulation) {
                 let (left, right) = sim.bodies.split_at_mut(j);
                 (&mut left[i], &mut right[0])
             };
-            if a.species == Species::LithiumMetal && b.species == Species::LithiumMetal {
+            // Apply LJ between LithiumMetal and/or FoilMetal
+            if (a.species == Species::LithiumMetal || a.species == Species::FoilMetal) &&
+               (b.species == Species::LithiumMetal || b.species == Species::FoilMetal) {
                 let r_vec = b.pos - a.pos;
                 let r = r_vec.mag();
                 if r < cutoff && r > 1e-6 {
                     let sr6 = (sigma / r).powi(6);
-                    let max_lj_force = config::COLLISION_PASSES as f32 * config::LJ_FORCE_MAX; // Or use a new config value if you want
+                    let max_lj_force = config::COLLISION_PASSES as f32 * config::LJ_FORCE_MAX;
                     let unclamped_force_mag = 24.0 * epsilon * (2.0 * sr6 * sr6 - sr6) / r;
                     let force_mag = unclamped_force_mag.clamp(-max_lj_force, max_lj_force);
                     let force = force_mag * r_vec.normalized();
-                    a.acc -= force / a.mass;
-                    b.acc += force / b.mass;
+                    // Only update acceleration if not fixed
+                    if !a.fixed {
+                        a.acc -= force / a.mass;
+                    }
+                    if !b.fixed {
+                        b.acc += force / b.mass;
+                    }
                 }
             }
         }

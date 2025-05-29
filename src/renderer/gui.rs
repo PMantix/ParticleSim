@@ -158,6 +158,26 @@ impl super::Renderer {
                         }).unwrap();
                     }
                 });
+
+                // Add Foil
+                ui.horizontal(|ui| {
+                    ui.label("Width:");
+                    ui.add(egui::DragValue::new(&mut self.scenario_width).speed(0.1));
+                    ui.label("Height:");
+                    ui.add(egui::DragValue::new(&mut self.scenario_height).speed(0.1));
+                    ui.label("Current:");
+                    ui.add(egui::DragValue::new(&mut self.scenario_current).speed(0.1));
+                    if ui.button("Add Foil").clicked() {
+                        SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::AddFoil {
+                            width: self.scenario_width,
+                            height: self.scenario_height,
+                            x: self.scenario_x,
+                            y: self.scenario_y,
+                            particle_radius: self.scenario_particle_radius,
+                            current: self.scenario_current,
+                        }).unwrap();
+                    }
+                });
             });
     }
 }
@@ -188,3 +208,10 @@ fn make_body_with_charge(pos: Vec2, vel: Vec2, mass: f32, radius: f32, charge: i
     body.update_species();
     body
 }
+
+// In your rendering/drawing code, use:
+// let color = match body.species {
+//     Species::LithiumMetal => /* existing color */,
+//     Species::LithiumIon => /* existing color */,
+//     Species::FoilMetal => egui::Color32::from_rgb(255, 128, 0), // Orange or any distinct color
+// };

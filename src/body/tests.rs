@@ -23,6 +23,7 @@ mod physics {
             species: Species::LithiumIon,
             electrons: Vec::new(),
             e_field: Vec2::zero(),
+            fixed: false,
         };
         b.update_species();
         assert_eq!(b.species, Species::LithiumMetal);
@@ -41,6 +42,7 @@ mod physics {
             species: Species::LithiumMetal,
             electrons: Vec::new(),
             e_field: Vec2::zero(),
+            fixed: false,
         };
         b.update_species();
         assert_eq!(b.species, Species::LithiumIon);
@@ -97,6 +99,7 @@ mod physics {
             rewound_flags: vec![false; 2],
             background_e_field: Vec2::zero(),
             config: SimConfig {..Default::default()},
+            foils: Vec::new(),
         };
         assert_eq!(sim.bodies[0].electrons.len(), 0);
         assert_eq!(sim.bodies[1].electrons.len(), 3);
