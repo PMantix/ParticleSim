@@ -1,7 +1,7 @@
 // Tests for foil behavior in the simulation
 // Run with: cargo test --test foil_tests
 
-use crate::body::{Body, Species, Electron};
+use crate::body::{Body, Species};
 use crate::foil::Foil;
 use crate::simulation::Simulation;
 use ultraviolet::Vec2;
@@ -9,30 +9,22 @@ use ultraviolet::Vec2;
 #[test]
 fn test_foil_current_adds_removes_electrons() {
     let mut sim = Simulation::new();
-    // Create a single FoilMetal body
-    let mut body = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::FoilMetal);
-    // Start with 3 electrons
-    body.electrons = vec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }; 3];
+    sim.dt = 1.0; // easier accounting
+    let body = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::FoilMetal);
     let idx = sim.bodies.len();
     sim.bodies.push(body);
-    // Create a foil referencing this body
-    let mut foil = Foil::new(vec![idx], Vec2::zero(), 1.0, 1.0, 2.0); // positive current
-    foil.accum = 2.0; // force two electrons to be added
+    let foil = Foil::new(vec![idx], Vec2::zero(), 1.0, 1.0, 2.0); // positive current
     sim.foils.push(foil);
     sim.step();
     assert_eq!(sim.bodies[idx].electrons.len(), 5, "Electrons should be added by positive current");
-    // Now test negative current
     sim.foils[0].current = -2.0;
-    sim.foils[0].accum = -2.0;
     sim.step();
     assert_eq!(sim.bodies[idx].electrons.len(), 3, "Electrons should be removed by negative current");
 }
 
 #[test]
 fn test_foil_default_electrons() {
-    let mut body = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::FoilMetal);
-    // Should default to 3 electrons for foil
-    body.electrons = vec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }; 3];
+    let body = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::FoilMetal);
     assert_eq!(body.electrons.len(), 3, "FoilMetal should start with 3 electrons");
 }
 
@@ -55,7 +47,6 @@ fn test_foil_lj_force_affects_metal() {
     let foil_idx = sim.bodies.len();
     let mut foil_body = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::FoilMetal);
     foil_body.fixed = true;
-    foil_body.electrons = vec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }; 3];
     sim.bodies.push(foil_body);
     let metal_idx = sim.bodies.len();
     let mut metal_body = Body::new(Vec2::new(2.5, 0.0), Vec2::zero(), 1.0, 1.0, 0.0, Species::LithiumMetal);
@@ -89,8 +80,7 @@ fn test_foil_lj_force_affects_metal() {
 #[test]
 fn test_overlapping_foil_indices_handled() {
     let mut sim = Simulation::new();
-    let mut body = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::FoilMetal);
-    body.electrons = vec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }; 3];
+    let body = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::FoilMetal);
     let idx = sim.bodies.len();
     sim.bodies.push(body);
     // Add two foils referencing the same body

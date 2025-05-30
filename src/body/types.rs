@@ -33,7 +33,7 @@ static NEXT_ID: AtomicU64 = AtomicU64::new(1);
 impl Body {
     pub fn new(pos: Vec2, vel: Vec2, mass: f32, radius: f32, charge: f32, species: Species) -> Self {
         let fixed = matches!(species, Species::FoilMetal);
-        Self {
+        let mut body = Self {
             pos,
             vel,
             acc: Vec2::zero(),
@@ -45,7 +45,13 @@ impl Body {
             electrons: Vec::new(),
             e_field: Vec2::zero(),
             fixed,
+        };
+        if body.species == Species::FoilMetal {
+            // Foil metal should start with a default number of electrons
+            body.electrons = vec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }; config::FOIL_NEUTRAL_ELECTRONS];
+            body.update_charge_from_electrons();
         }
+        body
     }
     pub fn update_species(&mut self) {
         if self.species == Species::FoilMetal {

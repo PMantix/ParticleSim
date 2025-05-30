@@ -54,27 +54,37 @@ fn resolve(sim: &mut Simulation, i: usize, j: usize, num_passes: usize) {
     let weight2 = m1 / (m1 + m2);
     if d_dot_v >= 0.0 && d != Vec2::zero() {
         let tmp = d * (r / d.mag() - 1.0);
-        sim.bodies[i].pos -= weight1 * tmp;
-        sim.bodies[j].pos += weight2 * tmp;
+        if !sim.bodies[i].fixed { sim.bodies[i].pos -= weight1 * tmp; }
+        if !sim.bodies[j].fixed { sim.bodies[j].pos += weight2 * tmp; }
         return;
     }
     let v_sq = v.mag_sq();
+    if v_sq == 0.0 {
+        // Bodies overlapping with no relative velocity; nudge apart
+        let mut dir = if d == Vec2::zero() { Vec2::new(1.0, 0.0) } else { d.normalized() };
+        let overlap = r - d.mag();
+        let offset = dir * (overlap / 2.0);
+        if !sim.bodies[i].fixed { sim.bodies[i].pos -= offset; }
+        if !sim.bodies[j].fixed { sim.bodies[j].pos += offset; }
+        return;
+    }
     let d_sq = d.mag_sq();
     let r_sq = r * r;
     let correction_scale = 1.0 / num_passes as f32;
-    let t = correction_scale * (d_dot_v + (d_dot_v * d_dot_v - v_sq * (d_sq - r_sq)).max(0.0).sqrt()) / v_sq;
-    sim.bodies[i].pos -= v1 * t;
-    sim.bodies[j].pos -= v2 * t;
+    let discr = (d_dot_v * d_dot_v - v_sq * (d_sq - r_sq)).max(0.0);
+    let t = correction_scale * (d_dot_v + discr.sqrt()) / v_sq;
+    if !sim.bodies[i].fixed { sim.bodies[i].pos -= v1 * t; }
+    if !sim.bodies[j].fixed { sim.bodies[j].pos -= v2 * t; }
     let p1 = sim.bodies[i].pos;
     let p2 = sim.bodies[j].pos;
     let d = p2 - p1;
     let d_dot_v = d.dot(v);
     let d_sq = d.mag_sq();
-    let tmp = d * (1.5 * d_dot_v / d_sq);
-    let v1 = v1 + tmp * weight1;
-    let v2 = v2 - tmp * weight2;
-    sim.bodies[i].vel = v1;
-    sim.bodies[j].vel = v2;
-    sim.bodies[i].pos += v1 * t;
-    sim.bodies[j].pos += v2 * t;
+    let tmp = if d_sq != 0.0 { d * (1.5 * d_dot_v / d_sq) } else { Vec2::zero() };
+    let new_v1 = v1 + tmp * weight1;
+    let new_v2 = v2 - tmp * weight2;
+    if !sim.bodies[i].fixed { sim.bodies[i].vel = new_v1; } else { sim.bodies[i].vel = Vec2::zero(); }
+    if !sim.bodies[j].fixed { sim.bodies[j].vel = new_v2; } else { sim.bodies[j].vel = Vec2::zero(); }
+    if !sim.bodies[i].fixed { sim.bodies[i].pos += new_v1 * t; }
+    if !sim.bodies[j].fixed { sim.bodies[j].pos += new_v2 * t; }
 }
