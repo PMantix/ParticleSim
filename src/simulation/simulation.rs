@@ -86,23 +86,14 @@ impl Simulation {
 
         // Apply foil current sources/sinks
         for foil in &mut self.foils {
-            println!(
-                "Foil: indices={:?}, current={}, accum={}",
-                foil.body_indices, foil.current, foil.accum
-            );
-            for &idx in &foil.body_indices {
-                println!(
-                    "  Body idx {}: species={:?}, electrons={}",
-                    idx, self.bodies[idx].species, self.bodies[idx].electrons.len()
-                );
-            }
+            // accumulate current over this timestep
+            foil.accum += foil.current * self.dt;
             let mut rng = rand::rng();
             while foil.accum >= 1.0 {
                 if let Some(&idx) = foil.body_indices.as_slice().choose(&mut rng) {
                     let body = &mut self.bodies[idx];
                     // Only add electrons to FoilMetal
                     if body.species == Species::FoilMetal {
-                        println!("Adding electron to FoilMetal body at index {}", idx);
                         body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
                         body.update_charge_from_electrons();
                     }
