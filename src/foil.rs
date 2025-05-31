@@ -8,21 +8,14 @@ pub struct Foil {
     pub current: f32,
     /// Internal accumulator used to emit/remove fractional electrons per step.
     pub accum: f32,
-    /// Foil dimensions for reference.
-    pub width: f32,
-    pub height: f32,
-    pub origin: Vec2,
 }
 
 impl Foil {
-    pub fn new(body_indices: Vec<usize>, origin: Vec2, width: f32, height: f32, current: f32) -> Self {
+    pub fn new(body_indices: Vec<usize>, _origin: Vec2, _width: f32, _height: f32, current: f32) -> Self {
         Self {
             body_indices,
             current,
             accum: 0.0,
-            width,
-            height,
-            origin,
         }
     }
 }

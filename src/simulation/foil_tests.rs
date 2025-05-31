@@ -1,13 +1,13 @@
 // Tests for foil behavior in the simulation
 // Run with: cargo test --test foil_tests
 
-use crate::body::{Body, Species, Electron};
-use crate::foil::Foil;
-use crate::simulation::Simulation;
-use ultraviolet::Vec2;
-
 #[test]
 fn test_foil_current_adds_removes_electrons() {
+    use crate::body::{Body, Species, Electron};
+    use crate::foil::Foil;
+    use crate::simulation::Simulation;
+    use ultraviolet::Vec2;
+
     let mut sim = Simulation::new();
     // Create a single FoilMetal body
     let mut body = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::FoilMetal);
@@ -30,6 +30,9 @@ fn test_foil_current_adds_removes_electrons() {
 
 #[test]
 fn test_foil_default_electrons() {
+    use crate::body::{Body, Species, Electron};
+    use ultraviolet::Vec2;
+
     let mut body = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::FoilMetal);
     // Should default to 3 electrons for foil
     body.electrons = vec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }; 3];
@@ -38,6 +41,11 @@ fn test_foil_default_electrons() {
 
 #[test]
 fn test_foil_is_fixed() {
+    use crate::body::{Body, Species};
+    use crate::foil::Foil;
+    use crate::simulation::Simulation;
+    use ultraviolet::Vec2;
+
     let mut sim = Simulation::new();
     let mut body = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::FoilMetal);
     body.fixed = false; // try to unset
@@ -50,6 +58,11 @@ fn test_foil_is_fixed() {
 
 #[test]
 fn test_foil_lj_force_affects_metal() {
+    use crate::body::{Body, Species, Electron};
+    use crate::foil::Foil;
+    use crate::simulation::Simulation;
+    use ultraviolet::Vec2;
+
     let mut sim = Simulation::new();
     // Place a fixed foil and a free lithium metal nearby
     let foil_idx = sim.bodies.len();
@@ -63,7 +76,7 @@ fn test_foil_lj_force_affects_metal() {
     sim.bodies.push(metal_body);
     sim.foils.push(Foil::new(vec![foil_idx], Vec2::zero(), 1.0, 1.0, 0.0));
 
-    let mut initial_dist = (sim.bodies[foil_idx].pos - sim.bodies[metal_idx].pos).mag();
+    let initial_dist = (sim.bodies[foil_idx].pos - sim.bodies[metal_idx].pos).mag();
     println!("Initial distance: {}", initial_dist);
     for step in 0..10 {
         sim.step();
@@ -88,6 +101,11 @@ fn test_foil_lj_force_affects_metal() {
 
 #[test]
 fn test_overlapping_foil_indices_handled() {
+    use crate::body::{Body, Species, Electron};
+    use crate::foil::Foil;
+    use crate::simulation::Simulation;
+    use ultraviolet::Vec2;
+
     let mut sim = Simulation::new();
     let mut body = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::FoilMetal);
     body.electrons = vec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }; 3];
