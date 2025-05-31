@@ -81,7 +81,7 @@ mod physics {
             Species::LithiumMetal,
         );
         a.update_charge_from_electrons();    
-        for _e in 0..3 {
+        for _e in 0..crate::config::FOIL_NEUTRAL_ELECTRONS {
             b.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
         }
         b.update_charge_from_electrons();
@@ -102,7 +102,7 @@ mod physics {
             foils: Vec::new(),
         };
         assert_eq!(sim.bodies[0].electrons.len(), 0);
-        assert_eq!(sim.bodies[1].electrons.len(), 3);
+        assert_eq!(sim.bodies[1].electrons.len(), crate::config::FOIL_NEUTRAL_ELECTRONS);
         sim.quadtree.build(&mut sim.bodies);
         sim.perform_electron_hopping();
         assert_eq!(sim.bodies[0].electrons.len(), 1);

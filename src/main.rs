@@ -244,14 +244,14 @@ fn main() {
                                 let mut new_body = crate::body::Body::new(
                                     pos,
                                     Vec2::zero(),
-                                    1.0,
+                                    1e6, // Large mass for foil
                                     particle_radius,
                                     0.0,
                                     Species::FoilMetal,
                                 );
-                                new_body.electrons = vec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }; 3];
+                                new_body.electrons = vec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }; crate::config::FOIL_NEUTRAL_ELECTRONS];
                                 new_body.update_charge_from_electrons();
-                                new_body.fixed = true;
+                                // new_body.fixed = true; // No longer needed
                                 body_ids.push(new_body.id);
                                 simulation.bodies.push(new_body);
                             }
@@ -280,7 +280,6 @@ fn main() {
 
 fn render(simulation: &mut Simulation) {
     let mut lock = UPDATE_LOCK.lock();
-    
     //if new body was created, add to simulation
     for body in SPAWN.lock().drain(..) {
         simulation.bodies.push(body);

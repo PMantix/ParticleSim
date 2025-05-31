@@ -25,8 +25,9 @@ pub const LJ_FORCE_MAX: f32 = 33.33;                   // Max Lennard-Jones forc
 // Species/Body Parameters
 // ====================
 pub const LITHIUM_ION_THRESHOLD: f32 = 0.5;             // Charge threshold for lithium ion/metal transition
-pub const FOIL_NEUTRAL_ELECTRONS: usize = 3;
+pub const FOIL_NEUTRAL_ELECTRONS: usize = 1;
 pub const LITHIUM_METAL_NEUTRAL_ELECTRONS: usize = 1;
+pub const FOIL_MAX_ELECTRONS: usize = 2;           // Max electrons for foil metal    
 
 // ====================
 // Simulation Parameters
@@ -80,7 +81,10 @@ pub struct SimConfig {
     pub show_electron_density: bool,
     pub show_field_vectors: bool, // NEW: show field vectors
     pub damping_base: f32, // Add base damping factor
-    // Add other parameters as needed
+    // --- LJ parameters for runtime tuning ---
+    pub lj_force_epsilon: f32,
+    pub lj_force_sigma: f32,
+    pub lj_force_cutoff: f32,
 }
 
 impl Default for SimConfig {
@@ -95,6 +99,14 @@ impl Default for SimConfig {
             show_electron_density: SHOW_ELECTRON_DENSITY,
             show_field_vectors: SHOW_FIELD_VECTORS, // NEW
             damping_base: 0.999, // Default base damping
+            lj_force_epsilon: LJ_FORCE_EPSILON,
+            lj_force_sigma: LJ_FORCE_SIGMA,
+            lj_force_cutoff: LJ_FORCE_CUTOFF,
         }
     }
 }
+
+use once_cell::sync::Lazy;
+use parking_lot::Mutex;
+
+pub static LJ_CONFIG: Lazy<Mutex<SimConfig>> = Lazy::new(|| Mutex::new(SimConfig::default()));

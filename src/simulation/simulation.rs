@@ -59,6 +59,9 @@ impl Simulation {
     }
 
     pub fn step(&mut self) {
+        // Sync config from global LJ_CONFIG (updated by GUI)
+        self.config = crate::config::LJ_CONFIG.lock().clone();
+
         // ...existing code...
         let mag = *FIELD_MAGNITUDE.lock();
         let theta = (*FIELD_DIRECTION.lock()).to_radians();
@@ -70,12 +73,12 @@ impl Simulation {
         for body in &mut self.bodies {
             body.acc = Vec2::zero();
         }
-        // Always enforce FoilMetal is fixed BEFORE integration
-        for body in &mut self.bodies {
-            if body.species == Species::FoilMetal {
-                body.fixed = true;
-            }
-        }
+        // No longer forcibly fix FoilMetal
+        // for body in &mut self.bodies {
+        //     if body.species == Species::FoilMetal {
+        //         body.fixed = true;
+        //     }
+        // }
         forces::attract(self);
         forces::apply_lj_forces(self);
         self.iterate();
@@ -88,21 +91,15 @@ impl Simulation {
         for foil in &mut self.foils {
             // Integrate current into accumulator
             foil.accum += foil.current * self.dt;
-            println!("[DEBUG] Foil accum value: {} (current: {})", foil.accum, foil.current);
+            //println!("[DEBUG] Foil accum value: {} (current: {})", foil.accum, foil.current);
             let mut rng = rand::rng();
             while foil.accum >= 1.0 {
                 if let Some(&id) = foil.body_ids.as_slice().choose(&mut rng) {
                     if let Some(body) = self.bodies.iter_mut().find(|b| b.id == id && b.species == Species::FoilMetal) {
-                        body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
-                        println!(
-                            "[DEBUG] Adding electron to body {}: species={:?}, electrons={}",
-                            body.id, body.species, body.electrons.len()
-                        );
-                        body.update_charge_from_electrons();
-                        println!(
-                            "[DEBUG] Body {} charge after adding electron: {}",
-                            body.id, body.charge
-                        );
+                        if body.electrons.len() < crate::config::FOIL_MAX_ELECTRONS {
+                            body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+                            body.update_charge_from_electrons();
+                        }
                     }
                 }
                 foil.accum -= 1.0;

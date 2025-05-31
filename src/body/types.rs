@@ -32,7 +32,7 @@ static NEXT_ID: AtomicU64 = AtomicU64::new(1);
 
 impl Body {
     pub fn new(pos: Vec2, vel: Vec2, mass: f32, radius: f32, charge: f32, species: Species) -> Self {
-        let fixed = matches!(species, Species::FoilMetal);
+        // Remove automatic fixed for FoilMetal
         Self {
             pos,
             vel,
@@ -44,12 +44,11 @@ impl Body {
             species,
             electrons: Vec::new(),
             e_field: Vec2::zero(),
-            fixed,
+            fixed: false,
         }
     }
     pub fn update_species(&mut self) {
         if self.species == Species::FoilMetal {
-            self.fixed = true;
             // Don't auto-convert FoilMetal to other species
             return;
         }
