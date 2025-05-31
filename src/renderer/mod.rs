@@ -52,7 +52,7 @@ impl quarkstrom::Renderer for Renderer {
             bodies: Vec::new(),
             quadtree: Vec::new(),
             selected_particle_id: None,
-            sim_config: SimConfig::default(),
+            sim_config: crate::config::LJ_CONFIG.lock().clone(),
             scenario_radius: 1.0,
             scenario_x: 0.0,
             scenario_y: 0.0,
@@ -73,6 +73,8 @@ impl quarkstrom::Renderer for Renderer {
     }
     fn gui(&mut self, ctx: &quarkstrom::egui::Context) {
         self.show_gui(ctx);
+        // After GUI update, write changes to global config
+        *crate::config::LJ_CONFIG.lock() = self.sim_config.clone();
     }
 }
 

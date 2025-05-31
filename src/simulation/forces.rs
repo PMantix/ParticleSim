@@ -40,9 +40,9 @@ pub fn apply_lj_forces(sim: &mut Simulation) {
         }
     }
 
-    let sigma = config::LJ_FORCE_SIGMA;
-    let epsilon = config::LJ_FORCE_EPSILON;
-    let cutoff = config::LJ_FORCE_CUTOFF * sigma;
+    let sigma = sim.config.lj_force_sigma;
+    let epsilon = sim.config.lj_force_epsilon;
+    let cutoff = sim.config.lj_force_cutoff * sigma;
     for i in 0..sim.bodies.len() {
         // Only apply LJ to LithiumMetal or FoilMetal
         if !(sim.bodies[i].species == Species::LithiumMetal || sim.bodies[i].species == Species::FoilMetal) {

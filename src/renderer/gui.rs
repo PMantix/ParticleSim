@@ -79,6 +79,20 @@ impl super::Renderer {
 
                 ui.separator();
 
+                // --- Lennard-Jones Parameters ---
+                ui.label("Lennard-Jones Parameters:");
+                ui.add(egui::Slider::new(&mut self.sim_config.lj_force_epsilon, 0.0..=2000.0)
+                    .text("LJ Epsilon (attraction strength)")
+                    .step_by(1.0));
+                ui.add(egui::Slider::new(&mut self.sim_config.lj_force_sigma, 0.1..=5.0)
+                    .text("LJ Sigma (particle size)")
+                    .step_by(0.01));
+                ui.add(egui::Slider::new(&mut self.sim_config.lj_force_cutoff, 0.5..=10.0)
+                    .text("LJ Cutoff (range factor)")
+                    .step_by(0.01));
+
+                ui.separator();
+
                 // --- Scenario Controls ---
                 ui.label("Scenario:");
 
