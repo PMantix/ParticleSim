@@ -219,7 +219,7 @@ fn main() {
                         let particle_diameter = 2.0 * particle_radius;
                         let cols = (width / particle_diameter).floor() as usize;
                         let rows = (height / particle_diameter).floor() as usize;
-                        let mut indices = Vec::new();
+                        let mut body_ids = Vec::new();
                         for row in 0..rows {
                             for col in 0..cols {
                                 let pos = origin
@@ -239,11 +239,11 @@ fn main() {
                                 new_body.electrons = vec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }; 3];
                                 new_body.update_charge_from_electrons();
                                 new_body.fixed = true; // Redundant, but explicit
-                                indices.push(simulation.bodies.len());
+                                body_ids.push(new_body.id); // <-- Use ID, not index
                                 simulation.bodies.push(new_body);
                             }
                         }
-                        simulation.foils.push(crate::foil::Foil::new(indices, origin, width, height, current));
+                        simulation.foils.push(crate::foil::Foil::new(body_ids, origin, width, height, current));
                     },
 
                     //SimCommand::Plate { foil_id, amount } => { /* ... */ }
