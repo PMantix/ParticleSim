@@ -229,6 +229,7 @@ mod reactions {
                 },
                 foils: Vec::new(),
             };
+            sim.quadtree.build(&mut sim.bodies);
             sim.perform_electron_hopping();
             sim.bodies[0].update_charge_from_electrons();   
             sim.bodies[1].update_charge_from_electrons();   
@@ -340,6 +341,7 @@ mod reactions {
                 },
                 foils: Vec::new(),
             };
+            sim.quadtree.build(&mut sim.bodies);
             sim.perform_electron_hopping();
             // after hopping, a should lose one electron, b should gain one
             assert_eq!(sim.bodies[0].electrons.len(), 1);

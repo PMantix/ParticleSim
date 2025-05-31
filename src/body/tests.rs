@@ -103,6 +103,7 @@ mod physics {
         };
         assert_eq!(sim.bodies[0].electrons.len(), 0);
         assert_eq!(sim.bodies[1].electrons.len(), 3);
+        sim.quadtree.build(&mut sim.bodies);
         sim.perform_electron_hopping();
         assert_eq!(sim.bodies[0].electrons.len(), 1);
         assert_eq!(sim.bodies[1].electrons.len(), 2);

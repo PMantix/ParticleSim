@@ -179,9 +179,13 @@ impl Quadtree {
 
     pub fn acc_pos(&self, pos: Vec2, q: f32, bodies: &[Body], k_e: f32) -> Vec2 {
         let mut acc = Vec2::zero();
-
         let mut node = Self::ROOT;
+        let mut _iter_count = 0;
         loop {
+            _iter_count += 1;
+            if node >= self.nodes.len() {
+                break;
+            }
             let n = self.nodes[node].clone();
 
             let d = pos - n.pos;
