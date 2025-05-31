@@ -86,16 +86,19 @@ impl Simulation {
 
         // Apply foil current sources/sinks
         for foil in &mut self.foils {
-            println!(
-                "Foil: indices={:?}, current={}, accum={}",
-                foil.body_indices, foil.current, foil.accum
-            );
-            for &idx in &foil.body_indices {
-                println!(
-                    "  Body idx {}: species={:?}, electrons={}",
-                    idx, self.bodies[idx].species, self.bodies[idx].electrons.len()
-                );
-            }
+            // Integrate current into accumulator
+            foil.accum += foil.current * self.dt;
+            println!("[DEBUG] Foil accum value: {} (current: {})", foil.accum, foil.current);
+            //println!(
+               // "Foil: indices={:?}, current={}, accum={}",
+                //foil.body_indices, foil.current, foil.accum
+           // );
+            //for &idx in &foil.body_indices {
+                //println!(
+                    //"  Body idx {}: species={:?}, electrons={}",
+                //    idx, self.bodies[idx].species, self.bodies[idx].electrons.len()
+                //);
+           // }
             let mut rng = rand::rng();
             while foil.accum >= 1.0 {
                 if let Some(&idx) = foil.body_indices.as_slice().choose(&mut rng) {
