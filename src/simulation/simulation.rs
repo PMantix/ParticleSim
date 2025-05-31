@@ -135,7 +135,9 @@ impl Simulation {
     }
 
     pub fn iterate(&mut self) {
-        let damping = 0.999;
+        // Damping factor scales with timestep and is user-configurable
+        let dt = self.dt;
+        let damping = self.config.damping_base.powf(dt / 0.01);
         for body in &mut self.bodies {
             if !body.fixed {
                 body.vel += body.acc * self.dt;

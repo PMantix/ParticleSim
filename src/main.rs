@@ -135,8 +135,13 @@ fn main() {
                             for i in 0..count {
                                 let angle = (i as f32) * std::f32::consts::TAU / (count as f32);
                                 let offset = Vec2::new(angle.cos(), angle.sin()) * r;
+                                let pos = center + offset;
+                                // Remove any overlapping particle
+                                while let Some(idx) = overlaps_any(&simulation.bodies, pos, particle_radius) {
+                                    simulation.bodies.remove(idx);
+                                }
                                 let mut new_body = crate::body::Body::new(
-                                    center + offset,
+                                    pos,
                                     Vec2::zero(),
                                     body.mass,
                                     body.radius,
@@ -163,9 +168,12 @@ fn main() {
                         let count = (circumference / particle_diameter).floor() as usize;
                         for i in 0..count {
                             let angle = (i as f32) * std::f32::consts::TAU / (count as f32);
-                            let offset = Vec2::new(angle.cos(), angle.sin()) * radius;
+                            let pos = center + Vec2::new(angle.cos(), angle.sin()) * radius;
+                            while let Some(idx) = overlaps_any(&simulation.bodies, pos, particle_radius) {
+                                simulation.bodies.remove(idx);
+                            }
                             let mut new_body = crate::body::Body::new(
-                                center + offset,
+                                pos,
                                 Vec2::zero(),
                                 body.mass,
                                 body.radius,
@@ -195,6 +203,9 @@ fn main() {
                                         (col as f32 + 0.5) * particle_diameter,
                                         (row as f32 + 0.5) * particle_diameter,
                                     );
+                                while let Some(idx) = overlaps_any(&simulation.bodies, pos, particle_radius) {
+                                    simulation.bodies.remove(idx);
+                                }
                                 let mut new_body = crate::body::Body::new(
                                     pos,
                                     Vec2::zero(),
@@ -227,19 +238,21 @@ fn main() {
                                         (col as f32 + 0.5) * particle_diameter,
                                         (row as f32 + 0.5) * particle_diameter,
                                     );
+                                while let Some(idx) = overlaps_any(&simulation.bodies, pos, particle_radius) {
+                                    simulation.bodies.remove(idx);
+                                }
                                 let mut new_body = crate::body::Body::new(
                                     pos,
                                     Vec2::zero(),
                                     1.0,
                                     particle_radius,
                                     0.0,
-                                    Species::FoilMetal, // CHANGED
+                                    Species::FoilMetal,
                                 );
-                                // Set default electrons for foil: 3 electrons
                                 new_body.electrons = vec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }; 3];
                                 new_body.update_charge_from_electrons();
-                                new_body.fixed = true; // Redundant, but explicit
-                                body_ids.push(new_body.id); // <-- Use ID, not index
+                                new_body.fixed = true;
+                                body_ids.push(new_body.id);
                                 simulation.bodies.push(new_body);
                             }
                         }
@@ -283,4 +296,8 @@ fn render(simulation: &mut Simulation) {
         lock.extend_from_slice(&simulation.quadtree.nodes);
     }
     *lock |= true;
+}
+
+fn overlaps_any(existing: &[crate::body::Body], pos: Vec2, radius: f32) -> Option<usize> {
+    existing.iter().position(|b| (b.pos - pos).mag() < (b.radius + radius))
 }
