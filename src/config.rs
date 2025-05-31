@@ -58,8 +58,8 @@ pub const THREADS_LEAVE_FREE: usize = 2;                // Number of logical cor
 // ====================
 // Window/Rendering
 // ====================
-pub const WINDOW_WIDTH: u32 = 900;                      // Window width in pixels
-pub const WINDOW_HEIGHT: u32 = 900;                     // Window height in pixels
+pub const WINDOW_WIDTH: u32 = 1500;                      // Window width in pixels
+pub const WINDOW_HEIGHT: u32 = 1200;                     // Window height in pixels
 
 // ====================
 // DISPLAY/GUI Parameters
