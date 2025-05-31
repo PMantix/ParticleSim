@@ -118,6 +118,7 @@ fn main() {
                     // Delete all bodies in the simulation
                     SimCommand::DeleteAll => {
                         simulation.bodies.clear();
+                        simulation.foils.clear(); // Also clear all foils when deleting all particles
                         // Optionally clear other simulation state if needed
                     }
 

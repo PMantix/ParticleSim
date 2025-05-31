@@ -86,16 +86,19 @@ impl Simulation {
 
         // Apply foil current sources/sinks
         for foil in &mut self.foils {
-            println!(
-                "Foil: indices={:?}, current={}, accum={}",
-                foil.body_indices, foil.current, foil.accum
-            );
-            for &idx in &foil.body_indices {
-                println!(
-                    "  Body idx {}: species={:?}, electrons={}",
-                    idx, self.bodies[idx].species, self.bodies[idx].electrons.len()
-                );
-            }
+            // Integrate current into accumulator
+            foil.accum += foil.current * self.dt;
+            println!("[DEBUG] Foil accum value: {} (current: {})", foil.accum, foil.current);
+            //println!(
+               // "Foil: indices={:?}, current={}, accum={}",
+                //foil.body_indices, foil.current, foil.accum
+           // );
+            //for &idx in &foil.body_indices {
+                //println!(
+                    //"  Body idx {}: species={:?}, electrons={}",
+                //    idx, self.bodies[idx].species, self.bodies[idx].electrons.len()
+                //);
+           // }
             let mut rng = rand::rng();
             while foil.accum >= 1.0 {
                 if let Some(&idx) = foil.body_indices.as_slice().choose(&mut rng) {
@@ -159,10 +162,15 @@ impl Simulation {
     }
 
     pub fn perform_electron_hopping(&mut self) {
+        if self.bodies.is_empty() { return; }
         let n = self.bodies.len();
         let mut hops: Vec<(usize, usize)> = vec![];
         let mut received_electron = vec![false; n];
-        for src_idx in 0..n {
+        // Shuffle source indices to remove directional bias
+        let mut src_indices: Vec<usize> = (0..n).collect();
+        let mut rng = rand::rng();
+        src_indices.shuffle(&mut rng);
+        for &src_idx in &src_indices {
             let src_body = &self.bodies[src_idx];
             if !(src_body.species == Species::LithiumMetal || src_body.species == Species::FoilMetal) || src_body.electrons.len() <= 1 {
                 continue;
@@ -190,7 +198,6 @@ impl Simulation {
             }
 
             // 2️⃣ Shuffle the neighbor list to remove directional bias
-            let mut rng = rand::rng(); // Use rand::rng() for rand 0.9+
             candidate_neighbors.shuffle(&mut rng);
 
             // 3️⃣ Now process in random order
@@ -201,7 +208,6 @@ impl Simulation {
                 if dst_body.species == Species::LithiumIon {
                     hops.push((src_idx, dst_idx));
                     received_electron[dst_idx] = true;
-                    // break; // Optionally only allow one hop per src per step
                     continue;
                 }
 
@@ -211,12 +217,20 @@ impl Simulation {
                     continue;
                 }
 
+                // --- Field-biased hopping ---
+                let hop_vec = dst_body.pos - src_body.pos;
+                let hop_dir = if hop_vec.mag() > 1e-6 { hop_vec.normalized() } else { Vec2::zero() };
+                let local_field = self.background_e_field
+                    + self.quadtree.field_at_point(&self.bodies, src_body.pos, crate::simulation::forces::K_E);
+                let field_dir = if local_field.mag() > 1e-6 { local_field.normalized() } else { Vec2::zero() };
+                let alignment = (-hop_dir.dot(field_dir)).max(0.0); // Inverted: Only positive alignment in field direction
+                if alignment < 1e-3 { continue; } // Only allow hops in field direction
+
                 let rate = self.config.hop_rate_k0 * (self.config.hop_transfer_coeff * d_phi / self.config.hop_activation_energy).exp();
-                let p_hop = 1.0 - (-rate * self.dt).exp();
+                let p_hop = alignment * (1.0 - (-rate * self.dt).exp());
                 if rand::random::<f32>() < p_hop {
                     hops.push((src_idx, dst_idx));
                     received_electron[dst_idx] = true;
-                    // break;
                 }
             }
         }

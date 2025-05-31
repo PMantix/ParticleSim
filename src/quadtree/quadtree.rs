@@ -94,6 +94,11 @@ impl Quadtree {
     }
 
     pub fn build(&mut self, bodies: &mut [Body]) {
+        if bodies.is_empty() {
+            self.clear();
+            return;
+        }
+
         self.clear();
 
         let new_len = 4 * bodies.len() + 1024;
