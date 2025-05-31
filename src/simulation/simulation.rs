@@ -89,33 +89,31 @@ impl Simulation {
             // Integrate current into accumulator
             foil.accum += foil.current * self.dt;
             println!("[DEBUG] Foil accum value: {} (current: {})", foil.accum, foil.current);
-            //println!(
-               // "Foil: indices={:?}, current={}, accum={}",
-                //foil.body_indices, foil.current, foil.accum
-           // );
-            //for &idx in &foil.body_indices {
-                //println!(
-                    //"  Body idx {}: species={:?}, electrons={}",
-                //    idx, self.bodies[idx].species, self.bodies[idx].electrons.len()
-                //);
-           // }
             let mut rng = rand::rng();
             while foil.accum >= 1.0 {
-                if let Some(&idx) = foil.body_indices.as_slice().choose(&mut rng) {
-                    let body = &mut self.bodies[idx];
-                    // Always add an electron if accum >= 1
-                    body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
-                    body.update_charge_from_electrons();
+                if let Some(&id) = foil.body_ids.as_slice().choose(&mut rng) {
+                    if let Some(body) = self.bodies.iter_mut().find(|b| b.id == id && b.species == Species::FoilMetal) {
+                        body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+                        println!(
+                            "[DEBUG] Adding electron to body {}: species={:?}, electrons={}",
+                            body.id, body.species, body.electrons.len()
+                        );
+                        body.update_charge_from_electrons();
+                        println!(
+                            "[DEBUG] Body {} charge after adding electron: {}",
+                            body.id, body.charge
+                        );
+                    }
                 }
                 foil.accum -= 1.0;
             }
             while foil.accum <= -1.0 {
-                if let Some(&idx) = foil.body_indices.as_slice().choose(&mut rng) {
-                    let body = &mut self.bodies[idx];
-                    // Always remove an electron if there are any to remove
-                    if !body.electrons.is_empty() {
-                        body.electrons.pop();
-                        body.update_charge_from_electrons();
+                if let Some(&id) = foil.body_ids.as_slice().choose(&mut rng) {
+                    if let Some(body) = self.bodies.iter_mut().find(|b| b.id == id && b.species == Species::FoilMetal) {
+                        if !body.electrons.is_empty() {
+                            body.electrons.pop();
+                            body.update_charge_from_electrons();
+                        }
                     }
                 }
                 foil.accum += 1.0;
@@ -186,9 +184,9 @@ impl Simulation {
                 }
                 let can_accept = match dst_body.species {
                     Species::LithiumMetal | Species::FoilMetal => {
-                        // Only accept if destination is below neutral and source is above neutral
-                        dst_body.electrons.len() < dst_body.neutral_electron_count()
-                            && src_body.electrons.len() > src_body.neutral_electron_count()
+                        // Allow if destination is at or below neutral and source is above neutral
+                        dst_body.electrons.len() <= dst_body.neutral_electron_count()
+                            && src_body.electrons.len() >= src_body.neutral_electron_count()
                     }
                     Species::LithiumIon => true, // Ions can always accept
                 };
