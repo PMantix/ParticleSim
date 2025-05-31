@@ -75,7 +75,23 @@ impl super::Renderer {
                         }
                     }
 
+                    // Visualize electron count for LithiumMetal
                     if body.species == Species::LithiumMetal {
+                        let neutral_electrons = 1; // adjust if your neutral is different
+                        let electron_count = body.electrons.len();
+                        if electron_count > neutral_electrons {
+                            ctx.draw_circle(
+                                body.pos,
+                                body.radius * 0.5,
+                                [0, 255, 0, 255], // green
+                            );
+                        } else if electron_count < neutral_electrons {
+                            ctx.draw_circle(
+                                body.pos,
+                                body.radius * 0.5,
+                                [255, 0, 0, 255], // red
+                            );
+                        }
                         for electron in &body.electrons {
                             let electron_pos = body.pos + electron.rel_pos;
                             ctx.draw_circle(
