@@ -204,7 +204,6 @@ impl Simulation {
                 if dst_body.species == Species::LithiumIon {
                     hops.push((src_idx, dst_idx));
                     received_electron[dst_idx] = true;
-                    // break; // Optionally only allow one hop per src per step
                     continue;
                 }
 
@@ -214,12 +213,20 @@ impl Simulation {
                     continue;
                 }
 
+                // --- Field-biased hopping ---
+                let hop_vec = dst_body.pos - src_body.pos;
+                let hop_dir = if hop_vec.mag() > 1e-6 { hop_vec.normalized() } else { Vec2::zero() };
+                let local_field = self.background_e_field
+                    + self.quadtree.field_at_point(&self.bodies, src_body.pos, crate::simulation::forces::K_E);
+                let field_dir = if local_field.mag() > 1e-6 { local_field.normalized() } else { Vec2::zero() };
+                let alignment = (-hop_dir.dot(field_dir)).max(0.0); // Inverted: Only positive alignment in field direction
+                if alignment < 1e-3 { continue; } // Only allow hops in field direction
+
                 let rate = self.config.hop_rate_k0 * (self.config.hop_transfer_coeff * d_phi / self.config.hop_activation_energy).exp();
-                let p_hop = 1.0 - (-rate * self.dt).exp();
+                let p_hop = alignment * (1.0 - (-rate * self.dt).exp());
                 if rand::random::<f32>() < p_hop {
                     hops.push((src_idx, dst_idx));
                     received_electron[dst_idx] = true;
-                    // break;
                 }
             }
         }
