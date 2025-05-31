@@ -12,7 +12,7 @@ fn test_foil_current_adds_removes_electrons() {
     // Create a single FoilMetal body
     let mut body = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::FoilMetal);
     // Start with 3 electrons
-    body.electrons = vec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }; 3];
+    body.electrons = vec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }; crate::config::FOIL_NEUTRAL_ELECTRONS];
     let idx = sim.bodies.len();
     let id = body.id;
     sim.bodies.push(body);
@@ -36,8 +36,8 @@ fn test_foil_default_electrons() {
 
     let mut body = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::FoilMetal);
     // Should default to 3 electrons for foil
-    body.electrons = vec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }; 3];
-    assert_eq!(body.electrons.len(), 3, "FoilMetal should start with 3 electrons");
+    body.electrons = vec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }; crate::config::FOIL_NEUTRAL_ELECTRONS];
+    assert_eq!(body.electrons.len(), crate::config::FOIL_NEUTRAL_ELECTRONS, "FoilMetal should start with correct number of electrons");
 }
 
 #[test]
@@ -70,7 +70,7 @@ fn test_foil_lj_force_affects_metal() {
     let foil_idx = sim.bodies.len();
     let mut foil_body = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::FoilMetal);
     foil_body.fixed = true;
-    foil_body.electrons = vec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }; 3];
+    foil_body.electrons = vec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }; crate::config::FOIL_NEUTRAL_ELECTRONS];
     let foil_id = foil_body.id;
     sim.bodies.push(foil_body);
     let metal_idx = sim.bodies.len();
@@ -111,7 +111,7 @@ fn test_overlapping_foil_indices_handled() {
 
     let mut sim = Simulation::new();
     let mut body = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::FoilMetal);
-    body.electrons = vec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }; 3];
+    body.electrons = vec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }; crate::config::FOIL_NEUTRAL_ELECTRONS];
     let idx = sim.bodies.len();
     let id = body.id;
     sim.bodies.push(body);
@@ -120,5 +120,5 @@ fn test_overlapping_foil_indices_handled() {
     sim.foils.push(Foil::new(vec![id], Vec2::zero(), 1.0, 1.0, -1.0));
     // Should not panic or crash
     sim.step();
-    assert_eq!(sim.bodies[idx].electrons.len(), 3, "Overlapping foils should not crash and net current is zero");
+    assert_eq!(sim.bodies[idx].electrons.len(), crate::config::FOIL_NEUTRAL_ELECTRONS, "Overlapping foils should not crash and net current is zero");
 }

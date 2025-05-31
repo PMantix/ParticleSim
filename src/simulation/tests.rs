@@ -164,7 +164,7 @@ mod reactions {
         let mut a = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::LithiumMetal);
         let mut b = Body::new(Vec2::new(1.0, 0.0), Vec2::zero(), 1.0, 1.0, 0.0, Species::LithiumMetal);
         let ion = Body::new(Vec2::new(2.0, 0.0), Vec2::zero(), 1.0, 1.0, 1.0, Species::LithiumIon);
-        for _ in 0..3 { a.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }); }
+        for _ in 0..crate::config::FOIL_NEUTRAL_ELECTRONS { a.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }); }
         a.update_charge_from_electrons();
         b.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
         b.update_charge_from_electrons();

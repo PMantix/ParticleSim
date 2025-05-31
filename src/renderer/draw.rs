@@ -56,7 +56,7 @@ impl super::Renderer {
 
                     // Visualize electron count for FoilMetal
                     if body.species == Species::FoilMetal {
-                        let neutral_electrons = 3; // adjust if your neutral is different
+                        let neutral_electrons = crate::config::FOIL_NEUTRAL_ELECTRONS;
                         let electron_count = body.electrons.len();
                         if electron_count > neutral_electrons {
                             // More electrons: draw a green circle (smaller, centered)
