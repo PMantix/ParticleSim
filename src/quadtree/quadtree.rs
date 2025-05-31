@@ -53,6 +53,11 @@ impl Quadtree {
         self.parents[len] = node;
         self.nodes[node].children = children;
 
+        // Ensure enough space for all children nodes
+        if self.nodes.len() <= children + 3 {
+            self.nodes.resize(children + 4, Node::ZEROED);
+        }
+
         let nexts = [
             children + 1,
             children + 2,

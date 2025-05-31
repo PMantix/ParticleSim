@@ -31,7 +31,7 @@ pub const LITHIUM_METAL_NEUTRAL_ELECTRONS: usize = 1;
 // ====================
 // Simulation Parameters
 // ====================
-pub const DEFAULT_DT: f32 = 0.0025;                     // Default simulation timestep
+pub const DEFAULT_DT: f32 = 0.003;                     // Default simulation timestep
 pub const _DEFAULT_PARTICLE_COUNT: usize = 50000;        // Default number of particles
 pub const COLLISION_PASSES: usize = 3;                  // Number of collision resolution passes
 
@@ -79,6 +79,7 @@ pub struct SimConfig {
     pub show_velocity_vectors: bool,
     pub show_electron_density: bool,
     pub show_field_vectors: bool, // NEW: show field vectors
+    pub damping_base: f32, // Add base damping factor
     // Add other parameters as needed
 }
 
@@ -93,6 +94,7 @@ impl Default for SimConfig {
             show_velocity_vectors: SHOW_VELOCITY_VECTORS,
             show_electron_density: SHOW_ELECTRON_DENSITY,
             show_field_vectors: SHOW_FIELD_VECTORS, // NEW
+            damping_base: 0.999, // Default base damping
         }
     }
 }

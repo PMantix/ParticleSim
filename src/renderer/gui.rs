@@ -16,7 +16,8 @@ impl super::Renderer {
                 ui.add(
                     egui::Slider::new(&mut mag, 0.0..=1000.0)
                         .text("Field |E|")
-                        .clamp_to_range(true),
+                        .clamp_to_range(true)
+                        .step_by(1.0), // Set increment to 1
                 );
                 *FIELD_MAGNITUDE.lock() = mag;
 
@@ -41,7 +42,13 @@ impl super::Renderer {
                 ui.label("Simulation Controls:");
                 ui.add(
                     egui::Slider::new(&mut *TIMESTEP.lock(), 0.001..=0.2)
-                        .text("Timestep (dt)"),
+                        .text("Timestep (dt)")
+                        .step_by(0.001),
+                );
+                ui.add(
+                    egui::Slider::new(&mut self.sim_config.damping_base, 0.95..=1.0)
+                        .text("Damping Base")
+                        .step_by(0.0001),
                 );
 
                 let mut passes = COLLISION_PASSES.lock();
