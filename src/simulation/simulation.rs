@@ -162,7 +162,11 @@ impl Simulation {
         let n = self.bodies.len();
         let mut hops: Vec<(usize, usize)> = vec![];
         let mut received_electron = vec![false; n];
-        for src_idx in 0..n {
+        // Shuffle source indices to remove directional bias
+        let mut src_indices: Vec<usize> = (0..n).collect();
+        let mut rng = rand::rng();
+        src_indices.shuffle(&mut rng);
+        for &src_idx in &src_indices {
             let src_body = &self.bodies[src_idx];
             if !(src_body.species == Species::LithiumMetal || src_body.species == Species::FoilMetal) || src_body.electrons.len() <= 1 {
                 continue;
@@ -190,7 +194,6 @@ impl Simulation {
             }
 
             // 2️⃣ Shuffle the neighbor list to remove directional bias
-            let mut rng = rand::rng(); // Use rand::rng() for rand 0.9+
             candidate_neighbors.shuffle(&mut rng);
 
             // 3️⃣ Now process in random order

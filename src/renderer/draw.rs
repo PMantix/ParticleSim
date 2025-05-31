@@ -54,6 +54,27 @@ impl super::Renderer {
 
 					ctx.draw_circle(body.pos, body.radius, color);
 
+                    // Visualize electron count for FoilMetal
+                    if body.species == Species::FoilMetal {
+                        let neutral_electrons = 3; // adjust if your neutral is different
+                        let electron_count = body.electrons.len();
+                        if electron_count > neutral_electrons {
+                            // More electrons: draw a green circle (smaller, centered)
+                            ctx.draw_circle(
+                                body.pos,
+                                body.radius * 0.5,
+                                [0, 255, 0, 255], // green
+                            );
+                        } else if electron_count < neutral_electrons {
+                            // Fewer electrons: draw a red circle (smaller, centered)
+                            ctx.draw_circle(
+                                body.pos,
+                                body.radius * 0.5,
+                                [255, 0, 0, 255], // red
+                            );
+                        }
+                    }
+
                     if body.species == Species::LithiumMetal {
                         for electron in &body.electrons {
                             let electron_pos = body.pos + electron.rel_pos;
