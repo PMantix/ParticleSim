@@ -162,6 +162,7 @@ impl Simulation {
     }
 
     pub fn perform_electron_hopping(&mut self) {
+        if self.bodies.is_empty() { return; }
         let n = self.bodies.len();
         let mut hops: Vec<(usize, usize)> = vec![];
         let mut received_electron = vec![false; n];

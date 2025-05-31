@@ -9,6 +9,10 @@ pub struct Quad {
 
 impl Quad {
     pub fn new_containing(bodies: &[Body]) -> Self {
+        if bodies.is_empty() {
+            return Self { center: Vec2::zero(), size: 1.0 };
+        }
+
         let mut min_x = f32::MAX;
         let mut min_y = f32::MAX;
         let mut max_x = f32::MIN;
