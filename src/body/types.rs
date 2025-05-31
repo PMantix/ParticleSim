@@ -59,4 +59,12 @@ impl Body {
             self.species = Species::LithiumMetal;
         }
     }
+
+    pub fn neutral_electron_count(&self) -> usize {
+        match self.species {
+            Species::LithiumMetal => crate::config::LITHIUM_METAL_NEUTRAL_ELECTRONS,
+            Species::FoilMetal => crate::config::FOIL_NEUTRAL_ELECTRONS,
+            _ => 0, // Ions and others have 0 neutral electrons
+        }
+    }
 }
