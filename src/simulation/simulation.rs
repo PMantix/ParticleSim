@@ -252,8 +252,4 @@ impl Simulation {
             body.apply_redox();
         }
     }
-
-    pub fn update_config(&mut self, new_config: &config::SimConfig) {
-        self.config = new_config.clone();
-    }
 }

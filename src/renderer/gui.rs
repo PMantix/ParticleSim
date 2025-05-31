@@ -81,7 +81,7 @@ impl super::Renderer {
 
                 // --- Lennard-Jones Parameters ---
                 ui.label("Lennard-Jones Parameters:");
-                ui.add(egui::Slider::new(&mut self.sim_config.lj_force_epsilon, 0.0..=2000.0)
+                ui.add(egui::Slider::new(&mut self.sim_config.lj_force_epsilon, 0.0..=10000.0)
                     .text("LJ Epsilon (attraction strength)")
                     .step_by(1.0));
                 ui.add(egui::Slider::new(&mut self.sim_config.lj_force_sigma, 0.1..=5.0)
