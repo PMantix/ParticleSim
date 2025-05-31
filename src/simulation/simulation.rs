@@ -214,7 +214,9 @@ impl Simulation {
 
                 // compute overpotential Δφ
                 let d_phi = dst_body.charge - src_body.charge;
-                if d_phi <= 0.0 {
+                let allow_hungry_foil = dst_body.species == Species::FoilMetal
+                    && dst_body.electrons.len() < dst_body.neutral_electron_count();
+                if d_phi <= 0.0 && !allow_hungry_foil {
                     continue;
                 }
 
