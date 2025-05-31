@@ -11,22 +11,22 @@ fn test_foil_current_adds_removes_electrons() {
     let mut sim = Simulation::new();
     // Create a single FoilMetal body
     let mut body = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::FoilMetal);
-    // Start with 3 electrons
+    // Start with neutral electrons
     body.electrons = vec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }; crate::config::FOIL_NEUTRAL_ELECTRONS];
     let idx = sim.bodies.len();
     let id = body.id;
     sim.bodies.push(body);
     // Create a foil referencing this body by ID
     let mut foil = Foil::new(vec![id], Vec2::zero(), 1.0, 1.0, 2.0); // positive current
-    foil.accum = 2.0; // force two electrons to be added
+    foil.accum = (crate::config::FOIL_MAX_ELECTRONS - crate::config::FOIL_NEUTRAL_ELECTRONS) as f32; // force max electrons to be added
     sim.foils.push(foil);
     sim.step();
-    assert_eq!(sim.bodies[idx].electrons.len(), 5, "Electrons should be added by positive current");
+    assert_eq!(sim.bodies[idx].electrons.len(), crate::config::FOIL_MAX_ELECTRONS, "Electrons should be added up to FOIL_MAX_ELECTRONS");
     // Now test negative current
     sim.foils[0].current = -2.0;
-    sim.foils[0].accum = -2.0;
+    sim.foils[0].accum = -((crate::config::FOIL_MAX_ELECTRONS - crate::config::FOIL_NEUTRAL_ELECTRONS) as f32);
     sim.step();
-    assert_eq!(sim.bodies[idx].electrons.len(), 3, "Electrons should be removed by negative current");
+    assert_eq!(sim.bodies[idx].electrons.len(), crate::config::FOIL_NEUTRAL_ELECTRONS, "Electrons should be removed down to FOIL_NEUTRAL_ELECTRONS");
 }
 
 #[test]
@@ -35,7 +35,6 @@ fn test_foil_default_electrons() {
     use ultraviolet::Vec2;
 
     let mut body = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::FoilMetal);
-    // Should default to 3 electrons for foil
     body.electrons = vec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }; crate::config::FOIL_NEUTRAL_ELECTRONS];
     assert_eq!(body.electrons.len(), crate::config::FOIL_NEUTRAL_ELECTRONS, "FoilMetal should start with correct number of electrons");
 }
@@ -54,7 +53,6 @@ fn test_foil_is_fixed() {
     sim.bodies.push(body);
     sim.foils.push(Foil::new(vec![id], Vec2::zero(), 1.0, 1.0, 0.0));
     sim.step();
-    // No longer assert fixed, just check it still exists and has large mass
     assert_eq!(sim.bodies[idx].mass, 1e6, "FoilMetal should have large mass");
 }
 
@@ -80,25 +78,10 @@ fn test_foil_lj_force_affects_metal() {
     sim.foils.push(Foil::new(vec![foil_id], Vec2::zero(), 1.0, 1.0, 0.0));
 
     let initial_dist = (sim.bodies[foil_idx].pos - sim.bodies[metal_idx].pos).mag();
-    println!("Initial distance: {}", initial_dist);
-    for step in 0..10 {
+    for _step in 0..10 {
         sim.step();
-        let pos_foil = sim.bodies[foil_idx].pos;
-        let pos_metal = sim.bodies[metal_idx].pos;
-        let dist = (pos_foil - pos_metal).mag();
-        let vel = sim.bodies[metal_idx].vel;
-        println!(
-            "Step {}: Metal pos = {:?}, Foil pos = {:?}, distance = {:.6}, metal vel = {:?}",
-            step, pos_metal, pos_foil, dist, vel
-        );
-        // Optionally, print acceleration if available
-        println!(
-            "Step {}: Metal acc = {:?}",
-            step, sim.bodies[metal_idx].acc
-        );
     }
     let new_dist = (sim.bodies[foil_idx].pos - sim.bodies[metal_idx].pos).mag();
-    println!("Final distance: {}", new_dist);
     assert!(new_dist < initial_dist, "LithiumMetal should be attracted to fixed FoilMetal by LJ force");
 }
 
@@ -115,10 +98,8 @@ fn test_overlapping_foil_indices_handled() {
     let idx = sim.bodies.len();
     let id = body.id;
     sim.bodies.push(body);
-    // Add two foils referencing the same body by ID
     sim.foils.push(Foil::new(vec![id], Vec2::zero(), 1.0, 1.0, 1.0));
     sim.foils.push(Foil::new(vec![id], Vec2::zero(), 1.0, 1.0, -1.0));
-    // Should not panic or crash
     sim.step();
     assert_eq!(sim.bodies[idx].electrons.len(), crate::config::FOIL_NEUTRAL_ELECTRONS, "Overlapping foils should not crash and net current is zero");
 }
