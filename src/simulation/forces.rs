@@ -65,11 +65,20 @@ pub fn apply_lj_forces(sim: &mut Simulation) {
                     let max_lj_force = config::COLLISION_PASSES as f32 * config::LJ_FORCE_MAX;
                     let unclamped_force_mag = 24.0 * epsilon * (2.0 * sr6 * sr6 - sr6) / r;
                     let force_mag = unclamped_force_mag.clamp(-max_lj_force, max_lj_force);
-                    // Invert the direction so that attractive is correct at r = sigma
-                    let force = -force_mag * r_vec.normalized();
-                    // Update acceleration
-                    a.acc += force / a.mass;
-                    b.acc -= force / b.mass;
+                    let force = force_mag * r_vec.normalized();
+                    //println!("LJ DEBUG: r={:.3}, sr6={:.3}, force_mag={:.3}, force=({:.3},{:.3})", r, sr6, force_mag, force.x, force.y);
+                    
+                    // track our Coulomb forces for debugging
+                    a.coulomb_force = a.acc * a.mass;
+                    b.coulomb_force = b.acc * b.mass;
+
+                    // Update acceleration (SWAPPED SIGNS)
+                    a.acc -= force / a.mass;
+                    b.acc += force / b.mass;
+
+                    // track our forces for debugging 
+                    a.lj_force = force;
+                    b.lj_force = force;
 
                     // Debug print: LJ vs Coulomb force ratio if enabled
                     if sim.config.show_lj_vs_coulomb_ratio {
@@ -86,7 +95,7 @@ pub fn apply_lj_forces(sim: &mut Simulation) {
                     }
 
                     // Debug print: Show LJ force vector, positions, and direction
-                    //println!("LJ DEBUG: i={}, j={}, r={:.4}, a.pos=({:.4},{:.4}), b.pos=({:.4},{:.4}), force=({:.4},{:.4})", i, j, r, a.pos.x, a.pos.y, b.pos.x, b.pos.y, force.x, force.y);
+                    //println!("LJ DEBUG 2: i={}, j={}, r={:.4}, a.pos=({:.4},{:.4}), b.pos=({:.4},{:.4}), force=({:.4},{:.4})", i, j, r, a.pos.x, a.pos.y, b.pos.x, b.pos.y, force.x, force.y);
                 }
             }
         }

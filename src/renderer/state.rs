@@ -6,7 +6,7 @@ use std::sync::mpsc::{Sender};
 use crate::body::Body;
 use crate::quadtree::Node;
 
-pub static TIMESTEP: Lazy<Mutex<f32>> = Lazy::new(|| Mutex::new(0.0001));
+pub static TIMESTEP: Lazy<Mutex<f32>> = Lazy::new(|| Mutex::new(0.001));
 pub static FIELD_MAGNITUDE: Lazy<Mutex<f32>> = Lazy::new(|| Mutex::new(0.0));
 pub static FIELD_DIRECTION: Lazy<Mutex<f32>> = Lazy::new(|| Mutex::new(180.0));
 pub static PAUSED: Lazy<AtomicBool> = Lazy::new(|| AtomicBool::new(false));
@@ -49,6 +49,7 @@ pub enum SimCommand {
         particle_radius: f32,
         current: f32,
     },
+    StepOnce
 }
 
 pub static SIM_COMMAND_SENDER: Lazy<Mutex<Option<Sender<SimCommand>>>> = Lazy::new(|| Mutex::new(None));

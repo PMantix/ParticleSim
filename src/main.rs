@@ -159,6 +159,15 @@ fn main() {
                         }
                     },
 
+                    // Handle the StepOnce command (currently does nothing)
+                    SimCommand::StepOnce => {
+                        // Manually step the simulation one frame
+                        simulation.step();
+                        render(&mut simulation);
+                        // Optionally, pause the simulation if desired:
+                        PAUSED.store(true, Ordering::Relaxed);
+                    },
+
                     SimCommand::AddRing { body, x, y, radius } => {
                         let center = Vec2::new(x, y);
                         let particle_radius = body.radius;

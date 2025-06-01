@@ -88,9 +88,15 @@ impl super::Renderer {
                     if let Some(id) = closest {
                         if let Some(body) = self.bodies.iter().find(|b| b.id == id) {
                             println!(
-                                "Selected particle: id={:?}, pos={:?}, radius={:.3}, charge={:.3}, electrons={}, species={:?}",
-                                body.id, body.pos, body.radius, body.charge, body.electrons.len(), body.species
+                                "Selected Body: id={}, pos={:?}, vel={:?}, acc={:?}, charge={}, electrons={}, species={:?}",
+                                body.id, body.pos, body.vel, body.acc, body.charge, body.electrons.len(), body.species
                             );
+                                                        // If you accumulate per-source forces, print them here:
+                            {
+                                println!("LJ force: {:?}", body.lj_force);
+                                println!("Coulomb force: {:?}", body.coulomb_force);
+                                // etc.
+                            }
                         }
                     }
 

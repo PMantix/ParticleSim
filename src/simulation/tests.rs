@@ -362,7 +362,8 @@ mod reactions {
                 electrons: Vec::new(),
                 id: 0,
                 e_field: Vec2::zero(),
-                // Add any other required fields here
+                lj_force: Vec2::zero(),
+                coulomb_force: Vec2::zero(),
             };
             let bodies = vec![body];
             let config = crate::config::SimConfig::default();
@@ -450,7 +451,8 @@ mod reactions {
                 electrons: Vec::new(),
                 id: 0,
                 e_field: Vec2::zero(),
-                // ...other fields as needed...
+                lj_force: Vec2::zero(),
+                coulomb_force: Vec2::zero(),
             };
             
             let mut bodies = vec![body];

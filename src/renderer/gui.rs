@@ -58,6 +58,10 @@ impl super::Renderer {
                         .clamp_to_range(true),
                 );
 
+                if ui.button("Step Simulation").clicked() {
+                    SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::StepOnce).unwrap();
+                }
+
                 if self.show_quadtree {
                     let range = &mut self.depth_range;
                     ui.horizontal(|ui| {
