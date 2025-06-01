@@ -211,3 +211,35 @@ mod foil_cohesion {
         assert!(avg_dist_after_remove < initial_avg_dist * 1.5, "Foil particles separated too much after removing electrons: {} vs {}", avg_dist_after_remove, initial_avg_dist);
     }
 }
+
+#[test]
+fn test_lj_vs_coulomb_force_strength() {
+    use crate::config;
+    use ultraviolet::Vec2;
+
+    // Place two metal particles at contact (r = sigma)
+    let sigma = config::LJ_FORCE_SIGMA;
+    let epsilon = config::LJ_FORCE_EPSILON;
+    let k_e = crate::simulation::forces::K_E;
+    let charge = 1.0; // 1e each
+
+    let pos_a = Vec2::new(0.0, 0.0);
+    let pos_b = Vec2::new(sigma, 0.0);
+
+    // Calculate LJ force at r = sigma
+    let r_vec = pos_b - pos_a;
+    let r = r_vec.mag();
+    let sr6 = (sigma / r).powi(6);
+    let lj_force_mag = 24.0 * epsilon * (2.0 * sr6 * sr6 - sr6) / r;
+
+    // Calculate Coulomb force at r = sigma
+    let coulomb_force_mag = k_e * charge * charge / (r * r);
+
+    println!("LJ force magnitude at contact: {}", lj_force_mag.abs());
+    println!("Coulomb force magnitude at contact: {}", coulomb_force_mag.abs());
+
+    // The LJ force should be at least as strong as the Coulomb force to hold them together
+    assert!(lj_force_mag.abs() >= coulomb_force_mag.abs(),
+        "LJ force ({}) is weaker than Coulomb force ({}) at contact distance (sigma)",
+        lj_force_mag.abs(), coulomb_force_mag.abs());
+}

@@ -73,6 +73,20 @@ pub fn apply_lj_forces(sim: &mut Simulation) {
                     if !b.fixed {
                         b.acc += force / b.mass;
                     }
+
+                    // Debug print: LJ vs Coulomb force ratio if enabled
+                    if sim.config.show_lj_vs_coulomb_ratio {
+                        // Only print for nonzero charge pairs
+                        if a.charge.abs() > 1e-6 && b.charge.abs() > 1e-6 {
+                            let coulomb_force_mag = crate::simulation::forces::K_E * a.charge * b.charge / (r * r);
+                            let ratio = if coulomb_force_mag.abs() > 1e-12 {
+                                force_mag.abs() / coulomb_force_mag.abs()
+                            } else {
+                                0.0
+                            };
+                            println!("LJ force: {:.3e}, Coulomb force: {:.3e}, ratio (LJ/Coulomb): {:.3}", force_mag, coulomb_force_mag, ratio);
+                        }
+                    }
                 }
             }
         }

@@ -19,7 +19,7 @@ pub const _CLUSTER_DISTANCE: f32 = 1.2;                // Distance threshold for
 pub const LJ_FORCE_EPSILON: f32 = 500.0;                  // Lennard-Jones epsilon parameter
 pub const LJ_FORCE_SIGMA: f32 = 1.1;                    // Lennard-Jones sigma parameter
 pub const LJ_FORCE_CUTOFF: f32 = 2.5;                  // Lennard-Jones cutoff distance
-pub const LJ_FORCE_MAX: f32 = 33.33;                   // Max Lennard-Jones force magnitude
+pub const LJ_FORCE_MAX: f32 = 1000.0;                   // Max Lennard-Jones force magnitude
 
 // ====================
 // Species/Body Parameters
@@ -32,7 +32,7 @@ pub const FOIL_MAX_ELECTRONS: usize = 2;           // Max electrons for foil met
 // ====================
 // Simulation Parameters
 // ====================
-pub const DEFAULT_DT: f32 = 0.003;                     // Default simulation timestep
+pub const DEFAULT_DT: f32 = 0.0005;                     // Reduced minimum simulation timestep for better stability
 pub const _DEFAULT_PARTICLE_COUNT: usize = 50000;        // Default number of particles
 pub const COLLISION_PASSES: usize = 3;                  // Number of collision resolution passes
 
@@ -85,6 +85,7 @@ pub struct SimConfig {
     pub lj_force_epsilon: f32,
     pub lj_force_sigma: f32,
     pub lj_force_cutoff: f32,
+    pub show_lj_vs_coulomb_ratio: bool, // Show LJ/Coulomb force ratio debug overlay
 }
 
 impl Default for SimConfig {
@@ -102,6 +103,7 @@ impl Default for SimConfig {
             lj_force_epsilon: LJ_FORCE_EPSILON,
             lj_force_sigma: LJ_FORCE_SIGMA,
             lj_force_cutoff: LJ_FORCE_CUTOFF,
+            show_lj_vs_coulomb_ratio: false, // Default off
         }
     }
 }
