@@ -10,12 +10,10 @@ mod foil_lj_force {
     fn foil_lj_force_affects_metal() {
         let mut sim = Simulation::new();
         let mut foil_body = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::FoilMetal);
-        foil_body.fixed = true;
         foil_body.electrons = vec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }; crate::config::FOIL_NEUTRAL_ELECTRONS];
         sim.bodies.push(foil_body);
         let foil_id = sim.bodies.last().expect("Foil body not found after push").id;
-        let mut metal_body = Body::new(Vec2::new(1.2, 0.0), Vec2::zero(), 1.0, 1.0, 0.0, Species::LithiumMetal);
-        metal_body.fixed = false;
+        let metal_body = Body::new(Vec2::new(1.2, 0.0), Vec2::zero(), 1.0, 1.0, 0.0, Species::LithiumMetal);
         sim.bodies.push(metal_body);
         let metal_id = sim.bodies.last().expect("Metal body not found after push").id;
         sim.foils.push(Foil::new(vec![foil_id], Vec2::zero(), 1.0, 1.0, 0.0));
@@ -31,6 +29,6 @@ mod foil_lj_force {
         let metal = sim.bodies.iter().find(|b| b.id == metal_id).expect("Metal not found after step");
         println!("Final metal position: {:?}", metal.pos);
         let new_dist = (foil.pos - metal.pos).mag();
-        assert!(new_dist < initial_dist, "LithiumMetal should be attracted to fixed FoilMetal by LJ force");
+        assert!(new_dist < initial_dist, "LithiumMetal should be attracted to FoilMetal by LJ force");
     }
 }

@@ -19,7 +19,6 @@ mod tests {
             electrons: Vec::new(),
             id: 0,
             e_field: Vec2::zero(),
-            fixed: false, // Added missing field
             // Add other fields as needed for your Body struct
         };
         let mut bodies = vec![body];

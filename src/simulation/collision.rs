@@ -52,24 +52,7 @@ fn resolve(sim: &mut Simulation, i: usize, j: usize, num_passes: usize) {
     let m2 = b2.mass;
     let weight1 = m2 / (m1 + m2);
     let weight2 = m1 / (m1 + m2);
-    // Prevent movement of fixed (foil) bodies during collision resolution
-    let b1_fixed = b1.fixed;
-    let b2_fixed = b2.fixed;
-    if b1_fixed && b2_fixed {
-        // Both are fixed, do nothing
-        return;
-    }
-    // If one is fixed, only move the non-fixed one
-    if b1_fixed {
-        let tmp = d * (r / d.mag() - 1.0);
-        sim.bodies[j].pos += tmp;
-        return;
-    }
-    if b2_fixed {
-        let tmp = d * (r / d.mag() - 1.0);
-        sim.bodies[i].pos -= tmp;
-        return;
-    }
+
     if d_dot_v >= 0.0 && d != Vec2::zero() {
         let tmp = d * (r / d.mag() - 1.0);
         sim.bodies[i].pos -= weight1 * tmp;

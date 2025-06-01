@@ -67,13 +67,9 @@ pub fn apply_lj_forces(sim: &mut Simulation) {
                     let force_mag = unclamped_force_mag.clamp(-max_lj_force, max_lj_force);
                     // Invert the direction so that attractive is correct at r = sigma
                     let force = -force_mag * r_vec.normalized();
-                    // Only update acceleration if not fixed
-                    if !a.fixed {
-                        a.acc += force / a.mass;
-                    }
-                    if !b.fixed {
-                        b.acc -= force / b.mass;
-                    }
+                    // Update acceleration
+                    a.acc += force / a.mass;
+                    b.acc -= force / b.mass;
 
                     // Debug print: LJ vs Coulomb force ratio if enabled
                     if sim.config.show_lj_vs_coulomb_ratio {
@@ -90,7 +86,7 @@ pub fn apply_lj_forces(sim: &mut Simulation) {
                     }
 
                     // Debug print: Show LJ force vector, positions, and direction
-                    println!("LJ DEBUG: i={}, j={}, r={:.4}, a.pos=({:.4},{:.4}), b.pos=({:.4},{:.4}), force=({:.4},{:.4})", i, j, r, a.pos.x, a.pos.y, b.pos.x, b.pos.y, force.x, force.y);
+                    //println!("LJ DEBUG: i={}, j={}, r={:.4}, a.pos=({:.4},{:.4}), b.pos=({:.4},{:.4}), force=({:.4},{:.4})", i, j, r, a.pos.x, a.pos.y, b.pos.x, b.pos.y, force.x, force.y);
                 }
             }
         }
