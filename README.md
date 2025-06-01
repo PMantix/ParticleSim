@@ -1,123 +1,116 @@
 # Barnes-Hut N-Body Simulation (Rust)
 
-This repository contains a modular, parallelized, and extensible implementation of the Barnes-Hut algorithm for simulating large-scale N-body systems in 2D, written in Rust.  
-It is designed for high performance, clarity, and ease of extension, with a focus on modern Rust best practices and code organization.
-End goal is to develop a particle based simulator of electrochemical charging and discharging processes, **now with explicit electron polarization and field-driven electron dynamics**.
+This repository contains a modular, parallelized Barnes-Hut simulation for large-scale N-body systems in 2D, written in Rust. Its ultimate goal is to model electrochemical charging/discharging with explicit electron polarization and field-driven electron dynamics. Enjoy experimenting with state-of-the-art debug features and interactive controls!
 
 ---
 
 ## Features
 
-- **Barnes-Hut Quadtree**: Efficient spatial partitioning for O(N log N) force calculation.
-- **Parallel Simulation**: Uses Rayon for multi-threaded computation.
-- **Explicit Electron Polarization**: Lithium metal particles now have explicit valence electrons that polarize in response to the net electric field (background + all other charges), visualizing local charge separation and field effects.
-- **Physically Accurate Field Handling**: Electron polarization is based on the true net field at each lithium metal atom, not just background or local random motion.
-- **Modular Codebase**: Clean separation of simulation, quadtree, rendering, and state management.
-- **Interactive GUI**: Real-time visualization and controls via [quarkstrom](https://github.com/DeadlockCode/quarkstrom).
-- **Particle Selection & Editing**: Select particles with Shift+Left Click and adjust their charge using keyboard shortcuts (`+`/`-`).
-- **Live Particle Editing**: Changes to particle properties (e.g., charge) are applied robustly during simulation via a command system.
-- **Configurable Parameters**: Easily adjust simulation size, physics constants, and visualization options.
-- **Extensible**: Well-structured for adding new physics, force laws, or visualization features.
-- **Visual Debugging**: See selected particles highlighted with a halo and view live charge values.
-- **Velocity Vector Overlay**: Toggle drawing of velocity vectors to visualize particle motion.
-- **Metal Foils**: Fixed rectangular foils can act as electron sources or sinks with adjustable current.
-- Draws heavily from original source: https://github.com/DeadlockCode/barnes-hut.git
+- **Barnes-Hut Quadtree**: Efficient spatial partitioning for O(N log N) force calculations.
+- **Parallel Simulation**: Utilizes Rayon for multi-threading.
+- **Explicit Electron Polarization**:  
+  - Lithium metal particles now include explicit valence electrons.
+  - Electrons polarize in response to local electric fields (background plus inter-particle fields), providing a realistic visualization of charge separation.
+- **Accurate Redox Transitions & Charge Conservation**:  
+  - Lithium ions (Li⁺) and lithium metal (Li) update their species and charge according to electron count.
+  - Electron hopping is implemented with strict conservation rules.
+- **Live Force Tracking & Debugging**:  
+  - Separate accumulation and visualization of Coulomb and Lennard-Jones (LJ) forces.
+  - Debug prints (configurable via the GUI) display per-body force vectors, acceleration, and velocity.
+- **Interactive GUI**:  
+  - Real-time visualization and controls via [quarkstrom](https://github.com/DeadlockCode/quarkstrom).
+  - **Manual Step Button**: Step the simulation forward by one timestep per click for precise debugging.
+  - Particle selection prints detailed diagnostics (including position, velocity, acceleration, LJ and Coulomb forces) to the console.
+  - Adjustable visualization overlays (e.g., velocity vectors, electron density, field isolines, and force ratio overlays).
+- **Scenario Controls**:  
+  - Quick simulation setups with commands to add circles, rectangles, and foil-based structures.
+  - Easily clear all particles and experiment with various initial conditions.
+- **Configurable Parameters**:  
+  - All key physics constants and GUI visualization parameters are accessible and modifiable.
+  - Experiment with different timestep settings and damping factors.
+- **Extensible and Modular Codebase**:  
+  - Well-structured separation of simulation, quadtree, rendering, and state management.
+  - New force laws, diagnostic features, or spatial partitioning strategies can be added easily.
 
 ---
 
 ## Getting Started
 
 1. **Install [Rust](https://www.rust-lang.org/tools/install)**
-2. Clone this repository:
-3. Build and run:
+2. **Clone this repository:**
+   ```sh
+   git clone https://github.com/your-username/barnes-hut-simulation.git
+   cd barnes-hut-simulation
+   ```
+3. **Build and run:**
    ```sh
    cargo run --release
    ```
-   > **Note:** On non-Windows platforms, see [this issue](https://github.com/DeadlockCode/n-body/issues/1) for dependencies.
+   > **Note:** On non-Windows platforms, see [this issue](https://github.com/DeadlockCode/n-body/issues/1) for additional dependencies.
 
 ---
 
 ## Controls
 
-- **Scroll**: Zoom in/out
-- **Middle Mouse Button**: Pan the view
-- **Shift + Left Click**: Select a particle
-- **+ / -**: Increase/decrease charge of selected particle
-- **Escape**: Deselect particle
-- **Right Mouse Button**: Spawn a new body
-- **Move Mouse (while holding right click)**: Adjust mass of spawned body
-- **Space**: Pause/resume simulation
-- **E**: Open settings menu (toggle quadtree visualization, etc.)
-- Enable "Show Field Isolines" in the settings to visualize the electric potential field
+- **Scrolling**: Zoom in/out.
+- **Middle Mouse Button**: Pan the view.
+- **Shift + Left Click**: Select a particle.  
+  The console will print detailed diagnostics for the selected particle, including:
+  - **ID, Position, Velocity, and Acceleration**
+  - **LJ Force** and **Coulomb Force** vectors (tracked and updated separately).
+- **+ / - Keys**: Increase or decrease the charge of the selected particle.
+- **Escape**: Deselect the current particle.
+- **Right Mouse Button**: Spawn a new body (with adjustable mass by moving the mouse).
+- **Space**: Pause/resume simulation.
+- **E**: Open the settings menu (toggle quadtree visualization, field isolines, etc.).
 
----
-
-## Scenario Controls (New!)
-
-The GUI now features a **Scenario** section for rapid simulation setup and prototyping:
-
-- **Delete All Particles**: Instantly clear the simulation space.
-- **Add Circle**: Spawn a ring of particles at any position, with configurable radius, species (Metal or Ion), and (optionally) count.
-    - Set the desired radius, X/Y position, and species using the GUI controls.
-    - Click "Add" to create a circle of particles in the simulation.
-- **Add Rectangle**: Spawn a rectangular block of particles.
-- **Add Foil**: Create a fixed rectangular metal foil that can source or sink electrons at a configurable current.
-
-This enables quick experimentation with different initial conditions and system configurations, all from the GUI.
+**Additional GUI Controls:**
+- **Manual Step**:  
+  A new "Step Simulation" button in the GUI allows you to advance the simulation by one timestep per click.
+- **Scenario Setup**:  
+  - **Delete All Particles**: Clears the simulation space immediately.
+  - **Add Circle / Rectangle / Foil**: Spawn configured groups of particles quickly—ideal for rapid prototyping and testing.
+- **Force Visualization Overlays**:  
+  Toggle overlays for velocity vectors, electron density, and force ratio display.
 
 ---
 
 ## Project Structure
 
-- `src/renderer/` — Rendering and GUI logic (modularized)
-- `src/quadtree/` — Quadtree spatial partitioning (split into node, quad, traits, and main logic)
-- `src/simulation.rs` — Simulation step logic and physics
-- `src/body.rs` — Body struct and related methods (now includes explicit electrons and polarization)
-- `src/partition.rs` — Utilities for partitioning and parallelization
-- `src/main.rs` — Entry point, threading, and main loop
+- **`src/renderer/`** — Rendering and GUI logic (includes the new diagnostic output and manual step button).
+- **`src/quadtree/`** — Barnes-Hut quadtree spatial partitioning for efficiency.
+- **`src/simulation.rs`** — Simulation logic and physics; integrates force laws and electron dynamics.
+- **`src/body.rs`** — Contains the `Body` struct and methods; now supports explicit electron and polarization handling.
+- **`src/config.rs`** — Configurable simulation parameters, including force constants and visualization options.
+- **`src/main.rs`** — Entry point, handles threading, command processing, and the main simulation loop.
 
 ---
 
-## Extending
+## Extending & Debugging
 
-- Add new force laws or physics in `src/simulation.rs` or as new modules.
-- Extend the GUI in `src/renderer/gui.rs`.
-- Implement new spatial partitioning strategies in `src/quadtree/`.
+- **Force Tracking**:  
+  The simulation maintains separate debug fields for LJ and Coulomb forces in each `Body`. These are accumulated during force calculations for later inspection.
+- **Manual Stepping**:  
+  Use the new GUI button to advance one timestep at a time for detailed debugging.
+- **Adding New Features**:  
+  Extend physics or visualization modules easily thanks to the modular code organization.
+- **Testing**:  
+  Run the comprehensive test suite with:
+  ```sh
+  cargo test
+  ```
 
 ---
 
 ## License
 
-MIT License
+This project is licensed under the MIT License.
 
 ---
 
 ## Credits
 
-- Based on the original Barnes-Hut algorithm and heavily based on: https://github.com/DeadlockCode/barnes-hut.git [DeadlockCode's video](https://youtu.be/nZHjD3cI-EU).
-- Uses [quarkstrom](https://github.com/DeadlockCode/quarkstrom) for rendering and GUI.
+- Based on the original Barnes-Hut algorithm.
+- Inspired by [DeadlockCode's Barnes-Hut implementation](https://github.com/DeadlockCode/barnes-hut.git) and the [quarkstrom](https://github.com/DeadlockCode/quarkstrom) GUI framework.
 
----
-
-## Physical Model: Electrons, Redox, and Charge Conservation
-
-This simulation models lithium ions (Li⁺) and lithium metal (Li) with explicit valence electrons:
-
-- **Redox Transitions**: Ions become metals if they gain ≥1 electron (the electron causes reduction; no electron is consumed in the transition). Metals become ions if they lose all electrons. Charge is always recalculated from the electron count and species.
-- **Electron Hopping**: Electrons can hop between metals and ions, but only down the potential gradient and only if the destination has fewer electrons. Electron conservation is strictly enforced.
-- **Physically Accurate Charge**: For Li metal, charge = -(n_electrons - 1). For Li ion, charge = 1 - n_electrons. This ensures correct redox and charge behavior.
-- **Debugging**: The code includes debug print statements to trace electron hopping and redox transitions.
-
----
-
-## Documentation & Testing
-
-- All major modules and functions are documented with clear doc comments.
-- The codebase is organized for maintainability and extensibility.
-- Tests cover redox transitions, electron hopping, and edge cases. To run tests:
-
-```powershell
-cargo test
-```
-
----
+Enjoy exploring the dynamics, tweaking the parameters, and watching the electrons dance!
