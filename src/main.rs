@@ -14,7 +14,6 @@ mod renderer;
 mod simulation;
 mod utils;
 mod config;
-mod foil;
 
 use crate::body::Species;
 use renderer::Renderer;
@@ -256,7 +255,7 @@ fn main() {
                                 simulation.bodies.push(new_body);
                             }
                         }
-                        simulation.foils.push(crate::foil::Foil::new(body_ids, origin, width, height, current));
+                        simulation.foils.push(crate::body::foil::Foil::new(body_ids, origin, width, height, current));
                     },
 
                     //SimCommand::Plate { foil_id, amount } => { /* ... */ }

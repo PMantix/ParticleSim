@@ -16,8 +16,8 @@ pub const _CLUSTER_DISTANCE: f32 = 1.2;                // Distance threshold for
 // ====================
 // LJ Force Parameters
 // ====================
-pub const LJ_FORCE_EPSILON: f32 = 500.0;                  // Lennard-Jones epsilon parameter
-pub const LJ_FORCE_SIGMA: f32 = 1.1;                    // Lennard-Jones sigma parameter
+pub const LJ_FORCE_EPSILON: f32 = 10000.0;                  // Lennard-Jones epsilon parameter
+pub const LJ_FORCE_SIGMA: f32 = 2.2;                    // Lennard-Jones sigma parameter
 pub const LJ_FORCE_CUTOFF: f32 = 2.5;                  // Lennard-Jones cutoff distance
 pub const LJ_FORCE_MAX: f32 = 1000.0;                   // Max Lennard-Jones force magnitude
 

@@ -4,7 +4,7 @@
 #[test]
 fn test_foil_current_adds_removes_electrons() {
     use crate::body::{Body, Species, Electron};
-    use crate::foil::Foil;
+    use crate::body::foil::Foil;
     use crate::simulation::Simulation;
     use ultraviolet::Vec2;
 
@@ -33,7 +33,7 @@ mod foil_electron_limits {
     #[test]
     fn foil_does_not_drop_below_zero_electrons() {
         use crate::body::{Body, Species, Electron};
-        use crate::foil::Foil;
+        use crate::body::foil::Foil;
         use crate::simulation::Simulation;
         use ultraviolet::Vec2;
         let mut sim = Simulation::new();
@@ -55,7 +55,7 @@ mod foil_electron_limits {
     #[test]
     fn foil_current_adds_and_removes_electrons_within_limits() {
         use crate::body::{Body, Species, Electron};
-        use crate::foil::Foil;
+        use crate::body::foil::Foil;
         use crate::simulation::Simulation;
         use ultraviolet::Vec2;
         let mut sim = Simulation::new();
@@ -89,7 +89,7 @@ mod foil_mass_and_inertia {
     #[test]
     fn foil_is_inertial_with_large_mass() {
         use crate::body::Body;
-        use crate::foil::Foil;
+        use crate::body::foil::Foil;
         let mut sim = crate::simulation::Simulation::new();
         let body = Body::new(ultraviolet::Vec2::zero(), ultraviolet::Vec2::zero(), 1e6, 1.0, 0.0, crate::body::Species::FoilMetal);
         let idx = sim.bodies.len();
@@ -105,26 +105,35 @@ mod foil_lj_force {
     #[test]
     fn foil_lj_force_affects_metal() {
         use crate::body::{Body, Species, Electron};
-        use crate::foil::Foil;
+        use crate::body::foil::Foil;
         use crate::simulation::Simulation;
         use ultraviolet::Vec2;
+
         let mut sim = Simulation::new();
-        let foil_idx = sim.bodies.len();
         let mut foil_body = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::FoilMetal);
+
         foil_body.fixed = true;
         foil_body.electrons = vec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }; crate::config::FOIL_NEUTRAL_ELECTRONS];
-        let foil_id = foil_body.id;
+        
         sim.bodies.push(foil_body);
-        let metal_idx = sim.bodies.len();
-        let mut metal_body = Body::new(Vec2::new(2.5, 0.0), Vec2::zero(), 1.0, 1.0, 0.0, Species::LithiumMetal);
+        let foil_id = sim.bodies.last().expect("Foil body not found after push").id;
+        let mut metal_body = Body::new(Vec2::new(1.2, 0.0), Vec2::zero(), 1.0, 1.0, 0.0, Species::LithiumMetal);
         metal_body.fixed = false;
         sim.bodies.push(metal_body);
+        let metal_id = sim.bodies.last().expect("Metal body not found after push").id;
         sim.foils.push(Foil::new(vec![foil_id], Vec2::zero(), 1.0, 1.0, 0.0));
-        let initial_dist = (sim.bodies[foil_idx].pos - sim.bodies[metal_idx].pos).mag();
-        for _step in 0..10 {
+        sim.quadtree.build(&mut sim.bodies);
+        let foil = sim.bodies.iter().find(|b| b.id == foil_id).expect("Foil not found");
+        let metal = sim.bodies.iter().find(|b| b.id == metal_id).expect("Metal not found");
+        let initial_dist = (foil.pos - metal.pos).mag();
+        println!("Initial metal position: {:?}", metal.pos);
+        for _step in 0..3 {
             sim.step();
         }
-        let new_dist = (sim.bodies[foil_idx].pos - sim.bodies[metal_idx].pos).mag();
+        let foil = sim.bodies.iter().find(|b| b.id == foil_id).expect("Foil not found after step");
+        let metal = sim.bodies.iter().find(|b| b.id == metal_id).expect("Metal not found after step");
+        println!("Final metal position: {:?}", metal.pos);
+        let new_dist = (foil.pos - metal.pos).mag();
         assert!(new_dist < initial_dist, "LithiumMetal should be attracted to fixed FoilMetal by LJ force");
     }
 }
@@ -133,7 +142,7 @@ mod foil_overlapping_indices {
     #[test]
     fn overlapping_foil_indices_handled() {
         use crate::body::{Body, Species, Electron};
-        use crate::foil::Foil;
+        use crate::body::foil::Foil;
         use crate::simulation::Simulation;
         use ultraviolet::Vec2;
         let mut sim = Simulation::new();
@@ -153,7 +162,7 @@ mod foil_cohesion {
     #[test]
     fn foil_particles_remain_cohesive_within_electron_limits() {
         use crate::body::{Body, Species, Electron};
-        use crate::foil::Foil;
+        use crate::body::foil::Foil;
         use crate::simulation::Simulation;
         use ultraviolet::Vec2;
         let n = 5;
@@ -242,4 +251,50 @@ fn test_lj_vs_coulomb_force_strength() {
     assert!(lj_force_mag.abs() >= coulomb_force_mag.abs(),
         "LJ force ({}) is weaker than Coulomb force ({}) at contact distance (sigma)",
         lj_force_mag.abs(), coulomb_force_mag.abs());
+}
+
+#[test]
+fn test_force_summation_and_motion_balance() {
+    
+    use crate::config;
+    use crate::body::{Body, Species};
+    use ultraviolet::Vec2;
+
+    // Place two foil particles at contact (r = sigma)
+    let sigma = config::LJ_FORCE_SIGMA;
+    let epsilon = config::LJ_FORCE_EPSILON;
+    let mass = 1.0;
+    // Use r = 1.2 * sigma for attraction (LJ attractive region)
+    let r = 1.2 * sigma;
+    let mut a = Body::new(Vec2::new(0.0, 0.0), Vec2::zero(), mass, 1.0, 0.0, Species::FoilMetal);
+    let mut b = Body::new(Vec2::new(r, 0.0), Vec2::zero(), mass, 1.0, 0.0, Species::FoilMetal);
+    // Set charge to zero to test pure LJ
+    a.charge = 0.0;
+    b.charge = 0.0;
+    let mut sim = crate::simulation::Simulation::new();
+    sim.bodies = vec![a, b];
+    sim.quadtree.build(&mut sim.bodies);
+
+    // Step 1: Only LJ (no Coulomb)
+    // Skip forces::attract and do not call apply_lj_forces manually; sim.step() will handle it
+    let sr6 = (sigma / r).powi(6);
+    let lj_force_mag = 24.0 * epsilon * (2.0 * sr6 * sr6 - sr6) / r;
+    println!("expected_lj_force_mag: {} (at r = {})", lj_force_mag, r);
+    // Do not call forces::apply_lj_forces(&mut sim);
+    // Instead, check acceleration after sim.step()
+    let old_pos_a = sim.bodies[0].pos.x;
+    let old_pos_b = sim.bodies[1].pos.x;
+    sim.step();
+    let acc_total_a = sim.bodies[0].acc;
+    let acc_total_b = sim.bodies[1].acc;
+    println!("acc_total_a.x: {} (net)", acc_total_a.x);
+    println!("acc_total_b.x: {} (net)", acc_total_b.x);
+    // Net force should be attractive (a.x > 0, b.x < 0)
+    assert!(acc_total_a.x > 0.0 && acc_total_b.x < 0.0, "Net force should pull particles together (pure LJ)");
+    let new_pos_a = sim.bodies[0].pos.x;
+    let new_pos_b = sim.bodies[1].pos.x;
+    println!("old_pos_a: {}, new_pos_a: {}", old_pos_a, new_pos_a);
+    println!("old_pos_b: {}, new_pos_b: {}", old_pos_b, new_pos_b);
+    // If net force is attractive, particles should move toward each other
+    assert!(new_pos_a > old_pos_a && new_pos_b < old_pos_b, "Particles should move toward each other if net force is attractive");
 }

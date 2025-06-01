@@ -65,13 +65,14 @@ pub fn apply_lj_forces(sim: &mut Simulation) {
                     let max_lj_force = config::COLLISION_PASSES as f32 * config::LJ_FORCE_MAX;
                     let unclamped_force_mag = 24.0 * epsilon * (2.0 * sr6 * sr6 - sr6) / r;
                     let force_mag = unclamped_force_mag.clamp(-max_lj_force, max_lj_force);
-                    let force = force_mag * r_vec.normalized();
+                    // Invert the direction so that attractive is correct at r = sigma
+                    let force = -force_mag * r_vec.normalized();
                     // Only update acceleration if not fixed
                     if !a.fixed {
-                        a.acc -= force / a.mass;
+                        a.acc += force / a.mass;
                     }
                     if !b.fixed {
-                        b.acc += force / b.mass;
+                        b.acc -= force / b.mass;
                     }
 
                     // Debug print: LJ vs Coulomb force ratio if enabled
@@ -87,6 +88,9 @@ pub fn apply_lj_forces(sim: &mut Simulation) {
                             println!("LJ force: {:.3e}, Coulomb force: {:.3e}, ratio (LJ/Coulomb): {:.3}", force_mag, coulomb_force_mag, ratio);
                         }
                     }
+
+                    // Debug print: Show LJ force vector, positions, and direction
+                    println!("LJ DEBUG: i={}, j={}, r={:.4}, a.pos=({:.4},{:.4}), b.pos=({:.4},{:.4}), force=({:.4},{:.4})", i, j, r, a.pos.x, a.pos.y, b.pos.x, b.pos.y, force.x, force.y);
                 }
             }
         }

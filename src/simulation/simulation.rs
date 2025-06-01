@@ -18,7 +18,7 @@ pub struct Simulation {
     pub bounds: f32,
     pub rewound_flags: Vec<bool>,
     pub background_e_field: Vec2,
-    pub foils: Vec<crate::foil::Foil>,
+    pub foils: Vec<crate::body::foil::Foil>,
     pub config:config::SimConfig, //
 }
 
