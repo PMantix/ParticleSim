@@ -49,6 +49,7 @@ pub enum SimCommand {
         particle_radius: f32,
         current: f32,
     },
+    StepOnce
 }
 
 pub static SIM_COMMAND_SENDER: Lazy<Mutex<Option<Sender<SimCommand>>>> = Lazy::new(|| Mutex::new(None));

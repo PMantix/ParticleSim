@@ -19,7 +19,8 @@ mod tests {
             electrons: Vec::new(),
             id: 0,
             e_field: Vec2::zero(),
-            // Add other fields as needed for your Body struct
+            lj_force: Vec2::zero(),
+            coulomb_force: Vec2::zero(),
         };
         let mut bodies = vec![body];
 

@@ -67,9 +67,18 @@ pub fn apply_lj_forces(sim: &mut Simulation) {
                     let force_mag = unclamped_force_mag.clamp(-max_lj_force, max_lj_force);
                     let force = force_mag * r_vec.normalized();
                     //println!("LJ DEBUG: r={:.3}, sr6={:.3}, force_mag={:.3}, force=({:.3},{:.3})", r, sr6, force_mag, force.x, force.y);
+                    
+                    // track our Coulomb forces for debugging
+                    a.coulomb_force = a.acc * a.mass;
+                    b.coulomb_force = b.acc * b.mass;
+
                     // Update acceleration (SWAPPED SIGNS)
                     a.acc -= force / a.mass;
                     b.acc += force / b.mass;
+
+                    // track our forces for debugging 
+                    a.lj_force = force;
+                    b.lj_force = force;
 
                     // Debug print: LJ vs Coulomb force ratio if enabled
                     if sim.config.show_lj_vs_coulomb_ratio {
