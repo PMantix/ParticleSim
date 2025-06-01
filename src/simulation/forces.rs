@@ -22,7 +22,11 @@ pub fn attract(sim: &mut Simulation) {
         body.e_field += sim.background_e_field;
     }
     for body in &mut sim.bodies {
-        body.acc = body.charge * body.e_field;
+        // Convert force (qE) to acceleration by dividing by mass (a = F / m)
+        body.acc = (body.charge * body.e_field) / body.mass;
+        
+        // Optionally, store the Coulomb force (for debugging) if needed:
+        body.coulomb_force = (body.charge * body.e_field) / body.mass;
     }
 }
 
@@ -68,10 +72,6 @@ pub fn apply_lj_forces(sim: &mut Simulation) {
                     let force = force_mag * r_vec.normalized();
                     //println!("LJ DEBUG: r={:.3}, sr6={:.3}, force_mag={:.3}, force=({:.3},{:.3})", r, sr6, force_mag, force.x, force.y);
                     
-                    // track our Coulomb forces for debugging
-                    a.coulomb_force = a.acc * a.mass;
-                    b.coulomb_force = b.acc * b.mass;
-
                     // Update acceleration (SWAPPED SIGNS)
                     a.acc -= force / a.mass;
                     b.acc += force / b.mass;
