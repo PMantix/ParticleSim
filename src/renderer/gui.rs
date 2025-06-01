@@ -41,7 +41,7 @@ impl super::Renderer {
                 // --- Simulation Controls ---
                 ui.label("Simulation Controls:");
                 ui.add(
-                    egui::Slider::new(&mut *TIMESTEP.lock(), 0.001..=0.2)
+                    egui::Slider::new(&mut *TIMESTEP.lock(), 0.0001..=0.1)
                         .text("Timestep (dt)")
                         .step_by(0.001),
                 );
@@ -199,6 +199,11 @@ impl super::Renderer {
                         }).unwrap();
                     }
                 });
+
+                // --- Debug/Diagnostics ---
+                ui.separator();
+                ui.label("Debug/Diagnostics:");
+                ui.checkbox(&mut self.sim_config.show_lj_vs_coulomb_ratio, "Show LJ/Coulomb Force Ratio");
             });
     }
 }

@@ -18,7 +18,7 @@ pub struct Simulation {
     pub bounds: f32,
     pub rewound_flags: Vec<bool>,
     pub background_e_field: Vec2,
-    pub foils: Vec<crate::foil::Foil>,
+    pub foils: Vec<crate::body::foil::Foil>,
     pub config:config::SimConfig, //
 }
 
@@ -136,20 +136,18 @@ impl Simulation {
         let dt = self.dt;
         let damping = self.config.damping_base.powf(dt / 0.01);
         for body in &mut self.bodies {
-            if !body.fixed {
-                body.vel += body.acc * self.dt;
-                body.vel *= damping;
-                body.pos += body.vel * self.dt;
-            }
+            body.vel += body.acc * self.dt;
+            body.vel *= damping;
+            body.pos += body.vel * self.dt;
             for axis in 0..2 {
                 let pos = if axis == 0 { &mut body.pos.x } else { &mut body.pos.y };
                 let vel = if axis == 0 { &mut body.vel.x } else { &mut body.vel.y };
                 if *pos < -self.bounds {
                     *pos = -self.bounds;
-                    if !body.fixed { *vel = -*vel; }
+                    *vel = -*vel;
                 } else if *pos > self.bounds {
                     *pos = self.bounds;
-                    if !body.fixed { *vel = -*vel; }
+                    *vel = -*vel;
                 }
             }
         }

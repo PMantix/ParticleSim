@@ -65,14 +65,28 @@ pub fn apply_lj_forces(sim: &mut Simulation) {
                     let max_lj_force = config::COLLISION_PASSES as f32 * config::LJ_FORCE_MAX;
                     let unclamped_force_mag = 24.0 * epsilon * (2.0 * sr6 * sr6 - sr6) / r;
                     let force_mag = unclamped_force_mag.clamp(-max_lj_force, max_lj_force);
-                    let force = force_mag * r_vec.normalized();
-                    // Only update acceleration if not fixed
-                    if !a.fixed {
-                        a.acc -= force / a.mass;
+                    // Invert the direction so that attractive is correct at r = sigma
+                    let force = -force_mag * r_vec.normalized();
+                    // Update acceleration
+                    a.acc += force / a.mass;
+                    b.acc -= force / b.mass;
+
+                    // Debug print: LJ vs Coulomb force ratio if enabled
+                    if sim.config.show_lj_vs_coulomb_ratio {
+                        // Only print for nonzero charge pairs
+                        if a.charge.abs() > 1e-6 && b.charge.abs() > 1e-6 {
+                            let coulomb_force_mag = crate::simulation::forces::K_E * a.charge * b.charge / (r * r);
+                            let ratio = if coulomb_force_mag.abs() > 1e-12 {
+                                force_mag.abs() / coulomb_force_mag.abs()
+                            } else {
+                                0.0
+                            };
+                            println!("LJ force: {:.3e}, Coulomb force: {:.3e}, ratio (LJ/Coulomb): {:.3}", force_mag, coulomb_force_mag, ratio);
+                        }
                     }
-                    if !b.fixed {
-                        b.acc += force / b.mass;
-                    }
+
+                    // Debug print: Show LJ force vector, positions, and direction
+                    //println!("LJ DEBUG: i={}, j={}, r={:.4}, a.pos=({:.4},{:.4}), b.pos=({:.4},{:.4}), force=({:.4},{:.4})", i, j, r, a.pos.x, a.pos.y, b.pos.x, b.pos.y, force.x, force.y);
                 }
             }
         }

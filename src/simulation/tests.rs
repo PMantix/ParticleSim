@@ -362,7 +362,6 @@ mod reactions {
                 electrons: Vec::new(),
                 id: 0,
                 e_field: Vec2::zero(),
-                fixed: false,
                 // Add any other required fields here
             };
             let bodies = vec![body];
@@ -451,7 +450,6 @@ mod reactions {
                 electrons: Vec::new(),
                 id: 0,
                 e_field: Vec2::zero(),
-                fixed: false,
                 // ...other fields as needed...
             };
             
