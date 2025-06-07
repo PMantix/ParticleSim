@@ -151,7 +151,8 @@ mod reactions {
             config: Default::default(),
             foils: Vec::new(),
         };
-        sim.perform_electron_hopping();
+        let exclude = vec![false; sim.bodies.len()];
+        sim.perform_electron_hopping_with_exclusions(&exclude);
         let a = &sim.bodies[0];
         let b = &sim.bodies[1];
         assert_eq!(a.electrons.len() + b.electrons.len(), total_electrons);
@@ -185,8 +186,9 @@ mod reactions {
             config: Default::default(),
             foils: Vec::new(),
         };
-        sim.perform_electron_hopping();
-        sim.perform_electron_hopping();
+        let exclude = vec![false; sim.bodies.len()];
+        sim.perform_electron_hopping_with_exclusions(&exclude);
+        sim.perform_electron_hopping_with_exclusions(&exclude);
         for b in &mut sim.bodies { b.apply_redox(); }
         let sum_electrons = sim.bodies.iter().map(|b| b.electrons.len()).sum::<usize>();
         assert_eq!(sum_electrons, total_electrons);
@@ -230,7 +232,8 @@ mod reactions {
                 foils: Vec::new(),
             };
             sim.quadtree.build(&mut sim.bodies);
-            sim.perform_electron_hopping();
+            let exclude = vec![false; sim.bodies.len()];
+            sim.perform_electron_hopping_with_exclusions(&exclude);
             sim.bodies[0].update_charge_from_electrons();   
             sim.bodies[1].update_charge_from_electrons();   
 
@@ -270,7 +273,8 @@ mod reactions {
                 },
                 foils: Vec::new(),
             };
-            sim.perform_electron_hopping();
+            let exclude = vec![false; sim.bodies.len()];
+            sim.perform_electron_hopping_with_exclusions(&exclude);
             sim.bodies[0].update_charge_from_electrons();   
             sim.bodies[1].update_charge_from_electrons();   
         }
@@ -305,7 +309,8 @@ mod reactions {
                 },
                 foils: Vec::new(),
             };
-            sim.perform_electron_hopping();
+            let exclude = vec![false; sim.bodies.len()];
+            sim.perform_electron_hopping_with_exclusions(&exclude);
             // after hopping, a and b should have unchanged electrons
             assert_eq!(sim.bodies[0].electrons.len(), 2);
             assert_eq!(sim.bodies[1].electrons.len(), 0);
@@ -342,7 +347,8 @@ mod reactions {
                 foils: Vec::new(),
             };
             sim.quadtree.build(&mut sim.bodies);
-            sim.perform_electron_hopping();
+            let exclude = vec![false; sim.bodies.len()];
+            sim.perform_electron_hopping_with_exclusions(&exclude);
             // after hopping, a should lose one electron, b should gain one
             assert_eq!(sim.bodies[0].electrons.len(), 1);
             assert_eq!(sim.bodies[1].electrons.len(), 1);
