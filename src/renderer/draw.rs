@@ -106,10 +106,10 @@ impl super::Renderer {
 
             // --- Velocity Vector Overlay ---
             if self.sim_config.show_velocity_vectors {
-                const SCALE: f32 = 5.0;
+                let scale = self.velocity_vector_scale;
                 let color = [0, 255, 0, 255]; // green
                 for body in &self.bodies {
-                    let end = body.pos + body.vel * SCALE;
+                    let end = body.pos + body.vel * scale;
                     ctx.draw_line(body.pos, end, color);
                 }
             }
