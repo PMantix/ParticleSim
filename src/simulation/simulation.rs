@@ -7,6 +7,7 @@ use ultraviolet::Vec2;
 use super::forces;
 use super::collision;
 use crate::config;
+use crate::simulation::utils::can_transfer_electron;
 use rand::prelude::*; // Import all prelude traits for rand 0.9+
 
 /// The main simulation state and logic for the particle system.
@@ -163,8 +164,16 @@ impl Simulation {
         let mut rng = rand::rng();
         src_indices.shuffle(&mut rng);
         for &src_idx in &src_indices {
+            if cfg!(debug_assertions) {
+                println!("[Hopping Debug] Processing src index: {}", src_idx);
+            }   
             let src_body = &self.bodies[src_idx];
-            if !(src_body.species == Species::LithiumMetal || src_body.species == Species::FoilMetal) || src_body.electrons.len() <= 1 {
+            let src_diff = src_body.electrons.len() as i32 - src_body.neutral_electron_count() as i32;
+            // Only skip if the donor is so depleted that it cannot donate
+            if !(src_body.species == Species::LithiumMetal || src_body.species == Species::FoilMetal) || src_diff < 0 {
+                if cfg!(debug_assertions) {
+                    println!("[Hopping Debug] src {}: Skipping (not LithiumMetal/FoilMetal, or too few electrons; src_diff = {}).", src_idx, src_diff);
+                }
                 continue;
             }
             let hop_radius = self.config.hop_radius_factor * src_body.radius;
@@ -173,31 +182,41 @@ impl Simulation {
             let mut candidate_neighbors = Vec::new();
             for (dst_idx, dst_body) in self.bodies.iter().enumerate() {
                 if dst_idx == src_idx || received_electron[dst_idx] {
+                    if cfg!(debug_assertions) {
+                        println!("[Hopping Debug] src {} -> dst {}: Skipping (same index or already received electron).", src_idx, dst_idx);
+                    }
                     continue;
                 }
                 let d = (dst_body.pos - src_body.pos).mag();
                 if d > hop_radius {
+                    if cfg!(debug_assertions) {
+                        println!("[Hopping Debug] src {} -> dst {}: Skipping (distance {} > hop radius {}).", src_idx, dst_idx, d, hop_radius);
+                    }
                     continue;
                 }
                 let can_accept = match dst_body.species {
-                    Species::LithiumMetal | Species::FoilMetal => {
-                        // Allow if destination is at or below neutral and source is above neutral
-                        dst_body.electrons.len() <= dst_body.neutral_electron_count()
-                            && src_body.electrons.len() >= src_body.neutral_electron_count()
-                    }
+                    Species::LithiumMetal | Species::FoilMetal => can_transfer_electron(src_body, dst_body),
                     Species::LithiumIon => true, // Ions can always accept
                 };
                 if !can_accept {
+                    if cfg!(debug_assertions) {
+                        println!("[Hopping Debug] src {} -> dst {}: Skipping (cannot accept electron).", src_idx, dst_idx);
+                    }
                     continue;
                 }
                 candidate_neighbors.push(dst_idx);
             }
+
+            if cfg!(debug_assertions) {
+                println!("[Hopping Debug] src {}: Found {} candidate neighbors within hop radius.", src_idx, candidate_neighbors.len());
+            }  
 
             // 2️⃣ Shuffle the neighbor list to remove directional bias
             candidate_neighbors.shuffle(&mut rng);
 
             // 3️⃣ Now process in random order
             for &dst_idx in &candidate_neighbors {
+ 
                 let dst_body = &self.bodies[dst_idx];
 
                 // If destination is an ion, always allow the hop (aggressive redox cycling)
@@ -216,9 +235,7 @@ impl Simulation {
                     println!("[Hopping Debug] src {} -> dst {}: d_phi = {}", src_idx, dst_idx, d_phi);
                 }
                 if d_phi <= 0.0 {
-                    if cfg!(debug_assertions) {
-                        println!("[Hopping Debug] Hop skipped: non-positive overpotential.");
-                    }
+                    println!("[Hopping Debug] src {} -> dst {}: overpotential non-positive, skipping.", src_idx, dst_idx);
                     continue;
                 }
 
@@ -237,9 +254,7 @@ impl Simulation {
                     println!("[Hopping Debug] src {} -> dst {}: alignment = {}", src_idx, dst_idx, alignment);
                 }
                 if alignment < 1e-3 {
-                    if cfg!(debug_assertions) {
-                        println!("[Hopping Debug] Hop skipped: alignment too low (<1e-3).");
-                    }
+                    println!("[Hopping Debug] src {} -> dst {}: alignment too low (<1e-3), skipping.", src_idx, dst_idx);
                     continue;
                 }
                 let rate = self.config.hop_rate_k0 * (self.config.hop_transfer_coeff * d_phi / self.config.hop_activation_energy).exp();
@@ -261,20 +276,38 @@ impl Simulation {
             }
         }
 
-        // Perform the hops
+        if cfg!(debug_assertions) {
+            println!("[Hopping Debug] Total hops to perform: {}", hops.len());
+            println!("[Hopping Debug] Electrons before hopping:");
+            for (i, body) in self.bodies.iter().enumerate() {
+                println!("[Hopping Debug] Body {}: {} electrons", i, body.electrons.len());
+            }
+        }
+
+        // After the loop over src_indices:
+
         for (src_idx, dst_idx) in hops {
-            let (first, second) = self.bodies.split_at_mut(std::cmp::max(src_idx, dst_idx));
-            let (src, dst) = if src_idx < dst_idx {
-                (&mut first[src_idx], &mut second[0])
-            } else {
-                (&mut second[0], &mut first[dst_idx])
-            };
-            if src.electrons.len() > 1 {
-                if let Some(e) = src.electrons.pop() {
-                    dst.electrons.push(e);
+            // Remove one electron from the donor (if available)
+            if let Some(electron) = self.bodies[src_idx].electrons.pop() {
+                // Add the electron to the acceptor
+                self.bodies[dst_idx].electrons.push(electron);
+                // Update charges (if your logic tracks it via update_charge_from_electrons)
+                self.bodies[src_idx].update_charge_from_electrons();
+                self.bodies[dst_idx].update_charge_from_electrons();
+                if cfg!(debug_assertions) {
+                    println!("[Hopping Debug] Transferred electron from {} to {}.", src_idx, dst_idx);
                 }
             }
         }
+
+        if cfg!(debug_assertions) {
+            println!("[Hopping Debug] Electron hopping complete.");
+            println!("[Hopping Debug] Electrons after hopping:");
+            for (i, body) in self.bodies.iter().enumerate() {
+                println!("[Hopping Debug] Body {}: {} electrons", i, body.electrons.len());
+            }
+        }
+
         // Aggressively apply redox after hopping
         for body in &mut self.bodies {
             body.apply_redox();
