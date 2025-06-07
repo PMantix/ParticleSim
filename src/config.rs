@@ -6,12 +6,10 @@
 pub const ELECTRON_SPRING_K: f32 = 0.05;                // Spring constant for electron drift
 pub const ELECTRON_DRIFT_RADIUS_FACTOR: f32 = 1.2;      // Max drift radius as a factor of body radius
 pub const ELECTRON_MAX_SPEED_FACTOR: f32 = 1.2;         // Max electron speed as a factor of body radius per dt
-pub const _HOP_CHARGE_THRESHOLD: f32 = 0.2;                     // Charge threshold for hopping
 pub const HOP_RADIUS_FACTOR: f32 = 2.1;                      // Hopping radius as a factor of body radius
 pub const HOP_RATE_K0: f32 = 1.0;            /// Base hop‐rate constant (per unit time) at zero overpotential
 pub const HOP_TRANSFER_COEFF: f32 = 0.5;            /// Transfer coefficient α (unitless, ~0.5)   
 pub const HOP_ACTIVATION_ENERGY: f32 = 0.025;      /// Thermal energy k_BT (in your same charge‐units)
-pub const _CLUSTER_DISTANCE: f32 = 1.2;                // Distance threshold for clustering
 
 // ====================
 // LJ Force Parameters
@@ -33,7 +31,6 @@ pub const FOIL_MAX_ELECTRONS: usize = 2;           // Max electrons for foil met
 // Simulation Parameters
 // ====================
 pub const DEFAULT_DT: f32 = 0.0005;                     // Reduced minimum simulation timestep for better stability
-pub const _DEFAULT_PARTICLE_COUNT: usize = 50000;        // Default number of particles
 pub const COLLISION_PASSES: usize = 3;                  // Number of collision resolution passes
 
 // ====================

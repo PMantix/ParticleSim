@@ -6,6 +6,7 @@ pub mod forces;
 pub mod collision;
 pub mod simulation;
 pub use simulation::*;
+pub mod utils;
 
 #[cfg(test)]
 mod tests;
