@@ -204,12 +204,21 @@ impl Simulation {
                 if dst_body.species == Species::LithiumIon {
                     hops.push((src_idx, dst_idx));
                     received_electron[dst_idx] = true;
+                    if cfg!(debug_assertions) {
+                        println!("[Hopping Debug] src {} -> dst {}: Destination is LithiumIon, hop allowed.", src_idx, dst_idx);
+                    }
                     continue;
                 }
 
                 // compute overpotential Δφ
                 let d_phi = dst_body.charge - src_body.charge;
+                if cfg!(debug_assertions) {
+                    println!("[Hopping Debug] src {} -> dst {}: d_phi = {}", src_idx, dst_idx, d_phi);
+                }
                 if d_phi <= 0.0 {
+                    if cfg!(debug_assertions) {
+                        println!("[Hopping Debug] Hop skipped: non-positive overpotential.");
+                    }
                     continue;
                 }
 
@@ -219,14 +228,35 @@ impl Simulation {
                 let local_field = self.background_e_field
                     + self.quadtree.field_at_point(&self.bodies, src_body.pos, crate::simulation::forces::K_E);
                 let field_dir = if local_field.mag() > 1e-6 { local_field.normalized() } else { Vec2::zero() };
-                let alignment = (-hop_dir.dot(field_dir)).max(0.0); // Inverted: Only positive alignment in field direction
-                if alignment < 1e-3 { continue; } // Only allow hops in field direction
-
+                let mut alignment = (-hop_dir.dot(field_dir)).max(0.0); // Inverted: Only positive alignment in field direction
+                if field_dir == Vec2::zero() {
+                    // No external (or significant) field -> assume perfect alignment.
+                    alignment = 1.0;
+                }
+                if cfg!(debug_assertions) {
+                    println!("[Hopping Debug] src {} -> dst {}: alignment = {}", src_idx, dst_idx, alignment);
+                }
+                if alignment < 1e-3 {
+                    if cfg!(debug_assertions) {
+                        println!("[Hopping Debug] Hop skipped: alignment too low (<1e-3).");
+                    }
+                    continue;
+                }
                 let rate = self.config.hop_rate_k0 * (self.config.hop_transfer_coeff * d_phi / self.config.hop_activation_energy).exp();
                 let p_hop = alignment * (1.0 - (-rate * self.dt).exp());
+                if cfg!(debug_assertions) {
+                    println!("[Hopping Debug] src {} -> dst {}: rate = {}, p_hop = {}", src_idx, dst_idx, rate, p_hop);
+                }
                 if rand::random::<f32>() < p_hop {
                     hops.push((src_idx, dst_idx));
                     received_electron[dst_idx] = true;
+                    if cfg!(debug_assertions) {
+                        println!("[Hopping Debug] Hop accepted: src {} -> dst {}", src_idx, dst_idx);
+                    }
+                } else {
+                    if cfg!(debug_assertions) {
+                        println!("[Hopping Debug] Hop rejected: src {} -> dst {}", src_idx, dst_idx);
+                    }
                 }
             }
         }

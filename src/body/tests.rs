@@ -111,4 +111,69 @@ mod physics {
         assert_eq!(sim.bodies[0].electrons.len(), 1);
         assert_eq!(sim.bodies[1].electrons.len(), crate::config::FOIL_NEUTRAL_ELECTRONS);
     }
+    
+    #[test]
+    fn electron_hops_from_neutral_metal_to_deficient_foil() {
+        use crate::body::{Body, Species, Electron};
+        use crate::Simulation;
+        use crate::quadtree::Quadtree;
+        use crate::config;
+        use crate::config::SimConfig;
+        use ultraviolet::Vec2;
+    
+        // Create a neutral metal (LithiumMetal) with 1 electron.
+        let mut metal = Body::new(
+            Vec2::new(0.0, 0.0),
+            Vec2::zero(),
+            1.0,
+            1.0,
+            0.0,
+            Species::LithiumMetal,
+        );
+        metal.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+        metal.update_charge_from_electrons();
+    
+        // Create a deficient foil (FoilMetal) with 0 electrons.
+        let mut foil = Body::new(
+            Vec2::new(1.0, 0.0),
+            Vec2::zero(),
+            1.0,
+            1.0,
+            0.0,
+            Species::FoilMetal,
+        );
+        // Leave foil.electrons empty to simulate electron deficiency.
+        foil.update_charge_from_electrons();
+    
+        let mut sim = Simulation {
+            dt: 0.1,
+            frame: 0,
+            bodies: vec![metal, foil],
+            quadtree: Quadtree::new(
+                config::QUADTREE_THETA,
+                config::QUADTREE_EPSILON,
+                config::QUADTREE_LEAF_CAPACITY,
+                config::QUADTREE_THREAD_CAPACITY,
+            ),
+            bounds: 10.0,
+            rewound_flags: vec![false; 2],
+            background_e_field: Vec2::zero(),
+            config: SimConfig { ..Default::default() },
+            foils: Vec::new(),
+        };
+    
+        // Build quadtree before hopping.
+        sim.quadtree.build(&mut sim.bodies);
+    
+        // Check initial electron counts.
+        assert_eq!(sim.bodies[0].electrons.len(), 1, "Metal should start neutral with 1 electron");
+        assert_eq!(sim.bodies[1].electrons.len(), 0, "Foil should be deficient with 0 electrons");
+    
+        // Perform electron hopping.
+        sim.perform_electron_hopping();
+    
+        // After hopping, we expect the metal to lose an electron and the foil to gain one.
+        assert_eq!(sim.bodies[0].electrons.len(), 0, "Metal should lose its electron after hopping");
+        assert_eq!(sim.bodies[1].electrons.len(), 1, "Deficient foil should receive an electron after hopping");
+    }
 }
