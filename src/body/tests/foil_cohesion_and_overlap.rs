@@ -5,7 +5,7 @@ mod foil_cohesion_and_overlap {
     use crate::body::foil::Foil;
     use crate::simulation::Simulation;
     use ultraviolet::Vec2;
-    use smallvec::{SmallVec, smallvec};
+    use smallvec::smallvec;
 
     #[test]
     fn overlapping_foil_indices_handled() {

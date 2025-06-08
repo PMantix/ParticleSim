@@ -5,7 +5,7 @@ mod foil_electron_limits {
     use crate::body::foil::Foil;
     use crate::simulation::Simulation;
     use ultraviolet::Vec2;
-    use smallvec::{SmallVec, smallvec};
+    use smallvec::smallvec;
 
     #[test]
     fn foil_does_not_drop_below_zero_electrons() {

@@ -5,7 +5,7 @@ mod foil_lj_force {
     use crate::body::foil::Foil;
     use crate::simulation::Simulation;
     use ultraviolet::Vec2;
-    use smallvec::{SmallVec, smallvec};
+    use smallvec::smallvec;
 
     #[test]
     fn foil_lj_force_affects_metal() {
