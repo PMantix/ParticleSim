@@ -23,8 +23,6 @@ mod physics {
             species: Species::LithiumIon,
             electrons: Vec::new(),
             e_field: Vec2::zero(),
-            lj_force: Vec2::zero(),
-            coulomb_force: Vec2::zero(),
 
         };
         b.update_species();
@@ -44,8 +42,6 @@ mod physics {
             species: Species::LithiumMetal,
             electrons: Vec::new(),
             e_field: Vec2::zero(),
-            lj_force: Vec2::zero(),
-            coulomb_force: Vec2::zero(),
         };
         b.update_species();
         assert_eq!(b.species, Species::LithiumIon);

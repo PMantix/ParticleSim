@@ -85,12 +85,10 @@ impl Simulation {
         // Track which bodies receive electrons from foil current this step
         let mut foil_current_recipients = vec![false; self.bodies.len()];
         // Apply foil current sources/sinks
-        for (foil_idx, foil) in self.foils.iter_mut().enumerate() {
+        for (_, foil) in self.foils.iter_mut().enumerate() {
             // Accumulate current for this foil
             foil.accum += foil.current * self.dt;
 
-            #[cfg(debug_assertions)]
-            println!("[Foil Debug] Foil {}: accum before = {}, current = {}", foil_idx, foil.accum, foil.current);
             let mut rng = rand::rng();
             // Print electron counts for all foil bodies before
             #[cfg(debug_assertions)]
@@ -122,8 +120,6 @@ impl Simulation {
                 }
                 foil.accum += 1.0;
             }
-            #[cfg(debug_assertions)]
-            println!("[Foil Debug] Foil {}: accum after = {}", foil_idx, foil.accum);
             // Print electron counts for all foil bodies after
             #[cfg(debug_assertions)]
             for &id in &foil.body_ids {
