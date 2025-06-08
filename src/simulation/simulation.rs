@@ -182,6 +182,7 @@ impl Simulation {
         let mut src_indices: Vec<usize> = (0..n).collect();
         let mut rng = rand::rng();
         src_indices.shuffle(&mut rng);
+        let mut neighbor_buf = Vec::new();
         for &src_idx in &src_indices {
             if donated_electron[src_idx] { continue; } // Only allow one hop per donor per step
             let src_body = &self.bodies[src_idx];
@@ -193,9 +194,10 @@ impl Simulation {
             let hop_radius = self.config.hop_radius_factor * src_body.radius;
 
             // Use quadtree for neighbor search!
-            let mut candidate_neighbors = self.quadtree
-                .find_neighbors_within(&self.bodies, src_idx, hop_radius)
-                .into_iter()
+            self.quadtree.find_neighbors_within(&self.bodies, src_idx, hop_radius, &mut neighbor_buf);
+            let mut candidate_neighbors = neighbor_buf
+                .iter()
+                .copied()
                 .filter(|&dst_idx| dst_idx != src_idx && !received_electron[dst_idx])
                 .filter(|&dst_idx| {
                     let dst_body = &self.bodies[dst_idx];
@@ -279,9 +281,10 @@ impl Simulation {
             let hop_radius = self.config.hop_radius_factor * src_body.radius;
 
             // Use quadtree for neighbor search!
-            let mut candidate_neighbors = self.quadtree
-                .find_neighbors_within(&self.bodies, src_idx, hop_radius)
-                .into_iter()
+            self.quadtree.find_neighbors_within(&self.bodies, src_idx, hop_radius, &mut neighbor_buf);
+            let mut candidate_neighbors = neighbor_buf
+                .iter()
+                .copied()
                 .filter(|&dst_idx| dst_idx != src_idx && !received_electron[dst_idx])
                 .filter(|&dst_idx| {
                     let dst_body = &self.bodies[dst_idx];

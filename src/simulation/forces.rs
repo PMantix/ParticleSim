@@ -45,12 +45,12 @@ pub fn apply_lj_forces(sim: &mut Simulation) {
     let sigma = sim.config.lj_force_sigma;
     let epsilon = sim.config.lj_force_epsilon;
     let cutoff = sim.config.lj_force_cutoff * sigma;
+    let mut neighbors = Vec::new();
     for i in 0..sim.bodies.len() {
-        // Only apply LJ to LithiumMetal or FoilMetal
         if !(sim.bodies[i].species == Species::LithiumMetal || sim.bodies[i].species == Species::FoilMetal) {
             continue;
         }
-        let neighbors = sim.quadtree.find_neighbors_within(&sim.bodies, i, cutoff);
+        sim.quadtree.find_neighbors_within(&sim.bodies, i, cutoff, &mut neighbors);
         for &j in &neighbors {
             if j <= i { continue; }
             let (a, b) = {
