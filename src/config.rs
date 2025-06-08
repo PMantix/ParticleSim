@@ -18,6 +18,8 @@ pub const LJ_FORCE_EPSILON: f32 = 500.0;                  // Lennard-Jones epsil
 pub const LJ_FORCE_SIGMA: f32 = 2.0;                    // Lennard-Jones sigma parameter
 pub const LJ_FORCE_CUTOFF: f32 = 3.5;                  // Lennard-Jones cutoff distance
 pub const LJ_FORCE_MAX: f32 = 1000.0;                   // Max Lennard-Jones force magnitude
+/// Density above which the cell list is used for LJ interactions
+pub const LJ_CELL_DENSITY_THRESHOLD: f32 = 0.001;
 
 // ====================
 // Species/Body Parameters
@@ -83,6 +85,7 @@ pub struct SimConfig {
     pub lj_force_sigma: f32,
     pub lj_force_cutoff: f32,
     pub show_lj_vs_coulomb_ratio: bool, // Show LJ/Coulomb force ratio debug overlay
+    pub cell_list_density_threshold: f32,
 }
 
 impl Default for SimConfig {
@@ -100,7 +103,8 @@ impl Default for SimConfig {
             lj_force_epsilon: LJ_FORCE_EPSILON,
             lj_force_sigma: LJ_FORCE_SIGMA,
             lj_force_cutoff: LJ_FORCE_CUTOFF,
-            show_lj_vs_coulomb_ratio: false, // Default off  
+            show_lj_vs_coulomb_ratio: false, // Default off
+            cell_list_density_threshold: LJ_CELL_DENSITY_THRESHOLD,
         }
     }
 }

@@ -10,6 +10,7 @@ use crate::renderer::state::{
 mod body;
 mod partition;
 mod quadtree;
+mod cell_list;
 mod renderer;
 mod simulation;
 mod utils;
