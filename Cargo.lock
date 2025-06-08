@@ -197,6 +197,7 @@ dependencies = [
  "quarkstrom",
  "rand 0.9.1",
  "rayon",
+ "smallvec",
  "ultraviolet",
 ]
 

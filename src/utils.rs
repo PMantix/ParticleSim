@@ -4,7 +4,7 @@
 
 use crate::body::{Body, Species, Electron};
 use ultraviolet::Vec2;
-use smallvec::{SmallVec, smallvec};
+use smallvec::smallvec;
 
 /// Generate a uniform disc of `n` bodies (ions/metals) with random positions and velocities.
 ///

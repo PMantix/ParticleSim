@@ -4,7 +4,7 @@ mod tests {
     use crate::body::{Body, Species};
     use crate::quadtree::Quadtree;
     use crate::simulation::forces::K_E;
-    use smallvec::{SmallVec, smallvec};
+    use smallvec::SmallVec;
 
     #[test]
     fn test_quadtree_field_centered_on_body() {

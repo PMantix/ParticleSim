@@ -257,7 +257,7 @@ fn main() {
                                     0.0,
                                     Species::FoilMetal,
                                 );
-                                new_body.electrons = vec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }; crate::config::FOIL_NEUTRAL_ELECTRONS];
+                                new_body.electrons = smallvec::smallvec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }; crate::config::FOIL_NEUTRAL_ELECTRONS];
                                 new_body.update_charge_from_electrons();
                                 // new_body.fixed = true; // No longer needed
                                 body_ids.push(new_body.id);

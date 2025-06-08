@@ -14,9 +14,9 @@ pub const HOP_ACTIVATION_ENERGY: f32 = 0.025;      /// Thermal energy k_BT (in y
 // ====================
 // LJ Force Parameters
 // ====================
-pub const LJ_FORCE_EPSILON: f32 = 3000.0;                  // Lennard-Jones epsilon parameter
-pub const LJ_FORCE_SIGMA: f32 = 1.7;                    // Lennard-Jones sigma parameter
-pub const LJ_FORCE_CUTOFF: f32 = 2.0;                  // Lennard-Jones cutoff distance
+pub const LJ_FORCE_EPSILON: f32 = 500.0;                  // Lennard-Jones epsilon parameter
+pub const LJ_FORCE_SIGMA: f32 = 2.0;                    // Lennard-Jones sigma parameter
+pub const LJ_FORCE_CUTOFF: f32 = 3.5;                  // Lennard-Jones cutoff distance
 pub const LJ_FORCE_MAX: f32 = 1000.0;                   // Max Lennard-Jones force magnitude
 
 // ====================
@@ -96,11 +96,11 @@ impl Default for SimConfig {
             show_velocity_vectors: SHOW_VELOCITY_VECTORS,
             show_charge_density: SHOW_CHARGE_DENSITY,
             show_field_vectors: SHOW_FIELD_VECTORS, // NEW
-            damping_base: 0.999, // Default base damping
+            damping_base: 0.98, // Default base damping
             lj_force_epsilon: LJ_FORCE_EPSILON,
             lj_force_sigma: LJ_FORCE_SIGMA,
             lj_force_cutoff: LJ_FORCE_CUTOFF,
-            show_lj_vs_coulomb_ratio: false, // Default off
+            show_lj_vs_coulomb_ratio: false, // Default off  
         }
     }
 }

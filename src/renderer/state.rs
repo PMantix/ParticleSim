@@ -4,9 +4,10 @@ use std::sync::atomic::AtomicBool;
 use std::sync::mpsc::{Sender};
 
 use crate::body::Body;
+use crate::config;
 use crate::quadtree::Node;
 
-pub static TIMESTEP: Lazy<Mutex<f32>> = Lazy::new(|| Mutex::new(0.01));
+pub static TIMESTEP: Lazy<Mutex<f32>> = Lazy::new(|| Mutex::new(config::DEFAULT_DT));
 pub static FIELD_MAGNITUDE: Lazy<Mutex<f32>> = Lazy::new(|| Mutex::new(0.0));
 pub static FIELD_DIRECTION: Lazy<Mutex<f32>> = Lazy::new(|| Mutex::new(180.0));
 pub static PAUSED: Lazy<AtomicBool> = Lazy::new(|| AtomicBool::new(false));
