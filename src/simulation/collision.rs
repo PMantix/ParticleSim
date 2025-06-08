@@ -9,6 +9,7 @@ use ultraviolet::Vec2;
 use crate::simulation::Simulation;
 
 pub fn collide(sim: &mut Simulation) {
+    profile_scope!("collision");
     let mut rects = sim
         .bodies
         .iter()

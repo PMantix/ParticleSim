@@ -16,6 +16,7 @@ pub const K_E: f32 = 8.988e3 * 0.5;
 /// - Computes the electric field at each body due to all others.
 /// - Adds background field and updates acceleration (F = qE).
 pub fn attract(sim: &mut Simulation) {
+    profile_scope!("forces_attract");
     sim.quadtree.build(&mut sim.bodies);
     sim.quadtree.field(&mut sim.bodies, K_E);
     for body in &mut sim.bodies {
@@ -34,6 +35,7 @@ pub fn attract(sim: &mut Simulation) {
 /// - Uses the quadtree to find neighbors efficiently.
 /// - Forces are clamped to avoid instability.
 pub fn apply_lj_forces(sim: &mut Simulation) {
+    profile_scope!("forces_lj");
     // Debug: Print all lithium metals in the simulation
     let mut metal_indices = vec![];
     for (i, b) in sim.bodies.iter().enumerate() {

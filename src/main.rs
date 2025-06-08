@@ -14,6 +14,10 @@ mod renderer;
 mod simulation;
 mod utils;
 mod config;
+mod profiler;
+
+use once_cell::sync::Lazy;
+use parking_lot::Mutex;
 
 use crate::body::Species;
 use renderer::Renderer;
@@ -22,6 +26,11 @@ use std::sync::mpsc::channel;
 use simulation::Simulation;
 use crate::body::Electron;
 use ultraviolet::Vec2;
+
+#[cfg(feature = "profiling")]
+pub static PROFILER: Lazy<Mutex<profiler::Profiler>> = Lazy::new(|| {
+    Mutex::new(profiler::Profiler::new())
+});
 
 fn main() {
     // Creates a global thread pool (using rayon) with threads = max(3, total cores - 2). Leaves 1-2 cores free to avoid hogging system resources.
@@ -164,6 +173,10 @@ fn main() {
                         // Manually step the simulation one frame
                         simulation.step();
                         render(&mut simulation);
+                        #[cfg(feature = "profiling")]
+                        {
+                            PROFILER.lock().print_and_clear();
+                        }
                         // Optionally, pause the simulation if desired:
                         PAUSED.store(true, Ordering::Relaxed);
                     },
@@ -280,6 +293,10 @@ fn main() {
                 simulation.step();
             }
             render(&mut simulation);
+            #[cfg(feature = "profiling")]
+            {
+                PROFILER.lock().print_and_clear();
+            }
         }
     });
 

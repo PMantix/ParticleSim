@@ -60,6 +60,7 @@ impl Simulation {
     }
 
     pub fn step(&mut self) {
+        profile_scope!("simulation_step");
         // Sync config from global LJ_CONFIG (updated by GUI)
         self.config = crate::config::LJ_CONFIG.lock().clone();
 
@@ -151,6 +152,7 @@ impl Simulation {
     }
 
     pub fn iterate(&mut self) {
+        profile_scope!("iterate");
         // Damping factor scales with timestep and is user-configurable
         let dt = self.dt;
         let damping = self.config.damping_base.powf(dt / 0.01);
