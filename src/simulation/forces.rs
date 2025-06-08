@@ -30,10 +30,10 @@ pub fn attract(sim: &mut Simulation) {
     }
 }
 
-/// Apply Lennard-Jones (LJ) repulsive/attractive forces between lithium metals.
+/// Apply Lennard-Jones (LJ) forces between metals.
 ///
-/// - Only applies to pairs of lithium metal atoms within a cutoff distance.
-/// - Uses the quadtree to find neighbors efficiently.
+/// - Only applies to pairs within the LJ cutoff distance.
+/// - Uses either the quadtree or a cell list depending on particle density.
 /// - Forces are clamped to avoid instability.
 pub fn apply_lj_forces(sim: &mut Simulation) {
     profile_scope!("forces_lj");
@@ -48,12 +48,24 @@ pub fn apply_lj_forces(sim: &mut Simulation) {
     let sigma = sim.config.lj_force_sigma;
     let epsilon = sim.config.lj_force_epsilon;
     let cutoff = sim.config.lj_force_cutoff * sigma;
+    let use_cell = sim.use_cell_list();
+    if use_cell {
+        sim.cell_list.cell_size = cutoff;
+        sim.cell_list.rebuild(&sim.bodies);
+    } else {
+        sim.quadtree.build(&mut sim.bodies);
+    }
+
     for i in 0..sim.bodies.len() {
         // Only apply LJ to LithiumMetal or FoilMetal
         if !(sim.bodies[i].species == Species::LithiumMetal || sim.bodies[i].species == Species::FoilMetal) {
             continue;
         }
-        let neighbors = sim.quadtree.find_neighbors_within(&sim.bodies, i, cutoff);
+        let neighbors = if use_cell {
+            sim.cell_list.find_neighbors_within(&sim.bodies, i, cutoff)
+        } else {
+            sim.quadtree.find_neighbors_within(&sim.bodies, i, cutoff)
+        };
         for &j in &neighbors {
             if j <= i { continue; }
             let (a, b) = {

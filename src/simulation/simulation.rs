@@ -1,7 +1,7 @@
 // simulation/simulation.rs
 // Contains the Simulation struct and main methods (new, step, iterate, perform_electron_hopping)
 
-use crate::{body::{Body, Species, Electron}, quadtree::Quadtree};
+use crate::{body::{Body, Species, Electron}, quadtree::Quadtree, cell_list::CellList};
 use crate::renderer::state::{FIELD_MAGNITUDE, FIELD_DIRECTION, TIMESTEP, COLLISION_PASSES};
 use ultraviolet::Vec2;
 use super::forces;
@@ -17,6 +17,7 @@ pub struct Simulation {
     pub frame: usize,
     pub bodies: Vec<Body>,
     pub quadtree: Quadtree,
+    pub cell_list: CellList,
     pub bounds: f32,
     pub rewound_flags: Vec<bool>,
     pub background_e_field: Vec2,
@@ -35,12 +36,15 @@ impl Simulation {
         // Start with no bodies; scenario setup is now done via SimCommand AddCircle/AddBody
         let bodies = Vec::new();
         let quadtree = Quadtree::new(theta, epsilon, leaf_capacity, thread_capacity);
+        let cell_size = config::LJ_FORCE_CUTOFF * config::LJ_FORCE_SIGMA;
+        let cell_list = CellList::new(bounds, cell_size);
         let rewound_flags = vec![];
         let sim = Self {
             dt,
             frame: 0,
             bodies,
             quadtree,
+            cell_list,
             bounds,
             rewound_flags,
             background_e_field: Vec2::zero(),
@@ -173,6 +177,12 @@ impl Simulation {
                 }
             }
         }
+    }
+
+    pub fn use_cell_list(&self) -> bool {
+        let area = (2.0 * self.bounds) * (2.0 * self.bounds);
+        let density = self.bodies.len() as f32 / area;
+        density > self.config.cell_list_density_threshold
     }
 
     /*pub fn perform_electron_hopping(&mut self) {
