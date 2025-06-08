@@ -6,6 +6,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::ops::Range;
 use rayon::prelude::*;
 use crate::partition::Partition;
+use crate::profile_scope;
 
 pub struct Quadtree {
     pub t_sq: f32,
@@ -99,6 +100,7 @@ impl Quadtree {
     }
 
     pub fn build(&mut self, bodies: &mut [Body]) {
+        profile_scope!("quadtree_build");
         if bodies.is_empty() {
             self.clear();
             return;
@@ -235,6 +237,7 @@ impl Quadtree {
     }
 
     pub fn field(&self, bodies: &mut Vec<Body>, k_e: f32) {
+        profile_scope!("quadtree_field");
         let bodies_ptr = std::ptr::addr_of_mut!(*bodies) as usize;
 
         bodies.par_iter_mut().for_each(|body| {
@@ -246,6 +249,7 @@ impl Quadtree {
 
     /// Find indices of bodies within `cutoff` distance of body at index `i` (excluding `i` itself)
     pub fn find_neighbors_within(&self, bodies: &[Body], i: usize, cutoff: f32) -> Vec<usize> {
+        profile_scope!("quadtree_neighbors");
         let mut neighbors = Vec::new();
         let pos = bodies[i].pos;
         let cutoff_sq = cutoff * cutoff;

@@ -9,6 +9,7 @@ use super::collision;
 use crate::config;
 use crate::simulation::utils::can_transfer_electron;
 use rand::prelude::*; // Import all prelude traits for rand 0.9+
+use crate::profile_scope;
 
 /// The main simulation state and logic for the particle system.
 pub struct Simulation {
@@ -60,6 +61,7 @@ impl Simulation {
     }
 
     pub fn step(&mut self) {
+        profile_scope!("simulation_step");
         // Sync config from global LJ_CONFIG (updated by GUI)
         self.config = crate::config::LJ_CONFIG.lock().clone();
 
@@ -151,6 +153,7 @@ impl Simulation {
     }
 
     pub fn iterate(&mut self) {
+        profile_scope!("iterate");
         // Damping factor scales with timestep and is user-configurable
         let dt = self.dt;
         let damping = self.config.damping_base.powf(dt / 0.01);

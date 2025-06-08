@@ -94,10 +94,16 @@ This repository contains a modular, parallelized Barnes-Hut simulation for large
   Use the new GUI button to advance one timestep at a time for detailed debugging.
 - **Adding New Features**:  
   Extend physics or visualization modules easily thanks to the modular code organization.
-- **Testing**:  
+- **Testing**:
   Run the comprehensive test suite with:
   ```sh
   cargo test
+  ```
+- **Profiling**:
+  Enable the built-in profiler with the `profiling` feature to print per-frame
+  timings:
+  ```sh
+  cargo run --features profiling
   ```
 
 ---
