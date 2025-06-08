@@ -5,12 +5,13 @@ mod foil_cohesion_and_overlap {
     use crate::body::foil::Foil;
     use crate::simulation::Simulation;
     use ultraviolet::Vec2;
+    use smallvec::{SmallVec, smallvec};
 
     #[test]
     fn overlapping_foil_indices_handled() {
         let mut sim = Simulation::new();
         let mut body = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::FoilMetal);
-        body.electrons = vec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }; crate::config::FOIL_NEUTRAL_ELECTRONS];
+        body.electrons = smallvec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }; crate::config::FOIL_NEUTRAL_ELECTRONS];
         let idx = sim.bodies.len();
         let id = body.id;
         sim.bodies.push(body);
@@ -35,7 +36,7 @@ mod foil_cohesion_and_overlap {
                 0.0,
                 Species::FoilMetal,
             );
-            body.electrons = vec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }; crate::config::FOIL_NEUTRAL_ELECTRONS];
+            body.electrons = smallvec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }; crate::config::FOIL_NEUTRAL_ELECTRONS];
             ids.push(body.id);
             sim.bodies.push(body);
         }

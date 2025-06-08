@@ -5,12 +5,13 @@ mod foil_electron_limits {
     use crate::body::foil::Foil;
     use crate::simulation::Simulation;
     use ultraviolet::Vec2;
+    use smallvec::{SmallVec, smallvec};
 
     #[test]
     fn foil_does_not_drop_below_zero_electrons() {
         let mut sim = Simulation::new();
         let mut body = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::FoilMetal);
-        body.electrons = vec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }; crate::config::FOIL_NEUTRAL_ELECTRONS];
+        body.electrons = smallvec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }; crate::config::FOIL_NEUTRAL_ELECTRONS];
         let idx = sim.bodies.len();
         let id = body.id;
         sim.bodies.push(body);
@@ -25,7 +26,7 @@ mod foil_electron_limits {
     fn foil_current_adds_and_removes_electrons_within_limits() {
         let mut sim = Simulation::new();
         let mut body = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::FoilMetal);
-        body.electrons = vec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }; crate::config::FOIL_NEUTRAL_ELECTRONS];
+        body.electrons = smallvec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }; crate::config::FOIL_NEUTRAL_ELECTRONS];
         let idx = sim.bodies.len();
         let id = body.id;
         sim.bodies.push(body);
@@ -43,7 +44,7 @@ mod foil_electron_limits {
     #[test]
     fn foil_default_electrons() {
         let mut body = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::FoilMetal);
-        body.electrons = vec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }; crate::config::FOIL_NEUTRAL_ELECTRONS];
+        body.electrons = smallvec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }; crate::config::FOIL_NEUTRAL_ELECTRONS];
         assert_eq!(body.electrons.len(), crate::config::FOIL_NEUTRAL_ELECTRONS, "FoilMetal should start with correct number of electrons");
     }
 }

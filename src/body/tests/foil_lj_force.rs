@@ -5,6 +5,7 @@ mod foil_lj_force {
     use crate::body::foil::Foil;
     use crate::simulation::Simulation;
     use ultraviolet::Vec2;
+    use smallvec::{SmallVec, smallvec};
 
     #[test]
     fn foil_lj_force_affects_metal() {
@@ -13,7 +14,7 @@ mod foil_lj_force {
         let cutoff = sim.config.lj_force_cutoff * sigma;
         let long_range = cutoff * 0.92;
         let mut foil_body = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::FoilMetal);
-        foil_body.electrons = vec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }; crate::config::FOIL_NEUTRAL_ELECTRONS];
+        foil_body.electrons = smallvec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }; crate::config::FOIL_NEUTRAL_ELECTRONS];
         sim.bodies.push(foil_body);
         let foil_id = sim.bodies.last().expect("Foil body not found after push").id;
         let metal_body = Body::new(Vec2::new(long_range, 0.0), Vec2::zero(), 1.0, 1.0, 0.0, Species::LithiumMetal);
@@ -177,8 +178,8 @@ mod foil_lj_force {
         let mut foil1 = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 1.0, Species::FoilMetal);
         let mut foil2 = Body::new(Vec2::new(long_range, 0.0), Vec2::zero(), 1.0, 1.0, 1.0, Species::FoilMetal);
         // Set electrons to create a net positive charge (less than neutral)
-        foil1.electrons = vec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }; FOIL_NEUTRAL_ELECTRONS + 1];
-        foil2.electrons = vec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }; FOIL_NEUTRAL_ELECTRONS + 1];
+        foil1.electrons = smallvec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }; FOIL_NEUTRAL_ELECTRONS + 1];
+        foil2.electrons = smallvec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }; FOIL_NEUTRAL_ELECTRONS + 1];
         foil1.update_charge_from_electrons();
         foil2.update_charge_from_electrons();
         println!("Foil1 charge: {}, Foil2 charge: {}", foil1.charge, foil2.charge);
@@ -206,8 +207,8 @@ mod foil_lj_force {
         *TIMESTEP.lock() = 0.02; // Large, unstable timestep
         let mut foil1 = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 1.0, Species::FoilMetal);
         let mut foil2 = Body::new(Vec2::new(long_range, 0.0), Vec2::zero(), 1.0, 1.0, 1.0, Species::FoilMetal);
-        foil1.electrons = vec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }; FOIL_NEUTRAL_ELECTRONS + 1];
-        foil2.electrons = vec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }; FOIL_NEUTRAL_ELECTRONS + 1];
+        foil1.electrons = smallvec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }; FOIL_NEUTRAL_ELECTRONS + 1];
+        foil2.electrons = smallvec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }; FOIL_NEUTRAL_ELECTRONS + 1];
         foil1.update_charge_from_electrons();
         foil2.update_charge_from_electrons();
         println!("Foil1 charge: {}, Foil2 charge: {}", foil1.charge, foil2.charge);
