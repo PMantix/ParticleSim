@@ -9,6 +9,7 @@ use super::collision;
 use crate::config;
 use crate::simulation::utils::can_transfer_electron;
 use rand::prelude::*; // Import all prelude traits for rand 0.9+
+use crate::profile_scope;
 
 /// The main simulation state and logic for the particle system.
 pub struct Simulation {

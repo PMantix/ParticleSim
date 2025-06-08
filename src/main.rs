@@ -16,9 +16,6 @@ mod utils;
 mod config;
 mod profiler;
 
-use once_cell::sync::Lazy;
-use parking_lot::Mutex;
-
 use crate::body::Species;
 use renderer::Renderer;
 use renderer::state::{SIM_COMMAND_SENDER, SimCommand};
@@ -26,6 +23,12 @@ use std::sync::mpsc::channel;
 use simulation::Simulation;
 use crate::body::Electron;
 use ultraviolet::Vec2;
+
+#[cfg(feature = "profiling")]   
+use once_cell::sync::Lazy;
+
+#[cfg(feature = "profiling")]   
+use parking_lot::Mutex;
 
 #[cfg(feature = "profiling")]
 pub static PROFILER: Lazy<Mutex<profiler::Profiler>> = Lazy::new(|| {
@@ -175,7 +178,7 @@ fn main() {
                         render(&mut simulation);
                         #[cfg(feature = "profiling")]
                         {
-                            PROFILER.lock().print_and_clear();
+                            PROFILER.lock().print_and_clear(Some(&simulation), None);
                         }
                         // Optionally, pause the simulation if desired:
                         PAUSED.store(true, Ordering::Relaxed);
@@ -295,7 +298,7 @@ fn main() {
             render(&mut simulation);
             #[cfg(feature = "profiling")]
             {
-                PROFILER.lock().print_and_clear();
+                PROFILER.lock().print_and_clear_if_running(!PAUSED.load(Ordering::Relaxed), Some(&simulation), None);
             }
         }
     });

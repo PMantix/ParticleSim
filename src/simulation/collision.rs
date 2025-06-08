@@ -7,6 +7,7 @@ use broccoli::aabb::Rect;
 use broccoli_rayon::{build::RayonBuildPar, prelude::RayonQueryPar};
 use ultraviolet::Vec2;
 use crate::simulation::Simulation;
+use crate::profile_scope;
 
 pub fn collide(sim: &mut Simulation) {
     profile_scope!("collision");

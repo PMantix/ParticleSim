@@ -6,6 +6,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::ops::Range;
 use rayon::prelude::*;
 use crate::partition::Partition;
+use crate::profile_scope;
 
 pub struct Quadtree {
     pub t_sq: f32,
