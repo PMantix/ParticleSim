@@ -21,7 +21,7 @@ This repository contains a modular, parallelized Barnes-Hut simulation for large
   - Real-time visualization and controls via [quarkstrom](https://github.com/DeadlockCode/quarkstrom).
   - **Manual Step Button**: Step the simulation forward by one timestep per click for precise debugging.
   - Particle selection prints detailed diagnostics (including position, velocity, acceleration, LJ and Coulomb forces) to the console.
-  - Adjustable visualization overlays (e.g., velocity vectors, electron density, field isolines, and force ratio overlays).
+  - Adjustable visualization overlays (e.g., velocity vectors, charge density, field isolines, and force ratio overlays).
 - **Scenario Controls**:  
   - Quick simulation setups with commands to add circles, rectangles, and foil-based structures.
   - Easily clear all particles and experiment with various initial conditions.
@@ -71,7 +71,7 @@ This repository contains a modular, parallelized Barnes-Hut simulation for large
   - **Delete All Particles**: Clears the simulation space immediately.
   - **Add Circle / Rectangle / Foil**: Spawn configured groups of particles quickly—ideal for rapid prototyping and testing.
 - **Force Visualization Overlays**:  
-  Toggle overlays for velocity vectors, electron density, and force ratio display.
+  Toggle overlays for velocity vectors, charge density, and force ratio display.
 
 ---
 
