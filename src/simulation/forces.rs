@@ -3,10 +3,11 @@
 //! Provides routines for computing electric (Coulomb) forces and Lennard-Jones (LJ) forces between bodies.
 //! Used by the main simulation loop to update accelerations and fields.
 
-use crate::body::Species;
+use crate::body::{Body, Species};
 use crate::config;
 use crate::simulation::Simulation;
 use crate::profile_scope;
+use rayon::prelude::*;
 
 /// Coulomb's constant (scaled for simulation units).
 pub const K_E: f32 = 8.988e3 * 0.5;
@@ -37,48 +38,38 @@ pub fn attract(sim: &mut Simulation) {
 /// - Forces are clamped to avoid instability.
 pub fn apply_lj_forces(sim: &mut Simulation) {
     profile_scope!("forces_lj");
-    // Debug: Print all lithium metals in the simulation
-    let mut metal_indices = vec![];
-    for (i, b) in sim.bodies.iter().enumerate() {
-        if b.species == Species::LithiumMetal {
-            metal_indices.push(i);
-        }
-    }
-
     let sigma = sim.config.lj_force_sigma;
     let epsilon = sim.config.lj_force_epsilon;
     let cutoff = sim.config.lj_force_cutoff * sigma;
-    for i in 0..sim.bodies.len() {
-        // Only apply LJ to LithiumMetal or FoilMetal
-        if !(sim.bodies[i].species == Species::LithiumMetal || sim.bodies[i].species == Species::FoilMetal) {
-            continue;
-        }
-        let neighbors = sim.quadtree.find_neighbors_within(&sim.bodies, i, cutoff);
-        for &j in &neighbors {
-            if j <= i { continue; }
-            let (a, b) = {
-                let (left, right) = sim.bodies.split_at_mut(j);
-                (&mut left[i], &mut right[0])
-            };
-            // Apply LJ between LithiumMetal and/or FoilMetal
-            if (a.species == Species::LithiumMetal || a.species == Species::FoilMetal) &&
-               (b.species == Species::LithiumMetal || b.species == Species::FoilMetal) {
-                let r_vec = b.pos - a.pos;
+
+    let bodies_ptr = std::ptr::addr_of!(sim.bodies) as *const Vec<Body>;
+    let quadtree = &sim.quadtree;
+
+    sim.bodies
+        .par_iter_mut()
+        .enumerate()
+        .for_each(|(i, body)| {
+            if !(body.species == Species::LithiumMetal || body.species == Species::FoilMetal) {
+                return;
+            }
+
+            let bodies = unsafe { &*bodies_ptr };
+            let neighbors = quadtree.find_neighbors_within(bodies, i, cutoff);
+            for &j in &neighbors {
+                let other = &bodies[j];
+                if !(other.species == Species::LithiumMetal || other.species == Species::FoilMetal) {
+                    continue;
+                }
+                let r_vec = other.pos - body.pos;
                 let r = r_vec.mag();
                 if r < cutoff && r > 1e-6 {
                     let sr6 = (sigma / r).powi(6);
                     let max_lj_force = config::COLLISION_PASSES as f32 * config::LJ_FORCE_MAX;
-                    let unclamped_force_mag = 24.0 * epsilon * (2.0 * sr6 * sr6 - sr6) / r;
-                    let force_mag = unclamped_force_mag.clamp(-max_lj_force, max_lj_force);
+                    let force_mag = (24.0 * epsilon * (2.0 * sr6 * sr6 - sr6) / r)
+                        .clamp(-max_lj_force, max_lj_force);
                     let force = force_mag * r_vec.normalized();
-                    //println!("LJ DEBUG: r={:.3}, sr6={:.3}, force_mag={:.3}, force=({:.3},{:.3})", r, sr6, force_mag, force.x, force.y);
-                    
-                    // Update acceleration (SWAPPED SIGNS)
-                    a.acc -= force / a.mass;
-                    b.acc += force / b.mass;
-
+                    body.acc -= force / body.mass;
                 }
             }
-        }
-    }
+        });
 }
