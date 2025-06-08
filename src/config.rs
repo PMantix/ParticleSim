@@ -64,7 +64,7 @@ pub const WINDOW_HEIGHT: u32 = 1200;                     // Window height in pix
 // ====================
 pub const SHOW_FIELD_ISOLINES: bool = false;        /// Show electric field isolines/// Show electric-field isolines
 pub const SHOW_VELOCITY_VECTORS: bool = false;      /// Show velocity vectors
-pub const SHOW_ELECTRON_DENSITY: bool = false;      /// Show electron-density heatmap
+pub const SHOW_CHARGE_DENSITY: bool = false;      /// Show charge-density heatmap
 pub const SHOW_FIELD_VECTORS: bool = false; // Show electric field vectors
 
 #[derive(Clone, Debug)]
@@ -75,7 +75,7 @@ pub struct SimConfig {
     pub hop_radius_factor: f32,
     pub show_field_isolines: bool,
     pub show_velocity_vectors: bool,
-    pub show_electron_density: bool,
+    pub show_charge_density: bool,
     pub show_field_vectors: bool, // NEW: show field vectors
     pub damping_base: f32, // Add base damping factor
     // --- LJ parameters for runtime tuning ---
@@ -94,7 +94,7 @@ impl Default for SimConfig {
             hop_radius_factor: HOP_RADIUS_FACTOR,
             show_field_isolines: SHOW_FIELD_ISOLINES,
             show_velocity_vectors: SHOW_VELOCITY_VECTORS,
-            show_electron_density: SHOW_ELECTRON_DENSITY,
+            show_charge_density: SHOW_CHARGE_DENSITY,
             show_field_vectors: SHOW_FIELD_VECTORS, // NEW
             damping_base: 0.999, // Default base damping
             lj_force_epsilon: LJ_FORCE_EPSILON,
