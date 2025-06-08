@@ -200,6 +200,11 @@ impl super::Renderer {
             }
         }
 
+        // --- CHARGE DENSITY VISUALIZATION ---
+        if self.sim_config.show_charge_density {
+            self.draw_charge_density(ctx);
+        }
+
         // --- FIELD ISOLINE VISUALIZATION ---
         if self.sim_config.show_field_isolines {
             self.draw_field_isolines(ctx);
@@ -299,6 +304,60 @@ impl super::Renderer {
                         ctx.draw_line(pts[2], pts[3], color);
                     }
                 }
+            }
+        }
+    }
+
+    /// Draw a simple charge density heatmap.
+    pub fn draw_charge_density(&self, ctx: &mut quarkstrom::RenderContext) {
+        let grid_spacing = 5.0;
+        let smoothing = 5.0;
+
+        let half_view = Vec2::new(self.scale, self.scale);
+        let min = self.pos - half_view;
+        let max = self.pos + half_view;
+
+        let nx = ((max.x - min.x) / grid_spacing).ceil() as usize + 1;
+        let ny = ((max.y - min.y) / grid_spacing).ceil() as usize + 1;
+
+        let mut samples = vec![0.0f32; nx * ny];
+        let mut max_abs = 0.0f32;
+
+        for ix in 0..nx {
+            for iy in 0..ny {
+                let x = min.x + ix as f32 * grid_spacing;
+                let y = min.y + iy as f32 * grid_spacing;
+                let pos = Vec2::new(x, y);
+                let mut density = 0.0f32;
+                for body in &self.bodies {
+                    let r = pos - body.pos;
+                    let dist2 = r.mag_sq();
+                    let weight = (-dist2 / (smoothing * smoothing)).exp();
+                    density += body.charge * weight;
+                }
+                max_abs = max_abs.max(density.abs());
+                samples[iy * nx + ix] = density;
+            }
+        }
+
+        max_abs = max_abs.max(1e-6);
+
+        for ix in 0..nx - 1 {
+            for iy in 0..ny - 1 {
+                let density = samples[iy * nx + ix];
+                let norm = (density / max_abs).clamp(-1.0, 1.0);
+                let r = norm.max(0.0);
+                let b = (-norm).max(0.0);
+                let color = [
+                    (r * 255.0) as u8,
+                    0,
+                    (b * 255.0) as u8,
+                    80,
+                ];
+
+                let rect_min = Vec2::new(min.x + ix as f32 * grid_spacing, min.y + iy as f32 * grid_spacing);
+                let rect_max = rect_min + Vec2::new(grid_spacing, grid_spacing);
+                ctx.draw_rect(rect_min, rect_max, color);
             }
         }
     }
