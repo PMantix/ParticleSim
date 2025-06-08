@@ -4,6 +4,7 @@ mod tests {
     use crate::body::{Body, Species};
     use crate::quadtree::Quadtree;
     use crate::simulation::forces::K_E;
+    use smallvec::{SmallVec, smallvec};
 
     #[test]
     fn test_quadtree_field_centered_on_body() {
@@ -16,7 +17,7 @@ mod tests {
             radius: 1.0,
             charge: 1.0,
             species: Species::LithiumIon,
-            electrons: Vec::new(),
+            electrons: SmallVec::new(),
             id: 0,
             e_field: Vec2::zero(),
 

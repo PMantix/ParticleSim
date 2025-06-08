@@ -7,6 +7,7 @@ use crate::quadtree::Quadtree;
 use crate::config;
 use crate::config::SimConfig;
 use ultraviolet::Vec2;
+use smallvec::{SmallVec, smallvec};
 
 #[cfg(test)]
 mod reactions {
@@ -210,7 +211,7 @@ mod reactions {
             // two metals apart but within hop radius
             let mut a = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, -1.0, Species::LithiumMetal);
             let mut b = Body::new(Vec2::new(1.0,0.0), Vec2::zero(), 1.0, 1.0,  0.0, Species::LithiumMetal);
-            a.electrons = vec! [
+            a.electrons = smallvec! [
                 Electron{ rel_pos: Vec2::zero(), vel: Vec2::zero() },
                 Electron{ rel_pos: Vec2::zero(), vel: Vec2::zero() }
             ];
@@ -253,7 +254,7 @@ mod reactions {
             // two metals apart but within hop radius
             let mut a = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, -1.0, Species::LithiumMetal);
             let mut b = Body::new(Vec2::new(1.0,0.0), Vec2::zero(), 1.0, 1.0,  0.0, Species::LithiumMetal);
-            a.electrons = vec! [
+            a.electrons = smallvec! [
                 Electron{ rel_pos: Vec2::zero(), vel: Vec2::zero() },
                 Electron{ rel_pos: Vec2::zero(), vel: Vec2::zero() }
             ];
@@ -293,7 +294,7 @@ mod reactions {
             // two metals apart but within hop radius
             let mut a = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, -1.0, Species::LithiumMetal);
             let mut b = Body::new(Vec2::new(1.0,0.0), Vec2::zero(), 1.0, 1.0,  0.0, Species::LithiumMetal);
-            a.electrons = vec! [
+            a.electrons = smallvec! [
                 Electron{ rel_pos: Vec2::zero(), vel: Vec2::zero() },
                 Electron{ rel_pos: Vec2::zero(), vel: Vec2::zero() }
             ];
@@ -333,7 +334,7 @@ mod reactions {
             // two metals apart but within hop radius
             let mut a = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, -1.0, Species::LithiumMetal);
             let mut b = Body::new(Vec2::new(1.0,0.0), Vec2::zero(), 1.0, 1.0,  0.0, Species::LithiumMetal);
-            a.electrons = vec! [
+            a.electrons = smallvec! [
                 Electron{ rel_pos: Vec2::zero(), vel: Vec2::zero() },
                 Electron{ rel_pos: Vec2::zero(), vel: Vec2::zero() }
             ];
@@ -377,7 +378,7 @@ mod reactions {
                 radius: 1.0,
                 charge: 1.0,
                 species: Species::LithiumIon, // or another appropriate variant
-                electrons: Vec::new(),
+                electrons: SmallVec::new(),
                 id: 0,
                 e_field: Vec2::zero(),
             };
@@ -464,7 +465,7 @@ mod reactions {
                 radius: 1.0,
                 charge: 1.0,
                 species: Species::LithiumIon,
-                electrons: Vec::new(),
+                electrons: SmallVec::new(),
                 id: 0,
                 e_field: Vec2::zero(),
             };

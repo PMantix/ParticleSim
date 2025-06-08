@@ -4,6 +4,7 @@
 use ultraviolet::Vec2;
 use crate::config;
 use super::electron::Electron;
+use smallvec::SmallVec;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Species {
@@ -22,7 +23,7 @@ pub struct Body {
     pub charge: f32,
     pub id: u64,
     pub species: Species,
-    pub electrons: Vec<Electron>,
+    pub electrons: SmallVec<[Electron; 2]>,
     pub e_field: Vec2,
 }
 
@@ -41,7 +42,7 @@ impl Body {
             charge,
             id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
             species,
-            electrons: Vec::new(),
+            electrons: SmallVec::new(),
             e_field: Vec2::zero(),
         }
     }

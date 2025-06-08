@@ -9,6 +9,7 @@ mod physics {
     use ultraviolet::Vec2;
     use crate::config;
     use crate::config::SimConfig;
+    use smallvec::{SmallVec, smallvec};
 
     #[test]
     fn ion_becomes_metal_when_charge_high() {
@@ -21,7 +22,7 @@ mod physics {
             charge: 0.00,
             id: 0,
             species: Species::LithiumIon,
-            electrons: Vec::new(),
+            electrons: SmallVec::new(),
             e_field: Vec2::zero(),
 
         };
@@ -40,7 +41,7 @@ mod physics {
             charge: 1.0,
             id: 0,
             species: Species::LithiumMetal,
-            electrons: Vec::new(),
+            electrons: SmallVec::new(),
             e_field: Vec2::zero(),
         };
         b.update_species();
@@ -56,7 +57,7 @@ mod physics {
             0.0,
             Species::LithiumMetal,
         );
-        b.electrons=vec![Electron {rel_pos:Vec2::zero(),vel:Vec2::zero()}];
+        b.electrons=smallvec![Electron {rel_pos:Vec2::zero(),vel:Vec2::zero()}];
         let field = Vec2::new(1.0, 0.0);
         b.update_electrons(|_pos| field, 0.1);
         assert!(b.electrons[0].rel_pos.x < 0.0,

@@ -4,6 +4,7 @@
 
 use crate::body::{Body, Species, Electron};
 use ultraviolet::Vec2;
+use smallvec::{SmallVec, smallvec};
 
 /// Generate a uniform disc of `n` bodies (ions/metals) with random positions and velocities.
 ///
@@ -99,7 +100,7 @@ pub fn _two_lithium_clumps_with_ions(
         let mass:f32 = 1.0;
         let radius:f32 = 1.0 * mass.cbrt();
         let mut body = Body::new(pos, vel, mass, radius, 0.0, Species::LithiumMetal);
-        body.electrons = vec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }];
+        body.electrons = smallvec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }];
         body.update_charge_from_electrons();
         bodies.push(body);
     }
@@ -111,7 +112,7 @@ pub fn _two_lithium_clumps_with_ions(
         let mass:f32 = 1.0;
         let radius:f32 = 1.0 * mass.cbrt();
         let mut body = Body::new(pos, vel, mass, radius, 0.0, Species::LithiumMetal);
-        body.electrons = vec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }];
+        body.electrons = smallvec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }];
         body.update_charge_from_electrons();
         bodies.push(body);
     }
