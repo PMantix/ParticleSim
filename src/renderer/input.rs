@@ -91,12 +91,6 @@ impl super::Renderer {
                                 "Selected Body: id={}, pos={:?}, vel={:?}, acc={:?}, charge={}, electrons={}, species={:?}",
                                 body.id, body.pos, body.vel, body.acc, body.charge, body.electrons.len(), body.species
                             );
-                                                        // If you accumulate per-source forces, print them here:
-                            {
-                                println!("LJ force: {:?}", body.lj_force);
-                                println!("Coulomb force: {:?}", body.coulomb_force);
-                                // etc.
-                            }
                         }
                     }
 

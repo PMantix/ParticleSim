@@ -53,7 +53,7 @@ impl super::Renderer {
 
                 let mut passes = COLLISION_PASSES.lock();
                 ui.add(
-                    egui::Slider::new(&mut *passes, 1..=10)
+                    egui::Slider::new(&mut *passes, 2..=10)
                         .text("Collision Passes")
                         .clamp_to_range(true),
                 );
@@ -80,12 +80,18 @@ impl super::Renderer {
                 ui.checkbox(&mut self.sim_config.show_velocity_vectors, "Show Velocity Vectors");
                 ui.checkbox(&mut self.sim_config.show_charge_density, "Show Charge Density");
                 ui.checkbox(&mut self.sim_config.show_field_vectors, "Show Field Vectors"); // NEW
+                ui.checkbox(&mut self.sim_config.show_velocity_vectors, "Show Velocity Vectors");
+                ui.add(
+                    egui::Slider::new(&mut self.velocity_vector_scale, 0.01..=5.0)
+                        .text("Velocity Vector Scale")
+                        .step_by(0.01),
+                );
 
                 ui.separator();
 
                 // --- Lennard-Jones Parameters ---
                 ui.label("Lennard-Jones Parameters:");
-                ui.add(egui::Slider::new(&mut self.sim_config.lj_force_epsilon, 0.0..=10000.0)
+                ui.add(egui::Slider::new(&mut self.sim_config.lj_force_epsilon, 0.0..=100000.0)
                     .text("LJ Epsilon (attraction strength)")
                     .step_by(1.0));
                 ui.add(egui::Slider::new(&mut self.sim_config.lj_force_sigma, 0.1..=5.0)

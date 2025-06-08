@@ -24,9 +24,7 @@ pub fn attract(sim: &mut Simulation) {
     for body in &mut sim.bodies {
         // Convert force (qE) to acceleration by dividing by mass (a = F / m)
         body.acc = (body.charge * body.e_field) / body.mass;
-        
-        // Optionally, store the Coulomb force (for debugging) if needed:
-        body.coulomb_force = (body.charge * body.e_field) / body.mass;
+
     }
 }
 
@@ -76,26 +74,6 @@ pub fn apply_lj_forces(sim: &mut Simulation) {
                     a.acc -= force / a.mass;
                     b.acc += force / b.mass;
 
-                    // track our forces for debugging 
-                    a.lj_force = force;
-                    b.lj_force = force;
-
-                    // Debug print: LJ vs Coulomb force ratio if enabled
-                    if sim.config.show_lj_vs_coulomb_ratio {
-                        // Only print for nonzero charge pairs
-                        if a.charge.abs() > 1e-6 && b.charge.abs() > 1e-6 {
-                            let coulomb_force_mag = crate::simulation::forces::K_E * a.charge * b.charge / (r * r);
-                            let ratio = if coulomb_force_mag.abs() > 1e-12 {
-                                force_mag.abs() / coulomb_force_mag.abs()
-                            } else {
-                                0.0
-                            };
-                            println!("LJ force: {:.3e}, Coulomb force: {:.3e}, ratio (LJ/Coulomb): {:.3}", force_mag, coulomb_force_mag, ratio);
-                        }
-                    }
-
-                    // Debug print: Show LJ force vector, positions, and direction
-                    //println!("LJ DEBUG 2: i={}, j={}, r={:.4}, a.pos=({:.4},{:.4}), b.pos=({:.4},{:.4}), force=({:.4},{:.4})", i, j, r, a.pos.x, a.pos.y, b.pos.x, b.pos.y, force.x, force.y);
                 }
             }
         }

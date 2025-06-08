@@ -151,6 +151,9 @@ mod reactions {
             config: Default::default(),
             foils: Vec::new(),
         };
+
+        sim.quadtree.build(&mut sim.bodies);
+
         let exclude = vec![false; sim.bodies.len()];
         sim.perform_electron_hopping_with_exclusions(&exclude);
         let a = &sim.bodies[0];
@@ -186,6 +189,9 @@ mod reactions {
             config: Default::default(),
             foils: Vec::new(),
         };
+
+        sim.quadtree.build(&mut sim.bodies);
+
         let exclude = vec![false; sim.bodies.len()];
         sim.perform_electron_hopping_with_exclusions(&exclude);
         sim.perform_electron_hopping_with_exclusions(&exclude);
@@ -253,7 +259,7 @@ mod reactions {
             ];
             a.update_charge_from_electrons();
             b.update_charge_from_electrons();
-            //println!("DEBUG: a.electrons.len() = {}, b.electrons.len() = {}", a.electrons.len(), b.electrons.len());
+            println!("DEBUG: a.electrons.len() = {}, b.electrons.len() = {}", a.electrons.len(), b.electrons.len());
             let mut sim = Simulation {
                 dt: 0.1,
                 frame: 0,
@@ -273,6 +279,9 @@ mod reactions {
                 },
                 foils: Vec::new(),
             };
+
+            sim.quadtree.build(&mut sim.bodies);
+
             let exclude = vec![false; sim.bodies.len()];
             sim.perform_electron_hopping_with_exclusions(&exclude);
             sim.bodies[0].update_charge_from_electrons();   
@@ -309,6 +318,9 @@ mod reactions {
                 },
                 foils: Vec::new(),
             };
+
+            sim.quadtree.build(&mut sim.bodies);
+
             let exclude = vec![false; sim.bodies.len()];
             sim.perform_electron_hopping_with_exclusions(&exclude);
             // after hopping, a and b should have unchanged electrons
@@ -368,8 +380,6 @@ mod reactions {
                 electrons: Vec::new(),
                 id: 0,
                 e_field: Vec2::zero(),
-                lj_force: Vec2::zero(),
-                coulomb_force: Vec2::zero(),
             };
             let bodies = vec![body];
             let config = crate::config::SimConfig::default();
@@ -457,8 +467,6 @@ mod reactions {
                 electrons: Vec::new(),
                 id: 0,
                 e_field: Vec2::zero(),
-                lj_force: Vec2::zero(),
-                coulomb_force: Vec2::zero(),
             };
             
             let mut bodies = vec![body];
