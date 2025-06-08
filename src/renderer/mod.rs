@@ -62,7 +62,7 @@ impl quarkstrom::Renderer for Renderer {
             scenario_width: 5.0,           
             scenario_height: 5.0,
             scenario_charge: 0,
-            velocity_vector_scale: 1.0,
+            velocity_vector_scale: 0.1,
             scenario_current: 0.0,
         }
     }

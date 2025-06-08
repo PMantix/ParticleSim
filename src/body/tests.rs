@@ -177,6 +177,7 @@ mod physics {
 
     #[test]
     fn foil_current_accumulation_does_not_cause_neighbor_hopping() {
+        
         use crate::body::{Body, Species, Electron};
         use crate::Simulation;
         use crate::quadtree::Quadtree;
@@ -187,8 +188,11 @@ mod physics {
 
         // Three foils in a row
         let mut foil1 = Body::new(Vec2::new(0.0, 0.0), Vec2::zero(), 1.0, 1.0, 0.0, Species::FoilMetal);
+        foil1.id = 0;
         let mut foil2 = Body::new(Vec2::new(2.0, 0.0), Vec2::zero(), 1.0, 1.0, 0.0, Species::FoilMetal);
+        foil2.id = 1;
         let mut foil3 = Body::new(Vec2::new(4.0, 0.0), Vec2::zero(), 1.0, 1.0, 0.0, Species::FoilMetal);
+        foil3.id = 2;
         // All start with neutral electron count
         for foil in [&mut foil1, &mut foil2, &mut foil3] {
             for _ in 0..crate::config::FOIL_NEUTRAL_ELECTRONS {
@@ -196,6 +200,8 @@ mod physics {
             }
             foil.update_charge_from_electrons();
         }
+
+        let foil2_id = foil2.id; // Save the ID before moving foil2
 
         let mut sim = Simulation {
             dt: 0.1,
@@ -212,8 +218,8 @@ mod physics {
             background_e_field: Vec2::zero(),
             config: SimConfig { ..Default::default() },
             foils: vec![Foil {
-                body_ids: vec![2], // Only foil2
-                current: 10.0, // Large enough to guarantee accumulation in one step
+                body_ids: vec![foil2_id], // Use the saved ID
+                current: 10.0,
                 accum: 1.5,
             }],
         };
@@ -222,7 +228,6 @@ mod physics {
         for (i, body) in sim.bodies.iter().enumerate() {
             println!("Foil {}: {} electrons", i + 1, body.electrons.len());
         }
-
 
         // Build quadtree before step
         sim.quadtree.build(&mut sim.bodies);
