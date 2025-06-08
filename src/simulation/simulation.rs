@@ -294,17 +294,11 @@ impl Simulation {
 
             candidate_neighbors.shuffle(&mut rng);
 
-            for &dst_idx in &candidate_neighbors {
-                if donated_electron[src_idx] { break; }
+            // Only check until the first successful hop
+            if let Some(&dst_idx) = candidate_neighbors.iter().find(|&&dst_idx| {
                 let dst_body = &self.bodies[dst_idx];
-                /*if dst_body.species == Species::LithiumIon {
-                    hops.push((src_idx, dst_idx));
-                    received_electron[dst_idx] = true;
-                    donated_electron[src_idx] = true;
-                    break;
-                }*/
                 let d_phi = dst_body.charge - src_body.charge;
-                if d_phi <= 0.0 { continue; }
+                if d_phi <= 0.0 { return false; }
                 let hop_vec = dst_body.pos - src_body.pos;
                 let hop_dir = if hop_vec.mag() > 1e-6 { hop_vec.normalized() } else { Vec2::zero() };
                 let local_field = self.background_e_field
@@ -312,15 +306,14 @@ impl Simulation {
                 let field_dir = if local_field.mag() > 1e-6 { local_field.normalized() } else { Vec2::zero() };
                 let mut alignment = (-hop_dir.dot(field_dir)).max(0.0);
                 if field_dir == Vec2::zero() { alignment = 1.0; }
-                if alignment < 1e-3 { continue; }
+                if alignment < 1e-3 { return false; }
                 let rate = self.config.hop_rate_k0 * (self.config.hop_transfer_coeff * d_phi / self.config.hop_activation_energy).exp();
                 let p_hop = alignment * (1.0 - (-rate * self.dt).exp());
-                if rand::random::<f32>() < p_hop {
-                    hops.push((src_idx, dst_idx));
-                    received_electron[dst_idx] = true;
-                    donated_electron[src_idx] = true;
-                    break;
-                }
+                rand::random::<f32>() < p_hop
+            }) {
+                hops.push((src_idx, dst_idx));
+                received_electron[dst_idx] = true;
+                donated_electron[src_idx] = true;
             }
         }
         for (src_idx, dst_idx) in hops {

@@ -14,8 +14,8 @@ pub const HOP_ACTIVATION_ENERGY: f32 = 0.025;      /// Thermal energy k_BT (in y
 // ====================
 // LJ Force Parameters
 // ====================
-pub const LJ_FORCE_EPSILON: f32 = 10000.0;                  // Lennard-Jones epsilon parameter
-pub const LJ_FORCE_SIGMA: f32 = 1.2;                    // Lennard-Jones sigma parameter
+pub const LJ_FORCE_EPSILON: f32 = 3000.0;                  // Lennard-Jones epsilon parameter
+pub const LJ_FORCE_SIGMA: f32 = 1.7;                    // Lennard-Jones sigma parameter
 pub const LJ_FORCE_CUTOFF: f32 = 2.0;                  // Lennard-Jones cutoff distance
 pub const LJ_FORCE_MAX: f32 = 1000.0;                   // Max Lennard-Jones force magnitude
 
