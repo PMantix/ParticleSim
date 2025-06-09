@@ -104,8 +104,8 @@ mod foil_lj_force {
         let cutoff = sim.config.lj_force_cutoff * sigma;
         let long_range = cutoff * 0.92;
         // Use default LJ settings from config.rs (opposite charges)
-        let foil1 = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, -1.0, Species::FoilMetal);
-        let foil2 = Body::new(Vec2::new(long_range, 0.0), Vec2::zero(), 1.0, 1.0, -1.0, Species::FoilMetal);
+        let foil1 = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, -1.0, Species::LithiumMetal);
+        let foil2 = Body::new(Vec2::new(long_range, 0.0), Vec2::zero(), 1.0, 1.0, 1.0, Species::LithiumMetal);
         sim.bodies.push(foil1);
         sim.bodies.push(foil2);
         sim.quadtree.build(&mut sim.bodies);

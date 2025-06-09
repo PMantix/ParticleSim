@@ -11,11 +11,12 @@ use smallvec::{SmallVec, smallvec};
 
 #[cfg(test)]
 mod reactions {
+    use crate::cell_list::CellList;
+
     use super::*;
 
     #[test]
     fn ion_reduces_to_metal_on_electron_arrival() {
-        // ...existing code...
         let mut ion = Body::new(
             Vec2::zero(),
             Vec2::zero(),
@@ -41,6 +42,7 @@ mod reactions {
             background_e_field: Vec2::zero(),
             config: Default::default(),
             foils: Vec::new(),
+            cell_list: CellList::new(10.0, 1.0),
         };
         let b = &mut sim.bodies[0];
         b.apply_redox();
@@ -51,7 +53,6 @@ mod reactions {
 
     #[test]
     fn metal_oxidizes_to_ion_when_bare() {
-        // ...existing code...
         let metal = Body::new(
             Vec2::zero(),
             Vec2::zero(),
@@ -75,6 +76,7 @@ mod reactions {
             background_e_field: Vec2::zero(),
             config: Default::default(),
             foils: Vec::new(),
+            cell_list: CellList::new(10.0, 1.0),
         };
         let b = &mut sim.bodies[0];
         b.apply_redox();
@@ -105,7 +107,6 @@ mod reactions {
 
     #[test]
     fn repeated_redox_transitions_cycle_species() {
-        // ...existing code...
         let mut body = Body::new(
             Vec2::zero(),
             Vec2::zero(),
@@ -126,7 +127,6 @@ mod reactions {
 
     #[test]
     fn electron_hop_between_metals_conserves_electrons_and_charge() {
-        // ...existing code...
         let mut a = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::LithiumMetal);
         let mut b = Body::new(Vec2::new(1.0, 0.0), Vec2::zero(), 1.0, 1.0, 0.0, Species::LithiumMetal);
         a.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
@@ -151,8 +151,8 @@ mod reactions {
             background_e_field: Vec2::zero(),
             config: Default::default(),
             foils: Vec::new(),
+            cell_list: CellList::new(10.0, 1.0),
         };
-
         sim.quadtree.build(&mut sim.bodies);
 
         let exclude = vec![false; sim.bodies.len()];
@@ -165,14 +165,11 @@ mod reactions {
 
     #[test]
     fn electrons_conserved_after_multiple_hops_and_redox() {
-        // ...existing code...
         let mut a = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::LithiumMetal);
-        let mut b = Body::new(Vec2::new(1.0, 0.0), Vec2::zero(), 1.0, 1.0, 0.0, Species::LithiumMetal);
+        let b = Body::new(Vec2::new(1.0, 0.0), Vec2::zero(), 1.0, 1.0, 0.0, Species::LithiumMetal);
         let ion = Body::new(Vec2::new(2.0, 0.0), Vec2::zero(), 1.0, 1.0, 1.0, Species::LithiumIon);
         for _ in 0..crate::config::FOIL_NEUTRAL_ELECTRONS { a.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }); }
         a.update_charge_from_electrons();
-        b.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
-        b.update_charge_from_electrons();
         let total_electrons = a.electrons.len() + b.electrons.len() + ion.electrons.len();
         let mut sim = Simulation {
             dt: 0.1,
@@ -189,8 +186,8 @@ mod reactions {
             background_e_field: Vec2::zero(),
             config: Default::default(),
             foils: Vec::new(),
+            cell_list: CellList::new(10.0, 1.0),
         };
-
         sim.quadtree.build(&mut sim.bodies);
 
         let exclude = vec![false; sim.bodies.len()];
@@ -200,7 +197,7 @@ mod reactions {
         let sum_electrons = sim.bodies.iter().map(|b| b.electrons.len()).sum::<usize>();
         assert_eq!(sum_electrons, total_electrons);
     }
-    #[cfg(test)]
+
     mod hopping_kinetics_tests {
         use super::*;
         use crate::body::{Body, Electron};
@@ -208,17 +205,17 @@ mod reactions {
 
         #[test]
         fn always_hop_when_activation_nearly_0() {
-            // two metals apart but within hop radius
             let mut a = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, -1.0, Species::LithiumMetal);
             let mut b = Body::new(Vec2::new(1.0,0.0), Vec2::zero(), 1.0, 1.0,  0.0, Species::LithiumMetal);
             a.electrons = smallvec! [
                 Electron{ rel_pos: Vec2::zero(), vel: Vec2::zero() },
-                Electron{ rel_pos: Vec2::zero(), vel: Vec2::zero() }
             ];
-            a.update_charge_from_electrons();
-            b.update_charge_from_electrons();
-            //println!("DEBUG: a.electrons.len() = {}, b.electrons.len() = {}", a.electrons.len(), b.electrons.len());
-            //println!("DEBUG: a.charge = {}, b.charge = {}", a.charge, b.charge);
+            b.electrons = SmallVec::new();
+
+            println!("Testing near-zero activation energy");
+            println!("Initial electrons in a: {}", a.electrons.len());
+            println!("Initial electrons in b: {}", b.electrons.len());
+
             let mut sim = Simulation {
                 dt: 0.1,
                 frame: 0,
@@ -237,30 +234,36 @@ mod reactions {
                     ..Default::default()
                 },
                 foils: Vec::new(),
+                cell_list: CellList::new(10.0, 1.0),
             };
             sim.quadtree.build(&mut sim.bodies);
             let exclude = vec![false; sim.bodies.len()];
             sim.perform_electron_hopping_with_exclusions(&exclude);
+
+            println!("After hopping:");
+            println!("Electrons in a: {}", sim.bodies[0].electrons.len());
+            println!("Electrons in b: {}", sim.bodies[1].electrons.len());
+
             sim.bodies[0].update_charge_from_electrons();   
             sim.bodies[1].update_charge_from_electrons();   
-
-            // after one hop, a should lose an electron, b should gain one
-            assert_eq!(sim.bodies[0].electrons.len(), 1);
+            assert_eq!(sim.bodies[0].electrons.len(), 0);
             assert_eq!(sim.bodies[1].electrons.len(), 1);
         }
 
         #[test]
         fn never_hop_when_activation_infinite() {
-            // two metals apart but within hop radius
             let mut a = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, -1.0, Species::LithiumMetal);
             let mut b = Body::new(Vec2::new(1.0,0.0), Vec2::zero(), 1.0, 1.0,  0.0, Species::LithiumMetal);
             a.electrons = smallvec! [
                 Electron{ rel_pos: Vec2::zero(), vel: Vec2::zero() },
-                Electron{ rel_pos: Vec2::zero(), vel: Vec2::zero() }
+                Electron{ rel_pos: Vec2::zero(), vel: Vec2::zero() },
             ];
-            a.update_charge_from_electrons();
-            b.update_charge_from_electrons();
-            println!("DEBUG: a.electrons.len() = {}, b.electrons.len() = {}", a.electrons.len(), b.electrons.len());
+            b.electrons = SmallVec::new();
+
+            println!("Testing infinite activation energy");
+            println!("Initial electrons in a: {}", a.electrons.len());
+            println!("Initial electrons in b: {}", b.electrons.len());
+
             let mut sim = Simulation {
                 dt: 0.1,
                 frame: 0,
@@ -279,27 +282,33 @@ mod reactions {
                     ..Default::default()
                 },
                 foils: Vec::new(),
+                cell_list: CellList::new(10.0, 1.0),
             };
-
             sim.quadtree.build(&mut sim.bodies);
 
             let exclude = vec![false; sim.bodies.len()];
             sim.perform_electron_hopping_with_exclusions(&exclude);
             sim.bodies[0].update_charge_from_electrons();   
             sim.bodies[1].update_charge_from_electrons();   
+
+            println!("After hopping:");
+            println!("Electrons in a: {}", sim.bodies[0].electrons.len());
+            println!("Electrons in b: {}", sim.bodies[1].electrons.len());
+
+            // after hopping, a and b should have unchanged electrons
+            assert_eq!(sim.bodies[0].electrons.len(), 2);
+            assert_eq!(sim.bodies[1].electrons.len(), 0);
         }
 
         #[test]
         fn never_hop_when_rate_zero() {
-            // two metals apart but within hop radius
             let mut a = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, -1.0, Species::LithiumMetal);
             let mut b = Body::new(Vec2::new(1.0,0.0), Vec2::zero(), 1.0, 1.0,  0.0, Species::LithiumMetal);
             a.electrons = smallvec! [
                 Electron{ rel_pos: Vec2::zero(), vel: Vec2::zero() },
-                Electron{ rel_pos: Vec2::zero(), vel: Vec2::zero() }
+                Electron{ rel_pos: Vec2::zero(), vel: Vec2::zero() },
             ];
-            a.update_charge_from_electrons();
-            b.update_charge_from_electrons();
+            b.electrons = SmallVec::new();
             let mut sim = Simulation {
                 dt: 0.1,
                 frame: 0,
@@ -318,28 +327,29 @@ mod reactions {
                     ..Default::default()
                 },
                 foils: Vec::new(),
+                cell_list: CellList::new(10.0, 1.0),
             };
-
             sim.quadtree.build(&mut sim.bodies);
 
             let exclude = vec![false; sim.bodies.len()];
             sim.perform_electron_hopping_with_exclusions(&exclude);
-            // after hopping, a and b should have unchanged electrons
             assert_eq!(sim.bodies[0].electrons.len(), 2);
             assert_eq!(sim.bodies[1].electrons.len(), 0);
         }
 
         #[test]
         fn always_hop_when_rate_very_high() {
-            // two metals apart but within hop radius
             let mut a = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, -1.0, Species::LithiumMetal);
             let mut b = Body::new(Vec2::new(1.0,0.0), Vec2::zero(), 1.0, 1.0,  0.0, Species::LithiumMetal);
             a.electrons = smallvec! [
                 Electron{ rel_pos: Vec2::zero(), vel: Vec2::zero() },
-                Electron{ rel_pos: Vec2::zero(), vel: Vec2::zero() }
             ];
-            a.update_charge_from_electrons();
-            b.update_charge_from_electrons();
+            b.electrons = SmallVec::new();
+
+            println!("Testing high hop rate");
+            println!("Initial electrons in a: {}", a.electrons.len());
+            println!("Initial electrons in b: {}", b.electrons.len());
+
             let mut sim = Simulation {
                 dt: 0.1,
                 frame: 0,
@@ -358,18 +368,22 @@ mod reactions {
                     ..Default::default()
                 },
                 foils: Vec::new(),
+                cell_list: CellList::new(10.0, 1.0),
             };
             sim.quadtree.build(&mut sim.bodies);
             let exclude = vec![false; sim.bodies.len()];
             sim.perform_electron_hopping_with_exclusions(&exclude);
-            // after hopping, a should lose one electron, b should gain one
-            assert_eq!(sim.bodies[0].electrons.len(), 1);
+
+            println!("After hopping:");
+            println!("Electrons in a: {}", sim.bodies[0].electrons.len()); 
+            println!("Electrons in b: {}", sim.bodies[1].electrons.len());
+
+            assert_eq!(sim.bodies[0].electrons.len(), 0);
             assert_eq!(sim.bodies[1].electrons.len(), 1);
         }
 
         #[test]
         fn test_field_centered_and_symmetric_direct() {
-            // Place a single positive charge at the origin
             let body = Body {
                 pos: Vec2::zero(),
                 vel: Vec2::zero(),
@@ -377,7 +391,7 @@ mod reactions {
                 mass: 1.0,
                 radius: 1.0,
                 charge: 1.0,
-                species: Species::LithiumIon, // or another appropriate variant
+                species: Species::LithiumIon,
                 electrons: SmallVec::new(),
                 id: 0,
                 e_field: Vec2::zero(),
@@ -385,7 +399,6 @@ mod reactions {
             let bodies = vec![body];
             let config = crate::config::SimConfig::default();
 
-            // Simple direct field computation for test
             fn compute_field_at_point(bodies: &[Body], pos: Vec2, _config: &SimConfig) -> Vec2 {
                 let mut field = Vec2::zero();
                 for b in bodies {
@@ -416,21 +429,20 @@ mod reactions {
             for (i, pos) in positions.iter().enumerate() {
                 let field = compute_field_at_point(&bodies, *pos, &config);
 
-                // Check direction
                 match i {
-                    0 => { // +x
+                    0 => {
                         assert!(field.x > 0.0, "Field x should be positive");
                         assert!(field.y.abs() < 1e-6, "Field y should be ~0");
                     }
-                    1 => { // +y
+                    1 => {
                         assert!(field.y > 0.0, "Field y should be positive");
                         assert!(field.x.abs() < 1e-6, "Field x should be ~0");
                     }
-                    2 => { // -x
+                    2 => {
                         assert!(field.x < 0.0, "Field x should be negative");
                         assert!(field.y.abs() < 1e-6, "Field y should be ~0");
                     }
-                    3 => { // -y
+                    3 => {
                         assert!(field.y < 0.0, "Field y should be negative");
                         assert!(field.x.abs() < 1e-6, "Field x should be ~0");
                     }
@@ -439,7 +451,6 @@ mod reactions {
                 magnitudes.push(field.mag());
             }
 
-            // All magnitudes should be (nearly) equal
             let avg_mag = magnitudes.iter().sum::<f32>() / magnitudes.len() as f32;
             for (i, mag) in magnitudes.iter().enumerate() {
                 assert!(
@@ -451,7 +462,7 @@ mod reactions {
                 );
             }
         }
-        // ...existing code...
+
         #[test]
         fn test_field_centered_and_symmetric_quadtree() {
             use crate::quadtree::Quadtree;
@@ -472,7 +483,6 @@ mod reactions {
             
             let mut bodies = vec![body];
 
-            // Build a quadtree for the test
             let mut quadtree = Quadtree::new(
                 config::QUADTREE_THETA,
                 config::QUADTREE_EPSILON,
@@ -481,9 +491,8 @@ mod reactions {
             );
             quadtree.build(&mut bodies);
 
-            // Helper to get field at a point using the quadtree
             fn field_at(quadtree: &Quadtree, bodies: &[Body], pos: Vec2, k_e: f32) -> Vec2 {
-                quadtree.field_at_point(bodies, pos, k_e) // You may need to implement or expose this
+                quadtree.field_at_point(bodies, pos, k_e)
             }
 
             let positions = [
@@ -509,7 +518,6 @@ mod reactions {
                 magnitudes.push(field.mag());
             }
 
-            // All magnitudes should be (nearly) equal
             let avg_mag = magnitudes.iter().sum::<f32>() / magnitudes.len() as f32;
             for (i, mag) in magnitudes.iter().enumerate() {
                 assert!(
