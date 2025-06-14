@@ -1,5 +1,4 @@
-// simulation/redox_tests.rs
-// Contains redox-related tests for the Simulation and Body
+// Redox-related tests for the Simulation and Body
 
 use super::simulation::Simulation;
 use crate::body::{Body, Electron, Species};
