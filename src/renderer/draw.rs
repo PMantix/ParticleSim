@@ -244,11 +244,14 @@ impl super::Renderer {
 
 impl super::Renderer {
     /// Draw electric field isolines using a simple marching squares algorithm.
-    pub fn draw_field_isolines(&self, ctx: &mut quarkstrom::RenderContext) {
-        let grid_spacing = 5.0;
-        let iso_values = [-20.0, -10.0, -5.0, 0.0, 5.0, 10.0, 20.0];
+    pub fn draw_field_isolines(&mut self, ctx: &mut quarkstrom::RenderContext) {
+        // Dynamic grid spacing based on zoom
+        let min_spacing = 1.0;
+        let max_spacing = 60.0;
+        let grid_spacing = (self.scale / 50.0).clamp(min_spacing, max_spacing);
 
-        let half_view = Vec2::new(self.scale, self.scale);
+        // Expand the view area to ensure isolines cover the full window, even in fullscreen
+        let half_view = Vec2::new(self.scale, self.scale) * 1.2;
         let min = self.pos - half_view;
         let max = self.pos + half_view;
 
@@ -256,18 +259,70 @@ impl super::Renderer {
         let ny = ((max.y - min.y) / grid_spacing).ceil() as usize + 1;
 
         let mut samples = vec![0.0f32; nx * ny];
+        let mut min_val = f32::INFINITY;
+        let mut max_val = f32::NEG_INFINITY;
         for ix in 0..nx {
             for iy in 0..ny {
                 let x = min.x + ix as f32 * grid_spacing;
                 let y = min.y + iy as f32 * grid_spacing;
                 let pos = Vec2::new(x, y);
-                samples[iy * nx + ix] =
-                    compute_potential_at_point(&self.bodies, pos, &self.sim_config);
+                let v = compute_potential_at_point(&self.bodies, pos, &self.sim_config);
+                min_val = min_val.min(v);
+                max_val = max_val.max(v);
+                samples[iy * nx + ix] = v;
             }
         }
 
-        for iso in iso_values {
-            let color = [0, 255, 0, 255];
+        let abs_max = min_val.abs().max(max_val.abs());
+
+        // Suppress isolines if field is too weak
+        if abs_max < 100.0 {
+            return;
+        }
+
+        // Fewer isolines: increase base spacing and limit number of levels
+        let base_spacing = 0.2;
+        let max_levels = 5;
+        let target_spacing = abs_max / max_levels as f32;
+        let log10 = target_spacing.log10().floor();
+        let spacing = base_spacing * 10f32.powf(log10);
+
+        // Generate isoline values
+        let mut iso_values = Vec::new();
+        for i in -max_levels..=max_levels {
+            let v = i as f32 * spacing;
+            // Only include values within the field range
+            if v.abs() <= abs_max {
+                iso_values.push(v);
+            }
+        }
+        iso_values.sort_by(|a, b| a.partial_cmp(b).unwrap());
+
+        for &iso in &iso_values {
+            // Color: blue for negative, white for zero, red for positive
+            let t = (iso / abs_max).clamp(-1.0, 1.0);
+            let color = if t < 0.0 {
+                // Negative: blue to white
+                let f = t.abs();
+                [
+                    (255.0 * (1.0 - f) + 0.0 * f) as u8, // R
+                    (255.0 * (1.0 - f) + 128.0 * f) as u8, // G
+                    255u8, // B
+                    255u8,
+                ]
+            } else if t > 0.0 {
+                // Positive: white to red
+                let f = t;
+                [
+                    255u8,
+                    (255.0 * (1.0 - f) + 64.0 * f) as u8, // G
+                    (255.0 * (1.0 - f) + 64.0 * f) as u8, // B
+                    255u8,
+                ]
+            } else {
+                [255, 255, 255, 255] // white for zero
+            };
+
             for ix in 0..nx - 1 {
                 for iy in 0..ny - 1 {
                     let i00 = iy * nx + ix;
@@ -288,26 +343,22 @@ impl super::Renderer {
                     let mut pts = Vec::new();
                     if (v00 - iso) * (v10 - iso) < 0.0 {
                         let t = (iso - v00) / (v10 - v00);
-                        pts.push(p00 + (p10 - p00) * t);
+                        pts.push(lerp(p00, p10, t));
                     }
                     if (v10 - iso) * (v11 - iso) < 0.0 {
                         let t = (iso - v10) / (v11 - v10);
-                        pts.push(p10 + (p11 - p10) * t);
+                        pts.push(lerp(p10, p11, t));
                     }
                     if (v11 - iso) * (v01 - iso) < 0.0 {
                         let t = (iso - v11) / (v01 - v11);
-                        pts.push(p11 + (p01 - p11) * t);
+                        pts.push(lerp(p11, p01, t));
                     }
                     if (v01 - iso) * (v00 - iso) < 0.0 {
                         let t = (iso - v01) / (v00 - v01);
-                        pts.push(p01 + (p00 - p01) * t);
+                        pts.push(lerp(p01, p00, t));
                     }
-
                     if pts.len() == 2 {
                         ctx.draw_line(pts[0], pts[1], color);
-                    } else if pts.len() == 4 {
-                        ctx.draw_line(pts[0], pts[1], color);
-                        ctx.draw_line(pts[2], pts[3], color);
                     }
                 }
             }
@@ -394,6 +445,10 @@ pub fn compute_field_at_point(
     }
 
     field
+}
+
+fn lerp(a: Vec2, b: Vec2, t: f32) -> Vec2 {
+    a + (b - a) * t
 }
 
 /// Compute the electric potential at a point due to all bodies.
