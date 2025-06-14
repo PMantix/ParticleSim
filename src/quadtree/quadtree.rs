@@ -95,7 +95,8 @@ impl Quadtree {
                 + self.nodes[i + 3].charge;
         }
         self.nodes[0..len * 4 + 1].par_iter_mut().for_each(|node| {
-            node.pos /= node.mass.max(f32::MIN_POSITIVE);
+            // Use charge for position normalization (center-of-charge)
+            node.pos /= node.charge.abs().max(f32::MIN_POSITIVE);
         });
     }
 
@@ -156,7 +157,7 @@ impl Quadtree {
 
                             for body in &bodies[range.clone()] {
                                 total_mass += body.mass;
-                                weighted_pos += body.pos * body.mass;
+                                weighted_pos += body.pos * body.charge; // charge-weighted
                                 total_charge += body.charge;
                             }
 
