@@ -313,3 +313,18 @@ impl Quadtree {
         self.acc_pos(pos, 1.0, bodies, k_e)
     }
 }
+
+use std::ops::{Index, IndexMut};
+
+impl Index<usize> for Quadtree {
+    type Output = Node;
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.nodes[index]
+    }
+}
+
+impl IndexMut<usize> for Quadtree {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        &mut self.nodes[index]
+    }
+}
