@@ -204,8 +204,10 @@ impl Simulation {
             let hop_radius = self.config.hop_radius_factor * src_body.radius;
 
             // Use quadtree for neighbor search!
-            let mut candidate_neighbors = self.quadtree
-                .find_neighbors_within(&self.bodies, src_idx, hop_radius)
+            let mut neighbor_buf = Vec::new();
+            self.quadtree
+                .find_neighbors_within(&self.bodies, src_idx, hop_radius, &mut neighbor_buf);
+            let mut candidate_neighbors = neighbor_buf
                 .into_iter()
                 .filter(|&dst_idx| dst_idx != src_idx && !received_electron[dst_idx])
                 .filter(|&dst_idx| {

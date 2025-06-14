@@ -40,10 +40,10 @@ impl CellList {
         (x, y)
     }
 
-    pub fn find_neighbors_within(&self, bodies: &[Body], i: usize, cutoff: f32) -> Vec<usize> {
+    pub fn find_neighbors_within(&self, bodies: &[Body], i: usize, cutoff: f32, out: &mut Vec<usize>) {
         let (cx, cy) = self.coord(bodies[i].pos);
         let range = (cutoff / self.cell_size).ceil() as isize;
-        let mut neighbors = Vec::new();
+        out.clear();
         let cutoff_sq = cutoff * cutoff;
         for dy in -range..=range {
             for dx in -range..=range {
@@ -57,12 +57,11 @@ impl CellList {
                     if idx != i {
                         let r2 = (bodies[idx].pos - bodies[i].pos).mag_sq();
                         if r2 < cutoff_sq {
-                            neighbors.push(idx);
+                            out.push(idx);
                         }
                     }
                 }
             }
         }
-        neighbors
     }
 }

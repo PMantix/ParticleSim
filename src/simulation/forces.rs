@@ -7,6 +7,9 @@ use crate::body::Species;
 use crate::config;
 use crate::simulation::Simulation;
 use crate::profile_scope;
+use rayon::prelude::*;
+use parking_lot::Mutex;
+use ultraviolet::Vec2;
 
 /// Coulomb's constant (scaled for simulation units).
 pub const K_E: f32 = 8.988e3 * 0.5;
@@ -56,23 +59,23 @@ pub fn apply_lj_forces(sim: &mut Simulation) {
         sim.quadtree.build(&mut sim.bodies);
     }
 
-    for i in 0..sim.bodies.len() {
-        // Only apply LJ to LithiumMetal or FoilMetal
+    let n = sim.bodies.len();
+    let forces: Vec<Mutex<Vec2>> = (0..n).map(|_| Mutex::new(Vec2::zero())).collect();
+    let sim_ptr = sim as *const Simulation;
+    (0..n).into_par_iter().for_each_init(|| Vec::new(), |neighbors: &mut Vec<usize>, i| {
+        let sim = unsafe { &*sim_ptr };
         if !(sim.bodies[i].species == Species::LithiumMetal || sim.bodies[i].species == Species::FoilMetal) {
-            continue;
+            return;
         }
-        let neighbors = if use_cell {
-            sim.cell_list.find_neighbors_within(&sim.bodies, i, cutoff)
+        if use_cell {
+            sim.cell_list.find_neighbors_within(&sim.bodies, i, cutoff, neighbors);
         } else {
-            sim.quadtree.find_neighbors_within(&sim.bodies, i, cutoff)
-        };
-        for &j in &neighbors {
+            sim.quadtree.find_neighbors_within(&sim.bodies, i, cutoff, neighbors);
+        }
+        for &j in neighbors.iter() {
             if j <= i { continue; }
-            let (a, b) = {
-                let (left, right) = sim.bodies.split_at_mut(j);
-                (&mut left[i], &mut right[0])
-            };
-            // Apply LJ between LithiumMetal and/or FoilMetal
+            let a = &sim.bodies[i];
+            let b = &sim.bodies[j];
             if (a.species == Species::LithiumMetal || a.species == Species::FoilMetal) &&
                (b.species == Species::LithiumMetal || b.species == Species::FoilMetal) {
                 let r_vec = b.pos - a.pos;
@@ -83,14 +86,13 @@ pub fn apply_lj_forces(sim: &mut Simulation) {
                     let unclamped_force_mag = 24.0 * epsilon * (2.0 * sr6 * sr6 - sr6) / r;
                     let force_mag = unclamped_force_mag.clamp(-max_lj_force, max_lj_force);
                     let force = force_mag * r_vec.normalized();
-                    //println!("LJ DEBUG: r={:.3}, sr6={:.3}, force_mag={:.3}, force=({:.3},{:.3})", r, sr6, force_mag, force.x, force.y);
-                    
-                    // Update acceleration (SWAPPED SIGNS)
-                    a.acc -= force / a.mass;
-                    b.acc += force / b.mass;
-
+                    *forces[i].lock() -= force / a.mass;
+                    *forces[j].lock() += force / b.mass;
                 }
             }
         }
+    });
+    for (body, f) in sim.bodies.iter_mut().zip(forces) {
+        body.acc += f.into_inner();
     }
 }
