@@ -142,14 +142,12 @@ impl Simulation {
         self.quadtree.build(&mut self.bodies);
 
         let quadtree = &self.quadtree;
-        let k_e = crate::simulation::forces::K_E;
-        // Clone the bodies' positions and charges needed for field calculation
-        let bodies_snapshot = self.bodies.clone();
-        for body in &mut self.bodies {
-            body.update_electrons(
-                |pos| quadtree.field_at_point(&bodies_snapshot, pos, k_e) + self.background_e_field,
-                self.dt,
-            );
+        let len = self.bodies.len();
+        let bodies_ptr = self.bodies.as_ptr();
+        for i in 0..len {
+            let bodies_slice = unsafe { std::slice::from_raw_parts(bodies_ptr, len) };
+            let body = &mut self.bodies[i];
+            body.update_electrons(bodies_slice, i, quadtree, self.background_e_field, self.dt);
             body.update_charge_from_electrons();
         }
         self.perform_electron_hopping_with_exclusions(&foil_current_recipients);
