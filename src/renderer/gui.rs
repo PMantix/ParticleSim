@@ -80,7 +80,6 @@ impl super::Renderer {
                 ui.checkbox(&mut self.sim_config.show_velocity_vectors, "Show Velocity Vectors");
                 ui.checkbox(&mut self.sim_config.show_charge_density, "Show Charge Density");
                 ui.checkbox(&mut self.sim_config.show_field_vectors, "Show Field Vectors"); // NEW
-                ui.checkbox(&mut self.sim_config.show_velocity_vectors, "Show Velocity Vectors");
                 ui.add(
                     egui::Slider::new(&mut self.velocity_vector_scale, 0.01..=5.0)
                         .text("Velocity Vector Scale")
