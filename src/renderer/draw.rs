@@ -246,9 +246,9 @@ impl super::Renderer {
     /// Draw electric field isolines using a simple marching squares algorithm.
     pub fn draw_field_isolines(&mut self, ctx: &mut quarkstrom::RenderContext) {
         // Dynamic grid spacing based on zoom
-        let min_spacing = 1.0;
+        let min_spacing = 8.0;
         let max_spacing = 60.0;
-        let grid_spacing = (self.scale / 50.0).clamp(min_spacing, max_spacing);
+        let grid_spacing = (self.scale / 10.0).clamp(min_spacing, max_spacing);
 
         // Expand the view area to ensure isolines cover the full window, even in fullscreen
         let half_view = Vec2::new(self.scale, self.scale) * 1.2;
@@ -257,70 +257,74 @@ impl super::Renderer {
 
         let nx = ((max.x - min.x) / grid_spacing).ceil() as usize + 1;
         let ny = ((max.y - min.y) / grid_spacing).ceil() as usize + 1;
+        let stride_x = (nx as f32 / 200.0).ceil().max(1.0) as usize;
+        let stride_y = (ny as f32 / 200.0).ceil().max(1.0) as usize;
 
-        let mut samples = vec![0.0f32; nx * ny];
+        let mut samples = Vec::with_capacity((nx/stride_x+1)*(ny/stride_y+1));
         let mut min_val = f32::INFINITY;
         let mut max_val = f32::NEG_INFINITY;
-        for ix in 0..nx {
-            for iy in 0..ny {
+        for ix in (0..nx).step_by(stride_x) {
+            for iy in (0..ny).step_by(stride_y) {
                 let x = min.x + ix as f32 * grid_spacing;
                 let y = min.y + iy as f32 * grid_spacing;
                 let pos = Vec2::new(x, y);
                 let v = compute_potential_at_point(&self.bodies, pos, &self.sim_config);
                 min_val = min_val.min(v);
                 max_val = max_val.max(v);
-                samples[iy * nx + ix] = v;
+                samples.push(v);
             }
         }
 
         let abs_max = min_val.abs().max(max_val.abs());
-
-        // Suppress isolines if field is too weak
-        if abs_max < 100.0 {
+        if abs_max < 1e-3 {
             return;
         }
 
-        // Fewer isolines: increase base spacing and limit number of levels
-        let base_spacing = 0.2;
-        let max_levels = 5;
-        let target_spacing = abs_max / max_levels as f32;
-        let log10 = target_spacing.log10().floor();
-        let spacing = base_spacing * 10f32.powf(log10);
+        // Percentile-based isoline levels
+        let num_levels = 11;
+        let mut sorted_samples = samples.clone();
+        sorted_samples.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        let mut iso_values = Vec::with_capacity(num_levels);
+        for i in 0..num_levels {
+            let p = i as f32 / (num_levels - 1) as f32;
+            let idx = ((sorted_samples.len() - 1) as f32 * p).round() as usize;
+            iso_values.push(sorted_samples[idx]);
+        }
+        iso_values.dedup_by(|a, b| (*a - *b).abs() < 1e-6);
 
-        // Generate isoline values
-        let mut iso_values = Vec::new();
-        for i in -max_levels..=max_levels {
-            let v = i as f32 * spacing;
-            // Only include values within the field range
-            if v.abs() <= abs_max {
-                iso_values.push(v);
+        // Now do the full grid for isoline drawing
+        let mut field_grid = vec![0.0f32; nx * ny];
+        for ix in 0..nx {
+            for iy in 0..ny {
+                let x = min.x + ix as f32 * grid_spacing;
+                let y = min.y + iy as f32 * grid_spacing;
+                let pos = Vec2::new(x, y);
+                let v = compute_potential_at_point(&self.bodies, pos, &self.sim_config);
+                field_grid[iy * nx + ix] = v;
             }
         }
-        iso_values.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
         for &iso in &iso_values {
             // Color: blue for negative, white for zero, red for positive
             let t = (iso / abs_max).clamp(-1.0, 1.0);
             let color = if t < 0.0 {
-                // Negative: blue to white
                 let f = t.abs();
                 [
-                    (255.0 * (1.0 - f) + 0.0 * f) as u8, // R
-                    (255.0 * (1.0 - f) + 128.0 * f) as u8, // G
-                    255u8, // B
+                    (255.0 * (1.0 - f) + 0.0 * f) as u8,
+                    (255.0 * (1.0 - f) + 128.0 * f) as u8,
+                    255u8,
                     255u8,
                 ]
             } else if t > 0.0 {
-                // Positive: white to red
                 let f = t;
                 [
                     255u8,
-                    (255.0 * (1.0 - f) + 64.0 * f) as u8, // G
-                    (255.0 * (1.0 - f) + 64.0 * f) as u8, // B
+                    (255.0 * (1.0 - f) + 64.0 * f) as u8,
+                    (255.0 * (1.0 - f) + 64.0 * f) as u8,
                     255u8,
                 ]
             } else {
-                [255, 255, 255, 255] // white for zero
+                [255, 255, 255, 255]
             };
 
             for ix in 0..nx - 1 {
@@ -330,10 +334,10 @@ impl super::Renderer {
                     let i01 = (iy + 1) * nx + ix;
                     let i11 = (iy + 1) * nx + ix + 1;
 
-                    let v00 = samples[i00];
-                    let v10 = samples[i10];
-                    let v01 = samples[i01];
-                    let v11 = samples[i11];
+                    let v00 = field_grid[i00];
+                    let v10 = field_grid[i10];
+                    let v01 = field_grid[i01];
+                    let v11 = field_grid[i11];
 
                     let p00 = Vec2::new(min.x + ix as f32 * grid_spacing, min.y + iy as f32 * grid_spacing);
                     let p10 = Vec2::new(min.x + (ix + 1) as f32 * grid_spacing, min.y + iy as f32 * grid_spacing);
