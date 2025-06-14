@@ -245,8 +245,9 @@ impl super::Renderer {
 impl super::Renderer {
     /// Draw electric field isolines using a simple marching squares algorithm.
     pub fn draw_field_isolines(&self, ctx: &mut quarkstrom::RenderContext) {
-        let grid_spacing = 5.0;
-        let iso_values = [-20.0, -10.0, -5.0, 0.0, 5.0, 10.0, 20.0];
+        // Grid spacing scales with zoom so isoline density stays reasonable
+        let mut grid_spacing = self.scale / 100.0;
+        grid_spacing = grid_spacing.clamp(2.0, 20.0);
 
         let half_view = Vec2::new(self.scale, self.scale);
         let min = self.pos - half_view;
@@ -256,12 +257,28 @@ impl super::Renderer {
         let ny = ((max.y - min.y) / grid_spacing).ceil() as usize + 1;
 
         let mut samples = vec![0.0f32; nx * ny];
+        let mut min_val = f32::INFINITY;
+        let mut max_val = f32::NEG_INFINITY;
         for ix in 0..nx {
             for iy in 0..ny {
                 let x = min.x + ix as f32 * grid_spacing;
                 let y = min.y + iy as f32 * grid_spacing;
                 let pos = Vec2::new(x, y);
-                samples[iy * nx + ix] = compute_potential_at_point(&self.bodies, pos);
+                let v = compute_potential_at_point(&self.bodies, pos);
+                min_val = min_val.min(v);
+                max_val = max_val.max(v);
+                samples[iy * nx + ix] = v;
+            }
+        }
+
+        let levels = 9;
+        let mut iso_values = Vec::with_capacity(levels);
+        if (max_val - min_val).abs() < 1e-6 {
+            iso_values.push(min_val);
+        } else {
+            for i in 0..levels {
+                let t = i as f32 / (levels - 1) as f32;
+                iso_values.push(min_val + t * (max_val - min_val));
             }
         }
 
