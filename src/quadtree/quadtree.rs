@@ -267,9 +267,9 @@ impl Quadtree {
     }
 
     /// Find indices of bodies within `cutoff` distance of body at index `i` (excluding `i` itself)
-    pub fn find_neighbors_within(&self, bodies: &[Body], i: usize, cutoff: f32) -> Vec<usize> {
+    pub fn find_neighbors_within(&self, bodies: &[Body], i: usize, cutoff: f32, out: &mut Vec<usize>) {
         profile_scope!("quadtree_neighbors");
-        let mut neighbors = Vec::new();
+        out.clear();
         let pos = bodies[i].pos;
         let cutoff_sq = cutoff * cutoff;
 
@@ -295,7 +295,7 @@ impl Quadtree {
             if node.is_leaf() {
                 for idx in node.bodies.clone() {
                     if idx != i && (bodies[idx].pos - pos).mag_sq() < cutoff_sq {
-                        neighbors.push(idx);
+                        out.push(idx);
                     }
                 }
             } else {
@@ -304,7 +304,6 @@ impl Quadtree {
                 }
             }
         }
-        neighbors
     }
 
     /// Compute the electric field at an arbitrary point using the quadtree (Barnes-Hut).
