@@ -37,14 +37,6 @@ pub fn attract(sim: &mut Simulation) {
 /// - Forces are clamped to avoid instability.
 pub fn apply_lj_forces(sim: &mut Simulation) {
     profile_scope!("forces_lj");
-    // Debug: Print all lithium metals in the simulation
-    let mut metal_indices = vec![];
-    for (i, b) in sim.bodies.iter().enumerate() {
-        if b.species == Species::LithiumMetal {
-            metal_indices.push(i);
-        }
-    }
-
     let sigma = sim.config.lj_force_sigma;
     let epsilon = sim.config.lj_force_epsilon;
     let cutoff = sim.config.lj_force_cutoff * sigma;
