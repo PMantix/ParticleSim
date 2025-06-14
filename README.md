@@ -17,6 +17,7 @@ This repository contains a modular, parallelized Barnes-Hut simulation for large
 - **Live Force Tracking & Debugging**:  
   - Separate accumulation and visualization of Coulomb and Lennard-Jones (LJ) forces.
   - Debug prints (configurable via the GUI) display per-body force vectors, acceleration, and velocity.
+  - Optional overlay colors each particle by the LJ/Coulomb force ratio.
 - **Interactive GUI**:  
   - Real-time visualization and controls via [quarkstrom](https://github.com/DeadlockCode/quarkstrom).
   - **Manual Step Button**: Step the simulation forward by one timestep per click for precise debugging.
@@ -70,8 +71,9 @@ This repository contains a modular, parallelized Barnes-Hut simulation for large
 - **Scenario Setup**:  
   - **Delete All Particles**: Clears the simulation space immediately.
   - **Add Circle / Rectangle / Foil**: Spawn configured groups of particles quickly—ideal for rapid prototyping and testing.
-- **Force Visualization Overlays**:  
+- **Force Visualization Overlays**:
   Toggle overlays for velocity vectors, charge density, and force ratio display.
+  When enabled, a color-coded circle indicates the LJ/Coulomb force ratio for each particle.
 
 ---
 

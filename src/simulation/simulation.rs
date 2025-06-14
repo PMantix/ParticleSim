@@ -78,6 +78,8 @@ impl Simulation {
         self.dt = *TIMESTEP.lock();
         for body in &mut self.bodies {
             body.acc = Vec2::zero();
+            body.lj_force_debug = 0.0;
+            body.coulomb_force_debug = 0.0;
         }
 
         forces::attract(self);
