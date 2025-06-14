@@ -2,6 +2,7 @@
 // Contains the Simulation struct and main methods (new, step, iterate, perform_electron_hopping)
 
 use crate::{body::{Body, Species, Electron}, quadtree::Quadtree, cell_list::CellList};
+use rayon::prelude::*;
 use crate::renderer::state::{FIELD_MAGNITUDE, FIELD_DIRECTION, TIMESTEP, COLLISION_PASSES};
 use ultraviolet::Vec2;
 use super::forces;
@@ -72,13 +73,11 @@ impl Simulation {
         let mag = *FIELD_MAGNITUDE.lock();
         let theta = (*FIELD_DIRECTION.lock()).to_radians();
         self.background_e_field = Vec2::new(theta.cos(), theta.sin()) * mag;
-        for flag in &mut self.rewound_flags {
-            *flag = false;
-        }
+        self.rewound_flags.par_iter_mut().for_each(|flag| *flag = false);
         self.dt = *TIMESTEP.lock();
-        for body in &mut self.bodies {
+        self.bodies.par_iter_mut().for_each(|body| {
             body.acc = Vec2::zero();
-        }
+        });
 
         forces::attract(self);
         forces::apply_lj_forces(self);
@@ -135,23 +134,24 @@ impl Simulation {
             }
         }
         // Ensure all body charges are up-to-date after foil current changes
-        for body in &mut self.bodies {
-            body.update_charge_from_electrons();
-        }
+        self.bodies.par_iter_mut().for_each(|body| body.update_charge_from_electrons());
         // Rebuild the quadtree after charge/electron changes so field is correct for hopping
         self.quadtree.build(&mut self.bodies);
 
         let quadtree = &self.quadtree;
         let k_e = crate::simulation::forces::K_E;
-        // Clone the bodies' positions and charges needed for field calculation
-        let bodies_snapshot = self.bodies.clone();
-        for body in &mut self.bodies {
+        // Compute electron dynamics using a shared read-only view of bodies
+        let bodies_ptr = std::ptr::addr_of!(self.bodies) as usize;
+        let background_field = self.background_e_field;
+        let dt = self.dt;
+        self.bodies.par_iter_mut().for_each(|body| {
+            let bodies = unsafe { &*(bodies_ptr as *const Vec<Body>) };
             body.update_electrons(
-                |pos| quadtree.field_at_point(&bodies_snapshot, pos, k_e) + self.background_e_field,
-                self.dt,
+                |pos| quadtree.field_at_point(bodies, pos, k_e) + background_field,
+                dt,
             );
             body.update_charge_from_electrons();
-        }
+        });
         self.perform_electron_hopping_with_exclusions(&foil_current_recipients);
         self.frame += 1;
     }
@@ -161,22 +161,23 @@ impl Simulation {
         // Damping factor scales with timestep and is user-configurable
         let dt = self.dt;
         let damping = self.config.damping_base.powf(dt / 0.01);
-        for body in &mut self.bodies {
-            body.vel += body.acc * self.dt;
+        let bounds = self.bounds;
+        self.bodies.par_iter_mut().for_each(|body| {
+            body.vel += body.acc * dt;
             body.vel *= damping;
-            body.pos += body.vel * self.dt;
+            body.pos += body.vel * dt;
             for axis in 0..2 {
                 let pos = if axis == 0 { &mut body.pos.x } else { &mut body.pos.y };
                 let vel = if axis == 0 { &mut body.vel.x } else { &mut body.vel.y };
-                if *pos < -self.bounds {
-                    *pos = -self.bounds;
+                if *pos < -bounds {
+                    *pos = -bounds;
                     *vel = -*vel;
-                } else if *pos > self.bounds {
-                    *pos = self.bounds;
+                } else if *pos > bounds {
+                    *pos = bounds;
                     *vel = -*vel;
                 }
             }
-        }
+        });
     }
 
     pub fn use_cell_list(&self) -> bool {
@@ -248,8 +249,6 @@ impl Simulation {
                 self.bodies[dst_idx].update_charge_from_electrons();
             }
         }
-        for body in &mut self.bodies {
-            body.apply_redox();
-        }
+        self.bodies.par_iter_mut().for_each(|body| body.apply_redox());
     }
 }
