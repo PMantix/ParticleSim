@@ -14,7 +14,7 @@ impl super::Renderer {
                 ui.label("Field Controls:");
                 let mut mag = *FIELD_MAGNITUDE.lock();
                 ui.add(
-                    egui::Slider::new(&mut mag, 0.0..=1000.0)
+                    egui::Slider::new(&mut mag, 0.0..=200.0)
                         .text("Field |E|")
                         .clamp_to_range(true)
                         .step_by(1.0), // Set increment to 1
@@ -41,9 +41,9 @@ impl super::Renderer {
                 // --- Simulation Controls ---
                 ui.label("Simulation Controls:");
                 ui.add(
-                    egui::Slider::new(&mut *TIMESTEP.lock(), 0.0001..=0.1)
+                    egui::Slider::new(&mut *TIMESTEP.lock(), 0.0001..=0.01)
                         .text("Timestep (dt)")
-                        .step_by(0.001),
+                        .step_by(0.005),
                 );
                 ui.add(
                     egui::Slider::new(&mut self.sim_config.damping_base, 0.95..=1.0)
@@ -53,7 +53,7 @@ impl super::Renderer {
 
                 let mut passes = COLLISION_PASSES.lock();
                 ui.add(
-                    egui::Slider::new(&mut *passes, 2..=10)
+                    egui::Slider::new(&mut *passes, 2..=20)
                         .text("Collision Passes")
                         .clamp_to_range(true),
                 );
@@ -81,7 +81,7 @@ impl super::Renderer {
                 ui.checkbox(&mut self.sim_config.show_charge_density, "Show Charge Density");
                 ui.checkbox(&mut self.sim_config.show_field_vectors, "Show Field Vectors"); // NEW
                 ui.add(
-                    egui::Slider::new(&mut self.velocity_vector_scale, 0.01..=5.0)
+                    egui::Slider::new(&mut self.velocity_vector_scale, 0.01..=1.0)
                         .text("Velocity Vector Scale")
                         .step_by(0.01),
                 );

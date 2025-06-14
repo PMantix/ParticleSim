@@ -5,7 +5,12 @@ use crate::quadtree::Quadtree;
 use crate::body::{Species, Body};
 
 impl super::Renderer {
-    pub fn draw(&mut self, ctx: &mut quarkstrom::RenderContext) {
+    pub fn draw(&mut self, ctx: &mut quarkstrom::RenderContext, width: u16, height: u16) {
+        // Prevent wgpu validation error: skip rendering if window is zero-sized
+        if width == 0 || height == 0 {
+            return;
+        }
+
         {
             let mut lock = UPDATE_LOCK.lock();
             if *lock {

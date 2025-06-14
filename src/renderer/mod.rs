@@ -35,6 +35,8 @@ pub struct Renderer {
     pub scenario_charge: i32,
     pub velocity_vector_scale: f32,
     scenario_current: f32,
+    pub window_width: u16,
+    pub window_height: u16,
 }
 
 impl quarkstrom::Renderer for Renderer {
@@ -64,14 +66,18 @@ impl quarkstrom::Renderer for Renderer {
             scenario_charge: 0,
             velocity_vector_scale: 0.1,
             scenario_current: 0.0,
+            window_width: 800, // default value, can be changed
+            window_height: 600, // default value, can be changed
         }
     }
 
     fn input(&mut self, input: &WinitInputHelper, width: u16, height: u16) {
+        self.window_width = width;
+        self.window_height = height;
         self.handle_input(input, width, height);
     }
     fn render(&mut self, ctx: &mut quarkstrom::RenderContext) {
-        self.draw(ctx);
+        self.draw(ctx, self.window_width, self.window_height);
     }
     fn gui(&mut self, ctx: &quarkstrom::egui::Context) {
         self.show_gui(ctx);
