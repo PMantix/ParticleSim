@@ -114,6 +114,16 @@ impl super::Renderer {
                 }
             }
 
+            if self.sim_config.show_lj_vs_coulomb_ratio {
+                for body in &self.bodies {
+                    let ratio = body.lj_force_debug / body.coulomb_force_debug.max(1e-6);
+                    let t = ratio / (ratio + 1.0);
+                    let r = (t * 255.0) as u8;
+                    let b = ((1.0 - t) * 255.0) as u8;
+                    ctx.draw_circle(body.pos, body.radius * 0.8, [r, 0, b, 255]);
+                }
+            }
+
 
             if let Some(body) = &self.confirmed_bodies {
                 ctx.draw_circle(body.pos, body.radius, [0xff; 4]);

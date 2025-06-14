@@ -25,6 +25,8 @@ pub struct Body {
     pub species: Species,
     pub electrons: SmallVec<[Electron; 2]>,
     pub e_field: Vec2,
+    pub lj_force_debug: f32,
+    pub coulomb_force_debug: f32,
 }
 
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -44,6 +46,8 @@ impl Body {
             species,
             electrons: SmallVec::new(),
             e_field: Vec2::zero(),
+            lj_force_debug: 0.0,
+            coulomb_force_debug: 0.0,
         }
     }
     pub fn update_species(&mut self) {

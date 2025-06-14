@@ -25,7 +25,9 @@ pub fn attract(sim: &mut Simulation) {
     }
     for body in &mut sim.bodies {
         // Convert force (qE) to acceleration by dividing by mass (a = F / m)
-        body.acc = (body.charge * body.e_field) / body.mass;
+        let force = body.charge * body.e_field;
+        body.coulomb_force_debug = force.mag();
+        body.acc = force / body.mass;
 
     }
 }
@@ -88,6 +90,8 @@ pub fn apply_lj_forces(sim: &mut Simulation) {
                     // Update acceleration (SWAPPED SIGNS)
                     a.acc -= force / a.mass;
                     b.acc += force / b.mass;
+                    a.lj_force_debug += force_mag.abs();
+                    b.lj_force_debug += force_mag.abs();
 
                 }
             }
