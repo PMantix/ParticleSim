@@ -133,7 +133,7 @@ impl super::Renderer {
             }
         }
 
-        if self.show_quadtree && !self.quadtree.is_empty() {
+        if self.show_quadtree && !self.quadtree.nodes.is_empty() {
             let mut depth_range = self.depth_range;
             if depth_range.0 >= depth_range.1 {
                 let mut stack = Vec::new();
@@ -226,7 +226,7 @@ impl super::Renderer {
                 let mut y = min.y;
                 while y < max.y {
                     let pos = Vec2::new(x, y);
-                    let field = compute_field_at_point(&self.bodies, pos, &self.sim_config);
+                    let field = compute_field_at_point(&self.quadtree, &self.bodies, pos);
                     let end = pos + field * field_scale;
                     ctx.draw_line(pos, end, color);
                     y += grid_spacing;
@@ -256,7 +256,8 @@ impl super::Renderer {
                 let x = min.x + ix as f32 * grid_spacing;
                 let y = min.y + iy as f32 * grid_spacing;
                 let pos = Vec2::new(x, y);
-                samples[iy * nx + ix] = compute_potential_at_point(&self.bodies, pos);
+                let field = compute_field_at_point(&self.quadtree, &self.bodies, pos);
+                samples[iy * nx + ix] = field.mag();
             }
         }
 
@@ -364,15 +365,8 @@ impl super::Renderer {
 }
 
 // Helper function to compute the electric field at a point
-pub fn compute_field_at_point(bodies: &[Body], pos: Vec2, _config: &crate::config::SimConfig) -> Vec2 {
-    let mut field = Vec2::zero();
-    for body in bodies {
-        let r = pos - body.pos;
-        let dist2 = r.mag_sq().max(1e-4); // avoid div by zero
-        let e = body.charge * r / (dist2 * dist2.sqrt()); // Coulomb's law (unitless K)
-        field += e;
-    }
-    field
+pub fn compute_field_at_point(quadtree: &Quadtree, bodies: &[Body], pos: Vec2) -> Vec2 {
+    quadtree.field_at_point(bodies, pos, crate::simulation::forces::K_E)
 }
 
 /// Compute the electric potential at a point due to all bodies.

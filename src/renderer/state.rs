@@ -5,7 +5,7 @@ use std::sync::mpsc::{Sender};
 
 use crate::body::Body;
 use crate::config;
-use crate::quadtree::Node;
+use crate::quadtree::Quadtree;
 
 pub static TIMESTEP: Lazy<Mutex<f32>> = Lazy::new(|| Mutex::new(config::DEFAULT_DT));
 pub static FIELD_MAGNITUDE: Lazy<Mutex<f32>> = Lazy::new(|| Mutex::new(0.0));
@@ -13,7 +13,12 @@ pub static FIELD_DIRECTION: Lazy<Mutex<f32>> = Lazy::new(|| Mutex::new(180.0));
 pub static PAUSED: Lazy<AtomicBool> = Lazy::new(|| AtomicBool::new(false));
 pub static UPDATE_LOCK: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(false));
 pub static BODIES: Lazy<Mutex<Vec<Body>>> = Lazy::new(|| Mutex::new(Vec::new()));
-pub static QUADTREE: Lazy<Mutex<Vec<Node>>> = Lazy::new(|| Mutex::new(Vec::new()));
+pub static QUADTREE: Lazy<Mutex<Quadtree>> = Lazy::new(|| Mutex::new(Quadtree::new(
+    config::QUADTREE_THETA,
+    config::QUADTREE_EPSILON,
+    config::QUADTREE_LEAF_CAPACITY,
+    config::QUADTREE_THREAD_CAPACITY,
+)));
 pub static SPAWN: Lazy<Mutex<Vec<Body>>> = Lazy::new(|| Mutex::new(Vec::new()));
 pub static COLLISION_PASSES: Lazy<Mutex<usize>> = Lazy::new(|| Mutex::new(3));
 
