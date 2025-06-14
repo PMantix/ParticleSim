@@ -17,7 +17,6 @@ impl Body {
     pub fn update_electrons(
         &mut self,
         bodies: &[Body],
-        self_idx: usize,
         quadtree: &Quadtree,
         background_field: Vec2,
         dt: f32,

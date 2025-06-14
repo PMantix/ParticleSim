@@ -121,9 +121,10 @@ mod tests {
             b.electrons=smallvec![Electron {rel_pos:Vec2::zero(),vel:Vec2::zero()}];
             let field = Vec2::new(1.0, 0.0);
             let mut bodies = vec![b.clone()];
-            let qt = Quadtree::new(0.5, 0.01, 1, 1);
+            let mut qt = Quadtree::new(0.5, 0.01, 1, 1);
             qt.build(&mut bodies);
-            bodies[0].update_electrons(&bodies, 0, &qt, field, 0.1);
+            let bodies_clone = bodies.clone();
+            bodies[0].update_electrons(&bodies_clone, &qt, field, 0.1);
             assert!(bodies[0].electrons[0].rel_pos.x < 0.0,
                 "Expected electron to drift left (x < 0), but rel_pos.x = {}", bodies[0].electrons[0].rel_pos.x);
         }
