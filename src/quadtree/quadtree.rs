@@ -40,6 +40,14 @@ impl Quadtree {
     pub fn subdivide(&mut self, node: usize, bodies: &mut [Body], range: Range<usize>) -> usize {
         let center = self.nodes[node].quad.center;
 
+        // Prevent infinite subdivision: if all bodies are at (nearly) the same position or quad is too small, treat as leaf
+        let all_same_pos = bodies[range.clone()]
+            .windows(2)
+            .all(|w| (w[0].pos - w[1].pos).mag_sq() < 1e-12);
+        if all_same_pos || self.nodes[node].quad.size < 1e-6 {
+            return node;
+        }
+
         let mut split = [range.start, 0, 0, 0, range.end];
 
         let predicate = |body: &Body| body.pos.y < center.y;
@@ -51,10 +59,14 @@ impl Quadtree {
 
         let len = self.atomic_len.fetch_add(1, Ordering::Relaxed);
         let children = len * 4 + 1;
+
+        // Ensure enough space for all children nodes and parents
+        if self.parents.len() <= len {
+            self.parents.resize(len + 1, 0);
+        }
         self.parents[len] = node;
         self.nodes[node].children = children;
 
-        // Ensure enough space for all children nodes
         if self.nodes.len() <= children + 3 {
             self.nodes.resize(children + 4, Node::ZEROED);
         }
@@ -67,37 +79,43 @@ impl Quadtree {
         ];
         let quads = self.nodes[node].quad.subdivide();
         for i in 0..4 {
-            let bodies = split[i]..split[i + 1];
-            self.nodes[children + i] = Node::new(nexts[i], quads[i], bodies);
+            let bodies_range = split[i]..split[i + 1];
+            self.nodes[children + i] = Node::new(nexts[i], quads[i], bodies_range);
         }
 
         children
     }
 
-    pub fn propagate(&mut self) {
+    pub fn propagate(&mut self, bodies: &[Body]) {
         let len = self.atomic_len.load(Ordering::Relaxed);
         for &node in self.parents[..len].iter().rev() {
             let i = self.nodes[node].children;
 
-            self.nodes[node].pos = self.nodes[i].pos
-                + self.nodes[i + 1].pos
-                + self.nodes[i + 2].pos
-                + self.nodes[i + 3].pos;
+            // Compute charge-weighted, mass-weighted, or geometric center for node position
+            let range = self.nodes[node].bodies.clone();
+            let total_mass = bodies[range.clone()].iter().map(|b| b.mass).sum::<f32>();
+            let total_charge = bodies[range.clone()].iter().map(|b| b.charge).sum::<f32>();
 
+            let weighted_pos = if total_charge.abs() > 1e-6 {
+                bodies[range.clone()].iter().fold(Vec2::zero(), |acc, b| acc + b.pos * b.charge) / total_charge
+            } else if total_mass > 1e-6 {
+                bodies[range.clone()].iter().fold(Vec2::zero(), |acc, b| acc + b.pos * b.mass) / total_mass
+            } else if range.len() > 0 {
+                bodies[range.clone()].iter().fold(Vec2::zero(), |acc, b| acc + b.pos) / (range.len() as f32)
+            } else {
+                Vec2::zero()
+            };
+
+            self.nodes[node].pos = weighted_pos;
             self.nodes[node].mass = self.nodes[i].mass
                 + self.nodes[i + 1].mass
                 + self.nodes[i + 2].mass
                 + self.nodes[i + 3].mass;
-
             self.nodes[node].charge = self.nodes[i].charge
                 + self.nodes[i + 1].charge
                 + self.nodes[i + 2].charge
                 + self.nodes[i + 3].charge;
         }
-        self.nodes[0..len * 4 + 1].par_iter_mut().for_each(|node| {
-            // Use charge for position normalization (center-of-charge)
-            node.pos /= node.charge.abs().max(f32::MIN_POSITIVE);
-        });
     }
 
     pub fn build(&mut self, bodies: &mut [Body]) {
@@ -177,7 +195,7 @@ impl Quadtree {
             }
         });
 
-        self.propagate();
+        self.propagate(bodies);
     }
 
     pub fn acc_pos(&self, pos: Vec2, q: f32, bodies: &[Body], k_e: f32) -> Vec2 {
