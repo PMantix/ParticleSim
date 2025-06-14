@@ -4,6 +4,7 @@ use crate::renderer::Species;
 use ultraviolet::Vec2;
 use crate::renderer::Body;
 use crate::Electron;
+use crate::config::IsolineFieldMode;
 
 impl super::Renderer {
     pub fn show_gui(&mut self, ctx: &quarkstrom::egui::Context) {
@@ -80,6 +81,25 @@ impl super::Renderer {
                 ui.checkbox(&mut self.sim_config.show_velocity_vectors, "Show Velocity Vectors");
                 ui.checkbox(&mut self.sim_config.show_charge_density, "Show Charge Density");
                 ui.checkbox(&mut self.sim_config.show_field_vectors, "Show Field Vectors"); // NEW
+                egui::ComboBox::from_label("Isoline Field Mode")
+                    .selected_text(format!("{:?}", self.sim_config.isoline_field_mode))
+                    .show_ui(ui, |ui| {
+                        ui.selectable_value(
+                            &mut self.sim_config.isoline_field_mode,
+                            IsolineFieldMode::Total,
+                            "Total",
+                        );
+                        ui.selectable_value(
+                            &mut self.sim_config.isoline_field_mode,
+                            IsolineFieldMode::ExternalOnly,
+                            "External Only",
+                        );
+                        ui.selectable_value(
+                            &mut self.sim_config.isoline_field_mode,
+                            IsolineFieldMode::BodyOnly,
+                            "Body Only",
+                        );
+                    });
                 ui.add(
                     egui::Slider::new(&mut self.velocity_vector_scale, 0.01..=1.0)
                         .text("Velocity Vector Scale")

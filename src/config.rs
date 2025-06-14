@@ -69,6 +69,13 @@ pub const SHOW_VELOCITY_VECTORS: bool = false;      /// Show velocity vectors
 pub const SHOW_CHARGE_DENSITY: bool = false;      /// Show charge-density heatmap
 pub const SHOW_FIELD_VECTORS: bool = false; // Show electric field vectors
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum IsolineFieldMode {
+    Total,
+    ExternalOnly,
+    BodyOnly,
+}
+
 #[derive(Clone, Debug)]
 pub struct SimConfig {
     pub hop_rate_k0: f32,
@@ -79,6 +86,7 @@ pub struct SimConfig {
     pub show_velocity_vectors: bool,
     pub show_charge_density: bool,
     pub show_field_vectors: bool, // NEW: show field vectors
+    pub isoline_field_mode: IsolineFieldMode,
     pub damping_base: f32, // Add base damping factor
     // --- LJ parameters for runtime tuning ---
     pub lj_force_epsilon: f32,
@@ -99,6 +107,7 @@ impl Default for SimConfig {
             show_velocity_vectors: SHOW_VELOCITY_VECTORS,
             show_charge_density: SHOW_CHARGE_DENSITY,
             show_field_vectors: SHOW_FIELD_VECTORS, // NEW
+            isoline_field_mode: IsolineFieldMode::Total,
             damping_base: 0.98, // Default base damping
             lj_force_epsilon: LJ_FORCE_EPSILON,
             lj_force_sigma: LJ_FORCE_SIGMA,

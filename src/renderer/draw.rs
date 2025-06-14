@@ -261,7 +261,8 @@ impl super::Renderer {
                 let x = min.x + ix as f32 * grid_spacing;
                 let y = min.y + iy as f32 * grid_spacing;
                 let pos = Vec2::new(x, y);
-                samples[iy * nx + ix] = compute_potential_at_point(&self.bodies, pos);
+                samples[iy * nx + ix] =
+                    compute_potential_at_point(&self.bodies, pos, &self.sim_config);
             }
         }
 
@@ -369,24 +370,54 @@ impl super::Renderer {
 }
 
 // Helper function to compute the electric field at a point
-pub fn compute_field_at_point(bodies: &[Body], pos: Vec2, _config: &crate::config::SimConfig) -> Vec2 {
+pub fn compute_field_at_point(
+    bodies: &[Body],
+    pos: Vec2,
+    config: &crate::config::SimConfig,
+) -> Vec2 {
     let mut field = Vec2::zero();
-    for body in bodies {
-        let r = pos - body.pos;
-        let dist2 = r.mag_sq().max(1e-4); // avoid div by zero
-        let e = body.charge * r / (dist2 * dist2.sqrt()); // Coulomb's law (unitless K)
-        field += e;
+
+    if config.isoline_field_mode != crate::config::IsolineFieldMode::ExternalOnly {
+        for body in bodies {
+            let r = pos - body.pos;
+            let dist2 = r.mag_sq().max(1e-4); // avoid div by zero
+            let e = body.charge * r / (dist2 * dist2.sqrt()); // Coulomb's law (unitless K)
+            field += e;
+        }
     }
+
+    if config.isoline_field_mode != crate::config::IsolineFieldMode::BodyOnly {
+        let mag = *FIELD_MAGNITUDE.lock();
+        let theta = (*FIELD_DIRECTION.lock()).to_radians();
+        let background = Vec2::new(theta.cos(), theta.sin()) * mag;
+        field += background;
+    }
+
     field
 }
 
 /// Compute the electric potential at a point due to all bodies.
-pub fn compute_potential_at_point(bodies: &[Body], pos: Vec2) -> f32 {
+pub fn compute_potential_at_point(
+    bodies: &[Body],
+    pos: Vec2,
+    config: &crate::config::SimConfig,
+) -> f32 {
     let mut potential = 0.0f32;
-    for body in bodies {
-        let r = pos - body.pos;
-        let dist = r.mag().max(1e-4);
-        potential += crate::simulation::forces::K_E * body.charge / dist;
+
+    if config.isoline_field_mode != crate::config::IsolineFieldMode::ExternalOnly {
+        for body in bodies {
+            let r = pos - body.pos;
+            let dist = r.mag().max(1e-4);
+            potential += crate::simulation::forces::K_E * body.charge / dist;
+        }
     }
+
+    if config.isoline_field_mode != crate::config::IsolineFieldMode::BodyOnly {
+        let mag = *FIELD_MAGNITUDE.lock();
+        let theta = (*FIELD_DIRECTION.lock()).to_radians();
+        let background = Vec2::new(theta.cos(), theta.sin()) * mag;
+        potential += -background.dot(pos);
+    }
+
     potential
 }
