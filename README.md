@@ -70,8 +70,9 @@ This repository contains a modular, parallelized Barnes-Hut simulation for large
 - **Scenario Setup**:  
   - **Delete All Particles**: Clears the simulation space immediately.
   - **Add Circle / Rectangle / Foil**: Spawn configured groups of particles quickly—ideal for rapid prototyping and testing.
-- **Force Visualization Overlays**:  
+- **Force Visualization Overlays**:
   Toggle overlays for velocity vectors, charge density, and force ratio display.
+  A new dropdown lets you choose whether isolines use the total field, only the external field, or only body contributions.
 
 ---
 
