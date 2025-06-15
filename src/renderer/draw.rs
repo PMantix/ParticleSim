@@ -52,9 +52,9 @@ impl super::Renderer {
 
                     let color = match body.species {
                         Species::LithiumIon => [255, 255, 0, 255],      // Yellow
-                        //Species::Electron => [255, 0, 0, 255],        // Rd
                         Species::LithiumMetal => [192, 192, 192, 255],  // Silverish
                         Species::FoilMetal => [128, 64, 0, 255],        // Brownish (example)
+                        Species::ElectrolyteAnion => [0, 128, 255, 255], // Blueish for anion
                     };
 
 					ctx.draw_circle(body.pos, body.radius, color);

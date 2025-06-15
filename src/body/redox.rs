@@ -2,7 +2,10 @@
 // Contains charge update and redox logic for Body
 
 use super::types::{Body, Species};
-use crate::config::{FOIL_NEUTRAL_ELECTRONS, LITHIUM_METAL_NEUTRAL_ELECTRONS};
+use crate::config::{
+    ELECTROLYTE_ANION_NEUTRAL_ELECTRONS, FOIL_NEUTRAL_ELECTRONS,
+    LITHIUM_METAL_NEUTRAL_ELECTRONS,
+};
 
 impl Body {
     pub fn update_charge_from_electrons(&mut self) {
@@ -15,6 +18,9 @@ impl Body {
             }
             Species::LithiumIon => {
                 self.charge = 1.0 - (self.electrons.len() as f32);
+            }
+            Species::ElectrolyteAnion => {
+                self.charge = -(self.electrons.len() as f32);
             }
         }
     }
@@ -34,6 +40,9 @@ impl Body {
             }
             Species::FoilMetal => {
                 // FoilMetal never changes species
+            }
+            Species::ElectrolyteAnion => {
+                // Electrolyte anions remain the same species
             }
         }
     }
