@@ -48,8 +48,8 @@ impl Body {
         }
     }
     pub fn update_species(&mut self) {
-        if self.species == Species::FoilMetal {
-            // Don't auto-convert FoilMetal to other species
+        if self.species == Species::FoilMetal || self.species == Species::ElectrolyteAnion {
+            // Don't auto-convert FoilMetal or ElectrolyteAnion to other species
             return;
         }
         if self.charge > config::LITHIUM_ION_THRESHOLD {

@@ -262,7 +262,7 @@ impl super::Renderer {
 
         let mut samples = Vec::with_capacity((nx/stride_x+1)*(ny/stride_y+1));
         let mut min_val = f32::INFINITY;
-        let mut max_val = f32::NEG_INFINITY;
+        let mut max_val = 0.0f32;
         for ix in (0..nx).step_by(stride_x) {
             for iy in (0..ny).step_by(stride_y) {
                 let x = min.x + ix as f32 * grid_spacing;
@@ -386,8 +386,8 @@ impl super::Renderer {
 
         for ix in 0..nx {
             for iy in 0..ny {
-                let x = min.x + ix as f32 * grid_spacing;
-                let y = min.y + iy as f32 * grid_spacing;
+                let x = min.x + (ix as f32 + 0.5) * grid_spacing;
+                let y = min.y + (iy as f32 + 0.5) * grid_spacing;
                 let pos = Vec2::new(x, y);
                 let mut density = 0.0f32;
                 for body in &self.bodies {
@@ -416,7 +416,10 @@ impl super::Renderer {
                     80,
                 ];
 
-                let rect_min = Vec2::new(min.x + ix as f32 * grid_spacing, min.y + iy as f32 * grid_spacing);
+                let rect_min = Vec2::new(
+                    min.x + (ix as f32 + 0.5) * grid_spacing,
+                    min.y + (iy as f32 + 0.5) * grid_spacing,
+                );
                 let rect_max = rect_min + Vec2::new(grid_spacing, grid_spacing);
                 ctx.draw_rect(rect_min, rect_max, color);
             }

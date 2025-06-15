@@ -3,7 +3,7 @@
 
 use super::types::{Body, Species};
 use crate::config::{
-    ELECTROLYTE_ANION_NEUTRAL_ELECTRONS, FOIL_NEUTRAL_ELECTRONS,
+    FOIL_NEUTRAL_ELECTRONS,
     LITHIUM_METAL_NEUTRAL_ELECTRONS,
 };
 

@@ -137,8 +137,6 @@ impl super::Renderer {
                     ui.add(egui::DragValue::new(&mut self.scenario_y).speed(0.1));
                     ui.label("Particle Radius:");
                     ui.add(egui::DragValue::new(&mut self.scenario_particle_radius).speed(0.05));
-                    ui.label("Charge:");
-                    ui.add(egui::DragValue::new(&mut self.scenario_charge).clamp_range(-3..=1));
                     egui::ComboBox::from_label("Species")
                         .selected_text(format!("{:?}", self.scenario_species))
                         .show_ui(ui, |ui| {
@@ -153,12 +151,11 @@ impl super::Renderer {
                     ui.label("Radius:");
                     ui.add(egui::DragValue::new(&mut self.scenario_radius).speed(0.1));
                     if ui.button("Add Ring").clicked() {
-                        let body = crate::body::Body::new(
+                        let body = make_body_with_species(
                             ultraviolet::Vec2::zero(),
                             ultraviolet::Vec2::zero(),
                             1.0,
                             self.scenario_particle_radius,
-                            0.0,
                             self.scenario_species,
                         );
                         SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::AddRing {
@@ -169,12 +166,11 @@ impl super::Renderer {
                         }).unwrap();
                     }
                     if ui.button("Add Filled Circle").clicked() {
-                        let body = crate::body::Body::new(
+                        let body = make_body_with_species(
                             ultraviolet::Vec2::zero(),
                             ultraviolet::Vec2::zero(),
                             1.0,
                             self.scenario_particle_radius,
-                            0.0,
                             self.scenario_species,
                         );
                         SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::AddCircle {
@@ -193,12 +189,11 @@ impl super::Renderer {
                     ui.label("Height:");
                     ui.add(egui::DragValue::new(&mut self.scenario_height).speed(0.1));
                     if ui.button("Add Rectangle").clicked() {
-                        let body = crate::body::Body::new(
+                        let body = make_body_with_species(
                             ultraviolet::Vec2::zero(),
                             ultraviolet::Vec2::zero(),
                             1.0,
                             self.scenario_particle_radius,
-                            0.0,
                             self.scenario_species,
                         );
                         SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::AddRectangle {
@@ -239,26 +234,36 @@ impl super::Renderer {
     }
 }
 
-fn make_body_with_charge(pos: Vec2, vel: Vec2, mass: f32, radius: f32, charge: i32) -> Body {
-    let mut body = Body::new(pos, vel, mass, radius, 0.0, Species::LithiumMetal); // temp species
+pub fn make_body_with_species(pos: Vec2, vel: Vec2, mass: f32, radius: f32, species: Species) -> Body {
+    use crate::config::{LITHIUM_METAL_NEUTRAL_ELECTRONS, FOIL_NEUTRAL_ELECTRONS};
+    let mut body = Body::new(pos, vel, mass, radius, 0.0, species);
     body.electrons.clear();
-    match charge {
-        1 => { // Li+
-            body.species = Species::LithiumIon;
-            // 0 electrons
-        }
-        0 => { // Li
-            body.species = Species::LithiumMetal;
-            body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
-        }
-        n if n < 0 => { // Li with extra electrons
-            body.species = Species::LithiumMetal;
-            for _ in 0..(1 - n) { // e.g. charge -1 => 2 electrons
+    match species {
+        Species::LithiumMetal => {
+            for _ in 0..LITHIUM_METAL_NEUTRAL_ELECTRONS {
                 body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
             }
         }
-        _ => { // fallback to ion
-            body.species = Species::LithiumIon;
+        Species::FoilMetal => {
+            for _ in 0..FOIL_NEUTRAL_ELECTRONS {
+                body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+            }
+        }
+        Species::LithiumIon => {
+            // Ions: one less electron than neutral metal, positive charge
+            if LITHIUM_METAL_NEUTRAL_ELECTRONS > 0 {
+                for _ in 0..(LITHIUM_METAL_NEUTRAL_ELECTRONS - 1) {
+                    body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+                }
+            }
+        }
+        Species::ElectrolyteAnion => {
+            // Anions: one more electron than neutral metal, negative charge
+            if LITHIUM_METAL_NEUTRAL_ELECTRONS > 0 {
+                for _ in 0..(LITHIUM_METAL_NEUTRAL_ELECTRONS + 1) {
+                    body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+                }
+            }
         }
     }
     body.update_charge_from_electrons();

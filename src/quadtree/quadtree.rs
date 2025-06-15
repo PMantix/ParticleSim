@@ -96,8 +96,10 @@ impl Quadtree {
             let total_mass = bodies[range.clone()].iter().map(|b| b.mass).sum::<f32>();
             let total_charge = bodies[range.clone()].iter().map(|b| b.charge).sum::<f32>();
 
-            let weighted_pos = if total_charge.abs() > 1e-6 {
-                bodies[range.clone()].iter().fold(Vec2::zero(), |acc, b| acc + b.pos * b.charge) / total_charge
+            // Use absolute charge for weighting to avoid cancellation issues
+            let total_abs_charge = bodies[range.clone()].iter().map(|b| b.charge.abs()).sum::<f32>();
+            let weighted_pos = if total_abs_charge > 1e-6 {
+                bodies[range.clone()].iter().fold(Vec2::zero(), |acc, b| acc + b.pos * b.charge.abs()) / total_abs_charge
             } else if total_mass > 1e-6 {
                 bodies[range.clone()].iter().fold(Vec2::zero(), |acc, b| acc + b.pos * b.mass) / total_mass
             } else if range.len() > 0 {

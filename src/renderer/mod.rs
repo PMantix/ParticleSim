@@ -32,7 +32,7 @@ pub struct Renderer {
     scenario_particle_radius: f32, 
     scenario_width: f32,           
     scenario_height: f32,
-    pub scenario_charge: i32,
+    //pub scenario_charge: i32,
     pub velocity_vector_scale: f32,
     scenario_current: f32,
     pub window_width: u16,
@@ -63,7 +63,7 @@ impl quarkstrom::Renderer for Renderer {
             scenario_particle_radius: 1.0, 
             scenario_width: 5.0,           
             scenario_height: 5.0,
-            scenario_charge: 0,
+            //scenario_charge: 0,
             velocity_vector_scale: 0.1,
             scenario_current: 0.0,
             window_width: 800, // default value, can be changed
