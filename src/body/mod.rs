@@ -23,3 +23,7 @@ mod foil_lj_force;
 #[cfg(test)]
 #[path = "tests/foil_cohesion_and_overlap.rs"]
 mod foil_cohesion_and_overlap;
+
+#[cfg(test)]
+#[path = "tests/anion.rs"]
+mod anion;

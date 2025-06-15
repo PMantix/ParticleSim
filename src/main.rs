@@ -62,11 +62,13 @@ fn main() {
     let center = Vec2::zero();
     let metal_body = crate::body::Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::LithiumMetal);
     let ion_body = crate::body::Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 1.0, Species::LithiumIon);
+    let anion_body = crate::body::Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, -1.0, Species::ElectrolyteAnion);
     // Send SimCommands to populate the simulation
     let tx = SIM_COMMAND_SENDER.lock().as_ref().unwrap().clone();
     tx.send(SimCommand::AddCircle { body: metal_body.clone(), x: left_center.x, y: left_center.y, radius: clump_radius }).unwrap();
     tx.send(SimCommand::AddCircle { body: metal_body.clone(), x: right_center.x, y: right_center.y, radius: clump_radius }).unwrap();
     tx.send(SimCommand::AddCircle { body: ion_body, x: center.x, y: center.y, radius: clump_radius }).unwrap();
+    tx.send(SimCommand::AddCircle { body: anion_body, x: center.x, y: bounds * 0.6, radius: clump_radius }).unwrap();
     // === End scenario setup ===
 
     std::thread::spawn(move || {
@@ -121,7 +123,9 @@ fn main() {
                     SimCommand::AddBody { mut body } => {
                         // ensure 1 valence electron, correct charge & species:
                         body.electrons.clear();
-                        body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+                        if matches!(body.species, Species::LithiumMetal | Species::ElectrolyteAnion) {
+                            body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+                        }
                         body.update_charge_from_electrons();
                         body.update_species();
                         simulation.bodies.push(body);
@@ -161,7 +165,7 @@ fn main() {
                                     body.species,
                                 );
                                 new_body.electrons.clear();
-                                if new_body.species == Species::LithiumMetal {
+                                if matches!(new_body.species, Species::LithiumMetal | Species::ElectrolyteAnion) {
                                     new_body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
                                 }
                                 new_body.update_charge_from_electrons();
@@ -197,18 +201,18 @@ fn main() {
                             while let Some(idx) = overlaps_any(&simulation.bodies, pos, particle_radius) {
                                 simulation.bodies.remove(idx);
                             }
-                            let mut new_body = crate::body::Body::new(
-                                pos,
-                                Vec2::zero(),
-                                body.mass,
-                                body.radius,
-                                0.0,
-                                body.species,
-                            );
-                            new_body.electrons.clear();
-                            if new_body.species == Species::LithiumMetal {
-                                new_body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
-                            }
+                        let mut new_body = crate::body::Body::new(
+                            pos,
+                            Vec2::zero(),
+                            body.mass,
+                            body.radius,
+                            0.0,
+                            body.species,
+                        );
+                        new_body.electrons.clear();
+                        if matches!(new_body.species, Species::LithiumMetal | Species::ElectrolyteAnion) {
+                            new_body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+                        }
                             new_body.update_charge_from_electrons();
                             new_body.update_species();
                             simulation.bodies.push(new_body);
@@ -240,7 +244,7 @@ fn main() {
                                     body.species,
                                 );
                                 new_body.electrons.clear();
-                                if new_body.species == Species::LithiumMetal {
+                                if matches!(new_body.species, Species::LithiumMetal | Species::ElectrolyteAnion) {
                                     new_body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
                                 }
                                 new_body.update_charge_from_electrons();

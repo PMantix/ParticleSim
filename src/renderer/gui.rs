@@ -144,6 +144,7 @@ impl super::Renderer {
                         .show_ui(ui, |ui| {
                             ui.selectable_value(&mut self.scenario_species, Species::LithiumMetal, "Metal");
                             ui.selectable_value(&mut self.scenario_species, Species::LithiumIon, "Ion");
+                            ui.selectable_value(&mut self.scenario_species, Species::ElectrolyteAnion, "Anion");
                         });
                 });
 
@@ -152,12 +153,13 @@ impl super::Renderer {
                     ui.label("Radius:");
                     ui.add(egui::DragValue::new(&mut self.scenario_radius).speed(0.1));
                     if ui.button("Add Ring").clicked() {
-                        let body = make_body_with_charge(
+                        let body = crate::body::Body::new(
                             ultraviolet::Vec2::zero(),
                             ultraviolet::Vec2::zero(),
                             1.0,
                             self.scenario_particle_radius,
-                            self.scenario_charge,
+                            0.0,
+                            self.scenario_species,
                         );
                         SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::AddRing {
                             body,

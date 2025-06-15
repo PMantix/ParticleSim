@@ -27,7 +27,8 @@ pub const LJ_CELL_DENSITY_THRESHOLD: f32 = 0.001;
 pub const LITHIUM_ION_THRESHOLD: f32 = 0.5;             // Charge threshold for lithium ion/metal transition
 pub const FOIL_NEUTRAL_ELECTRONS: usize = 1;
 pub const LITHIUM_METAL_NEUTRAL_ELECTRONS: usize = 1;
-pub const FOIL_MAX_ELECTRONS: usize = 2;           // Max electrons for foil metal    
+pub const ELECTROLYTE_ANION_NEUTRAL_ELECTRONS: usize = 1;
+pub const FOIL_MAX_ELECTRONS: usize = 2;           // Max electrons for foil metal
 
 // ====================
 // Simulation Parameters
