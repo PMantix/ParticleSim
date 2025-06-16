@@ -244,6 +244,7 @@ impl Simulation {
                 self.bodies[dst_idx].update_charge_from_electrons();
             }
         }
-        self.bodies.par_iter_mut().for_each(|body| body.apply_redox());
+        let dt = self.dt;
+        self.bodies.par_iter_mut().for_each(|body| body.apply_redox(dt));
     }
 }

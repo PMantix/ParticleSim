@@ -54,11 +54,11 @@ mod tests {
         );
         body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
         body.update_charge_from_electrons();
-        body.apply_redox();
+        body.apply_redox(0.1);
         assert_eq!(body.species, Species::LithiumMetal);
         body.electrons.clear();
         body.update_charge_from_electrons();
-        body.apply_redox();
+        body.apply_redox(0.1);
         assert_eq!(body.species, Species::LithiumIon);
     }
 

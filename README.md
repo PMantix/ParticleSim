@@ -11,9 +11,10 @@ This repository contains a modular, parallelized Barnes-Hut simulation for large
 - **Explicit Electron Polarization**:  
   - Lithium metal particles now include explicit valence electrons.
   - Electrons polarize in response to local electric fields (background plus inter-particle fields), providing a realistic visualization of charge separation.
-- **Accurate Redox Transitions & Charge Conservation**:  
+- **Accurate Redox Transitions & Charge Conservation**:
   - Lithium ions (Li⁺) and lithium metal (Li) update their species and charge according to electron count.
   - Electron hopping is implemented with strict conservation rules.
+  - Butler–Volmer kinetics govern redox probabilities via configurable constants.
 - **Live Force Tracking & Debugging**:  
   - Separate accumulation and visualization of Coulomb and Lennard-Jones (LJ) forces.
   - Debug prints (configurable via the GUI) display per-body force vectors, acceleration, and velocity.
@@ -28,6 +29,7 @@ This repository contains a modular, parallelized Barnes-Hut simulation for large
 - **Configurable Parameters**:  
   - All key physics constants and GUI visualization parameters are accessible and modifiable.
   - Experiment with different timestep settings and damping factors.
+  - Butler–Volmer constants (`REDOX_I0`, `REDOX_ALPHA_A`, `REDOX_ALPHA_C`, `REDOX_NF_RT`) tune redox kinetics.
 - **Extensible and Modular Codebase**:  
   - Well-structured separation of simulation, quadtree, rendering, and state management.
   - New force laws, diagnostic features, or spatial partitioning strategies can be added easily.
