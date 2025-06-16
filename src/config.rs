@@ -12,6 +12,14 @@ pub const HOP_TRANSFER_COEFF: f32 = 0.5;            /// Transfer coefficient α 
 pub const HOP_ACTIVATION_ENERGY: f32 = 0.025;      /// Thermal energy k_BT (in your same charge‐units)
 
 // ====================
+// Redox (Butler-Volmer) Parameters
+// ====================
+pub const REDOX_I0: f32 = 1.0;          // Exchange current (1/s)
+pub const REDOX_ALPHA_A: f32 = 0.5;     // Anodic transfer coefficient
+pub const REDOX_ALPHA_C: f32 = 0.5;     // Cathodic transfer coefficient
+pub const REDOX_NF_RT: f32 = 1.0;       // nF/RT constant (1/V)
+
+// ====================
 // LJ Force Parameters
 // ====================
 pub const LJ_FORCE_EPSILON: f32 = 2000.0;                  // Lennard-Jones epsilon parameter
