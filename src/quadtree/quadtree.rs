@@ -182,7 +182,11 @@ impl Quadtree {
                             }
 
                             quadtree.nodes[node].mass = total_mass;
-                            quadtree.nodes[node].pos = weighted_pos;
+                            quadtree.nodes[node].pos = if total_charge.abs() > 1e-6 {
+                                weighted_pos / total_charge
+                            } else {
+                                weighted_pos
+                            };
                             quadtree.nodes[node].charge = total_charge;
                             continue;
                         }
