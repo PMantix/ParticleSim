@@ -16,3 +16,25 @@ pub fn can_transfer_electron(src: &Body, dst: &Body) -> bool {
         src_diff < -1 && dst_diff < 0
     }
 }
+
+/// Select all connected FoilMetal bodies within a cutoff distance using BFS.
+pub fn select_clump(bodies: &[Body], start: usize, cutoff: f32) -> Vec<usize> {
+    use crate::body::Species;
+    let mut visited = vec![false; bodies.len()];
+    let mut stack = vec![start];
+    let mut result = Vec::new();
+    while let Some(idx) = stack.pop() {
+        if idx >= bodies.len() || visited[idx] { continue; }
+        if bodies[idx].species != Species::FoilMetal { continue; }
+        visited[idx] = true;
+        result.push(idx);
+        for (i, other) in bodies.iter().enumerate() {
+            if !visited[i] && other.species == Species::FoilMetal {
+                if (other.pos - bodies[idx].pos).mag() <= cutoff {
+                    stack.push(i);
+                }
+            }
+        }
+    }
+    result
+}

@@ -528,6 +528,62 @@ mod reactions {
                 );
             }
         }
+
+        mod foil_command_tests {
+            use super::*;
+
+            #[test]
+            fn foil_current_changes_via_command() {
+                use crate::body::foil::Foil;
+                let mut sim = Simulation::new();
+                sim.foils.push(Foil::new(Vec::new(), Vec2::zero(), 1.0, 1.0, 0.0));
+                sim.change_foil_current(0, 2.5);
+                assert!((sim.foils[0].current - 2.5).abs() < 1e-6);
+            }
+
+            #[test]
+            fn linked_foils_update_same_current() {
+                use crate::body::foil::Foil;
+                use crate::simulation::FoilLinkType;
+                let mut sim = Simulation::new();
+                sim.foils.push(Foil::new(Vec::new(), Vec2::zero(), 1.0, 1.0, 0.0));
+                sim.foils.push(Foil::new(Vec::new(), Vec2::zero(), 1.0, 1.0, 0.0));
+                sim.link_foils(0, 1, FoilLinkType::Same);
+                sim.change_foil_current(0, 3.0);
+                assert!((sim.foils[0].current - 3.0).abs() < 1e-6);
+                assert!((sim.foils[1].current - 3.0).abs() < 1e-6);
+            }
+
+            #[test]
+            fn linked_foils_update_opposite_current() {
+                use crate::body::foil::Foil;
+                use crate::simulation::FoilLinkType;
+                let mut sim = Simulation::new();
+                sim.foils.push(Foil::new(Vec::new(), Vec2::zero(), 1.0, 1.0, 0.0));
+                sim.foils.push(Foil::new(Vec::new(), Vec2::zero(), 1.0, 1.0, 0.0));
+                sim.link_foils(0, 1, FoilLinkType::Opposite);
+                sim.change_foil_current(0, 4.0);
+                assert!((sim.foils[0].current - 4.0).abs() < 1e-6);
+                assert!((sim.foils[1].current + 4.0).abs() < 1e-6);
+            }
+
+            #[test]
+            fn select_clump_finds_connected_foils() {
+                use crate::simulation::utils::select_clump;
+                let mut sim = Simulation::new();
+                let cutoff = crate::config::LJ_FORCE_CUTOFF * crate::config::LJ_FORCE_SIGMA;
+                let positions = [0.0, cutoff * 0.8, cutoff * 2.0];
+                for &x in &positions {
+                    let body = Body::new(Vec2::new(x, 0.0), Vec2::zero(), 1.0, 1.0, 0.0, Species::FoilMetal);
+                    sim.bodies.push(body);
+                }
+                let clump = select_clump(&sim.bodies, 0, cutoff);
+                assert_eq!(clump.len(), 2);
+                assert!(clump.contains(&0));
+                assert!(clump.contains(&1));
+            }
+
+        }
     }
 
     mod redox_kinetics_tests {

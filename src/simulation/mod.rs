@@ -7,6 +7,8 @@ pub mod collision;
 pub mod simulation;
 pub use simulation::*;
 pub mod utils;
+pub mod foil_link;
+pub use foil_link::{FoilLink, FoilLinkType};
 
 #[cfg(test)]
 mod tests;

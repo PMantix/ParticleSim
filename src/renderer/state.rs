@@ -50,6 +50,8 @@ pub enum SimCommand {
         particle_radius: f32,
         current: f32,
     },
+    ChangeFoilCurrent { foil_idx: usize, delta: f32 },
+    LinkFoils { a: usize, b: usize, link_type: crate::simulation::FoilLinkType },
     StepOnce
 }
 

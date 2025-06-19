@@ -23,6 +23,7 @@ pub struct Simulation {
     pub rewound_flags: Vec<bool>,
     pub background_e_field: Vec2,
     pub foils: Vec<crate::body::foil::Foil>,
+    pub foil_links: Vec<crate::simulation::FoilLink>,
     pub config:config::SimConfig, //
 }
 
@@ -50,6 +51,7 @@ impl Simulation {
             rewound_flags,
             background_e_field: Vec2::zero(),
             foils: Vec::new(),
+            foil_links: Vec::new(),
             config: config::SimConfig::default(),
         };
         // Example: scenario setup using SimCommand (pseudo-code, actual sending is done in main.rs or GUI)
@@ -246,5 +248,36 @@ impl Simulation {
         }
         let dt = self.dt;
         self.bodies.par_iter_mut().for_each(|body| body.apply_redox(dt));
+    }
+
+    pub fn change_foil_current(&mut self, idx: usize, delta: f32) {
+        if idx >= self.foils.len() { return; }
+        self.foils[idx].current += delta;
+        self.propagate_link_currents(idx);
+    }
+
+    fn propagate_link_currents(&mut self, changed: usize) {
+        for link in &self.foil_links {
+            if link.a == changed && link.b < self.foils.len() {
+                let val = match link.link_type {
+                    crate::simulation::FoilLinkType::Same => self.foils[changed].current,
+                    crate::simulation::FoilLinkType::Opposite => -self.foils[changed].current,
+                };
+                self.foils[link.b].current = val;
+            } else if link.b == changed && link.a < self.foils.len() {
+                let val = match link.link_type {
+                    crate::simulation::FoilLinkType::Same => self.foils[changed].current,
+                    crate::simulation::FoilLinkType::Opposite => -self.foils[changed].current,
+                };
+                self.foils[link.a].current = val;
+            }
+        }
+    }
+
+    pub fn link_foils(&mut self, a: usize, b: usize, link_type: crate::simulation::FoilLinkType) {
+        if a >= self.foils.len() || b >= self.foils.len() { return; }
+        self.foil_links.push(crate::simulation::FoilLink { a, b, link_type });
+        self.propagate_link_currents(a);
+        self.propagate_link_currents(b);
     }
 }

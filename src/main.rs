@@ -283,6 +283,12 @@ fn main() {
                         }
                         simulation.foils.push(crate::body::foil::Foil::new(body_ids, origin, width, height, current));
                     },
+                    SimCommand::ChangeFoilCurrent { foil_idx, delta } => {
+                        simulation.change_foil_current(foil_idx, delta);
+                    },
+                    SimCommand::LinkFoils { a, b, link_type } => {
+                        simulation.link_foils(a, b, link_type);
+                    },
 
                     //SimCommand::Plate { foil_id, amount } => { /* ... */ }
                     //SimCommand::Strip { foil_id, amount } => { /* ... */ }
