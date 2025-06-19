@@ -122,6 +122,31 @@ impl super::Renderer {
 
                 ui.separator();
 
+                // --- Hopping Parameters ---
+                ui.label("Hopping Parameters:");
+                ui.add(
+                    egui::Slider::new(&mut self.sim_config.hop_rate_k0, 0.0..=10.0)
+                        .text("Hop k0")
+                        .step_by(0.1),
+                );
+                ui.add(
+                    egui::Slider::new(&mut self.sim_config.hop_transfer_coeff, 0.0..=1.0)
+                        .text("Hop Transfer Coeff")
+                        .step_by(0.01),
+                );
+                ui.add(
+                    egui::Slider::new(&mut self.sim_config.hop_activation_energy, 0.0..=0.1)
+                        .text("Hop Activation Energy")
+                        .step_by(0.001),
+                );
+                ui.add(
+                    egui::Slider::new(&mut self.sim_config.hop_radius_factor, 0.5..=5.0)
+                        .text("Hop Radius Factor")
+                        .step_by(0.1),
+                );
+
+                ui.separator();
+
                 // --- Scenario Controls ---
                 ui.label("Scenario:");
 
