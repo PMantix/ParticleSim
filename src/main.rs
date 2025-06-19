@@ -284,6 +284,14 @@ fn main() {
                         simulation.foils.push(crate::body::foil::Foil::new(body_ids, origin, width, height, current));
                     },
 
+                    SimCommand::LinkFoils { a, b, factor } => {
+                        simulation.foil_links.push(simulation::FoilLink { a, b, factor });
+                    },
+
+                    SimCommand::UnlinkFoils { a, b } => {
+                        simulation.foil_links.retain(|l| !(l.a == a && l.b == b));
+                    },
+
                     //SimCommand::Plate { foil_id, amount } => { /* ... */ }
                     //SimCommand::Strip { foil_id, amount } => { /* ... */ }
                     //SimCommand::AddElectron { pos, vel } => { /* ... */ }

@@ -229,6 +229,37 @@ impl super::Renderer {
                     }
                 });
 
+                ui.separator();
+                ui.label("Foil Links:");
+                ui.horizontal(|ui| {
+                    ui.label("A:");
+                    ui.add(egui::DragValue::new(&mut self.link_a).speed(1.0));
+                    ui.label("B:");
+                    ui.add(egui::DragValue::new(&mut self.link_b).speed(1.0));
+                });
+                egui::ComboBox::from_label("Link Type")
+                    .selected_text(if self.link_factor < 0.0 { "Opposite" } else { "Parallel" })
+                    .show_ui(ui, |ui| {
+                        ui.selectable_value(&mut self.link_factor, -1.0, "Opposite");
+                        ui.selectable_value(&mut self.link_factor, 1.0, "Parallel");
+                    });
+                ui.horizontal(|ui| {
+                    if ui.button("Link").clicked() {
+                        SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(
+                            SimCommand::LinkFoils {
+                                a: self.link_a as u64,
+                                b: self.link_b as u64,
+                                factor: self.link_factor,
+                            },
+                        ).unwrap();
+                    }
+                    if ui.button("Unlink").clicked() {
+                        SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(
+                            SimCommand::UnlinkFoils { a: self.link_a as u64, b: self.link_b as u64 }
+                        ).unwrap();
+                    }
+                });
+
                 // --- Debug/Diagnostics ---
                 ui.separator();
                 ui.label("Debug/Diagnostics:");

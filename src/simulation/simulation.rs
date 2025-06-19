@@ -12,6 +12,15 @@ use crate::simulation::utils::can_transfer_electron;
 use rand::prelude::*; // Import all prelude traits for rand 0.9+
 use crate::profile_scope;
 
+/// Represents a link between two foils. `factor` should be `-1.0` for opposing
+/// electrodes and `1.0` for parallel pairs.
+#[derive(Clone, Copy)]
+pub struct FoilLink {
+    pub a: u64,
+    pub b: u64,
+    pub factor: f32,
+}
+
 /// The main simulation state and logic for the particle system.
 pub struct Simulation {
     pub dt: f32,
@@ -23,6 +32,8 @@ pub struct Simulation {
     pub rewound_flags: Vec<bool>,
     pub background_e_field: Vec2,
     pub foils: Vec<crate::body::foil::Foil>,
+    /// Links enforcing relationships between foil currents
+    pub foil_links: Vec<FoilLink>,
     pub config:config::SimConfig, //
 }
 
@@ -50,6 +61,7 @@ impl Simulation {
             rewound_flags,
             background_e_field: Vec2::zero(),
             foils: Vec::new(),
+            foil_links: Vec::new(),
             config: config::SimConfig::default(),
         };
         // Example: scenario setup using SimCommand (pseudo-code, actual sending is done in main.rs or GUI)
@@ -85,6 +97,14 @@ impl Simulation {
         let num_passes = *COLLISION_PASSES.lock();
         for _ in 1..num_passes {
             collision::collide(self);
+        }
+
+        // Synchronize linked foil currents
+        for link in &self.foil_links {
+            if (link.a as usize) < self.foils.len() && (link.b as usize) < self.foils.len() {
+                let cur = self.foils[link.a as usize].current;
+                self.foils[link.b as usize].current = link.factor * cur;
+            }
         }
 
         // Track which bodies receive electrons from foil current this step

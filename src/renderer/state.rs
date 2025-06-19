@@ -50,6 +50,8 @@ pub enum SimCommand {
         particle_radius: f32,
         current: f32,
     },
+    LinkFoils { a: u64, b: u64, factor: f32 },
+    UnlinkFoils { a: u64, b: u64 },
     StepOnce
 }
 
