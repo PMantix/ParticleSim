@@ -50,6 +50,8 @@ pub enum SimCommand {
         particle_radius: f32,
         current: f32,
     },
+    ChangeFoilCurrent { foil_id: u64, delta: f32 },
+    SetFoilCurrent { foil_id: u64, value: f32 },
     StepOnce
 }
 

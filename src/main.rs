@@ -284,6 +284,18 @@ fn main() {
                         simulation.foils.push(crate::body::foil::Foil::new(body_ids, origin, width, height, current));
                     },
 
+                    SimCommand::ChangeFoilCurrent { foil_id, delta } => {
+                        if let Some(foil) = simulation.foils.iter_mut().find(|f| f.body_ids.contains(&foil_id)) {
+                            foil.current += delta;
+                        }
+                    },
+
+                    SimCommand::SetFoilCurrent { foil_id, value } => {
+                        if let Some(foil) = simulation.foils.iter_mut().find(|f| f.body_ids.contains(&foil_id)) {
+                            foil.current = value;
+                        }
+                    },
+
                     //SimCommand::Plate { foil_id, amount } => { /* ... */ }
                     //SimCommand::Strip { foil_id, amount } => { /* ... */ }
                     //SimCommand::AddElectron { pos, vel } => { /* ... */ }

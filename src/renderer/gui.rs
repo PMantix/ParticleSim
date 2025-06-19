@@ -229,6 +229,62 @@ impl super::Renderer {
                     }
                 });
 
+                if let Some(id) = self.selected_particle_id {
+                    if let Some(body) = self.bodies.iter().find(|b| b.id == id) {
+                        if body.species == Species::FoilMetal {
+                            ui.separator();
+                            ui.label("Foil Current:");
+                            let mut changed = false;
+                            if ui
+                                .add(egui::Slider::new(&mut self.foil_current_slider, -10.0..=10.0).text("Current"))
+                                .changed()
+                            {
+                                changed = true;
+                            }
+                            ui.horizontal(|ui| {
+                                if ui.button("+").clicked() {
+                                    self.foil_current_slider += 1.0;
+                                    SIM_COMMAND_SENDER
+                                        .lock()
+                                        .as_ref()
+                                        .unwrap()
+                                        .send(SimCommand::ChangeFoilCurrent { foil_id: id, delta: 1.0 })
+                                        .unwrap();
+                                }
+                                if ui.button("-").clicked() {
+                                    self.foil_current_slider -= 1.0;
+                                    SIM_COMMAND_SENDER
+                                        .lock()
+                                        .as_ref()
+                                        .unwrap()
+                                        .send(SimCommand::ChangeFoilCurrent { foil_id: id, delta: -1.0 })
+                                        .unwrap();
+                                }
+                                if ui.button("Zero").clicked() {
+                                    self.foil_current_slider = 0.0;
+                                    SIM_COMMAND_SENDER
+                                        .lock()
+                                        .as_ref()
+                                        .unwrap()
+                                        .send(SimCommand::SetFoilCurrent { foil_id: id, value: 0.0 })
+                                        .unwrap();
+                                }
+                            });
+                            let pb = egui::ProgressBar::new(self.foil_current_slider.abs() / 10.0)
+                                .fill(if self.foil_current_slider >= 0.0 { egui::Color32::GREEN } else { egui::Color32::RED });
+                            ui.add(pb);
+                            if changed {
+                                SIM_COMMAND_SENDER
+                                    .lock()
+                                    .as_ref()
+                                    .unwrap()
+                                    .send(SimCommand::SetFoilCurrent { foil_id: id, value: self.foil_current_slider })
+                                    .unwrap();
+                            }
+                        }
+                    }
+                }
+
                 // --- Debug/Diagnostics ---
                 ui.separator();
                 ui.label("Debug/Diagnostics:");
