@@ -84,13 +84,24 @@ impl super::Renderer {
                         }
                     }
                     self.selected_particle_id = closest;
+                    self.selected_body_ids.clear();
+                    self.selected_foil_id = None;
 
                     if let Some(id) = closest {
                         if let Some(body) = self.bodies.iter().find(|b| b.id == id) {
-                            println!(
-                                "Selected Body: id={}, pos={:?}, vel={:?}, acc={:?}, charge={}, electrons={}, species={:?}",
-                                body.id, body.pos, body.vel, body.acc, body.charge, body.electrons.len(), body.species
-                            );
+                            if body.species == Species::FoilMetal {
+                                self.selected_body_ids = self.find_connected_foil_bodies(id);
+                            } else {
+                                self.selected_body_ids.push(id);
+                            }
+                            for bid in &self.selected_body_ids {
+                                if let Some(b) = self.bodies.iter().find(|bb| bb.id == *bid) {
+                                    println!(
+                                        "Selected Body: id={}, pos={:?}, vel={:?}, acc={:?}, charge={}, electrons={}, species={:?}",
+                                        b.id, b.pos, b.vel, b.acc, b.charge, b.electrons.len(), b.species
+                                    );
+                                }
+                            }
                         }
                     }
 
@@ -138,5 +149,30 @@ impl super::Renderer {
                 }
             }
         }
+    }
+
+    fn find_connected_foil_bodies(&self, start_id: u64) -> Vec<u64> {
+        let cutoff = self.sim_config.lj_force_cutoff * self.sim_config.lj_force_sigma;
+        let start_idx = match self.bodies.iter().position(|b| b.id == start_id && b.species == Species::FoilMetal) {
+            Some(i) => i,
+            None => return Vec::new(),
+        };
+        use std::collections::HashSet;
+        let mut visited: HashSet<u64> = HashSet::new();
+        let mut stack = vec![start_idx];
+        visited.insert(start_id);
+        while let Some(idx) = stack.pop() {
+            let pos = self.bodies[idx].pos;
+            for (i, b) in self.bodies.iter().enumerate() {
+                if b.species != Species::FoilMetal || visited.contains(&b.id) {
+                    continue;
+                }
+                if (b.pos - pos).mag() <= cutoff {
+                    visited.insert(b.id);
+                    stack.push(i);
+                }
+            }
+        }
+        visited.into_iter().collect()
     }
 }

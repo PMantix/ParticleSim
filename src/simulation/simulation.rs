@@ -247,4 +247,36 @@ impl Simulation {
         let dt = self.dt;
         self.bodies.par_iter_mut().for_each(|body| body.apply_redox(dt));
     }
+
+    /// Find all foil bodies connected to the given body within the LJ cutoff radius.
+    pub fn connected_foil_bodies(&self, start_id: u64) -> Vec<u64> {
+        if let Some(foil) = self.foils.iter().find(|f| f.body_ids.contains(&start_id)) {
+            return foil.body_ids.clone();
+        }
+        let cutoff = self.config.lj_force_cutoff * self.config.lj_force_sigma;
+        let start_idx = match self.bodies.iter().position(|b| b.id == start_id && b.species == Species::FoilMetal) {
+            Some(i) => i,
+            None => return Vec::new(),
+        };
+
+        use std::collections::HashSet;
+        let mut visited: HashSet<u64> = HashSet::new();
+        let mut stack = vec![start_idx];
+        visited.insert(start_id);
+
+        while let Some(idx) = stack.pop() {
+            let pos = self.bodies[idx].pos;
+            for (i, b) in self.bodies.iter().enumerate() {
+                if b.species != Species::FoilMetal || visited.contains(&b.id) {
+                    continue;
+                }
+                if (b.pos - pos).mag() <= cutoff {
+                    visited.insert(b.id);
+                    stack.push(i);
+                }
+            }
+        }
+
+        visited.into_iter().collect()
+    }
 }
