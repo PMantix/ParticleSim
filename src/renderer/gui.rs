@@ -229,6 +229,18 @@ impl super::Renderer {
                     }
                 });
 
+                if let Some(idx) = self.selected_foil_index {
+                    ui.separator();
+                    ui.label("Selected Foil Current:");
+                    let mut cur = self.selected_foil_current;
+                    if ui.add(egui::Slider::new(&mut cur, -20.0..=20.0).text("Current")).changed() {
+                        self.selected_foil_current = cur;
+                        if let Some(sender) = SIM_COMMAND_SENDER.lock().as_ref() {
+                            let _ = sender.send(SimCommand::ChangeFoilCurrent { index: idx, current: cur });
+                        }
+                    }
+                }
+
                 // --- Debug/Diagnostics ---
                 ui.separator();
                 ui.label("Debug/Diagnostics:");

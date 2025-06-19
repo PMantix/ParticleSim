@@ -16,10 +16,16 @@ impl super::Renderer {
             if *lock {
                 std::mem::swap(&mut self.bodies, &mut BODIES.lock());
                 std::mem::swap(&mut self.quadtree, &mut QUADTREE.lock());
+                std::mem::swap(&mut self.foils, &mut FOILS.lock());
             }
             if let Some(body) = self.confirmed_bodies.take() {
                 self.bodies.push(body.clone());
                 SPAWN.lock().push(body.clone());
+            }
+            if let Some(idx) = self.selected_foil_index {
+                if let Some(foil) = self.foils.get(idx) {
+                    self.selected_foil_current = foil.current;
+                }
             }
             *lock = false;
         }
@@ -238,6 +244,25 @@ impl super::Renderer {
                 }
                 x += grid_spacing;
             }
+        }
+
+        // --- Foil Current Indicator ---
+        if let Some(current) = self.selected_foil_index.and_then(|i| self.foils.get(i)).map(|f| f.current) {
+            let max_current = 10.0;
+            let t = (current / max_current).clamp(-1.0, 1.0);
+            let len = t.abs() * self.scale * 0.3;
+            let aspect = width as f32 / height as f32;
+            let x = self.pos.x - self.scale * aspect + 0.05 * self.scale;
+            let y0 = self.pos.y;
+            let y1 = y0 + if t >= 0.0 { len } else { -len };
+            let color = if t >= 0.0 {
+                let g = (255.0 * t.abs()) as u8;
+                [0, g, 0, 255]
+            } else {
+                let r = (255.0 * t.abs()) as u8;
+                [r, 0, 0, 255]
+            };
+            ctx.draw_line(Vec2::new(x, y0), Vec2::new(x, y1), color);
         }
     }
 }
