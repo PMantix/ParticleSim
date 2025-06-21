@@ -94,7 +94,7 @@ impl Quadtree {
             // Compute charge-weighted, mass-weighted, or geometric center for node position
             let range = self.nodes[node].bodies.clone();
             let total_mass = bodies[range.clone()].iter().map(|b| b.mass).sum::<f32>();
-            let total_charge = bodies[range.clone()].iter().map(|b| b.charge).sum::<f32>();
+            //let total_charge = bodies[range.clone()].iter().map(|b| b.charge).sum::<f32>();
 
             // Use absolute charge for weighting to avoid cancellation issues
             let total_abs_charge = bodies[range.clone()].iter().map(|b| b.charge.abs()).sum::<f32>();
