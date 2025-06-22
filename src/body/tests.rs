@@ -281,6 +281,7 @@ mod tests {
                 background_e_field: Vec2::zero(),
                 config: SimConfig { ..Default::default() },
                 foils: vec![Foil {
+                    id: 0,
                     body_ids: vec![foil2_id], // Use the saved ID
                     current: 10.0,
                     accum: 1.5,
