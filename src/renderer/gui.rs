@@ -122,6 +122,27 @@ impl super::Renderer {
 
                 ui.separator();
 
+                // --- Butler-Volmer Parameters ---
+                ui.label("Butler-Volmer Parameters:");
+                ui.checkbox(&mut self.sim_config.use_butler_volmer, "Use Butler-Volmer");
+                ui.add(
+                    egui::Slider::new(&mut self.sim_config.bv_exchange_current, 0.0..=1.0e6)
+                        .text("Exchange Current i0")
+                        .step_by(1.0),
+                );
+                ui.add(
+                    egui::Slider::new(&mut self.sim_config.bv_transfer_coeff, 0.0..=1.0)
+                        .text("Transfer Coeff α")
+                        .step_by(0.01),
+                );
+                ui.add(
+                    egui::Slider::new(&mut self.sim_config.bv_overpotential_scale, 0.0..=1.0)
+                        .text("Overpotential Scale")
+                        .step_by(0.0001),
+                );
+
+                ui.separator();
+
                 // --- Scenario Controls ---
                 ui.label("Scenario:");
 
