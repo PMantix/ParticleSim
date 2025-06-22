@@ -18,6 +18,7 @@ impl super::Renderer {
 
         if input.key_pressed(VirtualKeyCode::Back) {
             self.selected_particle_id = None;
+            self.selected_particle_ids.clear();
         }
 
         // Camera zoom and pan
@@ -84,6 +85,13 @@ impl super::Renderer {
                         }
                     }
                     self.selected_particle_id = closest;
+                    self.selected_particle_ids.clear();
+                    if let Some(id) = closest {
+                        self.selected_particle_ids.push(id);
+                        if let Some(foil) = self.foils.iter().find(|f| f.body_ids.contains(&id)) {
+                            self.selected_particle_ids = foil.body_ids.clone();
+                        }
+                    }
 
                     if let Some(id) = closest {
                         if let Some(body) = self.bodies.iter().find(|b| b.id == id) {

@@ -11,6 +11,7 @@ use crate::config;
 use crate::simulation::utils::can_transfer_electron;
 use rand::prelude::*; // Import all prelude traits for rand 0.9+
 use crate::profile_scope;
+use std::collections::HashMap;
 
 /// The main simulation state and logic for the particle system.
 pub struct Simulation {
@@ -23,6 +24,7 @@ pub struct Simulation {
     pub rewound_flags: Vec<bool>,
     pub background_e_field: Vec2,
     pub foils: Vec<crate::body::foil::Foil>,
+    pub body_to_foil: HashMap<u64, u64>,
     pub config:config::SimConfig, //
 }
 
@@ -50,6 +52,7 @@ impl Simulation {
             rewound_flags,
             background_e_field: Vec2::zero(),
             foils: Vec::new(),
+            body_to_foil: HashMap::new(),
             config: config::SimConfig::default(),
         };
         // Example: scenario setup using SimCommand (pseudo-code, actual sending is done in main.rs or GUI)
