@@ -11,6 +11,7 @@ pub enum Species {
     LithiumIon,
     LithiumMetal,
     FoilMetal, // NEW
+    ElectrolyteAnion,
 }
 
 #[derive(Clone)]
@@ -47,8 +48,8 @@ impl Body {
         }
     }
     pub fn update_species(&mut self) {
-        if self.species == Species::FoilMetal {
-            // Don't auto-convert FoilMetal to other species
+        if self.species == Species::FoilMetal || self.species == Species::ElectrolyteAnion {
+            // Don't auto-convert FoilMetal or ElectrolyteAnion to other species
             return;
         }
         if self.charge > config::LITHIUM_ION_THRESHOLD {
@@ -62,6 +63,7 @@ impl Body {
         match self.species {
             Species::LithiumMetal => crate::config::LITHIUM_METAL_NEUTRAL_ELECTRONS,
             Species::FoilMetal => crate::config::FOIL_NEUTRAL_ELECTRONS,
+            Species::ElectrolyteAnion => crate::config::ELECTROLYTE_ANION_NEUTRAL_ELECTRONS,
             _ => 0, // Ions and others have 0 neutral electrons
         }
     }

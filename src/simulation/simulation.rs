@@ -149,6 +149,14 @@ impl Simulation {
         }
         self.perform_electron_hopping_with_exclusions(&foil_current_recipients);
         self.frame += 1;
+
+        #[cfg(debug_assertions)]
+        // After all updates, print debug info for anions
+        for (i, body) in self.bodies.iter().enumerate() {
+            if body.species == crate::body::Species::ElectrolyteAnion {
+                println!("[DEBUG] Step {}: Anion {} charge = {}, pos = {:?}, vel = {:?}", self.frame, i, body.charge, body.pos, body.vel);
+            }
+        }
     }
 
     pub fn iterate(&mut self) {
@@ -209,6 +217,7 @@ impl Simulation {
                     match dst_body.species {
                         Species::LithiumMetal | Species::FoilMetal => can_transfer_electron(src_body, dst_body),
                         Species::LithiumIon => true,
+                        Species::ElectrolyteAnion => false, // or specify logic if needed
                     }
                 })
                 .collect::<Vec<_>>();

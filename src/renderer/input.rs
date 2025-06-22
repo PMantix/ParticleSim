@@ -2,7 +2,7 @@ use super::state::*;
 use quarkstrom::winit::event::VirtualKeyCode;
 use std::sync::atomic::Ordering;
 use std::f32::consts::{PI, TAU};
-use crate::body::{Body, Species, Electron};
+//use crate::body::{Body, Electron};
 use ultraviolet::Vec2;
 use quarkstrom::winit_input_helper::WinitInputHelper;
 use super::state::{SIM_COMMAND_SENDER, SimCommand};
@@ -100,9 +100,13 @@ impl super::Renderer {
                 } else {
                     // Spawning logic (no shift)
                     let mouse = world_mouse();
-                    let mut body = Body::new(mouse, Vec2::zero(), 1.0, 1.0, 0.0, Species::LithiumMetal);
-                    body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
-                    body.update_charge_from_electrons();
+                    let body = crate::renderer::gui::make_body_with_species(
+                        mouse,
+                        Vec2::zero(),
+                        1.0,
+                        1.0,
+                        self.scenario_species,
+                    );
                     self.spawn_body = Some(body);
                     self.angle = None;
                     self.total = Some(0.0);

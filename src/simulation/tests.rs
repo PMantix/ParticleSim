@@ -98,10 +98,27 @@ mod reactions {
         ion.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
         ion.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
         ion.update_charge_from_electrons();
-        assert_eq!(ion.species, Species::LithiumIon);
-        ion.apply_redox(sim.dt);
-        assert_eq!(ion.species, Species::LithiumMetal);
-        assert_eq!(ion.electrons.len(), 2);
+        let mut sim = Simulation {
+            dt: 0.1,
+            frame: 0,
+            bodies: vec![ion],
+            quadtree: Quadtree::new(
+                config::QUADTREE_THETA,
+                config::QUADTREE_EPSILON,
+                config::QUADTREE_LEAF_CAPACITY,
+                config::QUADTREE_THREAD_CAPACITY,
+            ),
+            bounds: 1.0,
+            rewound_flags: vec![false],
+            background_e_field: Vec2::zero(),
+            config: Default::default(),
+            foils: Vec::new(),
+            cell_list: CellList::new(10.0, 1.0),
+        };
+        assert_eq!(sim.bodies[0].species, Species::LithiumIon);
+        sim.bodies[0].apply_redox(sim.dt);
+        assert_eq!(sim.bodies[0].species, Species::LithiumMetal);
+        assert_eq!(sim.bodies[0].electrons.len(), 2);
     }
 
     #[test]

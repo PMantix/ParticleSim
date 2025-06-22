@@ -4,6 +4,7 @@ use crate::renderer::Species;
 use ultraviolet::Vec2;
 use crate::renderer::Body;
 use crate::Electron;
+use crate::config;
 use crate::config::IsolineFieldMode;
 use std::sync::atomic::Ordering;
 
@@ -38,8 +39,8 @@ impl super::Renderer {
                 egui::CollapsingHeader::new("Display Options")
                     .default_open(true)
                     .show(ui, |ui| {
-                        ui.add(egui::Toggle::new(&mut self.show_bodies, "Show Bodies"));
-                        ui.add(egui::Toggle::new(&mut self.show_quadtree, "Show Quadtree"));
+                        ui.checkbox(&mut self.show_bodies, "Show Bodies");
+                        ui.checkbox(&mut self.show_quadtree, "Show Quadtree");
                     });
 
                 ui.separator();
@@ -48,7 +49,7 @@ impl super::Renderer {
                     .default_open(true)
                     .show(ui, |ui| {
                         let mut paused = PAUSED.load(Ordering::Relaxed);
-                        ui.add(egui::Toggle::new(&mut paused, "Paused"));
+                        ui.checkbox(&mut paused, "Paused");
                         PAUSED.store(paused, Ordering::Relaxed);
 
                         ui.add(
@@ -191,7 +192,7 @@ impl super::Renderer {
                                     ultraviolet::Vec2::zero(),
                                     1.0,
                                     self.scenario_particle_radius,
-                                    self.scenario_charge,
+                                    self.scenario_charge as i32,
                                 );
                                 SIM_COMMAND_SENDER
                                     .lock()
@@ -290,27 +291,52 @@ impl super::Renderer {
     }
 }
 
-fn make_body_with_charge(pos: Vec2, vel: Vec2, mass: f32, radius: f32, charge: i32) -> Body {
-    let mut body = Body::new(pos, vel, mass, radius, 0.0, Species::LithiumMetal); // temp species
+pub fn make_body_with_species(pos: Vec2, vel: Vec2, mass: f32, radius: f32, species: Species) -> Body {
+    use crate::config::{LITHIUM_METAL_NEUTRAL_ELECTRONS, FOIL_NEUTRAL_ELECTRONS};
+    let mut body = Body::new(pos, vel, mass, radius, 0.0, species);
     body.electrons.clear();
-    match charge {
-        1 => { // Li+
-            body.species = Species::LithiumIon;
-            // 0 electrons
-        }
-        0 => { // Li
-            body.species = Species::LithiumMetal;
-            body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
-        }
-        n if n < 0 => { // Li with extra electrons
-            body.species = Species::LithiumMetal;
-            for _ in 0..(1 - n) { // e.g. charge -1 => 2 electrons
+    match species {
+        Species::LithiumMetal => {
+            for _ in 0..LITHIUM_METAL_NEUTRAL_ELECTRONS {
                 body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
             }
         }
-        _ => { // fallback to ion
-            body.species = Species::LithiumIon;
+        Species::FoilMetal => {
+            for _ in 0..FOIL_NEUTRAL_ELECTRONS {
+                body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+            }
         }
+        Species::LithiumIon => {
+            // Ions: one less electron than neutral metal, positive charge
+            if LITHIUM_METAL_NEUTRAL_ELECTRONS > 0 {
+                for _ in 0..(LITHIUM_METAL_NEUTRAL_ELECTRONS - 1) {
+                    body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+                }
+            }
+        }
+        Species::ElectrolyteAnion => {
+            // Anions: one more electron than neutral metal, negative charge
+            if LITHIUM_METAL_NEUTRAL_ELECTRONS > 0 {
+                for _ in 0..(LITHIUM_METAL_NEUTRAL_ELECTRONS + 1) {
+                    body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+                }
+            }
+        }
+    }
+    body.update_charge_from_electrons();
+    body.update_species();
+    body
+}
+
+/// Creates a Body with a specific charge (number of electrons), for a given position, velocity, mass, and radius.
+/// The charge parameter is the net charge (e.g., -1 for one extra electron, +1 for one less electron).
+pub fn make_body_with_charge(pos: Vec2, vel: Vec2, mass: f32, radius: f32, charge: i32) -> Body {
+    use crate::config::LITHIUM_METAL_NEUTRAL_ELECTRONS;
+    let mut body = Body::new(pos, vel, mass, radius, 0.0, Species::LithiumMetal);
+    body.electrons.clear();
+    let electron_count = (LITHIUM_METAL_NEUTRAL_ELECTRONS as i32 + charge).max(0) as usize;
+    for _ in 0..electron_count {
+        body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
     }
     body.update_charge_from_electrons();
     body.update_species();
