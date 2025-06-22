@@ -423,6 +423,7 @@ mod reactions {
                 },
                 foils: Vec::new(),
                 cell_list: CellList::new(10.0, 1.0),
+                body_to_foil: HashMap::new(),
             };
             sim.quadtree.build(&mut sim.bodies);
             let exclude = vec![false; sim.bodies.len()];
