@@ -11,7 +11,7 @@ use smallvec::{SmallVec, smallvec};
 #[cfg(test)]
 mod reactions {
     use crate::cell_list::CellList;
-
+    use std::collections::HashMap;
     use super::*;
 
     #[test]
@@ -42,6 +42,7 @@ mod reactions {
             config: Default::default(),
             foils: Vec::new(),
             cell_list: CellList::new(10.0, 1.0),
+            body_to_foil: HashMap::new(),
         };
         let b = &mut sim.bodies[0];
         b.apply_redox();
@@ -76,6 +77,7 @@ mod reactions {
             config: Default::default(),
             foils: Vec::new(),
             cell_list: CellList::new(10.0, 1.0),
+            body_to_foil: HashMap::new(),
         };
         let b = &mut sim.bodies[0];
         b.apply_redox();
@@ -151,6 +153,7 @@ mod reactions {
             config: Default::default(),
             foils: Vec::new(),
             cell_list: CellList::new(10.0, 1.0),
+            body_to_foil: HashMap::new(),
         };
         sim.quadtree.build(&mut sim.bodies);
 
@@ -186,6 +189,7 @@ mod reactions {
             config: Default::default(),
             foils: Vec::new(),
             cell_list: CellList::new(10.0, 1.0),
+            body_to_foil: HashMap::new(),
         };
         sim.quadtree.build(&mut sim.bodies);
 
@@ -201,6 +205,7 @@ mod reactions {
         use super::*;
         use crate::body::{Body, Electron};
         use ultraviolet::Vec2;
+        use std::collections::HashMap;
 
         #[test]
         fn always_hop_when_activation_nearly_0() {
@@ -234,6 +239,7 @@ mod reactions {
                 },
                 foils: Vec::new(),
                 cell_list: CellList::new(10.0, 1.0),
+                body_to_foil: HashMap::new(),
             };
             sim.quadtree.build(&mut sim.bodies);
             let exclude = vec![false; sim.bodies.len()];
@@ -282,6 +288,7 @@ mod reactions {
                 },
                 foils: Vec::new(),
                 cell_list: CellList::new(10.0, 1.0),
+                body_to_foil: HashMap::new(),
             };
             sim.quadtree.build(&mut sim.bodies);
 
@@ -327,6 +334,7 @@ mod reactions {
                 },
                 foils: Vec::new(),
                 cell_list: CellList::new(10.0, 1.0),
+                body_to_foil: HashMap::new(),
             };
             sim.quadtree.build(&mut sim.bodies);
 
@@ -368,6 +376,7 @@ mod reactions {
                 },
                 foils: Vec::new(),
                 cell_list: CellList::new(10.0, 1.0),
+                body_to_foil: HashMap::new(),
             };
             sim.quadtree.build(&mut sim.bodies);
             let exclude = vec![false; sim.bodies.len()];

@@ -63,6 +63,8 @@ mod tests {
     }
 
     mod physics {
+        use std::collections::HashMap;
+
         use crate::body::{Body, Species, Electron};
         use crate::Simulation;
         use crate::quadtree::Quadtree;
@@ -167,6 +169,7 @@ mod tests {
                 config: SimConfig { ..Default::default() },
                 foils: Vec::new(),
                 cell_list: CellList::new(10.0, 1.0),
+                body_to_foil: HashMap::new(),
             };
             assert_eq!(sim.bodies[0].electrons.len(), 0);
             assert_eq!(sim.bodies[1].electrons.len(), crate::config::FOIL_NEUTRAL_ELECTRONS + 1);
@@ -226,6 +229,7 @@ mod tests {
                 config: SimConfig { ..Default::default() },
                 foils: Vec::new(),
                 cell_list: CellList::new(10.0, 1.0),
+                body_to_foil: HashMap::new(),
             };
         
             // Build quadtree before hopping.
@@ -281,12 +285,13 @@ mod tests {
                 background_e_field: Vec2::zero(),
                 config: SimConfig { ..Default::default() },
                 foils: vec![Foil {
-                    id: 0,
+                    id: 42, // Arbitrary ID for the foil
                     body_ids: vec![foil2_id], // Use the saved ID
                     current: 10.0,
                     accum: 1.5,
                 }],
                 cell_list: CellList::new(10.0, 1.0),
+                body_to_foil: HashMap::new(),
             };
 
             // Build quadtree before step

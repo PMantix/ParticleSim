@@ -4,6 +4,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 static NEXT_FOIL_ID: AtomicU64 = AtomicU64::new(1);
 
 /// Collection of fixed lithium metal particles representing a foil.
+#[derive(Debug, Clone)]
 pub struct Foil {
     /// Unique identifier for this foil
     pub id: u64,
