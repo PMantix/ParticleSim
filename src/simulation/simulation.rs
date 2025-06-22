@@ -11,6 +11,7 @@ use crate::config;
 use crate::simulation::utils::can_transfer_electron;
 use rand::prelude::*; // Import all prelude traits for rand 0.9+
 use crate::profile_scope;
+use std::collections::HashMap;
 
 /// The main simulation state and logic for the particle system.
 pub struct Simulation {
@@ -23,6 +24,7 @@ pub struct Simulation {
     pub rewound_flags: Vec<bool>,
     pub background_e_field: Vec2,
     pub foils: Vec<crate::body::foil::Foil>,
+    pub body_to_foil: HashMap<u64, u64>,
     pub config:config::SimConfig, //
 }
 
@@ -50,6 +52,7 @@ impl Simulation {
             rewound_flags,
             background_e_field: Vec2::zero(),
             foils: Vec::new(),
+            body_to_foil: HashMap::new(),
             config: config::SimConfig::default(),
         };
         // Example: scenario setup using SimCommand (pseudo-code, actual sending is done in main.rs or GUI)
@@ -189,6 +192,12 @@ impl Simulation {
         density > self.config.cell_list_density_threshold
     }
 
+    /// Attempt electron hops between nearby bodies.
+    ///
+    /// `exclude_donor` marks bodies that should not donate electrons this step
+    /// (used for foil current sources). When `use_butler_volmer` is enabled
+    /// in the configuration, hops between different species use the
+    /// Butler-Volmer rate expression.
     pub fn perform_electron_hopping_with_exclusions(&mut self, exclude_donor: &[bool]) {
         if self.bodies.is_empty() { return; }
         let n = self.bodies.len();
@@ -228,7 +237,6 @@ impl Simulation {
             if let Some(&dst_idx) = candidate_neighbors.iter().find(|&&dst_idx| {
                 let dst_body = &self.bodies[dst_idx];
                 let d_phi = dst_body.charge - src_body.charge;
-                if d_phi <= 0.0 { return false; }
                 let hop_vec = dst_body.pos - src_body.pos;
                 let hop_dir = if hop_vec.mag() > 1e-6 { hop_vec.normalized() } else { Vec2::zero() };
                 let local_field = self.background_e_field
@@ -237,7 +245,21 @@ impl Simulation {
                 let mut alignment = (-hop_dir.dot(field_dir)).max(0.0);
                 if field_dir == Vec2::zero() { alignment = 1.0; }
                 if alignment < 1e-3 { return false; }
-                let rate = self.config.hop_rate_k0 * (self.config.hop_transfer_coeff * d_phi / self.config.hop_activation_energy).exp();
+
+                let rate = if self.config.use_butler_volmer && src_body.species != dst_body.species {
+                    // Butler-Volmer kinetics for inter-species electron transfer
+                    let alpha = self.config.bv_transfer_coeff;
+                    let scale = self.config.bv_overpotential_scale;
+                    let i0 = self.config.bv_exchange_current;
+                    let forward = (alpha * d_phi / scale).exp();
+                    let backward = (-(1.0 - alpha) * d_phi / scale).exp();
+                    i0 * (forward - backward)
+                } else {
+                    if d_phi <= 0.0 { return false; }
+                    self.config.hop_rate_k0 * (self.config.hop_transfer_coeff * d_phi / self.config.hop_activation_energy).exp()
+                };
+
+                if rate <= 0.0 { return false; }
                 let p_hop = alignment * (1.0 - (-rate * self.dt).exp());
                 rand::random::<f32>() < p_hop
             }) {

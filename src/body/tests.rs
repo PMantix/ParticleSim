@@ -63,6 +63,8 @@ mod tests {
     }
 
     mod physics {
+        use std::collections::HashMap;
+
         use crate::body::{Body, Species, Electron};
         use crate::Simulation;
         use crate::quadtree::Quadtree;
@@ -111,6 +113,7 @@ mod tests {
 
         #[test]
         fn electron_moves_under_field() {
+            println!("Starting electron movement test");
             let mut b = Body::new(
                 Vec2::zero(),
                 Vec2::zero(),
@@ -118,13 +121,20 @@ mod tests {
                 0.0,
                 Species::LithiumMetal,
             );
+            println!("Created body: {:?}", b);
             b.electrons=smallvec![Electron {rel_pos:Vec2::zero(),vel:Vec2::zero()}];
+            println!("Added electron: {:?}", b.electrons);
             let field = Vec2::new(1.0, 0.0);
+            println!("Field set to: {:?}", field);
             let mut bodies = vec![b.clone()];
             let mut qt = Quadtree::new(0.5, 0.01, 1, 1);
+            println!("Before qt.build");
             qt.build(&mut bodies);
+            println!("After qt.build");
             let bodies_clone = bodies.clone();
+            println!("Before update: rel_pos = {:?}, vel = {:?}", bodies[0].electrons[0].rel_pos, bodies[0].electrons[0].vel);
             bodies[0].update_electrons(&bodies_clone, &qt, field, 0.1);
+            println!("After update: rel_pos = {:?}, vel = {:?}", bodies[0].electrons[0].rel_pos, bodies[0].electrons[0].vel);
             assert!(bodies[0].electrons[0].rel_pos.x < 0.0,
                 "Expected electron to drift left (x < 0), but rel_pos.x = {}", bodies[0].electrons[0].rel_pos.x);
         }
@@ -167,6 +177,7 @@ mod tests {
                 config: SimConfig { ..Default::default() },
                 foils: Vec::new(),
                 cell_list: CellList::new(10.0, 1.0),
+                body_to_foil: HashMap::new(),
             };
             assert_eq!(sim.bodies[0].electrons.len(), 0);
             assert_eq!(sim.bodies[1].electrons.len(), crate::config::FOIL_NEUTRAL_ELECTRONS + 1);
@@ -226,6 +237,7 @@ mod tests {
                 config: SimConfig { ..Default::default() },
                 foils: Vec::new(),
                 cell_list: CellList::new(10.0, 1.0),
+                body_to_foil: HashMap::new(),
             };
         
             // Build quadtree before hopping.
@@ -281,11 +293,13 @@ mod tests {
                 background_e_field: Vec2::zero(),
                 config: SimConfig { ..Default::default() },
                 foils: vec![Foil {
+                    id: 42, // Arbitrary ID for the foil
                     body_ids: vec![foil2_id], // Use the saved ID
                     current: 10.0,
                     accum: 1.5,
                 }],
                 cell_list: CellList::new(10.0, 1.0),
+                body_to_foil: HashMap::new(),
             };
 
             // Build quadtree before step

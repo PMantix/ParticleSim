@@ -12,6 +12,18 @@ pub const HOP_TRANSFER_COEFF: f32 = 0.5;            /// Transfer coefficient α 
 pub const HOP_ACTIVATION_ENERGY: f32 = 0.025;      /// Thermal energy k_BT (in your same charge‐units)
 
 // ====================
+// Butler-Volmer Parameters
+// ====================
+/// Enable Butler-Volmer kinetics for inter-species electron transfer
+pub const BV_ENABLED: bool = false;
+/// Exchange current density i0 used in the Butler-Volmer expression
+pub const BV_EXCHANGE_CURRENT: f32 = 1.0;
+/// Transfer coefficient alpha used in the Butler-Volmer expression
+pub const BV_TRANSFER_COEFF: f32 = 0.5;
+/// Scale factor corresponding to RT/(nF) for the overpotential term
+pub const BV_OVERPOTENTIAL_SCALE: f32 = 0.025;
+
+// ====================
 // LJ Force Parameters
 // ====================
 pub const LJ_FORCE_EPSILON: f32 = 2000.0;                  // Lennard-Jones epsilon parameter
@@ -83,6 +95,14 @@ pub struct SimConfig {
     pub hop_transfer_coeff: f32,
     pub hop_activation_energy: f32,
     pub hop_radius_factor: f32,
+    /// Enable Butler-Volmer kinetics for inter-species hops
+    pub use_butler_volmer: bool,
+    /// Exchange current density i0 for Butler-Volmer
+    pub bv_exchange_current: f32,
+    /// Transfer coefficient alpha for Butler-Volmer
+    pub bv_transfer_coeff: f32,
+    /// Overpotential scale factor RT/(nF) for Butler-Volmer
+    pub bv_overpotential_scale: f32,
     pub show_field_isolines: bool,
     pub show_velocity_vectors: bool,
     pub show_charge_density: bool,
@@ -104,6 +124,10 @@ impl Default for SimConfig {
             hop_transfer_coeff: HOP_TRANSFER_COEFF,
             hop_activation_energy: HOP_ACTIVATION_ENERGY,
             hop_radius_factor: HOP_RADIUS_FACTOR,
+            use_butler_volmer: BV_ENABLED,
+            bv_exchange_current: BV_EXCHANGE_CURRENT,
+            bv_transfer_coeff: BV_TRANSFER_COEFF,
+            bv_overpotential_scale: BV_OVERPOTENTIAL_SCALE,
             show_field_isolines: SHOW_FIELD_ISOLINES,
             show_velocity_vectors: SHOW_VELOCITY_VECTORS,
             show_charge_density: SHOW_CHARGE_DENSITY,
