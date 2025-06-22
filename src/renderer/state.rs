@@ -14,6 +14,7 @@ pub static PAUSED: Lazy<AtomicBool> = Lazy::new(|| AtomicBool::new(false));
 pub static UPDATE_LOCK: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(false));
 pub static BODIES: Lazy<Mutex<Vec<Body>>> = Lazy::new(|| Mutex::new(Vec::new()));
 pub static QUADTREE: Lazy<Mutex<Vec<Node>>> = Lazy::new(|| Mutex::new(Vec::new()));
+pub static FOILS: Lazy<Mutex<Vec<crate::body::foil::Foil>>> = Lazy::new(|| Mutex::new(Vec::new()));
 pub static SPAWN: Lazy<Mutex<Vec<Body>>> = Lazy::new(|| Mutex::new(Vec::new()));
 pub static COLLISION_PASSES: Lazy<Mutex<usize>> = Lazy::new(|| Mutex::new(3));
 
@@ -48,6 +49,10 @@ pub enum SimCommand {
         x: f32,
         y: f32,
         particle_radius: f32,
+        current: f32,
+    },
+    SetFoilCurrent {
+        foil_id: u64,
         current: f32,
     },
     StepOnce

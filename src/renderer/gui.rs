@@ -226,6 +226,29 @@ impl super::Renderer {
                     }
                 });
 
+                if let Some(selected_id) = self.selected_particle_id {
+                    let maybe_foil = {
+                        let foils = FOILS.lock();
+                        foils.iter().find(|f| f.body_ids.contains(&selected_id)).cloned()
+                    };
+                    if let Some(foil) = maybe_foil {
+                        ui.separator();
+                        ui.label("Foil Current:");
+                        let mut current = foil.current;
+                        ui.horizontal(|ui| {
+                            if ui.button("-").clicked() { current -= 1.0; }
+                            if ui.button("+").clicked() { current += 1.0; }
+                            if ui.button("0").clicked() { current = 0.0; }
+                            ui.add(egui::Slider::new(&mut current, -10.0..=10.0).step_by(0.1));
+                        });
+                        if (current - foil.current).abs() > f32::EPSILON {
+                            SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(
+                                SimCommand::SetFoilCurrent { foil_id: selected_id, current }
+                            ).unwrap();
+                        }
+                    }
+                }
+
                 // --- Debug/Diagnostics ---
                 ui.separator();
                 ui.label("Debug/Diagnostics:");
