@@ -1,6 +1,6 @@
 [package]
-name = "barnes-hut"
-version = "0.1.0"
+name = "ParticleSim"
+version = "0.1.5"
 edition = "2021"
 
 [dependencies]

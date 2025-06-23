@@ -71,42 +71,33 @@ mod tests {
         use ultraviolet::Vec2;
         use crate::config;
         use crate::config::SimConfig;
-        use smallvec::{SmallVec, smallvec};
+        use smallvec::smallvec;
         use crate::cell_list::CellList;
 
         #[test]
         fn ion_becomes_metal_when_charge_high() {
-            let mut b = Body {
-                pos: Vec2::zero(),
-                vel: Vec2::zero(),
-                acc: Vec2::zero(),
-                mass: 1.0,
-                radius: 1.0,
-                charge: 0.00,
-                id: 0,
-                species: Species::LithiumIon,
-                electrons: SmallVec::new(),
-                e_field: Vec2::zero(),
-
-            };
+            let mut b = Body::new(
+                Vec2::zero(),
+                Vec2::zero(),
+                1.0,
+                1.0,
+                0.0,
+                Species::LithiumIon,
+            );
             b.update_species();
             assert_eq!(b.species, Species::LithiumMetal);
         }
 
         #[test]
         fn metal_becomes_ion_when_charge_low() {
-            let mut b = Body {
-                pos: Vec2::zero(),
-                vel: Vec2::zero(),
-                acc: Vec2::zero(),
-                mass: 1.0,
-                radius: 1.0,
-                charge: 1.0,
-                id: 0,
-                species: Species::LithiumMetal,
-                electrons: SmallVec::new(),
-                e_field: Vec2::zero(),
-            };
+            let mut b = Body::new(
+                Vec2::zero(),
+                Vec2::zero(),
+                1.0,
+                1.0,
+                1.0,
+                Species::LithiumMetal,
+            );
             b.update_species();
             assert_eq!(b.species, Species::LithiumIon);
         }
@@ -263,11 +254,8 @@ mod tests {
 
             // Three foils in a row
             let mut foil1 = Body::new(Vec2::new(0.0, 0.0), Vec2::zero(), 1.0, 1.0, 0.0, Species::FoilMetal);
-            foil1.id = 0;
             let mut foil2 = Body::new(Vec2::new(2.0, 0.0), Vec2::zero(), 1.0, 1.0, 0.0, Species::FoilMetal);
-            foil2.id = 1;
             let mut foil3 = Body::new(Vec2::new(4.0, 0.0), Vec2::zero(), 1.0, 1.0, 0.0, Species::FoilMetal);
-            foil3.id = 2;
             // All start with neutral electron count
             for foil in [&mut foil1, &mut foil2, &mut foil3] {
                 for _ in 0..crate::config::FOIL_NEUTRAL_ELECTRONS {

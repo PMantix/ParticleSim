@@ -58,15 +58,15 @@ impl super::Renderer {
                         Species::ElectrolyteAnion => [0, 128, 255, 255], // Blueish for anion
                     };
 
-                    ctx.draw_circle(body.pos, body.radius, color);
-
                     if body.species == Species::FoilMetal {
                         if let Some(foil) = self.foils.iter().find(|f| f.body_ids.contains(&body.id)) {
                             if self.selected_foil_ids.contains(&foil.id) {
-                                ctx.draw_circle(body.pos, body.radius * 1.5, [255, 255, 0, 128]);
+                                ctx.draw_circle(body.pos, body.radius * 1.1, [255, 255, 0, 32]);
                             }
                         }
                     }
+
+                    ctx.draw_circle(body.pos, body.radius, color);
 
                     // Visualize electron count for FoilMetal
                     if body.species == Species::FoilMetal {
@@ -142,7 +142,7 @@ impl super::Renderer {
             for id in &self.selected_particle_ids {
                 if let Some(body) = self.bodies.iter().find(|b| b.id == *id) {
                     // Draw a larger, semi-transparent circle as a halo
-                    ctx.draw_circle(body.pos, body.radius * 2.0, [255, 255, 0, 128]);
+                    ctx.draw_circle(body.pos, body.radius * 3.0, [255, 255, 0, 128]);
                 }
             }
         }

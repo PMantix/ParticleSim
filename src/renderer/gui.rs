@@ -45,7 +45,7 @@ impl super::Renderer {
                 ui.add(
                     egui::Slider::new(&mut *TIMESTEP.lock(), 0.0001..=0.01)
                         .text("Timestep (dt)")
-                        .step_by(0.005),
+                        .step_by(0.001),
                 );
                 ui.add(
                     egui::Slider::new(&mut self.sim_config.damping_base, 0.95..=1.0)
@@ -182,8 +182,8 @@ impl super::Renderer {
                         );
                         SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::AddRing {
                             body,
-                            x: self.scenario_x,
-                            y: self.scenario_y,
+                            x: self.scenario_x - self.scenario_radius,
+                            y: self.scenario_y - self.scenario_radius,
                             radius: self.scenario_radius,
                         }).unwrap();
                     }
@@ -197,8 +197,8 @@ impl super::Renderer {
                         );
                         SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::AddCircle {
                             body,
-                            x: self.scenario_x,
-                            y: self.scenario_y,
+                            x: self.scenario_x - self.scenario_radius,
+                            y: self.scenario_y - self.scenario_radius,
                             radius: self.scenario_radius,
                         }).unwrap();
                     }
@@ -220,8 +220,8 @@ impl super::Renderer {
                         );
                         SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::AddRectangle {
                             body,
-                            x: self.scenario_x,
-                            y: self.scenario_y,
+                            x: self.scenario_x - self.scenario_width / 2.0,
+                            y: self.scenario_y - self.scenario_height / 2.0,
                             width: self.scenario_width,
                             height: self.scenario_height,
                         }).unwrap();
