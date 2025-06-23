@@ -1,4 +1,5 @@
 use super::state::*;
+use crate::body::foil::LinkMode;
 use quarkstrom::egui;
 use crate::renderer::Species;
 use ultraviolet::Vec2;
@@ -225,6 +226,29 @@ impl super::Renderer {
                         }).unwrap();
                     }
                 });
+
+                ui.separator();
+                ui.label("Foil Links:");
+                if self.selected_foil_ids.len() == 2 {
+                    let a = self.selected_foil_ids[0];
+                    let b = self.selected_foil_ids[1];
+                    let foils = FOILS.lock();
+                    let linked = foils.iter().find(|f| f.id == a).and_then(|f| f.link_id).map(|id| id == b).unwrap_or(false);
+                    if linked {
+                        if ui.button("Unlink Foils").clicked() {
+                            SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::UnlinkFoils { a, b }).unwrap();
+                        }
+                    } else {
+                        ui.horizontal(|ui| {
+                            if ui.button("Link Parallel").clicked() {
+                                SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::LinkFoils { a, b, mode: LinkMode::Parallel }).unwrap();
+                            }
+                            if ui.button("Link Opposite").clicked() {
+                                SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::LinkFoils { a, b, mode: LinkMode::Opposite }).unwrap();
+                            }
+                        });
+                    }
+                }
 
                 // --- Debug/Diagnostics ---
                 ui.separator();

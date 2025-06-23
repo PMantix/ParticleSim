@@ -75,6 +75,25 @@ impl Simulation {
         self.background_e_field = Vec2::new(theta.cos(), theta.sin()) * mag;
         self.rewound_flags.par_iter_mut().for_each(|flag| *flag = false);
         self.dt = *TIMESTEP.lock();
+
+        // Propagate linked foil currents
+        let mut updates = Vec::new();
+        for foil in &self.foils {
+            if let Some(link_id) = foil.link_id {
+                if let Some(idx) = self.foils.iter().position(|f| f.id == link_id) {
+                    let new_current = match foil.mode {
+                        crate::body::foil::LinkMode::Parallel => foil.current,
+                        crate::body::foil::LinkMode::Opposite => -foil.current,
+                    };
+                    updates.push((idx, new_current));
+                }
+            }
+        }
+        for (idx, cur) in updates {
+            if let Some(f) = self.foils.get_mut(idx) {
+                f.current = cur;
+            }
+        }
         self.bodies.par_iter_mut().for_each(|body| {
             body.acc = Vec2::zero();
         });

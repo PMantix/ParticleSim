@@ -4,7 +4,7 @@
 
 use std::sync::atomic::Ordering;
 use crate::renderer::state::{
-    PAUSED, UPDATE_LOCK, SPAWN, BODIES, QUADTREE,
+    PAUSED, UPDATE_LOCK, SPAWN, BODIES, QUADTREE, FOILS,
 };
 
 mod body;
@@ -18,6 +18,7 @@ mod config;
 mod profiler;
 
 use crate::body::Species;
+use crate::body::foil::{Foil, LinkMode};
 use renderer::Renderer;
 use renderer::state::{SIM_COMMAND_SENDER, SimCommand};
 use std::sync::mpsc::channel;
@@ -288,6 +289,27 @@ fn main() {
                         simulation.foils.push(crate::body::foil::Foil::new(body_ids, origin, width, height, current));
                     },
 
+                    SimCommand::LinkFoils { a, b, mode } => {
+                        if let (Some(foil_a), Some(foil_b)) = (
+                            simulation.foils.iter_mut().find(|f| f.id == a),
+                            simulation.foils.iter_mut().find(|f| f.id == b),
+                        ) {
+                            foil_a.link_id = Some(b);
+                            foil_b.link_id = Some(a);
+                            foil_a.mode = mode;
+                            foil_b.mode = mode;
+                        }
+                    },
+
+                    SimCommand::UnlinkFoils { a, b } => {
+                        if let Some(foil_a) = simulation.foils.iter_mut().find(|f| f.id == a && f.link_id == Some(b)) {
+                            foil_a.link_id = None;
+                        }
+                        if let Some(foil_b) = simulation.foils.iter_mut().find(|f| f.id == b && f.link_id == Some(a)) {
+                            foil_b.link_id = None;
+                        }
+                    },
+
                     //SimCommand::Plate { foil_id, amount } => { /* ... */ }
                     //SimCommand::Strip { foil_id, amount } => { /* ... */ }
                     //SimCommand::AddElectron { pos, vel } => { /* ... */ }
@@ -326,6 +348,11 @@ fn render(simulation: &mut Simulation) {
         let mut lock = QUADTREE.lock();
         lock.clear();
         lock.extend_from_slice(&simulation.quadtree.nodes);
+    }
+    {
+        let mut lock = FOILS.lock();
+        lock.clear();
+        lock.extend_from_slice(&simulation.foils);
     }
     *lock |= true;
 }

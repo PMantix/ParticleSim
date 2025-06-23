@@ -6,6 +6,7 @@ use std::f32::consts::{PI, TAU};
 use ultraviolet::Vec2;
 use quarkstrom::winit_input_helper::WinitInputHelper;
 use super::state::{SIM_COMMAND_SENDER, SimCommand};
+use crate::body::Species;
 
 impl super::Renderer {
     pub fn handle_input(&mut self, input: &WinitInputHelper, width: u16, height: u16) {
@@ -18,6 +19,7 @@ impl super::Renderer {
 
         if input.key_pressed(VirtualKeyCode::Back) {
             self.selected_particle_id = None;
+            self.selected_foil_ids.clear();
         }
 
         // Camera zoom and pan
@@ -84,6 +86,20 @@ impl super::Renderer {
                         }
                     }
                     self.selected_particle_id = closest;
+                    if let Some(id) = closest {
+                        if let Some(body) = self.bodies.iter().find(|b| b.id == id) {
+                            if body.species == Species::FoilMetal {
+                                if let Some(foil) = self.foils.iter().find(|f| f.body_ids.contains(&id)) {
+                                    if !self.selected_foil_ids.contains(&foil.id) {
+                                        if self.selected_foil_ids.len() == 2 {
+                                            self.selected_foil_ids.remove(0);
+                                        }
+                                        self.selected_foil_ids.push(foil.id);
+                                    }
+                                }
+                            }
+                        }
+                    }
 
                     if let Some(id) = closest {
                         if let Some(body) = self.bodies.iter().find(|b| b.id == id) {

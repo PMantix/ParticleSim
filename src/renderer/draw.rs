@@ -16,6 +16,7 @@ impl super::Renderer {
             if *lock {
                 std::mem::swap(&mut self.bodies, &mut BODIES.lock());
                 std::mem::swap(&mut self.quadtree, &mut QUADTREE.lock());
+                std::mem::swap(&mut self.foils, &mut FOILS.lock());
             }
             if let Some(body) = self.confirmed_bodies.take() {
                 self.bodies.push(body.clone());
@@ -57,7 +58,15 @@ impl super::Renderer {
                         Species::ElectrolyteAnion => [0, 128, 255, 255], // Blueish for anion
                     };
 
-					ctx.draw_circle(body.pos, body.radius, color);
+                    ctx.draw_circle(body.pos, body.radius, color);
+
+                    if body.species == Species::FoilMetal {
+                        if let Some(foil) = self.foils.iter().find(|f| f.body_ids.contains(&body.id)) {
+                            if self.selected_foil_ids.contains(&foil.id) {
+                                ctx.draw_circle(body.pos, body.radius * 1.5, [255, 255, 0, 128]);
+                            }
+                        }
+                    }
 
                     // Visualize electron count for FoilMetal
                     if body.species == Species::FoilMetal {
