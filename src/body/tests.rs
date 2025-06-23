@@ -281,9 +281,12 @@ mod tests {
                 background_e_field: Vec2::zero(),
                 config: SimConfig { ..Default::default() },
                 foils: vec![Foil {
+                    id: 1, // Unique ID for the foil
+                    link_id: None,
                     body_ids: vec![foil2_id], // Use the saved ID
                     current: 10.0,
                     accum: 1.5,
+                    mode: crate::body::foil::LinkMode::Parallel,
                 }],
                 cell_list: CellList::new(10.0, 1.0),
             };

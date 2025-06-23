@@ -18,7 +18,7 @@ mod config;
 mod profiler;
 
 use crate::body::Species;
-use crate::body::foil::{Foil, LinkMode};
+//use crate::body::foil::{Foil, LinkMode};
 use renderer::Renderer;
 use renderer::state::{SIM_COMMAND_SENDER, SimCommand};
 use std::sync::mpsc::channel;
@@ -290,14 +290,21 @@ fn main() {
                     },
 
                     SimCommand::LinkFoils { a, b, mode } => {
-                        if let (Some(foil_a), Some(foil_b)) = (
-                            simulation.foils.iter_mut().find(|f| f.id == a),
-                            simulation.foils.iter_mut().find(|f| f.id == b),
-                        ) {
-                            foil_a.link_id = Some(b);
-                            foil_b.link_id = Some(a);
-                            foil_a.mode = mode;
-                            foil_b.mode = mode;
+                        let a_idx = simulation.foils.iter().position(|f| f.id == a);
+                        let b_idx = simulation.foils.iter().position(|f| f.id == b);
+                        if let (Some(a_idx), Some(b_idx)) = (a_idx, b_idx) {
+                            // Safe because indices are unique and not equal
+                            let (first, second) = if a_idx < b_idx {
+                                let (left, right) = simulation.foils.split_at_mut(b_idx);
+                                (&mut left[a_idx], &mut right[0])
+                            } else {
+                                let (left, right) = simulation.foils.split_at_mut(a_idx);
+                                (&mut right[0], &mut left[b_idx])
+                            };
+                            first.link_id = Some(b);
+                            second.link_id = Some(a);
+                            first.mode = mode;
+                            second.mode = mode;
                         }
                     },
 
