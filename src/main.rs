@@ -136,6 +136,7 @@ fn main() {
                     SimCommand::DeleteAll => {
                         simulation.bodies.clear();
                         simulation.foils.clear(); // Also clear all foils when deleting all particles
+                        simulation.body_to_foil.clear();
                         // Optionally clear other simulation state if needed
                     }
 
@@ -155,7 +156,7 @@ fn main() {
                                 let pos = center + offset;
                                 // Remove any overlapping particle
                                 while let Some(idx) = overlaps_any(&simulation.bodies, pos, particle_radius) {
-                                    simulation.bodies.remove(idx);
+                                    remove_body_with_foils(&mut simulation, idx);
                                 }
                                 let mut new_body = crate::body::Body::new(
                                     pos,
@@ -200,7 +201,7 @@ fn main() {
                             let angle = (i as f32) * std::f32::consts::TAU / (count as f32);
                             let pos = center + Vec2::new(angle.cos(), angle.sin()) * radius;
                             while let Some(idx) = overlaps_any(&simulation.bodies, pos, particle_radius) {
-                                simulation.bodies.remove(idx);
+                                remove_body_with_foils(&mut simulation, idx);
                             }
                         let mut new_body = crate::body::Body::new(
                             pos,
@@ -234,7 +235,7 @@ fn main() {
                                         (row as f32 + 0.5) * particle_diameter,
                                     );
                                 while let Some(idx) = overlaps_any(&simulation.bodies, pos, particle_radius) {
-                                    simulation.bodies.remove(idx);
+                                    remove_body_with_foils(&mut simulation, idx);
                                 }
                                 let mut new_body = crate::body::Body::new(
                                     pos,
@@ -269,7 +270,7 @@ fn main() {
                                         (row as f32 + 0.5) * particle_diameter,
                                     );
                                 while let Some(idx) = overlaps_any(&simulation.bodies, pos, particle_radius) {
-                                    simulation.bodies.remove(idx);
+                                    remove_body_with_foils(&mut simulation, idx);
                                 }
                                 let mut new_body = crate::body::Body::new(
                                     pos,
@@ -286,7 +287,21 @@ fn main() {
                                 simulation.bodies.push(new_body);
                             }
                         }
-                        simulation.foils.push(crate::body::foil::Foil::new(body_ids, origin, width, height, current));
+                        let foil = crate::body::foil::Foil::new(body_ids.clone(), origin, width, height, current);
+                        for id in &body_ids {
+                            simulation.body_to_foil.insert(*id, foil.id);
+                        }
+                        simulation.foils.push(foil);
+                    },
+
+                    SimCommand::SetFoilCurrent { foil_id, current } => {
+                        if let Some(foil) = simulation
+                            .foils
+                            .iter_mut()
+                            .find(|f| f.body_ids.contains(&foil_id))
+                        {
+                            foil.current = current;
+                        }
                     },
 
                     SimCommand::LinkFoils { a, b, mode } => {
@@ -366,4 +381,13 @@ fn render(simulation: &mut Simulation) {
 
 fn overlaps_any(existing: &[crate::body::Body], pos: Vec2, radius: f32) -> Option<usize> {
     existing.iter().position(|b| (b.pos - pos).mag() < (b.radius + radius))
+}
+
+fn remove_body_with_foils(simulation: &mut Simulation, idx: usize) {
+    let body = simulation.bodies.remove(idx);
+    if let Some(foil_id) = simulation.body_to_foil.remove(&body.id) {
+        if let Some(foil) = simulation.foils.iter_mut().find(|f| f.id == foil_id) {
+            foil.body_ids.retain(|&id| id != body.id);
+        }
+    }
 }

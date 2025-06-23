@@ -123,6 +123,27 @@ impl super::Renderer {
 
                 ui.separator();
 
+                // --- Butler-Volmer Parameters ---
+                ui.label("Butler-Volmer Parameters:");
+                ui.checkbox(&mut self.sim_config.use_butler_volmer, "Use Butler-Volmer");
+                ui.add(
+                    egui::Slider::new(&mut self.sim_config.bv_exchange_current, 0.0..=1.0e6)
+                        .text("Exchange Current i0")
+                        .step_by(1.0),
+                );
+                ui.add(
+                    egui::Slider::new(&mut self.sim_config.bv_transfer_coeff, 0.0..=1.0)
+                        .text("Transfer Coeff α")
+                        .step_by(0.01),
+                );
+                ui.add(
+                    egui::Slider::new(&mut self.sim_config.bv_overpotential_scale, 0.0..=1.0)
+                        .text("Overpotential Scale")
+                        .step_by(0.0001),
+                );
+
+                ui.separator();
+
                 // --- Scenario Controls ---
                 ui.label("Scenario:");
 
@@ -227,6 +248,31 @@ impl super::Renderer {
                     }
                 });
 
+                // --- Foil Current Controls for Selected Foil ---
+                if let Some(selected_id) = self.selected_particle_id {
+                    let maybe_foil = {
+                        let foils = FOILS.lock();
+                        foils.iter().find(|f| f.body_ids.contains(&selected_id)).cloned()
+                    };
+                    if let Some(foil) = maybe_foil {
+                        ui.separator();
+                        ui.label("Foil Current:");
+                        let mut current = foil.current;
+                        ui.horizontal(|ui| {
+                            if ui.button("-").clicked() { current -= 1.0; }
+                            if ui.button("+").clicked() { current += 1.0; }
+                            if ui.button("0").clicked() { current = 0.0; }
+                            ui.add(egui::Slider::new(&mut current, -10.0..=10.0).step_by(0.1));
+                        });
+                        if (current - foil.current).abs() > f32::EPSILON {
+                            SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(
+                                SimCommand::SetFoilCurrent { foil_id: selected_id, current }
+                            ).unwrap();
+                        }
+                    }
+                }
+
+                // --- Foil Linking Controls ---
                 ui.separator();
                 ui.label("Foil Links:");
                 if self.selected_foil_ids.len() == 2 {

@@ -72,7 +72,6 @@ impl super::Renderer {
 
         if input.mouse_pressed(1) {
             if self.spawn_body.is_none() {
-
                 // If shift is held, select a particle
                 if input.key_held(VirtualKeyCode::LShift) || input.key_held(VirtualKeyCode::RShift) {
                     let mouse_pos = world_mouse();

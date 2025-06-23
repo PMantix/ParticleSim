@@ -54,6 +54,10 @@ pub enum SimCommand {
     },
     LinkFoils { a: u64, b: u64, mode: LinkMode },
     UnlinkFoils { a: u64, b: u64 },
+    SetFoilCurrent {
+        foil_id: u64,
+        current: f32,
+    },
     StepOnce
 }
 

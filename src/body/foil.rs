@@ -1,6 +1,8 @@
 use ultraviolet::Vec2;
 use std::sync::atomic::{AtomicU64, Ordering};
 
+//static NEXT_FOIL_ID: AtomicU64 = AtomicU64::new(1);
+
 /// Mode describing how currents are linked between foils.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum LinkMode {
@@ -11,9 +13,9 @@ pub enum LinkMode {
 }
 
 /// Collection of fixed lithium metal particles representing a foil.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Foil {
-    /// Unique identifier of this foil.
+    /// Unique identifier for this foil.
     pub id: u64,
     /// Unique IDs of bodies that belong to this foil within `Simulation::bodies`.
     pub body_ids: Vec<u64>,

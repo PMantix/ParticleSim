@@ -2,6 +2,7 @@ use ultraviolet::Vec2;
 use crate::body::Body;
 
 #[derive(Clone, Copy)]
+#[derive(Debug, PartialEq)]
 pub struct Quad {
     pub center: Vec2,
     pub size: f32,

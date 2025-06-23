@@ -15,6 +15,7 @@ pub enum Species {
 }
 
 #[derive(Clone)]
+#[derive(Debug)]
 pub struct Body {
     pub pos: Vec2,
     pub vel: Vec2,

@@ -11,7 +11,7 @@ use smallvec::{SmallVec, smallvec};
 #[cfg(test)]
 mod reactions {
     use crate::cell_list::CellList;
-
+    use std::collections::HashMap;
     use super::*;
 
     #[test]
@@ -42,6 +42,7 @@ mod reactions {
             config: Default::default(),
             foils: Vec::new(),
             cell_list: CellList::new(10.0, 1.0),
+            body_to_foil: HashMap::new(),
         };
         let b = &mut sim.bodies[0];
         b.apply_redox();
@@ -76,6 +77,7 @@ mod reactions {
             config: Default::default(),
             foils: Vec::new(),
             cell_list: CellList::new(10.0, 1.0),
+            body_to_foil: HashMap::new(),
         };
         let b = &mut sim.bodies[0];
         b.apply_redox();
@@ -151,6 +153,7 @@ mod reactions {
             config: Default::default(),
             foils: Vec::new(),
             cell_list: CellList::new(10.0, 1.0),
+            body_to_foil: HashMap::new(),
         };
         sim.quadtree.build(&mut sim.bodies);
 
@@ -186,6 +189,7 @@ mod reactions {
             config: Default::default(),
             foils: Vec::new(),
             cell_list: CellList::new(10.0, 1.0),
+            body_to_foil: HashMap::new(),
         };
         sim.quadtree.build(&mut sim.bodies);
 
@@ -201,6 +205,7 @@ mod reactions {
         use super::*;
         use crate::body::{Body, Electron};
         use ultraviolet::Vec2;
+        use std::collections::HashMap;
 
         #[test]
         fn always_hop_when_activation_nearly_0() {
@@ -234,6 +239,7 @@ mod reactions {
                 },
                 foils: Vec::new(),
                 cell_list: CellList::new(10.0, 1.0),
+                body_to_foil: HashMap::new(),
             };
             sim.quadtree.build(&mut sim.bodies);
             let exclude = vec![false; sim.bodies.len()];
@@ -282,6 +288,7 @@ mod reactions {
                 },
                 foils: Vec::new(),
                 cell_list: CellList::new(10.0, 1.0),
+                body_to_foil: HashMap::new(),
             };
             sim.quadtree.build(&mut sim.bodies);
 
@@ -327,6 +334,7 @@ mod reactions {
                 },
                 foils: Vec::new(),
                 cell_list: CellList::new(10.0, 1.0),
+                body_to_foil: HashMap::new(),
             };
             sim.quadtree.build(&mut sim.bodies);
 
@@ -368,6 +376,7 @@ mod reactions {
                 },
                 foils: Vec::new(),
                 cell_list: CellList::new(10.0, 1.0),
+                body_to_foil: HashMap::new(),
             };
             sim.quadtree.build(&mut sim.bodies);
             let exclude = vec![false; sim.bodies.len()];
@@ -378,6 +387,49 @@ mod reactions {
             println!("Electrons in b: {}", sim.bodies[1].electrons.len());
 
             assert_eq!(sim.bodies[0].electrons.len(), 0);
+            assert_eq!(sim.bodies[1].electrons.len(), 1);
+        }
+
+        #[test]
+        fn butler_volmer_inter_species_hop() {
+            let mut metal = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::LithiumMetal);
+            // One extra electron to donate
+            metal.electrons = smallvec![
+                Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() };
+                crate::config::LITHIUM_METAL_NEUTRAL_ELECTRONS + 1
+            ];
+            metal.update_charge_from_electrons();
+
+            let ion = Body::new(Vec2::new(1.0,0.0), Vec2::zero(), 1.0, 1.0, 1.0, Species::LithiumIon);
+
+            let mut sim = Simulation {
+                dt: 0.1,
+                frame: 0,
+                bodies: vec![metal, ion],
+                quadtree: Quadtree::new(
+                    config::QUADTREE_THETA,
+                    config::QUADTREE_EPSILON,
+                    config::QUADTREE_LEAF_CAPACITY,
+                    config::QUADTREE_THREAD_CAPACITY,
+                ),
+                bounds: 10.0,
+                rewound_flags: vec![false; 2],
+                background_e_field: Vec2::zero(),
+                config: SimConfig {
+                    use_butler_volmer: true,
+                    bv_exchange_current: 1e6_f32,
+                    bv_overpotential_scale: 1e-8_f32,
+                    ..Default::default()
+                },
+                foils: Vec::new(),
+                cell_list: CellList::new(10.0, 1.0),
+                body_to_foil: HashMap::new(),
+            };
+            sim.quadtree.build(&mut sim.bodies);
+            let exclude = vec![false; sim.bodies.len()];
+            sim.perform_electron_hopping_with_exclusions(&exclude);
+
+            assert_eq!(sim.bodies[0].electrons.len(), crate::config::LITHIUM_METAL_NEUTRAL_ELECTRONS);
             assert_eq!(sim.bodies[1].electrons.len(), 1);
         }
 

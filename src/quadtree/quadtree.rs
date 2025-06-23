@@ -40,11 +40,11 @@ impl Quadtree {
     pub fn subdivide(&mut self, node: usize, bodies: &mut [Body], range: Range<usize>) -> usize {
         let center = self.nodes[node].quad.center;
 
-        // Prevent infinite subdivision: if all bodies are at (nearly) the same position or quad is too small, treat as leaf
+        // Prevent infinite subdivision: if all bodies are at (nearly) the same position, quad is too small, or only one body, treat as leaf
         let all_same_pos = bodies[range.clone()]
             .windows(2)
             .all(|w| (w[0].pos - w[1].pos).mag_sq() < 1e-12);
-        if all_same_pos || self.nodes[node].quad.size < 1e-6 {
+        if all_same_pos || self.nodes[node].quad.size < 1e-6 || range.len() <= 1 {
             return node;
         }
 
@@ -121,19 +121,29 @@ impl Quadtree {
     }
 
     pub fn build(&mut self, bodies: &mut [Body]) {
+        #[cfg(feature = "debug_quadtree")]
+        println!("Quadtree::build: start, bodies.len() = {}", bodies.len());
         profile_scope!("quadtree_build");
         if bodies.is_empty() {
+            #[cfg(feature = "debug_quadtree")]
+            println!("Quadtree::build: bodies is empty, clearing and returning");
             self.clear();
             return;
         }
 
         self.clear();
+        #[cfg(feature = "debug_quadtree")]
+        println!("Quadtree::build: after clear");
 
         let new_len = 4 * bodies.len() + 1024;
         self.nodes.resize(new_len, Node::ZEROED);
         self.parents.resize(new_len / 4, 0);
+        #[cfg(feature = "debug_quadtree")]
+        println!("Quadtree::build: after resize, nodes.len() = {}", self.nodes.len());
 
         let quad = Quad::new_containing(bodies);
+        #[cfg(feature = "debug_quadtree")]
+        println!("Quadtree::build: quad = {:?}", quad);
         self.nodes[Self::ROOT] = Node::new(0, quad, 0..bodies.len());
 
         let (tx, rx) = crossbeam::channel::unbounded();
@@ -149,18 +159,28 @@ impl Quadtree {
             let quadtree = unsafe { &mut *(quadtree_ptr as *mut Quadtree) };
             let bodies =
                 unsafe { std::slice::from_raw_parts_mut(bodies_ptr as *mut Body, bodies_len) };
-
+            #[cfg(feature = "debug_quadtree")]
+            println!("Quadtree::build: inside rayon::broadcast, bodies_len = {}", bodies_len);
             while counter.load(Ordering::Relaxed) != bodies.len() {
                 while let Ok(node) = rx.try_recv() {
+                    #[cfg(feature = "debug_quadtree")]
+                    println!("Quadtree::build: processing node {}", node);
                     let range = quadtree.nodes[node].bodies.clone();
                     let len = quadtree.nodes[node].bodies.len();
 
                     if range.len() >= quadtree.thread_capacity {
-                        let children = quadtree.subdivide(node, bodies, range);
-                        for i in 0..4 {
-                            if !self.nodes[children + i].bodies.is_empty() {
-                                tx.send(children + i).unwrap();
+                        #[cfg(feature = "debug_quadtree")]
+                        println!("Quadtree::build: subdividing node {}", node);
+                        let children = quadtree.subdivide(node, bodies, range.clone());
+                        if children != node {
+                            for i in 0..4 {
+                                if !self.nodes[children + i].bodies.is_empty() {
+                                    tx.send(children + i).unwrap();
+                                }
                             }
+                        } else {
+                            // Node is a leaf, increment counter
+                            counter.fetch_add(len, Ordering::Relaxed);
                         }
                         continue;
                     }
@@ -190,6 +210,8 @@ impl Quadtree {
                             quadtree.nodes[node].charge = total_charge;
                             continue;
                         }
+                        #[cfg(feature = "debug_quadtree")]
+                        println!("Quadtree::build: subdividing node {} in stack", node);
                         let children = quadtree.subdivide(node, bodies, range);
                         for i in 0..4 {
                             if !self.nodes[children + i].bodies.is_empty() {
@@ -202,6 +224,8 @@ impl Quadtree {
         });
 
         self.propagate(bodies);
+        #[cfg(feature = "debug_quadtree")]
+        println!("Quadtree::build: end");
     }
 
     pub fn acc_pos(&self, pos: Vec2, q: f32, bodies: &[Body], k_e: f32) -> Vec2 {
