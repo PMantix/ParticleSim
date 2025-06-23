@@ -226,6 +226,40 @@ impl super::Renderer {
                     }
                 });
 
+                if let Some(idx) = self.selected_foil_index {
+                    if idx < self.foils.len() {
+                        if self.foil_current_targets.len() != self.foils.len() {
+                            self.foil_current_targets = self.foils.iter().map(|f| f.current).collect();
+                        }
+                        ui.separator();
+                        ui.label(format!("Foil {} Current", idx));
+                        let current_actual = self.foils[idx].current;
+                        let mut target = self.foil_current_targets[idx];
+                        if ui.add(egui::Slider::new(&mut target, -10.0..=10.0).text("Current")).changed() {
+                            self.foil_current_targets[idx] = target;
+                            SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::SetFoilCurrent { index: idx, current: target }).unwrap();
+                        }
+                        ui.horizontal(|ui| {
+                            if ui.button("Increase").clicked() {
+                                target += 1.0;
+                            }
+                            if ui.button("Decrease").clicked() {
+                                target -= 1.0;
+                            }
+                            if ui.button("Zero").clicked() {
+                                target = 0.0;
+                            }
+                        });
+                        if target != self.foil_current_targets[idx] {
+                            self.foil_current_targets[idx] = target;
+                            SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::SetFoilCurrent { index: idx, current: target }).unwrap();
+                        }
+                        let diff = target - current_actual;
+                        let color = if diff >= 0.0 { egui::Color32::RED } else { egui::Color32::BLUE };
+                        ui.add(egui::ProgressBar::new(diff.abs() / 10.0).fill(color));
+                    }
+                }
+
                 // --- Debug/Diagnostics ---
                 ui.separator();
                 ui.label("Debug/Diagnostics:");

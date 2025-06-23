@@ -4,7 +4,7 @@
 
 use std::sync::atomic::Ordering;
 use crate::renderer::state::{
-    PAUSED, UPDATE_LOCK, SPAWN, BODIES, QUADTREE,
+    PAUSED, UPDATE_LOCK, SPAWN, BODIES, QUADTREE, FOILS,
 };
 
 mod body;
@@ -288,6 +288,12 @@ fn main() {
                         simulation.foils.push(crate::body::foil::Foil::new(body_ids, origin, width, height, current));
                     },
 
+                    SimCommand::SetFoilCurrent { index, current } => {
+                        if let Some(foil) = simulation.foils.get_mut(index) {
+                            foil.current = current;
+                        }
+                    },
+
                     //SimCommand::Plate { foil_id, amount } => { /* ... */ }
                     //SimCommand::Strip { foil_id, amount } => { /* ... */ }
                     //SimCommand::AddElectron { pos, vel } => { /* ... */ }
@@ -326,6 +332,11 @@ fn render(simulation: &mut Simulation) {
         let mut lock = QUADTREE.lock();
         lock.clear();
         lock.extend_from_slice(&simulation.quadtree.nodes);
+    }
+    {
+        let mut lock = FOILS.lock();
+        lock.clear();
+        lock.extend_from_slice(&simulation.foils);
     }
     *lock |= true;
 }

@@ -1,5 +1,7 @@
 use ultraviolet::Vec2;
 
+#[derive(Clone)]
+
 /// Collection of fixed lithium metal particles representing a foil.
 pub struct Foil {
     /// Unique IDs of bodies that belong to this foil within `Simulation::bodies`.

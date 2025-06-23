@@ -16,6 +16,10 @@ impl super::Renderer {
             if *lock {
                 std::mem::swap(&mut self.bodies, &mut BODIES.lock());
                 std::mem::swap(&mut self.quadtree, &mut QUADTREE.lock());
+                std::mem::swap(&mut self.foils, &mut FOILS.lock());
+                if self.foil_current_targets.len() != self.foils.len() {
+                    self.foil_current_targets = self.foils.iter().map(|f| f.current).collect();
+                }
             }
             if let Some(body) = self.confirmed_bodies.take() {
                 self.bodies.push(body.clone());
@@ -134,6 +138,28 @@ impl super::Renderer {
                 if let Some(body) = self.bodies.iter().find(|b| b.id == id) {
                     // Draw a larger, semi-transparent circle as a halo
                     ctx.draw_circle(body.pos, body.radius * 2.0, [255, 255, 0, 128]); // yellow, semi-transparent
+                }
+            }
+
+            if let Some(idx) = self.selected_foil_index {
+                if idx < self.foils.len() && idx < self.foil_current_targets.len() {
+                    let mut center = Vec2::zero();
+                    let mut count = 0.0;
+                    for id in &self.foils[idx].body_ids {
+                        if let Some(b) = self.bodies.iter().find(|bb| bb.id == *id) {
+                            center += b.pos;
+                            count += 1.0;
+                        }
+                    }
+                    if count > 0.0 {
+                        center /= count;
+                        let diff = self.foil_current_targets[idx] - self.foils[idx].current;
+                        let color = if diff >= 0.0 { [255, 0, 0, 255] } else { [0, 0, 255, 255] };
+                        let length = diff.abs() * 0.2;
+                        let p0 = center;
+                        let p1 = center + Vec2::new(0.0, length * diff.signum());
+                        ctx.draw_line(p0, p1, color);
+                    }
                 }
             }
         }
