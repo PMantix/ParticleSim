@@ -4,6 +4,7 @@ use std::sync::atomic::AtomicBool;
 use std::sync::mpsc::{Sender};
 
 use crate::body::Body;
+use crate::body::foil::Foil;
 use crate::config;
 use crate::quadtree::Node;
 
@@ -14,6 +15,7 @@ pub static PAUSED: Lazy<AtomicBool> = Lazy::new(|| AtomicBool::new(false));
 pub static UPDATE_LOCK: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(false));
 pub static BODIES: Lazy<Mutex<Vec<Body>>> = Lazy::new(|| Mutex::new(Vec::new()));
 pub static QUADTREE: Lazy<Mutex<Vec<Node>>> = Lazy::new(|| Mutex::new(Vec::new()));
+pub static FOILS: Lazy<Mutex<Vec<Foil>>> = Lazy::new(|| Mutex::new(Vec::new()));
 pub static SPAWN: Lazy<Mutex<Vec<Body>>> = Lazy::new(|| Mutex::new(Vec::new()));
 pub static COLLISION_PASSES: Lazy<Mutex<usize>> = Lazy::new(|| Mutex::new(3));
 

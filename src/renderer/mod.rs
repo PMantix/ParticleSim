@@ -4,6 +4,7 @@ pub mod gui;
 pub mod draw;
 
 use crate::body::{Body, Species};
+use crate::body::foil::Foil;
 use crate::config::SimConfig;
 use crate::quadtree::Node;
 use ultraviolet::Vec2;
@@ -22,6 +23,7 @@ pub struct Renderer {
     confirmed_bodies: Option<Body>,
     bodies: Vec<Body>,
     quadtree: Vec<Node>,
+    foils: Vec<Foil>,
     selected_particle_id: Option<u64>,
     sim_config: SimConfig,
     // Scenario controls
@@ -54,6 +56,7 @@ impl quarkstrom::Renderer for Renderer {
             confirmed_bodies: None,
             bodies: Vec::new(),
             quadtree: Vec::new(),
+            foils: Vec::new(),
             selected_particle_id: None,
             sim_config: crate::config::LJ_CONFIG.lock().clone(),
             scenario_radius: 1.0,

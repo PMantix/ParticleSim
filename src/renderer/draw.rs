@@ -16,6 +16,7 @@ impl super::Renderer {
             if *lock {
                 std::mem::swap(&mut self.bodies, &mut BODIES.lock());
                 std::mem::swap(&mut self.quadtree, &mut QUADTREE.lock());
+                std::mem::swap(&mut self.foils, &mut FOILS.lock());
             }
             if let Some(body) = self.confirmed_bodies.take() {
                 self.bodies.push(body.clone());
@@ -131,9 +132,14 @@ impl super::Renderer {
             }
 
             if let Some(id) = self.selected_particle_id {
-                if let Some(body) = self.bodies.iter().find(|b| b.id == id) {
-                    // Draw a larger, semi-transparent circle as a halo
-                    ctx.draw_circle(body.pos, body.radius * 2.0, [255, 255, 0, 128]); // yellow, semi-transparent
+                if let Some(foil) = self.foils.iter().find(|f| f.body_ids.contains(&id)) {
+                    for body in &self.bodies {
+                        if foil.body_ids.contains(&body.id) {
+                            ctx.draw_circle(body.pos, body.radius * 2.0, [255, 255, 0, 128]);
+                        }
+                    }
+                } else if let Some(body) = self.bodies.iter().find(|b| b.id == id) {
+                    ctx.draw_circle(body.pos, body.radius * 2.0, [255, 255, 0, 128]);
                 }
             }
         }

@@ -4,7 +4,7 @@
 
 use std::sync::atomic::Ordering;
 use crate::renderer::state::{
-    PAUSED, UPDATE_LOCK, SPAWN, BODIES, QUADTREE,
+    PAUSED, UPDATE_LOCK, SPAWN, BODIES, QUADTREE, FOILS,
 };
 
 mod body;
@@ -326,6 +326,11 @@ fn render(simulation: &mut Simulation) {
         let mut lock = QUADTREE.lock();
         lock.clear();
         lock.extend_from_slice(&simulation.quadtree.nodes);
+    }
+    {
+        let mut lock = FOILS.lock();
+        lock.clear();
+        lock.extend_from_slice(&simulation.foils);
     }
     *lock |= true;
 }
