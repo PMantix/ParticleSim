@@ -172,7 +172,7 @@ impl Simulation {
         self.perform_electron_hopping_with_exclusions(&foil_current_recipients);
         self.frame += 1;
 
-        #[cfg(debug_assertions)]
+        #[cfg(test)]
         // After all updates, print debug info for anions
         for (i, body) in self.bodies.iter().enumerate() {
             if body.species == crate::body::Species::ElectrolyteAnion {
@@ -294,12 +294,11 @@ impl Simulation {
                 self.bodies[dst_idx].update_charge_from_electrons();
             }
         }
-        let bodies_ptr = &self.bodies as *const Vec<Body>;
-        let quadtree_ptr = &self.quadtree as *const Quadtree;
+        // Split immutable borrows for rayon safety
+        let bodies_ref: Vec<Body> = self.bodies.iter().cloned().collect();
+        let quadtree_ref = &self.quadtree;
         self.bodies.par_iter_mut().for_each(|body| {
-            let bodies = unsafe { &*bodies_ptr };
-            let qt = unsafe { &*quadtree_ptr };
-            body.apply_redox(bodies, qt);
+            body.apply_redox(&bodies_ref, quadtree_ref);
         });
     }
 }
