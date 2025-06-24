@@ -139,6 +139,12 @@ impl super::Renderer {
                 ctx.draw_line(body.pos, body.pos + body.vel, [0xff; 4]);
             }
 
+            if let Some(id) = self.selected_particle_id {
+                if let Some(body) = self.bodies.iter().find(|b| b.id == id) {
+                    ctx.draw_circle(body.pos, body.radius * 1.1, [255, 255, 0, 32]);
+                }
+            }
+
             for id in &self.selected_particle_ids {
                 if let Some(body) = self.bodies.iter().find(|b| b.id == *id) {
                     // Draw a larger, semi-transparent circle as a halo
