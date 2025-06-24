@@ -65,4 +65,37 @@ impl CellList {
         }
         neighbors
     }
+
+    /// Count nearby metallic neighbors within `cutoff` distance of body `i`.
+    ///
+    /// This uses the already constructed cell list and avoids any heap
+    /// allocations. Only neighbors whose species is `LithiumMetal` or
+    /// `FoilMetal` are counted.
+    pub fn metal_neighbor_count(&self, bodies: &[Body], i: usize, cutoff: f32) -> usize {
+        use crate::body::Species;
+        let (cx, cy) = self.coord(bodies[i].pos);
+        let range = (cutoff / self.cell_size).ceil() as isize;
+        let cutoff_sq = cutoff * cutoff;
+        let mut count = 0usize;
+        for dy in -range..=range {
+            for dx in -range..=range {
+                let x = cx as isize + dx;
+                let y = cy as isize + dy;
+                if x < 0 || y < 0 || x >= self.grid_size as isize || y >= self.grid_size as isize {
+                    continue;
+                }
+                let cell_idx = x as usize + y as usize * self.grid_size;
+                for &idx in &self.cells[cell_idx] {
+                    if idx == i { continue; }
+                    let r2 = (bodies[idx].pos - bodies[i].pos).mag_sq();
+                    if r2 < cutoff_sq
+                        && matches!(bodies[idx].species, Species::LithiumMetal | Species::FoilMetal)
+                    {
+                        count += 1;
+                    }
+                }
+            }
+        }
+        count
+    }
 }

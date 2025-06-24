@@ -69,16 +69,32 @@ impl Body {
         }
     }
 
-    /// Count nearby metal neighbors (LithiumMetal or FoilMetal) within `radius`
-    /// using the provided quadtree.
-    pub fn metal_neighbor_count(&self, bodies: &[Body], quadtree: &crate::quadtree::Quadtree, radius: f32) -> usize {
+    /// Count nearby metal neighbors (LithiumMetal or FoilMetal) within
+    /// `radius`. Uses a cell list for dense systems and the quadtree
+    /// otherwise, mirroring the Lennard-Jones force logic.
+    pub fn metal_neighbor_count(
+        &self,
+        bodies: &[Body],
+        quadtree: &crate::quadtree::Quadtree,
+        cell_list: &crate::cell_list::CellList,
+        radius: f32,
+        density_threshold: f32,
+    ) -> usize {
+        let area = (2.0 * cell_list.bounds) * (2.0 * cell_list.bounds);
+        let density = bodies.len() as f32 / area;
+        let use_cell = density > density_threshold;
+
         let idx = bodies.iter().position(|b| b.id == self.id);
         if let Some(i) = idx {
-            quadtree
-                .find_neighbors_within(bodies, i, radius)
-                .into_iter()
-                .filter(|&n| matches!(bodies[n].species, Species::LithiumMetal | Species::FoilMetal))
-                .count()
+            if use_cell {
+                cell_list.metal_neighbor_count(bodies, i, radius)
+            } else {
+                quadtree
+                    .find_neighbors_within(bodies, i, radius)
+                    .into_iter()
+                    .filter(|&n| matches!(bodies[n].species, Species::LithiumMetal | Species::FoilMetal))
+                    .count()
+            }
         } else {
             0
         }

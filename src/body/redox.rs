@@ -8,6 +8,7 @@ use crate::config::{
     IONIZATION_NEIGHBOR_THRESHOLD,
 };
 use crate::quadtree::Quadtree;
+use crate::cell_list::CellList;
 
 impl Body {
     pub fn update_charge_from_electrons(&mut self) {
@@ -26,8 +27,20 @@ impl Body {
             }
         }
     }
-    pub fn apply_redox(&mut self, bodies: &[Body], quadtree: &Quadtree) {
-        let neighbor_count = self.metal_neighbor_count(bodies, quadtree, self.radius * crate::config::HOP_RADIUS_FACTOR);
+    pub fn apply_redox(
+        &mut self,
+        bodies: &[Body],
+        quadtree: &Quadtree,
+        cell_list: &CellList,
+        density_threshold: f32,
+    ) {
+        let neighbor_count = self.metal_neighbor_count(
+            bodies,
+            quadtree,
+            cell_list,
+            self.radius * crate::config::HOP_RADIUS_FACTOR,
+            density_threshold,
+        );
         match self.species {
             Species::LithiumIon => {
                 if !self.electrons.is_empty() && neighbor_count < IONIZATION_NEIGHBOR_THRESHOLD {
