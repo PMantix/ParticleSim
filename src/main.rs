@@ -103,7 +103,7 @@ fn main() {
                             // Update species if charge crosses threshold
                             let was_metal = body.species == body::Species::LithiumMetal;
                             let was_ion = body.species == body::Species::LithiumIon;
-                            body.update_species();
+                            body.apply_redox();
 
                             if was_metal && body.species == body::Species::LithiumIon {
                                 println!();
@@ -128,7 +128,7 @@ fn main() {
                             body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
                         }
                         body.update_charge_from_electrons();
-                        body.update_species();
+                        body.apply_redox();
                         simulation.bodies.push(body);
                     }
 
@@ -171,7 +171,7 @@ fn main() {
                                     new_body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
                                 }
                                 new_body.update_charge_from_electrons();
-                                new_body.update_species();
+                                new_body.apply_redox();
                                 simulation.bodies.push(new_body);
                             }
                             r += particle_diameter;
@@ -216,7 +216,7 @@ fn main() {
                             new_body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
                         }
                             new_body.update_charge_from_electrons();
-                            new_body.update_species();
+                            new_body.apply_redox();
                             simulation.bodies.push(new_body);
                         }
                     },
@@ -250,7 +250,7 @@ fn main() {
                                     new_body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
                                 }
                                 new_body.update_charge_from_electrons();
-                                new_body.update_species();
+                                new_body.apply_redox();
                                 simulation.bodies.push(new_body);
                             }
                         }

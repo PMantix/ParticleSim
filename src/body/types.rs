@@ -48,17 +48,6 @@ impl Body {
             e_field: Vec2::zero(),
         }
     }
-    pub fn update_species(&mut self) {
-        if self.species == Species::FoilMetal || self.species == Species::ElectrolyteAnion {
-            // Don't auto-convert FoilMetal or ElectrolyteAnion to other species
-            return;
-        }
-        if self.charge > config::LITHIUM_ION_THRESHOLD {
-            self.species = Species::LithiumIon;
-        } else if self.charge <= 0.0 {
-            self.species = Species::LithiumMetal;
-        }
-    }
 
     pub fn neutral_electron_count(&self) -> usize {
         match self.species {

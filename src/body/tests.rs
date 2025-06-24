@@ -84,7 +84,9 @@ mod tests {
                 0.0,
                 Species::LithiumIon,
             );
-            b.update_species();
+            b.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+            b.update_charge_from_electrons();
+            b.apply_redox();
             assert_eq!(b.species, Species::LithiumMetal);
         }
 
@@ -98,7 +100,8 @@ mod tests {
                 1.0,
                 Species::LithiumMetal,
             );
-            b.update_species();
+            b.update_charge_from_electrons();
+            b.apply_redox();
             assert_eq!(b.species, Species::LithiumIon);
         }
 

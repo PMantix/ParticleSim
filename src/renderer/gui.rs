@@ -337,7 +337,7 @@ pub fn make_body_with_species(pos: Vec2, vel: Vec2, mass: f32, radius: f32, spec
         }
     }
     body.update_charge_from_electrons();
-    body.update_species();
+    body.apply_redox();
     body
 }
 
