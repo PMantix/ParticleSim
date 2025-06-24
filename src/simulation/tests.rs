@@ -45,8 +45,9 @@ mod reactions {
             body_to_foil: HashMap::new(),
         };
         sim.quadtree.build(&mut sim.bodies);
+        let bodies_snapshot = sim.bodies.clone();
         let b = &mut sim.bodies[0];
-        b.apply_redox(&sim.bodies, &sim.quadtree);
+        b.apply_redox(&bodies_snapshot, &sim.quadtree);
         assert_eq!(b.species, Species::LithiumMetal, "Ion with electron should become metal");
         assert_eq!(b.electrons.len(), 1, "Should have one valence electron");
         assert_eq!(b.charge, 0.0, "Neutral metal should have charge 0");
@@ -81,8 +82,9 @@ mod reactions {
             body_to_foil: HashMap::new(),
         };
         sim.quadtree.build(&mut sim.bodies);
+        let bodies_snapshot = sim.bodies.clone();
         let b = &mut sim.bodies[0];
-        b.apply_redox(&sim.bodies, &sim.quadtree);
+        b.apply_redox(&bodies_snapshot, &sim.quadtree);
         let b = &sim.bodies[0];
         assert_eq!(b.species, Species::LithiumIon, "Metal with no electrons should become ion");
         assert_eq!(b.charge, 1.0, "Ion with no electrons should have charge +1");
@@ -111,7 +113,8 @@ mod reactions {
             config::QUADTREE_THREAD_CAPACITY,
         );
         qt.build(&mut bodies);
-        bodies[0].apply_redox(&bodies, &qt);
+        let bodies_snapshot = bodies.clone();
+        bodies[0].apply_redox(&bodies_snapshot, &qt);
         assert_eq!(bodies[0].species, Species::LithiumMetal);
         assert_eq!(bodies[0].electrons.len(), 2);
     }
@@ -136,12 +139,14 @@ mod reactions {
             config::QUADTREE_THREAD_CAPACITY,
         );
         qt.build(&mut bodies);
-        bodies[0].apply_redox(&bodies, &qt);
+        let bodies_snapshot = bodies.clone();
+        bodies[0].apply_redox(&bodies_snapshot, &qt);
         assert_eq!(bodies[0].species, Species::LithiumMetal);
         bodies[0].electrons.clear();
         bodies[0].update_charge_from_electrons();
         qt.build(&mut bodies);
-        bodies[0].apply_redox(&bodies, &qt);
+        let bodies_snapshot = bodies.clone();
+        bodies[0].apply_redox(&bodies_snapshot, &qt);
         assert_eq!(bodies[0].species, Species::LithiumIon);
     }
 
@@ -255,7 +260,8 @@ mod reactions {
             config::QUADTREE_THREAD_CAPACITY,
         );
         qt.build(&mut bodies);
-        bodies[0].apply_redox(&bodies, &qt);
+        let bodies_snapshot = bodies.clone();
+        bodies[0].apply_redox(&bodies_snapshot, &qt);
         assert_eq!(bodies[0].species, Species::LithiumMetal);
     }
 
@@ -284,7 +290,8 @@ mod reactions {
             config::QUADTREE_THREAD_CAPACITY,
         );
         qt.build(&mut bodies);
-        bodies[0].apply_redox(&bodies, &qt);
+        let bodies_snapshot = bodies.clone();
+        bodies[0].apply_redox(&bodies_snapshot, &qt);
         assert_eq!(bodies[0].species, Species::LithiumIon);
     }
 
@@ -470,7 +477,7 @@ mod reactions {
             sim.perform_electron_hopping_with_exclusions(&exclude);
 
             println!("After hopping:");
-            println!("Electrons in a: {}", sim.bodies[0].electrons.len()); 
+            println!("Electrons in a: {}", sim.bodies[0].electrons.len());
             println!("Electrons in b: {}", sim.bodies[1].electrons.len());
 
             assert_eq!(sim.bodies[0].electrons.len(), 0);

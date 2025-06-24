@@ -25,7 +25,10 @@ mod electrolyte_anion {
         let mut bodies = vec![anion];
         let mut qt = Quadtree::new(0.5, 0.01, 1, 1);
         qt.build(&mut bodies);
-        bodies[0].apply_redox(&bodies, &qt);
+        {
+            let (first, rest) = bodies.split_at_mut(1);
+            first[0].apply_redox(&rest, &qt);
+        }
         assert_eq!(bodies[0].species, Species::ElectrolyteAnion);
     }
 }

@@ -63,12 +63,14 @@ mod tests {
             crate::config::QUADTREE_THREAD_CAPACITY,
         );
         qt.build(&mut bodies);
-        bodies[0].apply_redox(&bodies, &qt);
+        let bodies_snapshot = bodies.clone();
+        bodies[0].apply_redox(&bodies_snapshot, &qt);
         assert_eq!(bodies[0].species, Species::LithiumMetal);
         bodies[0].electrons.clear();
         bodies[0].update_charge_from_electrons();
         qt.build(&mut bodies);
-        bodies[0].apply_redox(&bodies, &qt);
+        let bodies_snapshot = bodies.clone();
+        bodies[0].apply_redox(&bodies_snapshot, &qt);
         assert_eq!(bodies[0].species, Species::LithiumIon);
     }
 
