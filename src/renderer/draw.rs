@@ -69,7 +69,7 @@ impl super::Renderer {
                     ctx.draw_circle(body.pos, body.radius, color);
 
                     // Visualize electron count for FoilMetal
-                    if body.species == Species::FoilMetal {
+                    if self.show_electron_deficiency && body.species == Species::FoilMetal {
                         let neutral_electrons = crate::config::FOIL_NEUTRAL_ELECTRONS;
                         let electron_count = body.electrons.len();
                         if electron_count > neutral_electrons {
@@ -90,7 +90,7 @@ impl super::Renderer {
                     }
 
                     // Visualize electron count for LithiumMetal
-                    if body.species == Species::LithiumMetal {
+                    if self.show_electron_deficiency && body.species == Species::LithiumMetal {
                         let neutral_electrons = 1; // adjust if your neutral is different
                         let electron_count = body.electrons.len();
                         if electron_count > neutral_electrons {

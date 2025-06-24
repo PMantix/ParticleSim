@@ -300,6 +300,7 @@ impl super::Renderer {
                 ui.separator();
                 ui.label("Debug/Diagnostics:");
                 ui.checkbox(&mut self.sim_config.show_lj_vs_coulomb_ratio, "Show LJ/Coulomb Force Ratio");
+                ui.checkbox(&mut self.show_electron_deficiency, "Show Electron Deficiency/Excess");
             });
     }
 }

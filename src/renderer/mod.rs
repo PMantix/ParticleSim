@@ -41,6 +41,7 @@ pub struct Renderer {
     scenario_current: f32,
     pub window_width: u16,
     pub window_height: u16,
+    pub show_electron_deficiency: bool,
 }
 
 impl quarkstrom::Renderer for Renderer {
@@ -76,6 +77,7 @@ impl quarkstrom::Renderer for Renderer {
             scenario_current: 0.0,
             window_width: 800, // default value, can be changed
             window_height: 600, // default value, can be changed
+            show_electron_deficiency: true,
         }
     }
 
