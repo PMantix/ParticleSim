@@ -172,7 +172,7 @@ impl Simulation {
         self.perform_electron_hopping_with_exclusions(&foil_current_recipients);
         self.frame += 1;
 
-        #[cfg(debug_assertions)]
+        #[cfg(test)]
         // After all updates, print debug info for anions
         for (i, body) in self.bodies.iter().enumerate() {
             if body.species == crate::body::Species::ElectrolyteAnion {
@@ -295,11 +295,10 @@ impl Simulation {
             }
         }
         let qt = &self.quadtree;
-        let bodies_ptr = self.bodies.as_ptr();
-        let len = self.bodies.len();
+        // Clone the bodies for safe parallel access
+        let bodies_snapshot = self.bodies.clone();
         self.bodies.par_iter_mut().enumerate().for_each(|(i, body)| {
-            let bodies = unsafe { std::slice::from_raw_parts(bodies_ptr, len) };
-            body.apply_redox(i, bodies, qt);
+            body.apply_redox(i, &bodies_snapshot, qt);
         });
     }
 }
