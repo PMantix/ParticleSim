@@ -71,16 +71,11 @@ impl Body {
 
     /// Count nearby metal neighbors (LithiumMetal or FoilMetal) within `radius`
     /// using the provided quadtree.
-    pub fn metal_neighbor_count(&self, bodies: &[Body], quadtree: &crate::quadtree::Quadtree, radius: f32) -> usize {
-        let idx = bodies.iter().position(|b| b.id == self.id);
-        if let Some(i) = idx {
-            quadtree
-                .find_neighbors_within(bodies, i, radius)
-                .into_iter()
-                .filter(|&n| matches!(bodies[n].species, Species::LithiumMetal | Species::FoilMetal))
-                .count()
-        } else {
-            0
-        }
+    pub fn metal_neighbor_count(&self, self_idx: usize, bodies: &[Body], quadtree: &crate::quadtree::Quadtree, radius: f32) -> usize {
+        quadtree
+            .find_neighbors_within(bodies, self_idx, radius)
+            .into_iter()
+            .filter(|&n| matches!(bodies[n].species, Species::LithiumMetal | Species::FoilMetal))
+            .count()
     }
 }

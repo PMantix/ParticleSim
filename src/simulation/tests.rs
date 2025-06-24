@@ -47,7 +47,7 @@ mod reactions {
         sim.quadtree.build(&mut sim.bodies);
         let bodies_snapshot = sim.bodies.clone();
         let b = &mut sim.bodies[0];
-        b.apply_redox(&bodies_snapshot, &sim.quadtree);
+        b.apply_redox(0, &bodies_snapshot, &sim.quadtree);
         assert_eq!(b.species, Species::LithiumMetal, "Ion with electron should become metal");
         assert_eq!(b.electrons.len(), 1, "Should have one valence electron");
         assert_eq!(b.charge, 0.0, "Neutral metal should have charge 0");
@@ -84,7 +84,7 @@ mod reactions {
         sim.quadtree.build(&mut sim.bodies);
         let bodies_snapshot = sim.bodies.clone();
         let b = &mut sim.bodies[0];
-        b.apply_redox(&bodies_snapshot, &sim.quadtree);
+        b.apply_redox(0, &bodies_snapshot, &sim.quadtree);
         let b = &sim.bodies[0];
         assert_eq!(b.species, Species::LithiumIon, "Metal with no electrons should become ion");
         assert_eq!(b.charge, 1.0, "Ion with no electrons should have charge +1");
@@ -114,7 +114,7 @@ mod reactions {
         );
         qt.build(&mut bodies);
         let bodies_snapshot = bodies.clone();
-        bodies[0].apply_redox(&bodies_snapshot, &qt);
+        bodies[0].apply_redox(0, &bodies_snapshot, &qt);
         assert_eq!(bodies[0].species, Species::LithiumMetal);
         assert_eq!(bodies[0].electrons.len(), 2);
     }
@@ -140,13 +140,13 @@ mod reactions {
         );
         qt.build(&mut bodies);
         let bodies_snapshot = bodies.clone();
-        bodies[0].apply_redox(&bodies_snapshot, &qt);
+        bodies[0].apply_redox(0, &bodies_snapshot, &qt);
         assert_eq!(bodies[0].species, Species::LithiumMetal);
         bodies[0].electrons.clear();
         bodies[0].update_charge_from_electrons();
         qt.build(&mut bodies);
         let bodies_snapshot = bodies.clone();
-        bodies[0].apply_redox(&bodies_snapshot, &qt);
+        bodies[0].apply_redox(0, &bodies_snapshot, &qt);
         assert_eq!(bodies[0].species, Species::LithiumIon);
     }
 
@@ -223,10 +223,10 @@ mod reactions {
         sim.quadtree.build(&mut sim.bodies);
         let bodies_ptr = &sim.bodies as *const Vec<Body>;
         let qt_ptr = &sim.quadtree as *const Quadtree;
-        for b in &mut sim.bodies {
+        for (i, b) in sim.bodies.iter_mut().enumerate() {
             let bodies = unsafe { &*bodies_ptr };
             let qt = unsafe { &*qt_ptr };
-            b.apply_redox(bodies, qt);
+            b.apply_redox(i, bodies, qt);
         }
         let sum_electrons = sim.bodies.iter().map(|b| b.electrons.len()).sum::<usize>();
         assert_eq!(sum_electrons, total_electrons);
@@ -261,7 +261,7 @@ mod reactions {
         );
         qt.build(&mut bodies);
         let bodies_snapshot = bodies.clone();
-        bodies[0].apply_redox(&bodies_snapshot, &qt);
+        bodies[0].apply_redox(0, &bodies_snapshot, &qt);
         assert_eq!(bodies[0].species, Species::LithiumMetal);
     }
 
@@ -291,7 +291,7 @@ mod reactions {
         );
         qt.build(&mut bodies);
         let bodies_snapshot = bodies.clone();
-        bodies[0].apply_redox(&bodies_snapshot, &qt);
+        bodies[0].apply_redox(0, &bodies_snapshot, &qt);
         assert_eq!(bodies[0].species, Species::LithiumIon);
     }
 

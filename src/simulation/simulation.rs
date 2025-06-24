@@ -294,12 +294,12 @@ impl Simulation {
                 self.bodies[dst_idx].update_charge_from_electrons();
             }
         }
-        let bodies_ptr = &self.bodies as *const Vec<Body>;
-        let quadtree_ptr = &self.quadtree as *const Quadtree;
-        for body in &mut self.bodies {
-            let bodies = unsafe { &*bodies_ptr };
-            let qt = unsafe { &*quadtree_ptr };
-            body.apply_redox(bodies, qt);
-        }
+        let qt = &self.quadtree;
+        let bodies_ptr = self.bodies.as_ptr();
+        let len = self.bodies.len();
+        self.bodies.par_iter_mut().enumerate().for_each(|(i, body)| {
+            let bodies = unsafe { std::slice::from_raw_parts(bodies_ptr, len) };
+            body.apply_redox(i, bodies, qt);
+        });
     }
 }
