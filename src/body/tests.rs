@@ -6,6 +6,7 @@ mod tests {
     //use super::*;
     use crate::body::{Body, Electron, Species};
     use ultraviolet::Vec2;
+    use crate::quadtree::Quadtree;
     //use smallvec::SmallVec;
     //use crate::cell_list::CellList;
 
@@ -54,12 +55,21 @@ mod tests {
         );
         body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
         body.update_charge_from_electrons();
-        body.apply_redox();
-        assert_eq!(body.species, Species::LithiumMetal);
-        body.electrons.clear();
-        body.update_charge_from_electrons();
-        body.apply_redox();
-        assert_eq!(body.species, Species::LithiumIon);
+        let mut bodies = vec![body.clone()];
+        let mut qt = Quadtree::new(
+            crate::config::QUADTREE_THETA,
+            crate::config::QUADTREE_EPSILON,
+            crate::config::QUADTREE_LEAF_CAPACITY,
+            crate::config::QUADTREE_THREAD_CAPACITY,
+        );
+        qt.build(&mut bodies);
+        bodies[0].apply_redox(&bodies, &qt);
+        assert_eq!(bodies[0].species, Species::LithiumMetal);
+        bodies[0].electrons.clear();
+        bodies[0].update_charge_from_electrons();
+        qt.build(&mut bodies);
+        bodies[0].apply_redox(&bodies, &qt);
+        assert_eq!(bodies[0].species, Species::LithiumIon);
     }
 
     mod physics {

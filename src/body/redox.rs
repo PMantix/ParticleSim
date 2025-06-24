@@ -5,7 +5,9 @@ use super::types::{Body, Species};
 use crate::config::{
     FOIL_NEUTRAL_ELECTRONS,
     LITHIUM_METAL_NEUTRAL_ELECTRONS,
+    IONIZATION_NEIGHBOR_THRESHOLD,
 };
+use crate::quadtree::Quadtree;
 
 impl Body {
     pub fn update_charge_from_electrons(&mut self) {
@@ -24,16 +26,17 @@ impl Body {
             }
         }
     }
-    pub fn apply_redox(&mut self) {
+    pub fn apply_redox(&mut self, bodies: &[Body], quadtree: &Quadtree) {
+        let neighbor_count = self.metal_neighbor_count(bodies, quadtree, self.radius * crate::config::HOP_RADIUS_FACTOR);
         match self.species {
             Species::LithiumIon => {
-                if !self.electrons.is_empty() {
+                if !self.electrons.is_empty() && neighbor_count < IONIZATION_NEIGHBOR_THRESHOLD {
                     self.species = Species::LithiumMetal;
                     self.update_charge_from_electrons();
                 }
             }
             Species::LithiumMetal => {
-                if self.electrons.is_empty() {
+                if self.electrons.is_empty() && neighbor_count < IONIZATION_NEIGHBOR_THRESHOLD {
                     self.species = Species::LithiumIon;
                     self.update_charge_from_electrons();
                 }

@@ -294,6 +294,12 @@ impl Simulation {
                 self.bodies[dst_idx].update_charge_from_electrons();
             }
         }
-        self.bodies.par_iter_mut().for_each(|body| body.apply_redox());
+        let bodies_ptr = &self.bodies as *const Vec<Body>;
+        let quadtree_ptr = &self.quadtree as *const Quadtree;
+        for body in &mut self.bodies {
+            let bodies = unsafe { &*bodies_ptr };
+            let qt = unsafe { &*quadtree_ptr };
+            body.apply_redox(bodies, qt);
+        }
     }
 }

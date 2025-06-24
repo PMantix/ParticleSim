@@ -44,8 +44,9 @@ mod reactions {
             cell_list: CellList::new(10.0, 1.0),
             body_to_foil: HashMap::new(),
         };
+        sim.quadtree.build(&mut sim.bodies);
         let b = &mut sim.bodies[0];
-        b.apply_redox();
+        b.apply_redox(&sim.bodies, &sim.quadtree);
         assert_eq!(b.species, Species::LithiumMetal, "Ion with electron should become metal");
         assert_eq!(b.electrons.len(), 1, "Should have one valence electron");
         assert_eq!(b.charge, 0.0, "Neutral metal should have charge 0");
@@ -79,8 +80,9 @@ mod reactions {
             cell_list: CellList::new(10.0, 1.0),
             body_to_foil: HashMap::new(),
         };
+        sim.quadtree.build(&mut sim.bodies);
         let b = &mut sim.bodies[0];
-        b.apply_redox();
+        b.apply_redox(&sim.bodies, &sim.quadtree);
         let b = &sim.bodies[0];
         assert_eq!(b.species, Species::LithiumIon, "Metal with no electrons should become ion");
         assert_eq!(b.charge, 1.0, "Ion with no electrons should have charge +1");
@@ -101,9 +103,17 @@ mod reactions {
         ion.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
         ion.update_charge_from_electrons();
         assert_eq!(ion.species, Species::LithiumIon);
-        ion.apply_redox();
-        assert_eq!(ion.species, Species::LithiumMetal);
-        assert_eq!(ion.electrons.len(), 2);
+        let mut bodies = vec![ion];
+        let mut qt = Quadtree::new(
+            config::QUADTREE_THETA,
+            config::QUADTREE_EPSILON,
+            config::QUADTREE_LEAF_CAPACITY,
+            config::QUADTREE_THREAD_CAPACITY,
+        );
+        qt.build(&mut bodies);
+        bodies[0].apply_redox(&bodies, &qt);
+        assert_eq!(bodies[0].species, Species::LithiumMetal);
+        assert_eq!(bodies[0].electrons.len(), 2);
     }
 
     #[test]
@@ -118,12 +128,21 @@ mod reactions {
         );
         body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
         body.update_charge_from_electrons();
-        body.apply_redox();
-        assert_eq!(body.species, Species::LithiumMetal);
-        body.electrons.clear();
-        body.update_charge_from_electrons();
-        body.apply_redox();
-        assert_eq!(body.species, Species::LithiumIon);
+        let mut bodies = vec![body];
+        let mut qt = Quadtree::new(
+            config::QUADTREE_THETA,
+            config::QUADTREE_EPSILON,
+            config::QUADTREE_LEAF_CAPACITY,
+            config::QUADTREE_THREAD_CAPACITY,
+        );
+        qt.build(&mut bodies);
+        bodies[0].apply_redox(&bodies, &qt);
+        assert_eq!(bodies[0].species, Species::LithiumMetal);
+        bodies[0].electrons.clear();
+        bodies[0].update_charge_from_electrons();
+        qt.build(&mut bodies);
+        bodies[0].apply_redox(&bodies, &qt);
+        assert_eq!(bodies[0].species, Species::LithiumIon);
     }
 
     #[test]
@@ -196,9 +215,77 @@ mod reactions {
         let exclude = vec![false; sim.bodies.len()];
         sim.perform_electron_hopping_with_exclusions(&exclude);
         sim.perform_electron_hopping_with_exclusions(&exclude);
-        for b in &mut sim.bodies { b.apply_redox(); }
+        sim.quadtree.build(&mut sim.bodies);
+        let bodies_ptr = &sim.bodies as *const Vec<Body>;
+        let qt_ptr = &sim.quadtree as *const Quadtree;
+        for b in &mut sim.bodies {
+            let bodies = unsafe { &*bodies_ptr };
+            let qt = unsafe { &*qt_ptr };
+            b.apply_redox(bodies, qt);
+        }
         let sum_electrons = sim.bodies.iter().map(|b| b.electrons.len()).sum::<usize>();
         assert_eq!(sum_electrons, total_electrons);
+    }
+
+    #[test]
+    fn metal_with_many_neighbors_does_not_ionize() {
+        let mut center = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::LithiumMetal);
+        center.electrons.clear();
+        center.update_charge_from_electrons();
+        let mut bodies = vec![center];
+        // Surround with exactly threshold number of neighbors
+        for i in 0..crate::config::IONIZATION_NEIGHBOR_THRESHOLD {
+            let angle = i as f32 * std::f32::consts::TAU / crate::config::IONIZATION_NEIGHBOR_THRESHOLD as f32;
+            let mut nb = Body::new(
+                Vec2::new(angle.cos(), angle.sin()),
+                Vec2::zero(),
+                1.0,
+                1.0,
+                0.0,
+                Species::LithiumMetal,
+            );
+            nb.electrons = smallvec![Electron{ rel_pos: Vec2::zero(), vel: Vec2::zero() }; crate::config::LITHIUM_METAL_NEUTRAL_ELECTRONS];
+            nb.update_charge_from_electrons();
+            bodies.push(nb);
+        }
+        let mut qt = Quadtree::new(
+            config::QUADTREE_THETA,
+            config::QUADTREE_EPSILON,
+            config::QUADTREE_LEAF_CAPACITY,
+            config::QUADTREE_THREAD_CAPACITY,
+        );
+        qt.build(&mut bodies);
+        bodies[0].apply_redox(&bodies, &qt);
+        assert_eq!(bodies[0].species, Species::LithiumMetal);
+    }
+
+    #[test]
+    fn ion_with_neighbors_does_not_reduce() {
+        let mut ion = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::LithiumIon);
+        ion.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+        ion.update_charge_from_electrons();
+        let mut bodies = vec![ion];
+        for i in 0..crate::config::IONIZATION_NEIGHBOR_THRESHOLD {
+            let angle = i as f32 * std::f32::consts::TAU / crate::config::IONIZATION_NEIGHBOR_THRESHOLD as f32;
+            let nb = Body::new(
+                Vec2::new(angle.cos(), angle.sin()),
+                Vec2::zero(),
+                1.0,
+                1.0,
+                0.0,
+                Species::LithiumMetal,
+            );
+            bodies.push(nb);
+        }
+        let mut qt = Quadtree::new(
+            config::QUADTREE_THETA,
+            config::QUADTREE_EPSILON,
+            config::QUADTREE_LEAF_CAPACITY,
+            config::QUADTREE_THREAD_CAPACITY,
+        );
+        qt.build(&mut bodies);
+        bodies[0].apply_redox(&bodies, &qt);
+        assert_eq!(bodies[0].species, Species::LithiumIon);
     }
 
     mod hopping_kinetics_tests {
