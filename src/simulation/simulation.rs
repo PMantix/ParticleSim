@@ -296,10 +296,10 @@ impl Simulation {
         }
         let bodies_ptr = &self.bodies as *const Vec<Body>;
         let quadtree_ptr = &self.quadtree as *const Quadtree;
-        for body in &mut self.bodies {
+        self.bodies.par_iter_mut().for_each(|body| {
             let bodies = unsafe { &*bodies_ptr };
             let qt = unsafe { &*quadtree_ptr };
             body.apply_redox(bodies, qt);
-        }
+        });
     }
 }
