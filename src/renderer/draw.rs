@@ -141,7 +141,7 @@ impl super::Renderer {
 
             if let Some(id) = self.selected_particle_id {
                 if let Some(body) = self.bodies.iter().find(|b| b.id == id) {
-                    ctx.draw_circle(body.pos, body.radius * 1.1, [255, 255, 0, 32]);
+                    ctx.draw_circle(body.pos, body.radius * 1.5, [255, 255, 0, 32]);
                 }
             }
 
