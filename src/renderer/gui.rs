@@ -182,8 +182,8 @@ impl super::Renderer {
                         );
                         SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::AddRing {
                             body,
-                            x: self.scenario_x - self.scenario_radius,
-                            y: self.scenario_y - self.scenario_radius,
+                            x: self.scenario_x,
+                            y: self.scenario_y,
                             radius: self.scenario_radius,
                         }).unwrap();
                     }
@@ -197,8 +197,8 @@ impl super::Renderer {
                         );
                         SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::AddCircle {
                             body,
-                            x: self.scenario_x - self.scenario_radius,
-                            y: self.scenario_y - self.scenario_radius,
+                            x: self.scenario_x,
+                            y: self.scenario_y,
                             radius: self.scenario_radius,
                         }).unwrap();
                     }
@@ -240,8 +240,8 @@ impl super::Renderer {
                         SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::AddFoil {
                             width: self.scenario_width,
                             height: self.scenario_height,
-                            x: self.scenario_x,
-                            y: self.scenario_y,
+                            x: self.scenario_x - self.scenario_width / 2.0,
+                            y: self.scenario_y  - self.scenario_height / 2.0,
                             particle_radius: self.scenario_particle_radius,
                             current: self.scenario_current,
                         }).unwrap();
@@ -262,7 +262,7 @@ impl super::Renderer {
                             if ui.button("-").clicked() { current -= 1.0; }
                             if ui.button("+").clicked() { current += 1.0; }
                             if ui.button("0").clicked() { current = 0.0; }
-                            ui.add(egui::Slider::new(&mut current, -10.0..=10.0).step_by(0.1));
+                            ui.add(egui::Slider::new(&mut current, -500.0..=500.00).step_by(0.1));
                         });
                         if (current - foil.current).abs() > f32::EPSILON {
                             SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(
