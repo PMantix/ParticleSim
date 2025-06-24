@@ -226,6 +226,7 @@ impl Simulation {
         let mut src_indices: Vec<usize> = (0..n).collect();
         let mut rng = rand::rng();
         src_indices.shuffle(&mut rng);
+        let mut neighbor_buffer = Vec::new();
         for &src_idx in &src_indices {
             if donated_electron[src_idx] || exclude_donor[src_idx] { continue; }
             let src_body = &self.bodies[src_idx];
@@ -236,9 +237,10 @@ impl Simulation {
             let hop_radius = self.config.hop_radius_factor * src_body.radius;
 
             // Use quadtree for neighbor search!
-            let mut candidate_neighbors = self.quadtree
-                .find_neighbors_within(&self.bodies, src_idx, hop_radius)
-                .into_iter()
+            self.quadtree.find_neighbors_within(&self.bodies, src_idx, hop_radius, &mut neighbor_buffer);
+            let mut candidate_neighbors = neighbor_buffer
+                .iter()
+                .cloned()
                 .filter(|&dst_idx| dst_idx != src_idx && !received_electron[dst_idx])
                 .filter(|&dst_idx| {
                     let dst_body = &self.bodies[dst_idx];
@@ -296,10 +298,11 @@ impl Simulation {
         }
         let bodies_ptr = &self.bodies as *const Vec<Body>;
         let quadtree_ptr = &self.quadtree as *const Quadtree;
+        let mut redox_buffer = Vec::new();
         for body in &mut self.bodies {
             let bodies = unsafe { &*bodies_ptr };
             let qt = unsafe { &*quadtree_ptr };
-            body.apply_redox(bodies, qt);
+            body.apply_redox(bodies, qt, &mut redox_buffer);
         }
     }
 }

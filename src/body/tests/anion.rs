@@ -27,7 +27,8 @@ mod electrolyte_anion {
         qt.build(&mut bodies);
         {
             let (first, rest) = bodies.split_at_mut(1);
-            first[0].apply_redox(&rest, &qt);
+            let mut buf = Vec::new();
+            first[0].apply_redox(&rest, &qt, &mut buf);
         }
         assert_eq!(bodies[0].species, Species::ElectrolyteAnion);
     }

@@ -26,8 +26,18 @@ impl Body {
             }
         }
     }
-    pub fn apply_redox(&mut self, bodies: &[Body], quadtree: &Quadtree) {
-        let neighbor_count = self.metal_neighbor_count(bodies, quadtree, self.radius * crate::config::HOP_RADIUS_FACTOR);
+    pub fn apply_redox(
+        &mut self,
+        bodies: &[Body],
+        quadtree: &Quadtree,
+        buffer: &mut Vec<usize>,
+    ) {
+        let neighbor_count = self.metal_neighbor_count(
+            bodies,
+            quadtree,
+            self.radius * crate::config::HOP_RADIUS_FACTOR,
+            buffer,
+        );
         match self.species {
             Species::LithiumIon => {
                 if !self.electrons.is_empty() && neighbor_count < IONIZATION_NEIGHBOR_THRESHOLD {

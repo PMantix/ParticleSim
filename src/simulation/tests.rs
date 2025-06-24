@@ -46,8 +46,9 @@ mod reactions {
         };
         sim.quadtree.build(&mut sim.bodies);
         let bodies_snapshot = sim.bodies.clone();
+        let mut buf = Vec::new();
         let b = &mut sim.bodies[0];
-        b.apply_redox(&bodies_snapshot, &sim.quadtree);
+        b.apply_redox(&bodies_snapshot, &sim.quadtree, &mut buf);
         assert_eq!(b.species, Species::LithiumMetal, "Ion with electron should become metal");
         assert_eq!(b.electrons.len(), 1, "Should have one valence electron");
         assert_eq!(b.charge, 0.0, "Neutral metal should have charge 0");
@@ -83,8 +84,9 @@ mod reactions {
         };
         sim.quadtree.build(&mut sim.bodies);
         let bodies_snapshot = sim.bodies.clone();
+        let mut buf = Vec::new();
         let b = &mut sim.bodies[0];
-        b.apply_redox(&bodies_snapshot, &sim.quadtree);
+        b.apply_redox(&bodies_snapshot, &sim.quadtree, &mut buf);
         let b = &sim.bodies[0];
         assert_eq!(b.species, Species::LithiumIon, "Metal with no electrons should become ion");
         assert_eq!(b.charge, 1.0, "Ion with no electrons should have charge +1");
@@ -114,7 +116,8 @@ mod reactions {
         );
         qt.build(&mut bodies);
         let bodies_snapshot = bodies.clone();
-        bodies[0].apply_redox(&bodies_snapshot, &qt);
+        let mut buf = Vec::new();
+        bodies[0].apply_redox(&bodies_snapshot, &qt, &mut buf);
         assert_eq!(bodies[0].species, Species::LithiumMetal);
         assert_eq!(bodies[0].electrons.len(), 2);
     }
@@ -140,13 +143,15 @@ mod reactions {
         );
         qt.build(&mut bodies);
         let bodies_snapshot = bodies.clone();
-        bodies[0].apply_redox(&bodies_snapshot, &qt);
+        let mut buf = Vec::new();
+        bodies[0].apply_redox(&bodies_snapshot, &qt, &mut buf);
         assert_eq!(bodies[0].species, Species::LithiumMetal);
         bodies[0].electrons.clear();
         bodies[0].update_charge_from_electrons();
         qt.build(&mut bodies);
         let bodies_snapshot = bodies.clone();
-        bodies[0].apply_redox(&bodies_snapshot, &qt);
+        let mut buf2 = Vec::new();
+        bodies[0].apply_redox(&bodies_snapshot, &qt, &mut buf2);
         assert_eq!(bodies[0].species, Species::LithiumIon);
     }
 
@@ -261,7 +266,8 @@ mod reactions {
         );
         qt.build(&mut bodies);
         let bodies_snapshot = bodies.clone();
-        bodies[0].apply_redox(&bodies_snapshot, &qt);
+        let mut buf = Vec::new();
+        bodies[0].apply_redox(&bodies_snapshot, &qt, &mut buf);
         assert_eq!(bodies[0].species, Species::LithiumMetal);
     }
 
@@ -291,7 +297,8 @@ mod reactions {
         );
         qt.build(&mut bodies);
         let bodies_snapshot = bodies.clone();
-        bodies[0].apply_redox(&bodies_snapshot, &qt);
+        let mut buf = Vec::new();
+        bodies[0].apply_redox(&bodies_snapshot, &qt, &mut buf);
         assert_eq!(bodies[0].species, Species::LithiumIon);
     }
 

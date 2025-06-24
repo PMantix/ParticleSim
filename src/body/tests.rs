@@ -64,13 +64,15 @@ mod tests {
         );
         qt.build(&mut bodies);
         let bodies_snapshot = bodies.clone();
-        bodies[0].apply_redox(&bodies_snapshot, &qt);
+        let mut buf = Vec::new();
+        bodies[0].apply_redox(&bodies_snapshot, &qt, &mut buf);
         assert_eq!(bodies[0].species, Species::LithiumMetal);
         bodies[0].electrons.clear();
         bodies[0].update_charge_from_electrons();
         qt.build(&mut bodies);
         let bodies_snapshot = bodies.clone();
-        bodies[0].apply_redox(&bodies_snapshot, &qt);
+        let mut buf2 = Vec::new();
+        bodies[0].apply_redox(&bodies_snapshot, &qt, &mut buf2);
         assert_eq!(bodies[0].species, Species::LithiumIon);
     }
 
