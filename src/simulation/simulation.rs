@@ -172,7 +172,7 @@ impl Simulation {
         self.perform_electron_hopping_with_exclusions(&foil_current_recipients);
         self.frame += 1;
 
-        #[cfg(debug_assertions)]
+        #[cfg(test)]
         // After all updates, print debug info for anions
         for (i, body) in self.bodies.iter().enumerate() {
             if body.species == crate::body::Species::ElectrolyteAnion {
