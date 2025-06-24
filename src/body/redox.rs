@@ -24,16 +24,21 @@ impl Body {
             }
         }
     }
-    pub fn apply_redox(&mut self) {
+    pub fn apply_redox(&mut self, neighbor_count: usize, potential_diff: f32) {
         match self.species {
             Species::LithiumIon => {
-                if !self.electrons.is_empty() {
+                if !self.electrons.is_empty()
+                    && potential_diff > crate::config::IONIZATION_ENERGY_BARRIER
+                {
                     self.species = Species::LithiumMetal;
                     self.update_charge_from_electrons();
                 }
             }
             Species::LithiumMetal => {
-                if self.electrons.is_empty() {
+                if self.electrons.is_empty()
+                    && neighbor_count < crate::config::IONIZATION_NEIGHBOR_THRESHOLD
+                    && potential_diff > crate::config::IONIZATION_ENERGY_BARRIER
+                {
                     self.species = Species::LithiumIon;
                     self.update_charge_from_electrons();
                 }

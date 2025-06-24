@@ -41,6 +41,8 @@ pub const FOIL_NEUTRAL_ELECTRONS: usize = 1;
 pub const LITHIUM_METAL_NEUTRAL_ELECTRONS: usize = 1;
 pub const ELECTROLYTE_ANION_NEUTRAL_ELECTRONS: usize = 1;
 pub const FOIL_MAX_ELECTRONS: usize = 2;           // Max electrons for foil metal
+pub const IONIZATION_NEIGHBOR_THRESHOLD: usize = 3; // Min metal neighbors to remain metallic
+pub const IONIZATION_ENERGY_BARRIER: f32 = 0.2;     // Potential difference barrier for redox
 
 // ====================
 // Simulation Parameters

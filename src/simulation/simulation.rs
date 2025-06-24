@@ -12,6 +12,7 @@ use crate::simulation::utils::can_transfer_electron;
 use rand::prelude::*; // Import all prelude traits for rand 0.9+
 use crate::profile_scope;
 use std::collections::HashMap;
+use crate::config::{IONIZATION_NEIGHBOR_THRESHOLD, IONIZATION_ENERGY_BARRIER};
 
 /// The main simulation state and logic for the particle system.
 pub struct Simulation {
@@ -211,6 +212,48 @@ impl Simulation {
         density > self.config.cell_list_density_threshold
     }
 
+    pub fn count_metal_neighbors(&self, idx: usize, cutoff: f32) -> usize {
+        self.quadtree
+            .find_neighbors_within(&self.bodies, idx, cutoff)
+            .into_iter()
+            .filter(|&j| matches!(self.bodies[j].species, Species::LithiumMetal | Species::FoilMetal))
+            .count()
+    }
+
+    fn potential_at_except(&self, pos: Vec2, skip: usize) -> f32 {
+        let mut potential = -self.background_e_field.dot(pos);
+        for (i, b) in self.bodies.iter().enumerate() {
+            if i == skip { continue; }
+            let r = pos - b.pos;
+            let dist = r.mag().max(1e-4);
+            potential += forces::K_E * b.charge / dist;
+        }
+        potential
+    }
+
+    fn local_potential_difference(&self, idx: usize, neighbors: &[usize]) -> f32 {
+        if neighbors.is_empty() { return 0.0; }
+        let self_pot = self.potential_at_except(self.bodies[idx].pos, idx);
+        let avg_neighbor_pot: f32 = neighbors
+            .iter()
+            .map(|&j| self.potential_at_except(self.bodies[j].pos, j))
+            .sum::<f32>() / neighbors.len() as f32;
+        (self_pot - avg_neighbor_pot).abs()
+    }
+
+    pub fn apply_redox_all(&mut self) {
+        for i in 0..self.bodies.len() {
+            let cutoff = self.config.hop_radius_factor * self.bodies[i].radius;
+            let neighbors = self.quadtree.find_neighbors_within(&self.bodies, i, cutoff);
+            let count = neighbors
+                .iter()
+                .filter(|&&j| matches!(self.bodies[j].species, Species::LithiumMetal | Species::FoilMetal))
+                .count();
+            let dphi = self.local_potential_difference(i, &neighbors);
+            self.bodies[i].apply_redox(count, dphi);
+        }
+    }
+
     /// Attempt electron hops between nearby bodies.
     ///
     /// `exclude_donor` marks bodies that should not donate electrons this step
@@ -294,6 +337,7 @@ impl Simulation {
                 self.bodies[dst_idx].update_charge_from_electrons();
             }
         }
-        self.bodies.par_iter_mut().for_each(|body| body.apply_redox());
+        self.quadtree.build(&mut self.bodies);
+        self.apply_redox_all();
     }
 }

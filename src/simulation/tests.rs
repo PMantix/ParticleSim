@@ -45,7 +45,7 @@ mod reactions {
             body_to_foil: HashMap::new(),
         };
         let b = &mut sim.bodies[0];
-        b.apply_redox();
+        b.apply_redox(0, 1.0);
         assert_eq!(b.species, Species::LithiumMetal, "Ion with electron should become metal");
         assert_eq!(b.electrons.len(), 1, "Should have one valence electron");
         assert_eq!(b.charge, 0.0, "Neutral metal should have charge 0");
@@ -80,7 +80,7 @@ mod reactions {
             body_to_foil: HashMap::new(),
         };
         let b = &mut sim.bodies[0];
-        b.apply_redox();
+        b.apply_redox(0, 1.0);
         let b = &sim.bodies[0];
         assert_eq!(b.species, Species::LithiumIon, "Metal with no electrons should become ion");
         assert_eq!(b.charge, 1.0, "Ion with no electrons should have charge +1");
@@ -101,7 +101,7 @@ mod reactions {
         ion.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
         ion.update_charge_from_electrons();
         assert_eq!(ion.species, Species::LithiumIon);
-        ion.apply_redox();
+        ion.apply_redox(0, 1.0);
         assert_eq!(ion.species, Species::LithiumMetal);
         assert_eq!(ion.electrons.len(), 2);
     }
@@ -118,12 +118,74 @@ mod reactions {
         );
         body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
         body.update_charge_from_electrons();
-        body.apply_redox();
+        body.apply_redox(0, 1.0);
         assert_eq!(body.species, Species::LithiumMetal);
         body.electrons.clear();
         body.update_charge_from_electrons();
-        body.apply_redox();
+        body.apply_redox(0, 1.0);
         assert_eq!(body.species, Species::LithiumIon);
+    }
+
+    #[test]
+    fn interior_metal_remains_metal_when_bare() {
+        let mut center = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::LithiumMetal);
+        center.update_charge_from_electrons();
+        center.electrons.clear();
+        center.update_charge_from_electrons();
+
+        let offsets = [Vec2::new(1.0,0.0), Vec2::new(-1.0,0.0), Vec2::new(0.0,1.0), Vec2::new(0.0,-1.0)];
+        let mut bodies = vec![center];
+        for off in offsets.iter() {
+            let mut b = Body::new(*off, Vec2::zero(), 1.0, 1.0, 0.0, Species::LithiumMetal);
+            b.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+            b.update_charge_from_electrons();
+            bodies.push(b);
+        }
+        let mut sim = Simulation {
+            dt: 0.1,
+            frame: 0,
+            bodies,
+            quadtree: Quadtree::new(config::QUADTREE_THETA, config::QUADTREE_EPSILON, config::QUADTREE_LEAF_CAPACITY, config::QUADTREE_THREAD_CAPACITY),
+            bounds: 10.0,
+            rewound_flags: vec![false;5],
+            background_e_field: Vec2::zero(),
+            config: Default::default(),
+            foils: Vec::new(),
+            cell_list: CellList::new(10.0,1.0),
+            body_to_foil: HashMap::new(),
+        };
+        sim.quadtree.build(&mut sim.bodies);
+        sim.apply_redox_all();
+        assert_eq!(sim.bodies[0].species, Species::LithiumMetal);
+    }
+
+    #[test]
+    fn surface_metal_ionizes_when_bare() {
+        let mut inner = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::LithiumMetal);
+        inner.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+        inner.update_charge_from_electrons();
+
+        let mut surf = Body::new(Vec2::new(3.0,0.0), Vec2::zero(), 1.0, 1.0, 0.0, Species::LithiumMetal);
+        surf.update_charge_from_electrons();
+        surf.electrons.clear();
+        surf.update_charge_from_electrons();
+
+        let mut sim = Simulation {
+            dt: 0.1,
+            frame: 0,
+            bodies: vec![inner, surf],
+            quadtree: Quadtree::new(config::QUADTREE_THETA, config::QUADTREE_EPSILON, config::QUADTREE_LEAF_CAPACITY, config::QUADTREE_THREAD_CAPACITY),
+            bounds: 10.0,
+            rewound_flags: vec![false;2],
+            background_e_field: Vec2::zero(),
+            config: Default::default(),
+            foils: Vec::new(),
+            cell_list: CellList::new(10.0,1.0),
+            body_to_foil: HashMap::new(),
+        };
+        sim.quadtree.build(&mut sim.bodies);
+        sim.apply_redox_all();
+        assert_eq!(sim.bodies[1].species, Species::LithiumIon);
     }
 
     #[test]
@@ -196,7 +258,7 @@ mod reactions {
         let exclude = vec![false; sim.bodies.len()];
         sim.perform_electron_hopping_with_exclusions(&exclude);
         sim.perform_electron_hopping_with_exclusions(&exclude);
-        for b in &mut sim.bodies { b.apply_redox(); }
+        for b in &mut sim.bodies { b.apply_redox(0, 1.0); }
         let sum_electrons = sim.bodies.iter().map(|b| b.electrons.len()).sum::<usize>();
         assert_eq!(sum_electrons, total_electrons);
     }

@@ -21,7 +21,7 @@ mod electrolyte_anion {
         let mut anion = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, -1.0, Species::ElectrolyteAnion);
         anion.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
         anion.update_charge_from_electrons();
-        anion.apply_redox();
+        anion.apply_redox(0, 1.0);
         assert_eq!(anion.species, Species::ElectrolyteAnion);
     }
 }
