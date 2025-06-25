@@ -236,17 +236,17 @@ impl Simulation {
             let hop_radius = self.config.hop_radius_factor * src_body.radius;
 
             // Use quadtree for neighbor search!
-            let mut candidate_neighbors = self.quadtree
+            let mut candidate_neighbors = self
+                .quadtree
                 .find_neighbors_within(&self.bodies, src_idx, hop_radius)
                 .into_iter()
                 .filter(|&dst_idx| dst_idx != src_idx && !received_electron[dst_idx])
                 .filter(|&dst_idx| {
                     let dst_body = &self.bodies[dst_idx];
-                    match dst_body.species {
-                        Species::LithiumMetal | Species::FoilMetal => can_transfer_electron(src_body, dst_body),
-                        Species::LithiumIon => true,
-                        Species::ElectrolyteAnion => false, // or specify logic if needed
-                    }
+                    matches!(
+                        dst_body.species,
+                        Species::LithiumMetal | Species::FoilMetal
+                    ) && can_transfer_electron(src_body, dst_body)
                 })
                 .collect::<Vec<_>>();
 
