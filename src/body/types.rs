@@ -72,7 +72,7 @@ impl Body {
     /// Count nearby metal neighbors (LithiumMetal or FoilMetal) within
     /// `radius`. Uses a cell list for dense systems and the quadtree
     /// otherwise, mirroring the Lennard-Jones force logic.
-    pub fn metal_neighbor_count(
+    pub fn _metal_neighbor_count(
         &self,
         bodies: &[Body],
         quadtree: &crate::quadtree::Quadtree,
