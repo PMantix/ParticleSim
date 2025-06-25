@@ -294,14 +294,11 @@ impl Simulation {
                 self.bodies[dst_idx].update_charge_from_electrons();
             }
         }
-        let bodies_ptr = &self.bodies as *const Vec<Body>;
-        let quadtree_ptr = &self.quadtree as *const Quadtree;
-        let cell_list_ptr = &self.cell_list as *const CellList;
-        for body in &mut self.bodies {
-            let bodies = unsafe { &*bodies_ptr };
-            let qt = unsafe { &*quadtree_ptr };
-            let cl = unsafe { &*cell_list_ptr };
-            body.apply_redox(bodies, qt, cl, self.config.cell_list_density_threshold);
-        }
+        // Split immutable borrows for rayon safety
+        let bodies_ref: Vec<Body> = self.bodies.iter().cloned().collect();
+        let quadtree_ref = &self.quadtree;
+        self.bodies.par_iter_mut().for_each(|body| {
+            body.apply_redox(&bodies_ref, quadtree_ref, self.dt, &self.config);
+        });
     }
 }
