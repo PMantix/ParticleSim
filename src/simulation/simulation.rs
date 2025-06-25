@@ -302,6 +302,7 @@ impl Simulation {
             body.apply_redox(
                 &bodies_ref,
                 quadtree_ref,
+                self.background_e_field,
                 &self.cell_list,
                 self.config.cell_list_density_threshold,
             );

@@ -5,8 +5,9 @@ use super::types::{Body, Species};
 use crate::config::{
     FOIL_NEUTRAL_ELECTRONS,
     LITHIUM_METAL_NEUTRAL_ELECTRONS,
-    IONIZATION_NEIGHBOR_THRESHOLD,
+    IONIZATION_FIELD_THRESHOLD,
 };
+use ultraviolet::Vec2;
 use crate::quadtree::Quadtree;
 use crate::cell_list::CellList;
 
@@ -31,25 +32,23 @@ impl Body {
         &mut self,
         bodies: &[Body],
         quadtree: &Quadtree,
-        cell_list: &CellList,
-        density_threshold: f32,
+        background_field: Vec2,
+        _cell_list: &CellList,
+        _density_threshold: f32,
     ) {
-        let neighbor_count = self.metal_neighbor_count(
-            bodies,
-            quadtree,
-            cell_list,
-            self.radius * crate::config::HOP_RADIUS_FACTOR,
-            density_threshold,
-        );
+        let local_field =
+            quadtree.field_at_point(bodies, self.pos, crate::simulation::forces::K_E)
+            + background_field;
+        let field_mag = local_field.mag();
         match self.species {
             Species::LithiumIon => {
-                if !self.electrons.is_empty() && neighbor_count < IONIZATION_NEIGHBOR_THRESHOLD {
+                if !self.electrons.is_empty() && field_mag > IONIZATION_FIELD_THRESHOLD {
                     self.species = Species::LithiumMetal;
                     self.update_charge_from_electrons();
                 }
             }
             Species::LithiumMetal => {
-                if self.electrons.is_empty() && neighbor_count < IONIZATION_NEIGHBOR_THRESHOLD {
+                if self.electrons.is_empty() && field_mag > IONIZATION_FIELD_THRESHOLD {
                     self.species = Species::LithiumIon;
                     self.update_charge_from_electrons();
                 }

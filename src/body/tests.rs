@@ -64,13 +64,13 @@ mod tests {
         );
         qt.build(&mut bodies);
         let bodies_snapshot = bodies.clone();
-        bodies[0].apply_redox(&bodies_snapshot, &qt, &CellList::new(10.0, 1.0), config::LJ_CELL_DENSITY_THRESHOLD);
+        bodies[0].apply_redox(&bodies_snapshot, &qt, Vec2::zero(), &CellList::new(10.0, 1.0), config::LJ_CELL_DENSITY_THRESHOLD);
         assert_eq!(bodies[0].species, Species::LithiumMetal);
         bodies[0].electrons.clear();
         bodies[0].update_charge_from_electrons();
         qt.build(&mut bodies);
         let bodies_snapshot = bodies.clone();
-        bodies[0].apply_redox(&bodies_snapshot, &qt, &CellList::new(10.0, 1.0), config::LJ_CELL_DENSITY_THRESHOLD);
+        bodies[0].apply_redox(&bodies_snapshot, &qt, Vec2::zero(), &CellList::new(10.0, 1.0), config::LJ_CELL_DENSITY_THRESHOLD);
         assert_eq!(bodies[0].species, Species::LithiumIon);
     }
 

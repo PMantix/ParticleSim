@@ -29,7 +29,7 @@ mod electrolyte_anion {
         qt.build(&mut bodies);
         {
             let (first, rest) = bodies.split_at_mut(1);
-            first[0].apply_redox(&rest, &qt, &CellList::new(10.0, 1.0), config::LJ_CELL_DENSITY_THRESHOLD);
+            first[0].apply_redox(&rest, &qt, Vec2::zero(), &CellList::new(10.0, 1.0), config::LJ_CELL_DENSITY_THRESHOLD);
         }
         assert_eq!(bodies[0].species, Species::ElectrolyteAnion);
     }
