@@ -297,6 +297,7 @@ impl Simulation {
         // Split immutable borrows for rayon safety
         let bodies_ref: Vec<Body> = self.bodies.iter().cloned().collect();
         let quadtree_ref = &self.quadtree;
+        profile_scope!("apply_redox");
         self.bodies.par_iter_mut().for_each(|body| {
             body.apply_redox(
                 &bodies_ref,
