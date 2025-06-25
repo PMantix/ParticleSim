@@ -298,7 +298,12 @@ impl Simulation {
         let bodies_ref: Vec<Body> = self.bodies.iter().cloned().collect();
         let quadtree_ref = &self.quadtree;
         self.bodies.par_iter_mut().for_each(|body| {
-            body.apply_redox(&bodies_ref, quadtree_ref, self.dt, &self.config);
+            body.apply_redox(
+                &bodies_ref,
+                quadtree_ref,
+                &self.cell_list,
+                self.config.cell_list_density_threshold,
+            );
         });
     }
 }
