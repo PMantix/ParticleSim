@@ -294,15 +294,20 @@ impl Simulation {
                 self.bodies[dst_idx].update_charge_from_electrons();
             }
         }
-        // Split immutable borrows for rayon safety
-        let bodies_ref: Vec<Body> = self.bodies.iter().cloned().collect();
-        let quadtree_ref = &self.quadtree;
+        // Share immutable references without cloning the entire vector
+        let bodies_ptr = &self.bodies as *const Vec<Body>;
+        let quadtree_ptr = &self.quadtree as *const Quadtree;
+        let cell_list_ptr = &self.cell_list as *const CellList;
+        let density_threshold = self.config.cell_list_density_threshold;
         self.bodies.par_iter_mut().for_each(|body| {
+            let bodies_ref: &[Body] = unsafe { &(*bodies_ptr)[..] };
+            let quadtree_ref = unsafe { &*quadtree_ptr };
+            let cell_list_ref = unsafe { &*cell_list_ptr };
             body.apply_redox(
-                &bodies_ref,
+                bodies_ref,
                 quadtree_ref,
-                &self.cell_list,
-                self.config.cell_list_density_threshold,
+                cell_list_ref,
+                density_threshold,
             );
         });
     }
