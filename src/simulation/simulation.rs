@@ -242,11 +242,8 @@ impl Simulation {
                 .filter(|&dst_idx| dst_idx != src_idx && !received_electron[dst_idx])
                 .filter(|&dst_idx| {
                     let dst_body = &self.bodies[dst_idx];
-                    match dst_body.species {
-                        Species::LithiumMetal | Species::FoilMetal => can_transfer_electron(src_body, dst_body),
-                        Species::LithiumIon => true,
-                        Species::ElectrolyteAnion => false, // or specify logic if needed
-                    }
+                    matches!(dst_body.species, Species::LithiumMetal | Species::FoilMetal)
+                        && can_transfer_electron(src_body, dst_body)
                 })
                 .collect::<Vec<_>>();
 
@@ -305,6 +302,8 @@ impl Simulation {
                 self.background_e_field,
                 &self.cell_list,
                 self.config.cell_list_density_threshold,
+                &self.config,
+                self.dt,
             );
         });
     }

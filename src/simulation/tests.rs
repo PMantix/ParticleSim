@@ -47,7 +47,15 @@ mod reactions {
         sim.quadtree.build(&mut sim.bodies);
         let bodies_snapshot = sim.bodies.clone();
         let b = &mut sim.bodies[0];
-        b.apply_redox(&bodies_snapshot, &sim.quadtree, Vec2::zero(), &sim.cell_list, sim.config.cell_list_density_threshold);
+        b.apply_redox(
+            &bodies_snapshot,
+            &sim.quadtree,
+            Vec2::zero(),
+            &sim.cell_list,
+            sim.config.cell_list_density_threshold,
+            &sim.config,
+            sim.dt,
+        );
         assert_eq!(b.species, Species::LithiumMetal, "Ion with electron should become metal");
         assert_eq!(b.electrons.len(), 1, "Should have one valence electron");
         assert_eq!(b.charge, 0.0, "Neutral metal should have charge 0");
@@ -84,7 +92,15 @@ mod reactions {
         sim.quadtree.build(&mut sim.bodies);
         let bodies_snapshot = sim.bodies.clone();
         let b = &mut sim.bodies[0];
-        b.apply_redox(&bodies_snapshot, &sim.quadtree, Vec2::zero(), &sim.cell_list, sim.config.cell_list_density_threshold);
+        b.apply_redox(
+            &bodies_snapshot,
+            &sim.quadtree,
+            Vec2::zero(),
+            &sim.cell_list,
+            sim.config.cell_list_density_threshold,
+            &sim.config,
+            sim.dt,
+        );
         let b = &sim.bodies[0];
         assert_eq!(b.species, Species::LithiumIon, "Metal with no electrons should become ion");
         assert_eq!(b.charge, 1.0, "Ion with no electrons should have charge +1");
@@ -114,7 +130,15 @@ mod reactions {
         );
         qt.build(&mut bodies);
         let bodies_snapshot = bodies.clone();
-        bodies[0].apply_redox(&bodies_snapshot, &qt, Vec2::zero(), &CellList::new(10.0, 1.0), config::LJ_CELL_DENSITY_THRESHOLD);
+        bodies[0].apply_redox(
+            &bodies_snapshot,
+            &qt,
+            Vec2::zero(),
+            &CellList::new(10.0, 1.0),
+            config::LJ_CELL_DENSITY_THRESHOLD,
+            &SimConfig::default(),
+            0.1,
+        );
         assert_eq!(bodies[0].species, Species::LithiumMetal);
         assert_eq!(bodies[0].electrons.len(), 2);
     }
@@ -140,13 +164,29 @@ mod reactions {
         );
         qt.build(&mut bodies);
         let bodies_snapshot = bodies.clone();
-        bodies[0].apply_redox(&bodies_snapshot, &qt, Vec2::zero(), &CellList::new(10.0, 1.0), config::LJ_CELL_DENSITY_THRESHOLD);
+        bodies[0].apply_redox(
+            &bodies_snapshot,
+            &qt,
+            Vec2::zero(),
+            &CellList::new(10.0, 1.0),
+            config::LJ_CELL_DENSITY_THRESHOLD,
+            &SimConfig::default(),
+            0.1,
+        );
         assert_eq!(bodies[0].species, Species::LithiumMetal);
         bodies[0].electrons.clear();
         bodies[0].update_charge_from_electrons();
         qt.build(&mut bodies);
         let bodies_snapshot = bodies.clone();
-        bodies[0].apply_redox(&bodies_snapshot, &qt, Vec2::zero(), &CellList::new(10.0, 1.0), config::LJ_CELL_DENSITY_THRESHOLD);
+        bodies[0].apply_redox(
+            &bodies_snapshot,
+            &qt,
+            Vec2::zero(),
+            &CellList::new(10.0, 1.0),
+            config::LJ_CELL_DENSITY_THRESHOLD,
+            &SimConfig::default(),
+            0.1,
+        );
         assert_eq!(bodies[0].species, Species::LithiumIon);
     }
 
@@ -226,7 +266,15 @@ mod reactions {
         for b in &mut sim.bodies {
             let bodies = unsafe { &*bodies_ptr };
             let qt = unsafe { &*qt_ptr };
-            b.apply_redox(bodies, qt, Vec2::zero(), &sim.cell_list, sim.config.cell_list_density_threshold);
+            b.apply_redox(
+                bodies,
+                qt,
+                Vec2::zero(),
+                &sim.cell_list,
+                sim.config.cell_list_density_threshold,
+                &sim.config,
+                sim.dt,
+            );
         }
         let sum_electrons = sim.bodies.iter().map(|b| b.electrons.len()).sum::<usize>();
         assert_eq!(sum_electrons, total_electrons);
@@ -261,7 +309,15 @@ mod reactions {
         );
         qt.build(&mut bodies);
         let bodies_snapshot = bodies.clone();
-        bodies[0].apply_redox(&bodies_snapshot, &qt, Vec2::zero(), &CellList::new(10.0, 1.0), config::LJ_CELL_DENSITY_THRESHOLD);
+        bodies[0].apply_redox(
+            &bodies_snapshot,
+            &qt,
+            Vec2::zero(),
+            &CellList::new(10.0, 1.0),
+            config::LJ_CELL_DENSITY_THRESHOLD,
+            &SimConfig::default(),
+            0.1,
+        );
         assert_eq!(bodies[0].species, Species::LithiumMetal);
     }
 
@@ -291,8 +347,72 @@ mod reactions {
         );
         qt.build(&mut bodies);
         let bodies_snapshot = bodies.clone();
-        bodies[0].apply_redox(&bodies_snapshot, &qt, Vec2::zero(), &CellList::new(10.0, 1.0), config::LJ_CELL_DENSITY_THRESHOLD);
+        bodies[0].apply_redox(
+            &bodies_snapshot,
+            &qt,
+            Vec2::zero(),
+            &CellList::new(10.0, 1.0),
+            config::LJ_CELL_DENSITY_THRESHOLD,
+            &SimConfig::default(),
+            0.1,
+        );
         assert_eq!(bodies[0].species, Species::LithiumIon);
+    }
+
+    #[test]
+    fn ion_reduces_via_redox_probability() {
+        use crate::cell_list::CellList;
+        use crate::config::SimConfig;
+        use std::collections::HashMap;
+
+        let ion = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 1.0, Species::LithiumIon);
+        let mut metal = Body::new(Vec2::new(0.5, 0.0), Vec2::zero(), 1.0, 1.0, 0.0, Species::LithiumMetal);
+        metal.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+        metal.update_charge_from_electrons();
+
+        let mut sim = Simulation {
+            dt: 0.1,
+            frame: 0,
+            bodies: vec![metal, ion],
+            quadtree: Quadtree::new(
+                config::QUADTREE_THETA,
+                config::QUADTREE_EPSILON,
+                config::QUADTREE_LEAF_CAPACITY,
+                config::QUADTREE_THREAD_CAPACITY,
+            ),
+            bounds: 10.0,
+            rewound_flags: vec![false; 2],
+            background_e_field: Vec2::new(config::IONIZATION_FIELD_THRESHOLD + 1.0, 0.0),
+            config: SimConfig { use_butler_volmer: true, bv_exchange_current: 1e6, ..Default::default() },
+            foils: Vec::new(),
+            cell_list: CellList::new(10.0, 1.0),
+            body_to_foil: HashMap::new(),
+        };
+
+        sim.quadtree.build(&mut sim.bodies);
+        let exclude = vec![false; sim.bodies.len()];
+        sim.perform_electron_hopping_with_exclusions(&exclude);
+        assert_eq!(sim.bodies[1].electrons.len(), 0);
+
+        sim.quadtree.build(&mut sim.bodies);
+        let bodies_snapshot = sim.bodies.clone();
+        for i in 0..sim.bodies.len() {
+            let bs = &bodies_snapshot;
+            let qt = &sim.quadtree;
+            sim.bodies[i].apply_redox(
+                bs,
+                qt,
+                sim.background_e_field,
+                &sim.cell_list,
+                sim.config.cell_list_density_threshold,
+                &sim.config,
+                sim.dt,
+            );
+        }
+
+        assert_eq!(sim.bodies[1].species, Species::LithiumMetal);
+        assert_eq!(sim.bodies[1].electrons.len(), 1);
+        assert_eq!(sim.bodies[0].electrons.len(), 1);
     }
 
     mod hopping_kinetics_tests {

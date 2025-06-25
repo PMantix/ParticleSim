@@ -3,6 +3,7 @@ mod electrolyte_anion {
     use crate::body::{Body, Species, Electron};
     use crate::quadtree::Quadtree;
     use crate::cell_list::CellList;
+    use crate::config::SimConfig;
     use ultraviolet::Vec2;
 
     #[test]
@@ -35,6 +36,8 @@ mod electrolyte_anion {
                 Vec2::zero(),
                 &CellList::new(10.0, 1.0),
                 0.0,
+                &SimConfig::default(),
+                0.1,
             );
         }
         assert_eq!(bodies[0].species, Species::ElectrolyteAnion);

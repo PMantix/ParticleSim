@@ -9,6 +9,7 @@ mod tests {
     use crate::quadtree::Quadtree;
     use crate::cell_list::CellList;
     use crate::config;
+    use crate::config::SimConfig;
 
     #[test]
     fn test_body_charge_update() {
@@ -64,13 +65,29 @@ mod tests {
         );
         qt.build(&mut bodies);
         let bodies_snapshot = bodies.clone();
-        bodies[0].apply_redox(&bodies_snapshot, &qt, Vec2::zero(), &CellList::new(10.0, 1.0), config::LJ_CELL_DENSITY_THRESHOLD);
+        bodies[0].apply_redox(
+            &bodies_snapshot,
+            &qt,
+            Vec2::zero(),
+            &CellList::new(10.0, 1.0),
+            config::LJ_CELL_DENSITY_THRESHOLD,
+            &SimConfig::default(),
+            0.1,
+        );
         assert_eq!(bodies[0].species, Species::LithiumMetal);
         bodies[0].electrons.clear();
         bodies[0].update_charge_from_electrons();
         qt.build(&mut bodies);
         let bodies_snapshot = bodies.clone();
-        bodies[0].apply_redox(&bodies_snapshot, &qt, Vec2::zero(), &CellList::new(10.0, 1.0), config::LJ_CELL_DENSITY_THRESHOLD);
+        bodies[0].apply_redox(
+            &bodies_snapshot,
+            &qt,
+            Vec2::zero(),
+            &CellList::new(10.0, 1.0),
+            config::LJ_CELL_DENSITY_THRESHOLD,
+            &SimConfig::default(),
+            0.1,
+        );
         assert_eq!(bodies[0].species, Species::LithiumIon);
     }
 

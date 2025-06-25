@@ -2,6 +2,7 @@
 // Contains charge update and redox logic for Body
 
 use super::types::{Body, Species};
+use super::electron::Electron;
 use crate::config::{
     FOIL_NEUTRAL_ELECTRONS,
     LITHIUM_METAL_NEUTRAL_ELECTRONS,
@@ -35,6 +36,8 @@ impl Body {
         background_field: Vec2,
         _cell_list: &CellList,
         _density_threshold: f32,
+        config: &crate::config::SimConfig,
+        dt: f32,
     ) {
         let local_field =
             quadtree.field_at_point(bodies, self.pos, crate::simulation::forces::K_E)
@@ -42,15 +45,51 @@ impl Body {
         let field_mag = local_field.mag();
         match self.species {
             Species::LithiumIon => {
-                if !self.electrons.is_empty() && field_mag > IONIZATION_FIELD_THRESHOLD {
-                    self.species = Species::LithiumMetal;
-                    self.update_charge_from_electrons();
+                if field_mag > IONIZATION_FIELD_THRESHOLD {
+                    let rate = if config.use_butler_volmer {
+                        let alpha = config.bv_transfer_coeff;
+                        let scale = config.bv_overpotential_scale;
+                        let i0 = config.bv_exchange_current;
+                        let forward = (alpha * field_mag / scale).exp();
+                        let backward = (-(1.0 - alpha) * field_mag / scale).exp();
+                        (i0 * (forward - backward)).abs()
+                    } else {
+                        config.hop_rate_k0
+                            * (config.hop_transfer_coeff * field_mag
+                                / config.hop_activation_energy)
+                                .exp()
+                    };
+                    let p = 1.0 - (-rate * dt).exp();
+                    if rand::random::<f32>() < p {
+                        self.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+                        self.species = Species::LithiumMetal;
+                        self.update_charge_from_electrons();
+                    }
                 }
             }
             Species::LithiumMetal => {
-                if self.electrons.is_empty() && field_mag > IONIZATION_FIELD_THRESHOLD {
-                    self.species = Species::LithiumIon;
-                    self.update_charge_from_electrons();
+                if !self.electrons.is_empty() && field_mag > IONIZATION_FIELD_THRESHOLD {
+                    let rate = if config.use_butler_volmer {
+                        let alpha = config.bv_transfer_coeff;
+                        let scale = config.bv_overpotential_scale;
+                        let i0 = config.bv_exchange_current;
+                        let forward = (alpha * field_mag / scale).exp();
+                        let backward = (-(1.0 - alpha) * field_mag / scale).exp();
+                        (i0 * (forward - backward)).abs()
+                    } else {
+                        config.hop_rate_k0
+                            * (config.hop_transfer_coeff * field_mag
+                                / config.hop_activation_energy)
+                                .exp()
+                    };
+                    let p = 1.0 - (-rate * dt).exp();
+                    if rand::random::<f32>() < p {
+                        self.electrons.pop();
+                        self.update_charge_from_electrons();
+                        if self.electrons.is_empty() {
+                            self.species = Species::LithiumIon;
+                        }
+                    }
                 }
             }
             Species::FoilMetal => {
