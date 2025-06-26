@@ -3,7 +3,7 @@ use palette::{Hsluv, IntoColor, Srgba};
 use ultraviolet::Vec2;
 use crate::quadtree::Quadtree;
 use crate::body::{Species, Body};
-use crate::config;
+//use crate::config;
 
 impl super::Renderer {
     pub fn draw(&mut self, ctx: &mut quarkstrom::RenderContext, width: u16, height: u16) {
