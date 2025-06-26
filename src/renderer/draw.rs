@@ -246,7 +246,7 @@ impl super::Renderer {
                 let mut y = min.y;
                 while y < max.y {
                     let pos = Vec2::new(x, y);
-                    let field = compute_field_at_point(&self.bodies, pos, &self.sim_config);
+                    let field = compute_field_at_point(&self.bodies, &self.quadtree, pos, &self.sim_config);
                     let end = pos + field * field_scale;
                     ctx.draw_line(pos, end, color);
                     y += grid_spacing;
@@ -283,7 +283,7 @@ impl super::Renderer {
                 let x = min.x + ix as f32 * grid_spacing;
                 let y = min.y + iy as f32 * grid_spacing;
                 let pos = Vec2::new(x, y);
-                let v = compute_potential_at_point(&self.bodies, pos, &self.sim_config);
+                let v = compute_potential_at_point(&self.bodies, &self.quadtree, pos, &self.sim_config);
                 min_val = min_val.min(v);
                 max_val = max_val.max(v);
                 samples.push(v);
@@ -314,7 +314,7 @@ impl super::Renderer {
                 let x = min.x + ix as f32 * grid_spacing;
                 let y = min.y + iy as f32 * grid_spacing;
                 let pos = Vec2::new(x, y);
-                let v = compute_potential_at_point(&self.bodies, pos, &self.sim_config);
+                let v = compute_potential_at_point(&self.bodies, &self.quadtree, pos, &self.sim_config);
                 field_grid[iy * nx + ix] = v;
             }
         }
@@ -445,18 +445,14 @@ impl super::Renderer {
 // Helper function to compute the electric field at a point
 pub fn compute_field_at_point(
     bodies: &[Body],
+    quadtree: &Quadtree,
     pos: Vec2,
     config: &crate::config::SimConfig,
 ) -> Vec2 {
     let mut field = Vec2::zero();
 
     if config.isoline_field_mode != crate::config::IsolineFieldMode::ExternalOnly {
-        for body in bodies {
-            let r = pos - body.pos;
-            let dist2 = r.mag_sq().max(1e-4); // avoid div by zero
-            let e = body.charge * r / (dist2 * dist2.sqrt()); // Coulomb's law (unitless K)
-            field += e;
-        }
+        field += quadtree.field_at_point(bodies, pos, crate::simulation::forces::K_E);
     }
 
     if config.isoline_field_mode != crate::config::IsolineFieldMode::BodyOnly {
@@ -476,17 +472,15 @@ fn lerp(a: Vec2, b: Vec2, t: f32) -> Vec2 {
 /// Compute the electric potential at a point due to all bodies.
 pub fn compute_potential_at_point(
     bodies: &[Body],
+    quadtree: &Quadtree,
     pos: Vec2,
     config: &crate::config::SimConfig,
 ) -> f32 {
     let mut potential = 0.0f32;
 
     if config.isoline_field_mode != crate::config::IsolineFieldMode::ExternalOnly {
-        for body in bodies {
-            let r = pos - body.pos;
-            let dist = r.mag().max(1e-4);
-            potential += crate::simulation::forces::K_E * body.charge / dist;
-        }
+        potential +=
+            quadtree.potential_at_point(bodies, pos, crate::simulation::forces::K_E);
     }
 
     if config.isoline_field_mode != crate::config::IsolineFieldMode::BodyOnly {

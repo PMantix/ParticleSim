@@ -342,4 +342,51 @@ impl Quadtree {
         // This should use the same logic as acc_pos, but with test charge q=1.0
         self.acc_pos(pos, 1.0, bodies, k_e)
     }
+
+    /// Compute the electric potential at an arbitrary point using the quadtree
+    /// (Barnes-Hut).
+    pub fn potential_at_point(&self, bodies: &[Body], pos: Vec2, k_e: f32) -> f32 {
+        let mut potential = 0.0f32;
+        let mut node = Self::ROOT;
+        loop {
+            if node >= self.nodes.len() {
+                break;
+            }
+            let n = self.nodes[node].clone();
+
+            let d = pos - n.pos;
+            let d_sq = d.mag_sq();
+
+            if n.quad.size * n.quad.size < d_sq * self.t_sq {
+                let dist = (d_sq + self.e_sq).sqrt();
+                potential += k_e * n.charge / dist;
+
+                if n.next == 0 {
+                    break;
+                }
+                node = n.next;
+            } else if n.is_leaf() {
+                for i in n.bodies {
+                    let body = &bodies[i];
+
+                    if (body.pos - pos).mag_sq() < 1e-6 {
+                        continue;
+                    }
+
+                    let d = pos - body.pos;
+                    let dist = (d.mag_sq() + self.e_sq).sqrt();
+                    potential += k_e * body.charge / dist;
+                }
+
+                if n.next == 0 {
+                    break;
+                }
+                node = n.next;
+            } else {
+                node = n.children;
+            }
+        }
+
+        potential
+    }
 }
