@@ -27,6 +27,9 @@ pub struct Body {
     pub species: Species,
     pub electrons: SmallVec<[Electron; 2]>,
     pub e_field: Vec2,
+    pub surrounded_by_metal: bool,
+    pub last_surround_pos: Vec2,
+    pub last_surround_frame: usize,
 }
 
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -46,6 +49,9 @@ impl Body {
             species,
             electrons: SmallVec::new(),
             e_field: Vec2::zero(),
+            surrounded_by_metal: false,
+            last_surround_pos: pos,
+            last_surround_frame: 0,
         }
     }
     pub fn update_species(&mut self) {
@@ -97,6 +103,38 @@ impl Body {
             }
         } else {
             0
+        }
+    }
+
+    /// Update the `surrounded_by_metal` flag if enough neighbors are nearby.
+    /// The check is skipped unless the body moved farther than
+    /// `SURROUND_MOVE_THRESHOLD` since the last update or more than
+    /// `SURROUND_CHECK_INTERVAL` frames elapsed.
+    pub fn maybe_update_surrounded(
+        &mut self,
+        index: usize,
+        bodies: &[Body],
+        quadtree: &crate::quadtree::Quadtree,
+        cell_list: &crate::cell_list::CellList,
+        use_cell: bool,
+        frame: usize,
+    ) {
+        let moved = (self.pos - self.last_surround_pos).mag()
+            > config::SURROUND_MOVE_THRESHOLD * self.radius;
+        if moved || frame - self.last_surround_frame >= config::SURROUND_CHECK_INTERVAL {
+            let radius = self.radius * config::SURROUND_RADIUS_FACTOR;
+            let count = if use_cell {
+                cell_list.metal_neighbor_count(bodies, index, radius)
+            } else {
+                quadtree
+                    .find_neighbors_within(bodies, index, radius)
+                    .into_iter()
+                    .filter(|&n| matches!(bodies[n].species, Species::LithiumMetal | Species::FoilMetal))
+                    .count()
+            };
+            self.surrounded_by_metal = count >= config::SURROUND_NEIGHBOR_THRESHOLD;
+            self.last_surround_pos = self.pos;
+            self.last_surround_frame = frame;
         }
     }
 }

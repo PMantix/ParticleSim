@@ -52,7 +52,13 @@ impl super::Renderer {
 					];*/
 
                     let color = match body.species {
-                        Species::LithiumIon => [255, 255, 0, 255],      // Yellow
+                        Species::LithiumIon => {
+                            if body.surrounded_by_metal {
+                                [255, 165, 0, 255] // orange when surrounded
+                            } else {
+                                [255, 255, 0, 255] // yellow otherwise
+                            }
+                        }
                         Species::LithiumMetal => [192, 192, 192, 255],  // Silverish
                         Species::FoilMetal => [128, 64, 0, 255],        // Brownish (example)
                         Species::ElectrolyteAnion => [0, 128, 255, 255], // Blueish for anion
