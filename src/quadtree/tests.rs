@@ -20,7 +20,9 @@ mod tests {
             electrons: SmallVec::new(),
             id: 0,
             e_field: Vec2::zero(),
-
+            last_surround_frame: 0,
+            last_surround_pos: Vec2::zero(),
+            surrounded_by_metal: false,
         };
         let mut bodies = vec![body];
 

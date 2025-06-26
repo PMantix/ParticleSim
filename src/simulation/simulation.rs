@@ -323,8 +323,10 @@ impl Simulation {
         let quadtree = &self.quadtree;
         let cell_list = &self.cell_list;
         let frame = self.frame;
+        // Collect the data needed for immutable borrow
+        let bodies_snapshot: Vec<_> = self.bodies.iter().map(|b| b.clone()).collect();
         for (i, body) in self.bodies.iter_mut().enumerate() {
-            body.maybe_update_surrounded(i, &self.bodies, quadtree, cell_list, use_cell, frame);
+            body.maybe_update_surrounded(i, &bodies_snapshot, quadtree, cell_list, use_cell, frame);
         }
     }
 }

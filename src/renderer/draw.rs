@@ -54,7 +54,11 @@ impl super::Renderer {
                     let color = match body.species {
                         Species::LithiumIon => {
                             if body.surrounded_by_metal {
-                                [255, 165, 0, 255] // orange when surrounded
+                                if self.show_electron_deficiency {
+                                    [255, 165, 0, 255] // orange when surrounded and deficiency visualization is on
+                                } else {
+                                    [192, 192, 192, 255] // silverish when surrounded and deficiency visualization is off
+                                }
                             } else {
                                 [255, 255, 0, 255] // yellow otherwise
                             }
