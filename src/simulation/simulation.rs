@@ -293,7 +293,9 @@ impl Simulation {
             }
         }
         for (src_idx, dst_idx) in hops {
-            if let Some(electron) = self.bodies[src_idx].electrons.pop() {
+            if let Some(mut electron) = self.bodies[src_idx].electrons.pop() {
+                // Flip the electron's rel_pos direction when transferring
+                electron.rel_pos = -electron.rel_pos;
                 self.bodies[dst_idx].electrons.push(electron);
                 self.bodies[src_idx].update_charge_from_electrons();
                 self.bodies[dst_idx].update_charge_from_electrons();
