@@ -5,11 +5,7 @@ use super::types::{Body, Species};
 use crate::config::{
     FOIL_NEUTRAL_ELECTRONS,
     LITHIUM_METAL_NEUTRAL_ELECTRONS,
-    IONIZATION_FIELD_THRESHOLD,
 };
-use ultraviolet::Vec2;
-use crate::quadtree::Quadtree;
-use crate::cell_list::CellList;
 
 impl Body {
     pub fn update_charge_from_electrons(&mut self) {
@@ -28,27 +24,16 @@ impl Body {
             }
         }
     }
-    pub fn apply_redox(
-        &mut self,
-        bodies: &[Body],
-        quadtree: &Quadtree,
-        background_field: Vec2,
-        _cell_list: &CellList,
-        _density_threshold: f32,
-    ) {
-        let local_field =
-            quadtree.field_at_point(bodies, self.pos, crate::simulation::forces::K_E)
-            + background_field;
-        let field_mag = local_field.mag();
+    pub fn apply_redox(&mut self) {
         match self.species {
             Species::LithiumIon => {
-                if !self.electrons.is_empty() && field_mag > IONIZATION_FIELD_THRESHOLD {
+                if !self.electrons.is_empty() {
                     self.species = Species::LithiumMetal;
                     self.update_charge_from_electrons();
                 }
             }
             Species::LithiumMetal => {
-                if self.electrons.is_empty() && field_mag > IONIZATION_FIELD_THRESHOLD {
+                if self.electrons.is_empty() {
                     self.species = Species::LithiumIon;
                     self.update_charge_from_electrons();
                 }

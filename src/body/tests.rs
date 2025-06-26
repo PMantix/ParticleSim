@@ -7,8 +7,8 @@ mod tests {
     use crate::body::{Body, Electron, Species};
     use ultraviolet::Vec2;
     use crate::quadtree::Quadtree;
-    use crate::cell_list::CellList;
-    use crate::config;
+    //use crate::cell_list::CellList;
+    //use crate::config;
 
     #[test]
     fn test_body_charge_update() {
@@ -63,14 +63,14 @@ mod tests {
             crate::config::QUADTREE_THREAD_CAPACITY,
         );
         qt.build(&mut bodies);
-        let bodies_snapshot = bodies.clone();
-        bodies[0].apply_redox(&bodies_snapshot, &qt, Vec2::zero(), &CellList::new(10.0, 1.0), config::LJ_CELL_DENSITY_THRESHOLD);
+        //let bodies_snapshot = bodies.clone();
+        bodies[0].apply_redox();
         assert_eq!(bodies[0].species, Species::LithiumMetal);
         bodies[0].electrons.clear();
         bodies[0].update_charge_from_electrons();
         qt.build(&mut bodies);
-        let bodies_snapshot = bodies.clone();
-        bodies[0].apply_redox(&bodies_snapshot, &qt, Vec2::zero(), &CellList::new(10.0, 1.0), config::LJ_CELL_DENSITY_THRESHOLD);
+        //let bodies_snapshot = bodies.clone();
+        bodies[0].apply_redox();
         assert_eq!(bodies[0].species, Species::LithiumIon);
     }
 

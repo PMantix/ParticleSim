@@ -242,10 +242,15 @@ impl Simulation {
                 .filter(|&dst_idx| dst_idx != src_idx && !received_electron[dst_idx])
                 .filter(|&dst_idx| {
                     let dst_body = &self.bodies[dst_idx];
-                    match dst_body.species {
-                        Species::LithiumMetal | Species::FoilMetal => can_transfer_electron(src_body, dst_body),
-                        Species::LithiumIon => true,
-                        Species::ElectrolyteAnion => false, // or specify logic if needed
+                    let dst_diff = dst_body.electrons.len() as i32 - dst_body.neutral_electron_count() as i32;
+                    // Allow hop if donor is more excess than recipient
+                    if src_diff >= dst_diff {
+                        match dst_body.species {
+                            Species::LithiumMetal | Species::FoilMetal | Species::LithiumIon => can_transfer_electron(src_body, dst_body),
+                            _ => false,
+                        }
+                    } else {
+                        false
                     }
                 })
                 .collect::<Vec<_>>();
@@ -295,17 +300,11 @@ impl Simulation {
             }
         }
         // Split immutable borrows for rayon safety
-        let bodies_ref: Vec<Body> = self.bodies.iter().cloned().collect();
-        let quadtree_ref = &self.quadtree;
+        //let bodies_ref: Vec<Body> = self.bodies.iter().cloned().collect();
+        //let quadtree_ref = &self.quadtree;
         profile_scope!("apply_redox");
         self.bodies.par_iter_mut().for_each(|body| {
-            body.apply_redox(
-                &bodies_ref,
-                quadtree_ref,
-                self.background_e_field,
-                &self.cell_list,
-                self.config.cell_list_density_threshold,
-            );
+            body.apply_redox();
         });
     }
 }

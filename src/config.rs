@@ -42,9 +42,9 @@ pub const LITHIUM_METAL_NEUTRAL_ELECTRONS: usize = 1;
 pub const ELECTROLYTE_ANION_NEUTRAL_ELECTRONS: usize = 1;
 pub const FOIL_MAX_ELECTRONS: usize = 2;           // Max electrons for foil metal
 /// Maximum number of nearby metallic neighbors allowed before ionization is inhibited
-pub const IONIZATION_NEIGHBOR_THRESHOLD: usize = 4;
+//pub const IONIZATION_NEIGHBOR_THRESHOLD: usize = 4;
 /// Minimum local electric-field magnitude required for ionization/reduction
-pub const IONIZATION_FIELD_THRESHOLD: f32 = 1.0e3;
+//pub const IONIZATION_FIELD_THRESHOLD: f32 = 1.0e3;
 
 // ====================
 // Simulation Parameters

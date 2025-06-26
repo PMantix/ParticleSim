@@ -2,7 +2,7 @@
 mod electrolyte_anion {
     use crate::body::{Body, Species, Electron};
     use crate::quadtree::Quadtree;
-    use crate::cell_list::CellList;
+    //use crate::cell_list::CellList;
     use ultraviolet::Vec2;
 
     #[test]
@@ -27,15 +27,9 @@ mod electrolyte_anion {
         let mut qt = Quadtree::new(0.5, 0.01, 1, 1);
         qt.build(&mut bodies);
         {
-            let bodies_clone = bodies.clone();
+            //let bodies_clone = bodies.clone();
             let (first, _rest) = bodies.split_at_mut(1);
-            first[0].apply_redox(
-                &bodies_clone,
-                &qt,
-                Vec2::zero(),
-                &CellList::new(10.0, 1.0),
-                0.0,
-            );
+            first[0].apply_redox();
         }
         assert_eq!(bodies[0].species, Species::ElectrolyteAnion);
     }
