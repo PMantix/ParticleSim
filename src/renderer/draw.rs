@@ -3,6 +3,7 @@ use palette::{Hsluv, IntoColor, Srgba};
 use ultraviolet::Vec2;
 use crate::quadtree::Quadtree;
 use crate::body::{Species, Body};
+use crate::config;
 
 impl super::Renderer {
     pub fn draw(&mut self, ctx: &mut quarkstrom::RenderContext, width: u16, height: u16) {
@@ -32,8 +33,8 @@ impl super::Renderer {
         ctx.set_view_scale(self.scale);
 
         if !self.bodies.is_empty() {
-			if self.show_bodies {
-				for body in &self.bodies {
+                        if self.show_bodies {
+                                for (i, body) in self.bodies.iter().enumerate() {
 					// Map charge to RGB color: red for positive, blue for negative, white for 0
 					/*let charge = body.charge;
 					let max_charge = 1.0; // adjust if needed
@@ -51,12 +52,31 @@ impl super::Renderer {
 						255,
 					];*/
 
-                    let color = match body.species {
+                    let mut color = match body.species {
                         Species::LithiumIon => [255, 255, 0, 255],      // Yellow
                         Species::LithiumMetal => [192, 192, 192, 255],  // Silverish
                         Species::FoilMetal => [128, 64, 0, 255],        // Brownish (example)
                         Species::ElectrolyteAnion => [0, 128, 255, 255], // Blueish for anion
                     };
+
+                    if body.species == Species::LithiumIon {
+                        let cutoff = body.radius * 2.2;
+                        let cutoff_sq = cutoff * cutoff;
+                        let pos = body.pos;
+                        let metal_neighbors = self
+                            .bodies
+                            .iter()
+                            .enumerate()
+                            .filter(|(j, b)| {
+                                *j != i
+                                    && matches!(b.species, Species::LithiumMetal | Species::FoilMetal)
+                                    && (b.pos - pos).mag_sq() <= cutoff_sq
+                            })
+                            .count();
+                        if metal_neighbors >= 6 {
+                            color = [192, 192, 192, 255];
+                        }
+                    }
 
                     if body.species == Species::FoilMetal {
                         if let Some(foil) = self.foils.iter().find(|f| f.body_ids.contains(&body.id)) {
