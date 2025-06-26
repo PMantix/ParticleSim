@@ -108,6 +108,7 @@ impl Simulation {
         for _ in 1..num_passes {
             collision::collide(self);
         }
+        self.update_surrounded_flags();
 
         // Track which bodies receive electrons from foil current this step
         let mut foil_current_recipients = vec![false; self.bodies.len()];
@@ -306,5 +307,26 @@ impl Simulation {
         self.bodies.par_iter_mut().for_each(|body| {
             body.apply_redox();
         });
+    }
+
+    /// Update `surrounded_by_metal` for all bodies using either the cell list or quadtree.
+    pub fn update_surrounded_flags(&mut self) {
+        if self.bodies.is_empty() { return; }
+        let use_cell = self.use_cell_list();
+        let neighbor_radius = self.config.lj_force_cutoff * self.config.lj_force_sigma;
+        if use_cell {
+            self.cell_list.cell_size = neighbor_radius;
+            self.cell_list.rebuild(&self.bodies);
+        } else {
+            self.quadtree.build(&mut self.bodies);
+        }
+        let quadtree = &self.quadtree;
+        let cell_list = &self.cell_list;
+        let frame = self.frame;
+        // Collect the data needed for immutable borrow
+        let bodies_snapshot: Vec<_> = self.bodies.iter().map(|b| b.clone()).collect();
+        for (i, body) in self.bodies.iter_mut().enumerate() {
+            body.maybe_update_surrounded(i, &bodies_snapshot, quadtree, cell_list, use_cell, frame);
+        }
     }
 }

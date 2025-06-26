@@ -45,6 +45,14 @@ pub const FOIL_MAX_ELECTRONS: usize = 2;           // Max electrons for foil met
 //pub const IONIZATION_NEIGHBOR_THRESHOLD: usize = 4;
 /// Minimum local electric-field magnitude required for ionization/reduction
 //pub const IONIZATION_FIELD_THRESHOLD: f32 = 1.0e3;
+/// Radius factor (times body radius) for determining metal surroundings
+pub const SURROUND_RADIUS_FACTOR: f32 = 3.5;
+/// Neighbor count threshold for considering a body "surrounded" by metal
+pub const SURROUND_NEIGHBOR_THRESHOLD: usize = 4;
+/// Minimum displacement before recomputing `surrounded_by_metal`
+pub const SURROUND_MOVE_THRESHOLD: f32 = 0.5;
+/// Maximum number of frames between surround checks
+pub const SURROUND_CHECK_INTERVAL: usize = 10;
 
 // ====================
 // Simulation Parameters
