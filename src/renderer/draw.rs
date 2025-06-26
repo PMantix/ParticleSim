@@ -3,6 +3,7 @@ use palette::{Hsluv, IntoColor, Srgba};
 use ultraviolet::Vec2;
 use crate::quadtree::Quadtree;
 use crate::body::{Species, Body};
+use rayon::prelude::*;
 
 impl super::Renderer {
     pub fn draw(&mut self, ctx: &mut quarkstrom::RenderContext, width: u16, height: u16) {
@@ -241,17 +242,25 @@ impl super::Renderer {
             let min = self.pos - half_view;
             let max = self.pos + half_view;
 
-            let mut x = min.x;
-            while x < max.x {
-                let mut y = min.y;
-                while y < max.y {
+            let nx = ((max.x - min.x) / grid_spacing).ceil() as usize;
+            let ny = ((max.y - min.y) / grid_spacing).ceil() as usize;
+            let mut lines = vec![(Vec2::zero(), Vec2::zero()); nx * ny];
+
+            lines
+                .par_iter_mut()
+                .enumerate()
+                .for_each(|(i, line)| {
+                    let ix = i % nx;
+                    let iy = i / nx;
+                    let x = min.x + ix as f32 * grid_spacing;
+                    let y = min.y + iy as f32 * grid_spacing;
                     let pos = Vec2::new(x, y);
                     let field = compute_field_at_point(&self.bodies, pos, &self.sim_config);
-                    let end = pos + field * field_scale;
-                    ctx.draw_line(pos, end, color);
-                    y += grid_spacing;
-                }
-                x += grid_spacing;
+                    *line = (pos, pos + field * field_scale);
+                });
+
+            for (start, end) in lines {
+                ctx.draw_line(start, end, color);
             }
         }
     }
@@ -309,15 +318,17 @@ impl super::Renderer {
 
         // Now do the full grid for isoline drawing
         let mut field_grid = vec![0.0f32; nx * ny];
-        for ix in 0..nx {
-            for iy in 0..ny {
+        field_grid
+            .par_iter_mut()
+            .enumerate()
+            .for_each(|(i, val)| {
+                let ix = i % nx;
+                let iy = i / nx;
                 let x = min.x + ix as f32 * grid_spacing;
                 let y = min.y + iy as f32 * grid_spacing;
                 let pos = Vec2::new(x, y);
-                let v = compute_potential_at_point(&self.bodies, pos, &self.sim_config);
-                field_grid[iy * nx + ix] = v;
-            }
-        }
+                *val = compute_potential_at_point(&self.bodies, pos, &self.sim_config);
+            });
 
         for &iso in &iso_values {
             // Color: blue for negative, white for zero, red for positive
@@ -397,10 +408,12 @@ impl super::Renderer {
         let ny = ((max.y - min.y) / grid_spacing).ceil() as usize + 1;
 
         let mut samples = vec![0.0f32; nx * ny];
-        let mut max_abs = 0.0f32;
-
-        for ix in 0..nx {
-            for iy in 0..ny {
+        let max_abs = samples
+            .par_iter_mut()
+            .enumerate()
+            .map(|(i, sample)| {
+                let ix = i % nx;
+                let iy = i / nx;
                 let x = min.x + (ix as f32 + 0.5) * grid_spacing;
                 let y = min.y + (iy as f32 + 0.5) * grid_spacing;
                 let pos = Vec2::new(x, y);
@@ -411,12 +424,12 @@ impl super::Renderer {
                     let weight = (-dist2 / (smoothing * smoothing)).exp();
                     density += body.charge * weight;
                 }
-                max_abs = max_abs.max(density.abs());
-                samples[iy * nx + ix] = density;
-            }
-        }
+                *sample = density;
+                density.abs()
+            })
+            .reduce(|| 0.0f32, f32::max);
 
-        max_abs = max_abs.max(1e-6);
+        let max_abs = max_abs.max(1e-6);
 
         for ix in 0..nx - 1 {
             for iy in 0..ny - 1 {
