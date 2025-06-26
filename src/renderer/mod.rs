@@ -42,6 +42,8 @@ pub struct Renderer {
     pub window_width: u16,
     pub window_height: u16,
     pub show_electron_deficiency: bool,
+    charge_density_buffer: Vec<f32>,
+    isoline_buffer: Vec<f32>,
 }
 
 impl quarkstrom::Renderer for Renderer {
@@ -78,6 +80,8 @@ impl quarkstrom::Renderer for Renderer {
             window_width: 800, // default value, can be changed
             window_height: 600, // default value, can be changed
             show_electron_deficiency: true,
+            charge_density_buffer: Vec::new(),
+            isoline_buffer: Vec::new(),
         }
     }
 

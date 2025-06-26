@@ -308,7 +308,8 @@ impl super::Renderer {
         iso_values.dedup_by(|a, b| (*a - *b).abs() < 1e-6);
 
         // Now do the full grid for isoline drawing
-        let mut field_grid = vec![0.0f32; nx * ny];
+        self.isoline_buffer.resize(nx * ny, 0.0);
+        let field_grid = &mut self.isoline_buffer;
         for ix in 0..nx {
             for iy in 0..ny {
                 let x = min.x + ix as f32 * grid_spacing;
@@ -385,7 +386,7 @@ impl super::Renderer {
     }
 
     /// Draw a simple charge density heatmap.
-    pub fn draw_charge_density(&self, ctx: &mut quarkstrom::RenderContext) {
+    pub fn draw_charge_density(&mut self, ctx: &mut quarkstrom::RenderContext) {
         let grid_spacing = 5.0;
         let smoothing = 5.0;
 
@@ -396,7 +397,8 @@ impl super::Renderer {
         let nx = ((max.x - min.x) / grid_spacing).ceil() as usize + 1;
         let ny = ((max.y - min.y) / grid_spacing).ceil() as usize + 1;
 
-        let mut samples = vec![0.0f32; nx * ny];
+        self.charge_density_buffer.resize(nx * ny, 0.0);
+        let samples = &mut self.charge_density_buffer;
         let mut max_abs = 0.0f32;
 
         for ix in 0..nx {
