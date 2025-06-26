@@ -3,10 +3,12 @@ use palette::{Hsluv, IntoColor, Srgba};
 use ultraviolet::Vec2;
 use crate::quadtree::Quadtree;
 use crate::body::{Species, Body};
+use crate::profile_scope;
 //use crate::config;
 
 impl super::Renderer {
     pub fn draw(&mut self, ctx: &mut quarkstrom::RenderContext, width: u16, height: u16) {
+        profile_scope!("renderer_draw_total");
         // Prevent wgpu validation error: skip rendering if window is zero-sized
         if width == 0 || height == 0 {
             return;
@@ -33,8 +35,9 @@ impl super::Renderer {
         ctx.set_view_scale(self.scale);
 
         if !self.bodies.is_empty() {
-                        if self.show_bodies {
-                                for (i, body) in self.bodies.iter().enumerate() {
+            if self.show_bodies {
+                profile_scope!("renderer_draw_bodies");
+                for (i, body) in self.bodies.iter().enumerate() {
 					// Map charge to RGB color: red for positive, blue for negative, white for 0
 					/*let charge = body.charge;
 					let max_charge = 1.0; // adjust if needed
@@ -174,6 +177,7 @@ impl super::Renderer {
         }
 
         if self.show_quadtree && !self.quadtree.is_empty() {
+            profile_scope!("renderer_draw_quadtree");
             let mut depth_range = self.depth_range;
             if depth_range.0 >= depth_range.1 {
                 let mut stack = Vec::new();
@@ -242,16 +246,19 @@ impl super::Renderer {
 
         // --- CHARGE DENSITY VISUALIZATION ---
         if self.sim_config.show_charge_density {
+            profile_scope!("renderer_draw_charge_density");
             self.draw_charge_density(ctx);
         }
 
         // --- FIELD ISOLINE VISUALIZATION ---
         if self.sim_config.show_field_isolines {
+            profile_scope!("renderer_draw_field_isolines");
             self.draw_field_isolines(ctx);
         }
 
         // --- FIELD VECTOR VISUALIZATION ---
         if self.sim_config.show_field_vectors {
+            profile_scope!("renderer_draw_field_vectors");
             let grid_spacing = 2.0; // simulation units
             let field_scale = 2.0;   // much larger for debug
             let color = [255, 0, 0, 255]; // opaque red for debug
