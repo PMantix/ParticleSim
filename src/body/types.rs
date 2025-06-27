@@ -5,8 +5,9 @@ use ultraviolet::Vec2;
 use crate::config;
 use super::electron::Electron;
 use smallvec::SmallVec;
+use serde::{Serialize, Deserialize};
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub enum Species {
     LithiumIon,
     LithiumMetal,
@@ -14,8 +15,7 @@ pub enum Species {
     ElectrolyteAnion,
 }
 
-#[derive(Clone)]
-#[derive(Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Body {
     pub pos: Vec2,
     pub vel: Vec2,

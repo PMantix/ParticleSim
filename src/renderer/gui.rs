@@ -252,6 +252,25 @@ impl super::Renderer {
                             }).unwrap();
                         }
                     });
+
+                    ui.horizontal(|ui| {
+                        if ui.button("Save State").clicked() {
+                            SIM_COMMAND_SENDER
+                                .lock()
+                                .as_ref()
+                                .unwrap()
+                                .send(SimCommand::SaveState { path: "state.json".into() })
+                                .unwrap();
+                        }
+                        if ui.button("Load State").clicked() {
+                            SIM_COMMAND_SENDER
+                                .lock()
+                                .as_ref()
+                                .unwrap()
+                                .send(SimCommand::LoadState { path: "state.json".into() })
+                                .unwrap();
+                        }
+                    });
                 });
 
                 // --- Foil Current Controls for Selected Foil ---

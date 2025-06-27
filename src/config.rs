@@ -94,14 +94,16 @@ pub const SHOW_VELOCITY_VECTORS: bool = false;      /// Show velocity vectors
 pub const SHOW_CHARGE_DENSITY: bool = false;      /// Show charge-density heatmap
 pub const SHOW_FIELD_VECTORS: bool = false; // Show electric field vectors
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+use serde::{Serialize, Deserialize};
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum IsolineFieldMode {
     Total,
     ExternalOnly,
     BodyOnly,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SimConfig {
     pub hop_rate_k0: f32,
     pub hop_transfer_coeff: f32,

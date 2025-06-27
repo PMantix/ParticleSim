@@ -3,8 +3,9 @@
 
 use ultraviolet::Vec2;
 use crate::config;
+use serde::{Serialize, Deserialize};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Electron {
     pub rel_pos: Vec2,
     pub vel: Vec2,

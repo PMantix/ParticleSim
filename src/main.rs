@@ -16,6 +16,7 @@ mod simulation;
 mod utils;
 mod config;
 mod profiler;
+mod io;
 
 use crate::body::Species;
 //use crate::body::foil::{Foil, LinkMode};
@@ -25,6 +26,7 @@ use std::sync::mpsc::channel;
 use simulation::Simulation;
 use crate::body::Electron;
 use ultraviolet::Vec2;
+use crate::io::{save_state, load_state, SimulationState};
 
 #[cfg(feature = "profiling")]   
 use once_cell::sync::Lazy;
@@ -189,6 +191,19 @@ fn main() {
                         }
                         // Optionally, pause the simulation if desired:
                         PAUSED.store(true, Ordering::Relaxed);
+                    },
+
+                    SimCommand::SaveState { path } => {
+                        if let Err(e) = save_state(path, &simulation) {
+                            eprintln!("Failed to save state: {}", e);
+                        }
+                    },
+
+                    SimCommand::LoadState { path } => {
+                        match load_state(path) {
+                            Ok(state) => state.apply_to(&mut simulation),
+                            Err(e) => eprintln!("Failed to load state: {}", e),
+                        }
                     },
 
                     SimCommand::AddRing { body, x, y, radius } => {

@@ -1,10 +1,11 @@
 use ultraviolet::Vec2;
 use std::sync::atomic::{AtomicU64, Ordering};
+use serde::{Serialize, Deserialize};
 
 //static NEXT_FOIL_ID: AtomicU64 = AtomicU64::new(1);
 
 /// Mode describing how currents are linked between foils.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum LinkMode {
     /// Currents have the same sign and magnitude.
     Parallel,
@@ -13,7 +14,7 @@ pub enum LinkMode {
 }
 
 /// Collection of fixed lithium metal particles representing a foil.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Foil {
     /// Unique identifier for this foil.
     pub id: u64,

@@ -58,6 +58,8 @@ pub enum SimCommand {
         foil_id: u64,
         current: f32,
     },
+    SaveState { path: String },
+    LoadState { path: String },
     StepOnce
 }
 
