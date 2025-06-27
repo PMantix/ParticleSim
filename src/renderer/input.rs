@@ -62,6 +62,9 @@ impl super::Renderer {
         // Mouse to world conversion
         let world_mouse = || -> Vec2 {
             let (mx, my) = input.mouse().unwrap_or_default();
+            // Scale mouse coordinates by scale_factor to match physical pixels
+            let mx = mx * self.scale_factor;
+            let my = my * self.scale_factor;
             let width_pixels = width as f32 * self.scale_factor;
             let height_pixels = height as f32 * self.scale_factor;
             let mut mouse = Vec2::new(mx, my);
