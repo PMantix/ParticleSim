@@ -5,6 +5,7 @@
 
 use crate::body::Species;
 use crate::config;
+use crate::renderer::state::COLLISION_PASSES;
 use crate::simulation::Simulation;
 use crate::profile_scope;
 
@@ -71,7 +72,8 @@ pub fn apply_lj_forces(sim: &mut Simulation) {
                 let r = r_vec.mag();
                 if r < cutoff && r > 1e-6 {
                     let sr6 = (sigma / r).powi(6);
-                    let max_lj_force = config::COLLISION_PASSES as f32 * config::LJ_FORCE_MAX;
+                    let collision_passes = *COLLISION_PASSES.lock() as f32;
+                    let max_lj_force = collision_passes * config::LJ_FORCE_MAX;
                     let unclamped_force_mag = 24.0 * epsilon * (2.0 * sr6 * sr6 - sr6) / r;
                     let force_mag = unclamped_force_mag.clamp(-max_lj_force, max_lj_force);
                     let force = force_mag * r_vec.normalized();
