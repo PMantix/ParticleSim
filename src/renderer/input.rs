@@ -55,18 +55,20 @@ impl super::Renderer {
         // Camera grab
         if input.mouse_held(2) {
             let (mdx, mdy) = input.mouse_diff();
-            self.pos.x -= mdx / height as f32 * self.scale * 2.0;
-            self.pos.y += mdy / height as f32 * self.scale * 2.0;
+            self.pos.x -= mdx / (height as f32 * self.scale_factor) * self.scale * 2.0;
+            self.pos.y += mdy / (height as f32 * self.scale_factor) * self.scale * 2.0;
         }
 
         // Mouse to world conversion
         let world_mouse = || -> Vec2 {
             let (mx, my) = input.mouse().unwrap_or_default();
+            let width_pixels = width as f32 * self.scale_factor;
+            let height_pixels = height as f32 * self.scale_factor;
             let mut mouse = Vec2::new(mx, my);
-            mouse *= 2.0 / height as f32;
+            mouse *= 2.0 / height_pixels;
             mouse.y -= 1.0;
             mouse.y *= -1.0;
-            mouse.x -= width as f32 / height as f32;
+            mouse.x -= width_pixels / height_pixels;
             mouse * self.scale + self.pos
         };
 
