@@ -5,7 +5,7 @@ pub mod draw;
 
 use crate::body::{Body, Species, foil::Foil};
 use crate::config::SimConfig;
-use crate::quadtree::Node;
+use crate::quadtree::Quadtree;
 use ultraviolet::Vec2;
 use quarkstrom::winit_input_helper::WinitInputHelper;
 
@@ -21,7 +21,7 @@ pub struct Renderer {
     total: Option<f32>,
     confirmed_bodies: Option<Body>,
     bodies: Vec<Body>,
-    quadtree: Vec<Node>,
+    quadtree: Quadtree,
     foils: Vec<Foil>,
     selected_particle_id: Option<u64>,
     //foils: Vec<crate::body::foil::Foil>,
@@ -59,7 +59,12 @@ impl quarkstrom::Renderer for Renderer {
             total: None,
             confirmed_bodies: None,
             bodies: Vec::new(),
-            quadtree: Vec::new(),
+            quadtree: Quadtree::new(
+                crate::config::QUADTREE_THETA,
+                crate::config::QUADTREE_EPSILON,
+                crate::config::QUADTREE_LEAF_CAPACITY,
+                crate::config::QUADTREE_THREAD_CAPACITY,
+            ),
             foils: Vec::new(),
             selected_particle_id: None,
             //foils: Vec::new(),

@@ -368,8 +368,18 @@ fn render(simulation: &mut Simulation) {
     }
     {
         let mut lock = QUADTREE.lock();
-        lock.clear();
-        lock.extend_from_slice(&simulation.quadtree.nodes);
+        lock.nodes.clear();
+        lock.nodes.extend_from_slice(&simulation.quadtree.nodes);
+        lock.parents.clear();
+        lock.parents.extend_from_slice(&simulation.quadtree.parents);
+        lock.t_sq = simulation.quadtree.t_sq;
+        lock.e_sq = simulation.quadtree.e_sq;
+        lock.leaf_capacity = simulation.quadtree.leaf_capacity;
+        lock.thread_capacity = simulation.quadtree.thread_capacity;
+        lock.atomic_len.store(
+            simulation.quadtree.atomic_len.load(Ordering::Relaxed),
+            Ordering::Relaxed,
+        );
     }
     {
         let mut lock = FOILS.lock();
