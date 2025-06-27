@@ -13,239 +13,245 @@ impl super::Renderer {
             .open(&mut self.settings_window_open)
             .show(ctx, |ui| {
                 // --- Field Controls ---
-                ui.label("Field Controls:");
-                let mut mag = *FIELD_MAGNITUDE.lock();
-                ui.add(
-                    egui::Slider::new(&mut mag, 0.0..=200.0)
-                        .text("Field |E|")
-                        .clamp_to_range(true)
-                        .step_by(1.0), // Set increment to 1
-                );
-                *FIELD_MAGNITUDE.lock() = mag;
+                ui.collapsing("Field Controls", |ui| {
+                    let mut mag = *FIELD_MAGNITUDE.lock();
+                    ui.add(
+                        egui::Slider::new(&mut mag, 0.0..=200.0)
+                            .text("Field |E|")
+                            .clamp_to_range(true)
+                            .step_by(1.0), // Set increment to 1
+                    );
+                    *FIELD_MAGNITUDE.lock() = mag;
 
-                let mut dir = *FIELD_DIRECTION.lock();
-                ui.add(
-                    egui::Slider::new(&mut dir, 0.0..=360.0)
-                        .text("Field θ (deg)")
-                        .clamp_to_range(true),
-                );
-                *FIELD_DIRECTION.lock() = dir;
+                    let mut dir = *FIELD_DIRECTION.lock();
+                    ui.add(
+                        egui::Slider::new(&mut dir, 0.0..=360.0)
+                            .text("Field θ (deg)")
+                            .clamp_to_range(true),
+                    );
+                    *FIELD_DIRECTION.lock() = dir;
+                });
 
                 ui.separator();
 
                 // --- Display Options ---
-                ui.label("Display Options:");
-                ui.checkbox(&mut self.show_bodies, "Show Bodies");
-                ui.checkbox(&mut self.show_quadtree, "Show Quadtree");
+                ui.collapsing("Display Options", |ui| {
+                    ui.checkbox(&mut self.show_bodies, "Show Bodies");
+                    ui.checkbox(&mut self.show_quadtree, "Show Quadtree");
+                });
 
                 ui.separator();
 
                 // --- Simulation Controls ---
-                ui.label("Simulation Controls:");
-                ui.add(
-                    egui::Slider::new(&mut *TIMESTEP.lock(), 0.0001..=0.01)
-                        .text("Timestep (dt)")
-                        .step_by(0.001),
-                );
-                ui.add(
-                    egui::Slider::new(&mut self.sim_config.damping_base, 0.95..=1.0)
-                        .text("Damping Base")
-                        .step_by(0.0001),
-                );
+                ui.collapsing("Simulation Controls", |ui| {
+                    ui.add(
+                        egui::Slider::new(&mut *TIMESTEP.lock(), 0.0001..=0.01)
+                            .text("Timestep (dt)")
+                            .step_by(0.001),
+                    );
+                    ui.add(
+                        egui::Slider::new(&mut self.sim_config.damping_base, 0.95..=1.0)
+                            .text("Damping Base")
+                            .step_by(0.0001),
+                    );
 
-                let mut passes = COLLISION_PASSES.lock();
-                ui.add(
-                    egui::Slider::new(&mut *passes, 2..=20)
-                        .text("Collision Passes")
-                        .clamp_to_range(true),
-                );
+                    let mut passes = COLLISION_PASSES.lock();
+                    ui.add(
+                        egui::Slider::new(&mut *passes, 2..=20)
+                            .text("Collision Passes")
+                            .clamp_to_range(true),
+                    );
 
-                if ui.button("Step Simulation").clicked() {
-                    SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::StepOnce).unwrap();
-                }
+                    if ui.button("Step Simulation").clicked() {
+                        SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::StepOnce).unwrap();
+                    }
 
-                if self.show_quadtree {
-                    let range = &mut self.depth_range;
-                    ui.horizontal(|ui| {
-                        ui.label("Depth Range:");
-                        ui.add(egui::DragValue::new(&mut range.0).speed(0.05));
-                        ui.label("to");
-                        ui.add(egui::DragValue::new(&mut range.1).speed(0.05));
-                    });
-                }
+                    if self.show_quadtree {
+                        let range = &mut self.depth_range;
+                        ui.horizontal(|ui| {
+                            ui.label("Depth Range:");
+                            ui.add(egui::DragValue::new(&mut range.0).speed(0.05));
+                            ui.label("to");
+                            ui.add(egui::DragValue::new(&mut range.1).speed(0.05));
+                        });
+                    }
+                });
 
                 ui.separator();
 
                 // --- Visualization Overlays ---
-                ui.label("Visualization Overlays:");
-                ui.checkbox(&mut self.sim_config.show_field_isolines, "Show Field Isolines");
-                ui.checkbox(&mut self.sim_config.show_velocity_vectors, "Show Velocity Vectors");
-                ui.checkbox(&mut self.sim_config.show_charge_density, "Show Charge Density");
-                ui.checkbox(&mut self.sim_config.show_field_vectors, "Show Field Vectors"); // NEW
-                egui::ComboBox::from_label("Isoline Field Mode")
-                    .selected_text(format!("{:?}", self.sim_config.isoline_field_mode))
-                    .show_ui(ui, |ui| {
-                        ui.selectable_value(
-                            &mut self.sim_config.isoline_field_mode,
-                            IsolineFieldMode::Total,
-                            "Total",
-                        );
-                        ui.selectable_value(
-                            &mut self.sim_config.isoline_field_mode,
-                            IsolineFieldMode::ExternalOnly,
-                            "External Only",
-                        );
-                        ui.selectable_value(
-                            &mut self.sim_config.isoline_field_mode,
-                            IsolineFieldMode::BodyOnly,
-                            "Body Only",
-                        );
-                    });
-                ui.add(
-                    egui::Slider::new(&mut self.velocity_vector_scale, 0.01..=1.0)
-                        .text("Velocity Vector Scale")
-                        .step_by(0.01),
-                );
+                ui.collapsing("Visualization Overlays", |ui| {
+                    ui.checkbox(&mut self.sim_config.show_field_isolines, "Show Field Isolines");
+                    ui.checkbox(&mut self.sim_config.show_velocity_vectors, "Show Velocity Vectors");
+                    ui.checkbox(&mut self.sim_config.show_charge_density, "Show Charge Density");
+                    ui.checkbox(&mut self.sim_config.show_field_vectors, "Show Field Vectors"); // NEW
+                    egui::ComboBox::from_label("Isoline Field Mode")
+                        .selected_text(format!("{:?}", self.sim_config.isoline_field_mode))
+                        .show_ui(ui, |ui| {
+                            ui.selectable_value(
+                                &mut self.sim_config.isoline_field_mode,
+                                IsolineFieldMode::Total,
+                                "Total",
+                            );
+                            ui.selectable_value(
+                                &mut self.sim_config.isoline_field_mode,
+                                IsolineFieldMode::ExternalOnly,
+                                "External Only",
+                            );
+                            ui.selectable_value(
+                                &mut self.sim_config.isoline_field_mode,
+                                IsolineFieldMode::BodyOnly,
+                                "Body Only",
+                            );
+                        });
+                    ui.add(
+                        egui::Slider::new(&mut self.velocity_vector_scale, 0.01..=1.0)
+                            .text("Velocity Vector Scale")
+                            .step_by(0.01),
+                    );
+                });
 
                 ui.separator();
 
                 // --- Lennard-Jones Parameters ---
-                ui.label("Lennard-Jones Parameters:");
-                ui.add(egui::Slider::new(&mut self.sim_config.lj_force_epsilon, 0.0..=5000.0)
-                    .text("LJ Epsilon (attraction strength)")
-                    .step_by(1.0));
-                ui.add(egui::Slider::new(&mut self.sim_config.lj_force_sigma, 0.1..=5.0)
-                    .text("LJ Sigma (particle size)")
-                    .step_by(0.01));
-                ui.add(egui::Slider::new(&mut self.sim_config.lj_force_cutoff, 0.5..=10.0)
-                    .text("LJ Cutoff (range factor)")
-                    .step_by(0.01));
+                ui.collapsing("Lennard-Jones Parameters", |ui| {
+                    ui.add(egui::Slider::new(&mut self.sim_config.lj_force_epsilon, 0.0..=5000.0)
+                        .text("LJ Epsilon (attraction strength)")
+                        .step_by(1.0));
+                    ui.add(egui::Slider::new(&mut self.sim_config.lj_force_sigma, 0.1..=5.0)
+                        .text("LJ Sigma (particle size)")
+                        .step_by(0.01));
+                    ui.add(egui::Slider::new(&mut self.sim_config.lj_force_cutoff, 0.5..=10.0)
+                        .text("LJ Cutoff (range factor)")
+                        .step_by(0.01));
+                });
 
                 ui.separator();
 
                 // --- Butler-Volmer Parameters ---
-                ui.label("Butler-Volmer Parameters:");
-                ui.checkbox(&mut self.sim_config.use_butler_volmer, "Use Butler-Volmer");
-                ui.add(
-                    egui::Slider::new(&mut self.sim_config.bv_exchange_current, 0.0..=1.0e6)
-                        .text("Exchange Current i0")
-                        .step_by(1.0),
-                );
-                ui.add(
-                    egui::Slider::new(&mut self.sim_config.bv_transfer_coeff, 0.0..=1.0)
-                        .text("Transfer Coeff α")
-                        .step_by(0.01),
-                );
-                ui.add(
-                    egui::Slider::new(&mut self.sim_config.bv_overpotential_scale, 0.0..=1.0)
-                        .text("Overpotential Scale")
-                        .step_by(0.0001),
-                );
+                ui.collapsing("Butler-Volmer Parameters", |ui| {
+                    ui.checkbox(&mut self.sim_config.use_butler_volmer, "Use Butler-Volmer");
+                    ui.add(
+                        egui::Slider::new(&mut self.sim_config.bv_exchange_current, 0.0..=1.0e6)
+                            .text("Exchange Current i0")
+                            .step_by(1.0),
+                    );
+                    ui.add(
+                        egui::Slider::new(&mut self.sim_config.bv_transfer_coeff, 0.0..=1.0)
+                            .text("Transfer Coeff α")
+                            .step_by(0.01),
+                    );
+                    ui.add(
+                        egui::Slider::new(&mut self.sim_config.bv_overpotential_scale, 0.0..=1.0)
+                            .text("Overpotential Scale")
+                            .step_by(0.0001),
+                    );
+                });
 
                 ui.separator();
 
                 // --- Scenario Controls ---
-                ui.label("Scenario:");
-
-                if ui.button("Delete All Particles").clicked() {
-                    SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::DeleteAll).unwrap();
-                }
-
-                // Common controls for all Add scenarios
-                ui.horizontal(|ui| {
-                    ui.label("X:");
-                    ui.add(egui::DragValue::new(&mut self.scenario_x).speed(0.1));
-                    ui.label("Y:");
-                    ui.add(egui::DragValue::new(&mut self.scenario_y).speed(0.1));
-                    ui.label("Particle Radius:");
-                    ui.add(egui::DragValue::new(&mut self.scenario_particle_radius).speed(0.05));
-                    egui::ComboBox::from_label("Species")
-                        .selected_text(format!("{:?}", self.scenario_species))
-                        .show_ui(ui, |ui| {
-                            ui.selectable_value(&mut self.scenario_species, Species::LithiumMetal, "Metal");
-                            ui.selectable_value(&mut self.scenario_species, Species::LithiumIon, "Ion");
-                            ui.selectable_value(&mut self.scenario_species, Species::ElectrolyteAnion, "Anion");
-                        });
-                });
-
-                // Add Ring / Filled Circle
-                ui.horizontal(|ui| {
-                    ui.label("Radius:");
-                    ui.add(egui::DragValue::new(&mut self.scenario_radius).speed(0.1));
-                    if ui.button("Add Ring").clicked() {
-                        let body = make_body_with_species(
-                            ultraviolet::Vec2::zero(),
-                            ultraviolet::Vec2::zero(),
-                            1.0,
-                            self.scenario_particle_radius,
-                            self.scenario_species,
-                        );
-                        SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::AddRing {
-                            body,
-                            x: self.scenario_x,
-                            y: self.scenario_y,
-                            radius: self.scenario_radius,
-                        }).unwrap();
+                ui.collapsing("Scenario", |ui| {
+                    if ui.button("Delete All Particles").clicked() {
+                        SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::DeleteAll).unwrap();
                     }
-                    if ui.button("Add Filled Circle").clicked() {
-                        let body = make_body_with_species(
-                            ultraviolet::Vec2::zero(),
-                            ultraviolet::Vec2::zero(),
-                            1.0,
-                            self.scenario_particle_radius,
-                            self.scenario_species,
-                        );
-                        SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::AddCircle {
-                            body,
-                            x: self.scenario_x,
-                            y: self.scenario_y,
-                            radius: self.scenario_radius,
-                        }).unwrap();
-                    }
-                });
 
-                // Add Rectangle
-                ui.horizontal(|ui| {
-                    ui.label("Width:");
-                    ui.add(egui::DragValue::new(&mut self.scenario_width).speed(0.1));
-                    ui.label("Height:");
-                    ui.add(egui::DragValue::new(&mut self.scenario_height).speed(0.1));
-                    if ui.button("Add Rectangle").clicked() {
-                        let body = make_body_with_species(
-                            ultraviolet::Vec2::zero(),
-                            ultraviolet::Vec2::zero(),
-                            1.0,
-                            self.scenario_particle_radius,
-                            self.scenario_species,
-                        );
-                        SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::AddRectangle {
-                            body,
-                            x: self.scenario_x - self.scenario_width / 2.0,
-                            y: self.scenario_y - self.scenario_height / 2.0,
-                            width: self.scenario_width,
-                            height: self.scenario_height,
-                        }).unwrap();
-                    }
-                });
+                    // Common controls for all Add scenarios
+                    ui.horizontal(|ui| {
+                        ui.label("X:");
+                        ui.add(egui::DragValue::new(&mut self.scenario_x).speed(0.1));
+                        ui.label("Y:");
+                        ui.add(egui::DragValue::new(&mut self.scenario_y).speed(0.1));
+                        ui.label("Particle Radius:");
+                        ui.add(egui::DragValue::new(&mut self.scenario_particle_radius).speed(0.05));
+                        egui::ComboBox::from_label("Species")
+                            .selected_text(format!("{:?}", self.scenario_species))
+                            .show_ui(ui, |ui| {
+                                ui.selectable_value(&mut self.scenario_species, Species::LithiumMetal, "Metal");
+                                ui.selectable_value(&mut self.scenario_species, Species::LithiumIon, "Ion");
+                                ui.selectable_value(&mut self.scenario_species, Species::ElectrolyteAnion, "Anion");
+                            });
+                    });
 
-                // Add Foil
-                ui.horizontal(|ui| {
-                    ui.label("Width:");
-                    ui.add(egui::DragValue::new(&mut self.scenario_width).speed(0.1));
-                    ui.label("Height:");
-                    ui.add(egui::DragValue::new(&mut self.scenario_height).speed(0.1));
-                    ui.label("Current:");
-                    ui.add(egui::DragValue::new(&mut self.scenario_current).speed(0.1));
-                    if ui.button("Add Foil").clicked() {
-                        SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::AddFoil {
-                            width: self.scenario_width,
-                            height: self.scenario_height,
-                            x: self.scenario_x - self.scenario_width / 2.0,
-                            y: self.scenario_y  - self.scenario_height / 2.0,
-                            particle_radius: self.scenario_particle_radius,
-                            current: self.scenario_current,
-                        }).unwrap();
-                    }
+                    // Add Ring / Filled Circle
+                    ui.horizontal(|ui| {
+                        ui.label("Radius:");
+                        ui.add(egui::DragValue::new(&mut self.scenario_radius).speed(0.1));
+                        if ui.button("Add Ring").clicked() {
+                            let body = make_body_with_species(
+                                ultraviolet::Vec2::zero(),
+                                ultraviolet::Vec2::zero(),
+                                1.0,
+                                self.scenario_particle_radius,
+                                self.scenario_species,
+                            );
+                            SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::AddRing {
+                                body,
+                                x: self.scenario_x,
+                                y: self.scenario_y,
+                                radius: self.scenario_radius,
+                            }).unwrap();
+                        }
+                        if ui.button("Add Filled Circle").clicked() {
+                            let body = make_body_with_species(
+                                ultraviolet::Vec2::zero(),
+                                ultraviolet::Vec2::zero(),
+                                1.0,
+                                self.scenario_particle_radius,
+                                self.scenario_species,
+                            );
+                            SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::AddCircle {
+                                body,
+                                x: self.scenario_x,
+                                y: self.scenario_y,
+                                radius: self.scenario_radius,
+                            }).unwrap();
+                        }
+                    });
+
+                    // Add Rectangle
+                    ui.horizontal(|ui| {
+                        ui.label("Width:");
+                        ui.add(egui::DragValue::new(&mut self.scenario_width).speed(0.1));
+                        ui.label("Height:");
+                        ui.add(egui::DragValue::new(&mut self.scenario_height).speed(0.1));
+                        if ui.button("Add Rectangle").clicked() {
+                            let body = make_body_with_species(
+                                ultraviolet::Vec2::zero(),
+                                ultraviolet::Vec2::zero(),
+                                1.0,
+                                self.scenario_particle_radius,
+                                self.scenario_species,
+                            );
+                            SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::AddRectangle {
+                                body,
+                                x: self.scenario_x - self.scenario_width / 2.0,
+                                y: self.scenario_y - self.scenario_height / 2.0,
+                                width: self.scenario_width,
+                                height: self.scenario_height,
+                            }).unwrap();
+                        }
+                    });
+
+                    // Add Foil
+                    ui.horizontal(|ui| {
+                        ui.label("Width:");
+                        ui.add(egui::DragValue::new(&mut self.scenario_width).speed(0.1));
+                        ui.label("Height:");
+                        ui.add(egui::DragValue::new(&mut self.scenario_height).speed(0.1));
+                        ui.label("Current:");
+                        ui.add(egui::DragValue::new(&mut self.scenario_current).speed(0.1));
+                        if ui.button("Add Foil").clicked() {
+                            SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::AddFoil {
+                                width: self.scenario_width,
+                                height: self.scenario_height,
+                                x: self.scenario_x - self.scenario_width / 2.0,
+                                y: self.scenario_y  - self.scenario_height / 2.0,
+                                particle_radius: self.scenario_particle_radius,
+                                current: self.scenario_current,
+                            }).unwrap();
+                        }
+                    });
                 });
 
                 // --- Foil Current Controls for Selected Foil ---
@@ -256,51 +262,54 @@ impl super::Renderer {
                     };
                     if let Some(foil) = maybe_foil {
                         ui.separator();
-                        ui.label("Foil Current:");
-                        let mut current = foil.current;
-                        ui.horizontal(|ui| {
-                            if ui.button("-").clicked() { current -= 1.0; }
-                            if ui.button("+").clicked() { current += 1.0; }
-                            if ui.button("0").clicked() { current = 0.0; }
-                            ui.add(egui::Slider::new(&mut current, -500.0..=500.00).step_by(0.1));
+                        ui.collapsing("Foil Current", |ui| {
+                            let mut current = foil.current;
+                            ui.horizontal(|ui| {
+                                if ui.button("-").clicked() { current -= 1.0; }
+                                if ui.button("+").clicked() { current += 1.0; }
+                                if ui.button("0").clicked() { current = 0.0; }
+                                ui.add(egui::Slider::new(&mut current, -500.0..=500.00).step_by(0.1));
+                            });
+                            if (current - foil.current).abs() > f32::EPSILON {
+                                SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(
+                                    SimCommand::SetFoilCurrent { foil_id: selected_id, current }
+                                ).unwrap();
+                            }
                         });
-                        if (current - foil.current).abs() > f32::EPSILON {
-                            SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(
-                                SimCommand::SetFoilCurrent { foil_id: selected_id, current }
-                            ).unwrap();
-                        }
                     }
                 }
 
                 // --- Foil Linking Controls ---
                 ui.separator();
-                ui.label("Foil Links:");
-                if self.selected_foil_ids.len() == 2 {
-                    let a = self.selected_foil_ids[0];
-                    let b = self.selected_foil_ids[1];
-                    let foils = FOILS.lock();
-                    let linked = foils.iter().find(|f| f.id == a).and_then(|f| f.link_id).map(|id| id == b).unwrap_or(false);
-                    if linked {
-                        if ui.button("Unlink Foils").clicked() {
-                            SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::UnlinkFoils { a, b }).unwrap();
+                ui.collapsing("Foil Links", |ui| {
+                    if self.selected_foil_ids.len() == 2 {
+                        let a = self.selected_foil_ids[0];
+                        let b = self.selected_foil_ids[1];
+                        let foils = FOILS.lock();
+                        let linked = foils.iter().find(|f| f.id == a).and_then(|f| f.link_id).map(|id| id == b).unwrap_or(false);
+                        if linked {
+                            if ui.button("Unlink Foils").clicked() {
+                                SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::UnlinkFoils { a, b }).unwrap();
+                            }
+                        } else {
+                            ui.horizontal(|ui| {
+                                if ui.button("Link Parallel").clicked() {
+                                    SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::LinkFoils { a, b, mode: LinkMode::Parallel }).unwrap();
+                                }
+                                if ui.button("Link Opposite").clicked() {
+                                    SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::LinkFoils { a, b, mode: LinkMode::Opposite }).unwrap();
+                                }
+                            });
                         }
-                    } else {
-                        ui.horizontal(|ui| {
-                            if ui.button("Link Parallel").clicked() {
-                                SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::LinkFoils { a, b, mode: LinkMode::Parallel }).unwrap();
-                            }
-                            if ui.button("Link Opposite").clicked() {
-                                SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::LinkFoils { a, b, mode: LinkMode::Opposite }).unwrap();
-                            }
-                        });
                     }
-                }
+                });
 
                 // --- Debug/Diagnostics ---
                 ui.separator();
-                ui.label("Debug/Diagnostics:");
-                ui.checkbox(&mut self.sim_config.show_lj_vs_coulomb_ratio, "Show LJ/Coulomb Force Ratio");
-                ui.checkbox(&mut self.show_electron_deficiency, "Show Electron Deficiency/Excess");
+                ui.collapsing("Debug/Diagnostics", |ui| {
+                    ui.checkbox(&mut self.sim_config.show_lj_vs_coulomb_ratio, "Show LJ/Coulomb Force Ratio");
+                    ui.checkbox(&mut self.show_electron_deficiency, "Show Electron Deficiency/Excess");
+                });
             });
     }
 }
