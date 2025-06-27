@@ -101,14 +101,17 @@ impl Simulation {
             body.acc = Vec2::zero();
         });
 
-        forces::attract(self);
-        forces::apply_lj_forces(self);
+        // Build the quadtree once for this frame
+        self.quadtree.build(&mut self.bodies);
+
+        forces::attract(self, &self.quadtree);
+        forces::apply_lj_forces(self, &self.quadtree);
         self.iterate();
         let num_passes = *COLLISION_PASSES.lock();
         for _ in 1..num_passes {
             collision::collide(self);
         }
-        self.update_surrounded_flags();
+        self.update_surrounded_flags(&self.quadtree);
 
         // Track which bodies receive electrons from foil current this step
         let mut foil_current_recipients = vec![false; self.bodies.len()];
@@ -158,8 +161,6 @@ impl Simulation {
         }
         // Ensure all body charges are up-to-date after foil current changes
         self.bodies.par_iter_mut().for_each(|body| body.update_charge_from_electrons());
-        // Rebuild the quadtree after charge/electron changes so field is correct for hopping
-        self.quadtree.build(&mut self.bodies);
 
         let quadtree = &self.quadtree;
         let len = self.bodies.len();
@@ -310,17 +311,15 @@ impl Simulation {
     }
 
     /// Update `surrounded_by_metal` for all bodies using either the cell list or quadtree.
-    pub fn update_surrounded_flags(&mut self) {
+    pub fn update_surrounded_flags(&mut self, tree: &crate::quadtree::Quadtree) {
         if self.bodies.is_empty() { return; }
         let use_cell = self.use_cell_list();
         let neighbor_radius = self.config.lj_force_cutoff * self.config.lj_force_sigma;
         if use_cell {
             self.cell_list.cell_size = neighbor_radius;
             self.cell_list.rebuild(&self.bodies);
-        } else {
-            self.quadtree.build(&mut self.bodies);
         }
-        let quadtree = &self.quadtree;
+        let quadtree = tree;
         let cell_list = &self.cell_list;
         let frame = self.frame;
         // Collect the data needed for immutable borrow

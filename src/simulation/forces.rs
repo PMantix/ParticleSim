@@ -5,7 +5,7 @@
 
 use crate::body::Species;
 use crate::config;
-use crate::simulation::Simulation;
+use crate::{simulation::Simulation, quadtree::Quadtree};
 use crate::profile_scope;
 
 /// Coulomb's constant (scaled for simulation units).
@@ -13,13 +13,12 @@ pub const K_E: f32 = 8.988e3 * 0.5;
 
 /// Compute electric field and force on all bodies using the quadtree.
 ///
-/// - Builds the quadtree for the current body positions.
+/// - Assumes the quadtree has already been built for the current positions.
 /// - Computes the electric field at each body due to all others.
 /// - Adds background field and updates acceleration (F = qE).
-pub fn attract(sim: &mut Simulation) {
+pub fn attract(sim: &mut Simulation, tree: &Quadtree) {
     profile_scope!("forces_attract");
-    sim.quadtree.build(&mut sim.bodies);
-    sim.quadtree.field(&mut sim.bodies, K_E);
+    tree.field(&mut sim.bodies, K_E);
     for body in &mut sim.bodies {
         body.e_field += sim.background_e_field;
     }
@@ -35,7 +34,7 @@ pub fn attract(sim: &mut Simulation) {
 /// - Only applies to pairs within the LJ cutoff distance.
 /// - Uses either the quadtree or a cell list depending on particle density.
 /// - Forces are clamped to avoid instability.
-pub fn apply_lj_forces(sim: &mut Simulation) {
+pub fn apply_lj_forces(sim: &mut Simulation, tree: &Quadtree) {
     profile_scope!("forces_lj");
     let sigma = sim.config.lj_force_sigma;
     let epsilon = sim.config.lj_force_epsilon;
@@ -44,8 +43,6 @@ pub fn apply_lj_forces(sim: &mut Simulation) {
     if use_cell {
         sim.cell_list.cell_size = cutoff;
         sim.cell_list.rebuild(&sim.bodies);
-    } else {
-        sim.quadtree.build(&mut sim.bodies);
     }
 
     for i in 0..sim.bodies.len() {
@@ -56,7 +53,7 @@ pub fn apply_lj_forces(sim: &mut Simulation) {
         let neighbors = if use_cell {
             sim.cell_list.find_neighbors_within(&sim.bodies, i, cutoff)
         } else {
-            sim.quadtree.find_neighbors_within(&sim.bodies, i, cutoff)
+            tree.find_neighbors_within(&sim.bodies, i, cutoff)
         };
         for &j in &neighbors {
             if j <= i { continue; }
