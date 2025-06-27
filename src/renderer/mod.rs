@@ -86,7 +86,7 @@ impl quarkstrom::Renderer for Renderer {
     fn input(&mut self, input: &WinitInputHelper, width: u16, height: u16) {
         self.window_width = width;
         self.window_height = height;
-        self.scale_factor = input.scale_factor().unwrap_or(1.0);
+        self.scale_factor = input.scale_factor().unwrap_or(1.0) as f32;
         self.handle_input(input, width, height);
     }
     fn render(&mut self, ctx: &mut quarkstrom::RenderContext) {
