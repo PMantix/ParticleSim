@@ -13,7 +13,7 @@ impl super::Renderer {
             .open(&mut self.settings_window_open)
             .show(ctx, |ui| {
                 // --- Field Controls ---
-                ui.collapsing("Field Controls", |ui| {
+                egui::CollapsingHeader::new("Field Controls").default_open(true).show(ui, |ui| {
                     let mut mag = *FIELD_MAGNITUDE.lock();
                     ui.add(
                         egui::Slider::new(&mut mag, 0.0..=200.0)
@@ -35,7 +35,7 @@ impl super::Renderer {
                 ui.separator();
 
                 // --- Display Options ---
-                ui.collapsing("Display Options", |ui| {
+                egui::CollapsingHeader::new("Display Options").default_open(true).show(ui, |ui| {
                     ui.checkbox(&mut self.show_bodies, "Show Bodies");
                     ui.checkbox(&mut self.show_quadtree, "Show Quadtree");
                 });
@@ -43,7 +43,7 @@ impl super::Renderer {
                 ui.separator();
 
                 // --- Simulation Controls ---
-                ui.collapsing("Simulation Controls", |ui| {
+                egui::CollapsingHeader::new("Simulation Controls").default_open(true).show(ui, |ui| {
                     ui.add(
                         egui::Slider::new(&mut *TIMESTEP.lock(), 0.0001..=0.01)
                             .text("Timestep (dt)")
@@ -80,7 +80,7 @@ impl super::Renderer {
                 ui.separator();
 
                 // --- Visualization Overlays ---
-                ui.collapsing("Visualization Overlays", |ui| {
+                egui::CollapsingHeader::new("Visualization Overlays").default_open(true).show(ui, |ui| {
                     ui.checkbox(&mut self.sim_config.show_field_isolines, "Show Field Isolines");
                     ui.checkbox(&mut self.sim_config.show_velocity_vectors, "Show Velocity Vectors");
                     ui.checkbox(&mut self.sim_config.show_charge_density, "Show Charge Density");
@@ -114,7 +114,7 @@ impl super::Renderer {
                 ui.separator();
 
                 // --- Lennard-Jones Parameters ---
-                ui.collapsing("Lennard-Jones Parameters", |ui| {
+                egui::CollapsingHeader::new("Lennard-Jones Parameters").default_open(true).show(ui, |ui| {
                     ui.add(egui::Slider::new(&mut self.sim_config.lj_force_epsilon, 0.0..=5000.0)
                         .text("LJ Epsilon (attraction strength)")
                         .step_by(1.0));
@@ -129,7 +129,7 @@ impl super::Renderer {
                 ui.separator();
 
                 // --- Butler-Volmer Parameters ---
-                ui.collapsing("Butler-Volmer Parameters", |ui| {
+                egui::CollapsingHeader::new("Butler-Volmer Parameters").default_open(true).show(ui, |ui| {
                     ui.checkbox(&mut self.sim_config.use_butler_volmer, "Use Butler-Volmer");
                     ui.add(
                         egui::Slider::new(&mut self.sim_config.bv_exchange_current, 0.0..=1.0e6)
@@ -151,7 +151,7 @@ impl super::Renderer {
                 ui.separator();
 
                 // --- Scenario Controls ---
-                ui.collapsing("Scenario", |ui| {
+                egui::CollapsingHeader::new("Scenario").default_open(true).show(ui, |ui| {
                     if ui.button("Delete All Particles").clicked() {
                         SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::DeleteAll).unwrap();
                     }
@@ -262,7 +262,7 @@ impl super::Renderer {
                     };
                     if let Some(foil) = maybe_foil {
                         ui.separator();
-                        ui.collapsing("Foil Current", |ui| {
+                        egui::CollapsingHeader::new("Foil Current").default_open(true).show(ui, |ui| {
                             let mut current = foil.current;
                             ui.horizontal(|ui| {
                                 if ui.button("-").clicked() { current -= 1.0; }
@@ -281,7 +281,7 @@ impl super::Renderer {
 
                 // --- Foil Linking Controls ---
                 ui.separator();
-                ui.collapsing("Foil Links", |ui| {
+                egui::CollapsingHeader::new("Foil Links").default_open(true).show(ui, |ui| {
                     if self.selected_foil_ids.len() == 2 {
                         let a = self.selected_foil_ids[0];
                         let b = self.selected_foil_ids[1];
@@ -306,7 +306,7 @@ impl super::Renderer {
 
                 // --- Debug/Diagnostics ---
                 ui.separator();
-                ui.collapsing("Debug/Diagnostics", |ui| {
+                egui::CollapsingHeader::new("Debug/Diagnostics").default_open(true).show(ui, |ui| {
                     ui.checkbox(&mut self.sim_config.show_lj_vs_coulomb_ratio, "Show LJ/Coulomb Force Ratio");
                     ui.checkbox(&mut self.show_electron_deficiency, "Show Electron Deficiency/Excess");
                 });
