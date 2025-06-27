@@ -43,6 +43,10 @@ pub struct Renderer {
     pub window_width: u16,
     pub window_height: u16,
     pub show_electron_deficiency: bool,
+    // State saving/loading UI
+    pub save_state_name: String,
+    pub load_state_selected: Option<String>,
+    pub save_state_counter: usize,
 }
 
 impl quarkstrom::Renderer for Renderer {
@@ -80,6 +84,9 @@ impl quarkstrom::Renderer for Renderer {
             window_width: 800, // default value, can be changed
             window_height: 600, // default value, can be changed
             show_electron_deficiency: true,
+            save_state_name: String::new(),
+            load_state_selected: None,
+            save_state_counter: 1,
         }
     }
 

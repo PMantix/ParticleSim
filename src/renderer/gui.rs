@@ -254,21 +254,70 @@ impl super::Renderer {
                     });
 
                     ui.horizontal(|ui| {
-                        if ui.button("Save State").clicked() {
+                        // --- Save State UI ---
+                        use std::fs;
+                        use std::path::PathBuf;
+                        let saved_state_dir = PathBuf::from("saved_state");
+                        // List all .json files in saved_state
+                        let mut state_files: Vec<String> = fs::read_dir(&saved_state_dir)
+                            .map(|rd| rd.filter_map(|e| e.ok())
+                                .filter(|e| e.path().extension().map(|ext| ext == "json").unwrap_or(false))
+                                .map(|e| e.file_name().to_string_lossy().to_string())
+                                .collect())
+                            .unwrap_or_default();
+                        state_files.sort();
+
+                        // Save name input
+                        ui.label("Save as:");
+                        let save_name = &mut self.save_state_name;
+                        let save_clicked = ui.text_edit_singleline(save_name).lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
+                        if ui.button("Save State").clicked() || save_clicked {
+                            // If no name, auto-increment
+                            let mut name = save_name.trim().to_string();
+                            if name.is_empty() {
+                                // Find next available save_XX.json
+                                let mut idx = 1;
+                                loop {
+                                    let candidate = format!("save_{:02}.json", idx);
+                                    if !state_files.iter().any(|f| f == &candidate) {
+                                        name = candidate;
+                                        break;
+                                    }
+                                    idx += 1;
+                                }
+                            } else if !name.ends_with(".json") {
+                                name.push_str(".json");
+                            }
+                            let path = saved_state_dir.join(&name);
                             SIM_COMMAND_SENDER
                                 .lock()
                                 .as_ref()
                                 .unwrap()
-                                .send(SimCommand::SaveState { path: "state.json".into() })
+                                .send(SimCommand::SaveState { path: path.to_string_lossy().to_string() })
                                 .unwrap();
+                            self.save_state_name.clear();
                         }
+
+                        // --- Load State UI ---
+                        ui.label("Load:");
+                        let selected = &mut self.load_state_selected;
+                        egui::ComboBox::from_id_source("load_state_combo")
+                            .selected_text(selected.as_deref().unwrap_or("Select state"))
+                            .show_ui(ui, |ui| {
+                                for file in &state_files {
+                                    ui.selectable_value(selected, Some(file.clone()), file);
+                                }
+                            });
                         if ui.button("Load State").clicked() {
-                            SIM_COMMAND_SENDER
-                                .lock()
-                                .as_ref()
-                                .unwrap()
-                                .send(SimCommand::LoadState { path: "state.json".into() })
-                                .unwrap();
+                            if let Some(selected_file) = selected.clone() {
+                                let path = saved_state_dir.join(selected_file);
+                                SIM_COMMAND_SENDER
+                                    .lock()
+                                    .as_ref()
+                                    .unwrap()
+                                    .send(SimCommand::LoadState { path: path.to_string_lossy().to_string() })
+                                    .unwrap();
+                            }
                         }
                     });
                 });
