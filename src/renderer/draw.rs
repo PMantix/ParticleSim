@@ -265,7 +265,8 @@ impl super::Renderer {
                     let x = min.x + ix as f32 * grid_spacing;
                     let y = min.y + iy as f32 * grid_spacing;
                     let pos = Vec2::new(x, y);
-                    let field = compute_field_at_point(&self.bodies, pos, &self.sim_config);
+                    let field =
+                        compute_field_at_point(&self.bodies, &self.quadtree, pos, &self.sim_config);
                     *line = (pos, pos + field * field_scale);
                 });
 
@@ -302,7 +303,8 @@ impl super::Renderer {
                 let x = min.x + ix as f32 * grid_spacing;
                 let y = min.y + iy as f32 * grid_spacing;
                 let pos = Vec2::new(x, y);
-                let v = compute_potential_at_point(&self.bodies, pos, &self.sim_config);
+                let v =
+                    compute_potential_at_point(&self.bodies, &self.quadtree, pos, &self.sim_config);
                 min_val = min_val.min(v);
                 max_val = max_val.max(v);
                 samples.push(v);
@@ -337,7 +339,7 @@ impl super::Renderer {
                 let x = min.x + ix as f32 * grid_spacing;
                 let y = min.y + iy as f32 * grid_spacing;
                 let pos = Vec2::new(x, y);
-                *val = compute_potential_at_point(&self.bodies, pos, &self.sim_config);
+                *val = compute_potential_at_point(&self.bodies, &self.quadtree, pos, &self.sim_config);
             });
 
         for &iso in &iso_values {
@@ -468,17 +470,51 @@ impl super::Renderer {
 // Helper function to compute the electric field at a point
 pub fn compute_field_at_point(
     bodies: &[Body],
+    quadtree: &[crate::quadtree::Node],
     pos: Vec2,
     config: &crate::config::SimConfig,
 ) -> Vec2 {
     let mut field = Vec2::zero();
 
     if config.isoline_field_mode != crate::config::IsolineFieldMode::ExternalOnly {
-        for body in bodies {
-            let r = pos - body.pos;
-            let dist2 = r.mag_sq().max(1e-4); // avoid div by zero
-            let e = body.charge * r / (dist2 * dist2.sqrt()); // Coulomb's law (unitless K)
-            field += e;
+        let theta_sq = crate::config::QUADTREE_THETA.powi(2);
+        let eps_sq = crate::config::QUADTREE_EPSILON.powi(2);
+
+        let mut node = crate::quadtree::Quadtree::ROOT;
+        while node < quadtree.len() {
+            let n = quadtree[node].clone();
+            let d = pos - n.pos;
+            let d_sq = d.mag_sq();
+
+            if n.quad.size * n.quad.size < d_sq * theta_sq {
+                let denom = (d_sq + eps_sq) * d_sq.sqrt();
+                field += d * (crate::simulation::forces::K_E * n.charge / denom);
+
+                if n.next == 0 {
+                    break;
+                }
+                node = n.next;
+            } else if n.is_leaf() {
+                for i in n.bodies.clone() {
+                    let body = &bodies[i];
+
+                    if (body.pos - pos).mag_sq() < 1e-6 {
+                        continue;
+                    }
+
+                    let d = pos - body.pos;
+                    let d_sq = d.mag_sq();
+                    let denom = (d_sq + eps_sq) * d_sq.sqrt();
+                    field += d * (crate::simulation::forces::K_E * body.charge / denom).min(f32::MAX);
+                }
+
+                if n.next == 0 {
+                    break;
+                }
+                node = n.next;
+            } else {
+                node = n.children;
+            }
         }
     }
 
@@ -499,16 +535,51 @@ fn lerp(a: Vec2, b: Vec2, t: f32) -> Vec2 {
 /// Compute the electric potential at a point due to all bodies.
 pub fn compute_potential_at_point(
     bodies: &[Body],
+    quadtree: &[crate::quadtree::Node],
     pos: Vec2,
     config: &crate::config::SimConfig,
 ) -> f32 {
     let mut potential = 0.0f32;
 
     if config.isoline_field_mode != crate::config::IsolineFieldMode::ExternalOnly {
-        for body in bodies {
-            let r = pos - body.pos;
-            let dist = r.mag().max(1e-4);
-            potential += crate::simulation::forces::K_E * body.charge / dist;
+        let theta_sq = crate::config::QUADTREE_THETA.powi(2);
+        let eps_sq = crate::config::QUADTREE_EPSILON.powi(2);
+
+        let mut node = crate::quadtree::Quadtree::ROOT;
+        while node < quadtree.len() {
+            let n = quadtree[node].clone();
+            let d = pos - n.pos;
+            let d_sq = d.mag_sq();
+
+            if n.quad.size * n.quad.size < d_sq * theta_sq {
+                let denom = (d_sq + eps_sq).sqrt();
+                potential += crate::simulation::forces::K_E * n.charge / denom;
+
+                if n.next == 0 {
+                    break;
+                }
+                node = n.next;
+            } else if n.is_leaf() {
+                for i in n.bodies.clone() {
+                    let body = &bodies[i];
+
+                    if (body.pos - pos).mag_sq() < 1e-6 {
+                        continue;
+                    }
+
+                    let d = pos - body.pos;
+                    let d_sq = d.mag_sq();
+                    let denom = (d_sq + eps_sq).sqrt();
+                    potential += crate::simulation::forces::K_E * body.charge / denom;
+                }
+
+                if n.next == 0 {
+                    break;
+                }
+                node = n.next;
+            } else {
+                node = n.children;
+            }
         }
     }
 
