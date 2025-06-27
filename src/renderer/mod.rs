@@ -12,6 +12,7 @@ use quarkstrom::winit_input_helper::WinitInputHelper;
 pub struct Renderer {
     pos: Vec2,
     scale: f32,
+    scale_factor: f32,
     settings_window_open: bool,
     show_bodies: bool,
     show_quadtree: bool,
@@ -49,6 +50,7 @@ impl quarkstrom::Renderer for Renderer {
         Self {
             pos: Vec2::zero(),
             scale: 500.0,
+            scale_factor: 1.0,
             settings_window_open: false,
             show_bodies: true,
             show_quadtree: false,
@@ -84,6 +86,7 @@ impl quarkstrom::Renderer for Renderer {
     fn input(&mut self, input: &WinitInputHelper, width: u16, height: u16) {
         self.window_width = width;
         self.window_height = height;
+        self.scale_factor = input.scale_factor().unwrap_or(1.0) as f32;
         self.handle_input(input, width, height);
     }
     fn render(&mut self, ctx: &mut quarkstrom::RenderContext) {
