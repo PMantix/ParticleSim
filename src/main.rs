@@ -26,7 +26,7 @@ use std::sync::mpsc::channel;
 use simulation::Simulation;
 use crate::body::Electron;
 use ultraviolet::Vec2;
-use crate::io::{save_state, load_state, SimulationState};
+use crate::io::{save_state, load_state};
 
 #[cfg(feature = "profiling")]   
 use once_cell::sync::Lazy;

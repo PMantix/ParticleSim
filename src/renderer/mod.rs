@@ -46,7 +46,6 @@ pub struct Renderer {
     // State saving/loading UI
     pub save_state_name: String,
     pub load_state_selected: Option<String>,
-    pub save_state_counter: usize,
 }
 
 impl quarkstrom::Renderer for Renderer {
@@ -86,7 +85,6 @@ impl quarkstrom::Renderer for Renderer {
             show_electron_deficiency: true,
             save_state_name: String::new(),
             load_state_selected: None,
-            save_state_counter: 1,
         }
     }
 
