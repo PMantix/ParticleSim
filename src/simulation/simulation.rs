@@ -311,6 +311,8 @@ impl Simulation {
     }
 
     /// Update `surrounded_by_metal` for all bodies using either the cell list or quadtree.
+    ///
+    /// The provided quadtree must already be built for the current body positions.
     pub fn update_surrounded_flags(&mut self, tree: &crate::quadtree::Quadtree) {
         if self.bodies.is_empty() { return; }
         let use_cell = self.use_cell_list();
