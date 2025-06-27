@@ -80,8 +80,18 @@ impl super::Renderer {
                 ui.label("Visualization Overlays:");
                 ui.checkbox(&mut self.sim_config.show_field_isolines, "Show Field Isolines");
                 ui.checkbox(&mut self.sim_config.show_velocity_vectors, "Show Velocity Vectors");
+                ui.add(
+                    egui::Slider::new(&mut self.velocity_vector_scale, 0.01..=1.0)
+                        .text("Velocity Vector Scale")
+                        .step_by(0.01),
+                );
                 ui.checkbox(&mut self.sim_config.show_charge_density, "Show Charge Density");
                 ui.checkbox(&mut self.sim_config.show_field_vectors, "Show Field Vectors"); // NEW
+                ui.add(
+                    egui::Slider::new(&mut self.field_vector_scale, 0.1..=5.0)
+                        .text("Field Vector Scale")
+                        .step_by(0.1),
+                );
                 egui::ComboBox::from_label("Isoline Field Mode")
                     .selected_text(format!("{:?}", self.sim_config.isoline_field_mode))
                     .show_ui(ui, |ui| {
@@ -101,11 +111,6 @@ impl super::Renderer {
                             "Body Only",
                         );
                     });
-                ui.add(
-                    egui::Slider::new(&mut self.velocity_vector_scale, 0.01..=1.0)
-                        .text("Velocity Vector Scale")
-                        .step_by(0.01),
-                );
 
                 ui.separator();
 

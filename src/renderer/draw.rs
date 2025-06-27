@@ -244,7 +244,7 @@ impl super::Renderer {
         // --- FIELD VECTOR VISUALIZATION ---
         if self.sim_config.show_field_vectors {
             let grid_spacing = 2.0; // simulation units
-            let field_scale = 2.0;   // much larger for debug
+            let field_scale = self.field_vector_scale;
             let color = [255, 0, 0, 255]; // opaque red for debug
 
             // Compute visible bounds in world coordinates
