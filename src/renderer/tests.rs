@@ -3,6 +3,7 @@ mod tests {
     use super::*;
     use crate::renderer::state::TIMESTEP;
     use crate::body::foil::Foil;
+    use crate::renderer::Renderer;
     use ultraviolet::Vec2;
 
     struct DummyContext {
