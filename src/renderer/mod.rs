@@ -113,3 +113,6 @@ impl quarkstrom::Renderer for Renderer {
     }
 }
 
+#[cfg(test)]
+mod tests;
+
