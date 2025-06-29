@@ -3,7 +3,7 @@
 
 use crate::{body::{Body, Species, Electron}, quadtree::Quadtree, cell_list::CellList};
 use rayon::prelude::*;
-use crate::renderer::state::{FIELD_MAGNITUDE, FIELD_DIRECTION, TIMESTEP, COLLISION_PASSES};
+use crate::renderer::state::{FIELD_MAGNITUDE, FIELD_DIRECTION, TIMESTEP, COLLISION_PASSES, SIM_TIME};
 use ultraviolet::Vec2;
 use super::forces;
 use super::collision;
@@ -79,6 +79,9 @@ impl Simulation {
         self.rewound_flags.par_iter_mut().for_each(|flag| *flag = false);
         self.dt = *TIMESTEP.lock();
         let time = self.frame as f32 * self.dt;
+
+        // Update global simulation time for GUI access
+        *SIM_TIME.lock() = time;
 
         // Propagate linked foil currents
         let mut updates = Vec::new();

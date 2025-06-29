@@ -530,11 +530,19 @@ pub fn compute_potential_at_point(
 
 impl super::Renderer {
     /// Update history of selected foil on/off states
-    fn update_foil_wave_history(&mut self) {
+    pub fn update_foil_wave_history(&mut self) {
         if self.selected_foil_ids.is_empty() {
             return;
         }
-        let time = self.frame as f32 * *TIMESTEP.lock();
+        
+        // Only update history when simulation is running
+        let is_paused = crate::renderer::state::PAUSED.load(std::sync::atomic::Ordering::Relaxed);
+        if is_paused {
+            return;
+        }
+        
+        // Use actual simulation time instead of renderer time
+        let time = *crate::renderer::state::SIM_TIME.lock();
         for id in &self.selected_foil_ids {
             if let Some(foil) = self.foils.iter().find(|f| f.id == *id) {
                 let state = if foil.current.abs() > f32::EPSILON { 1.0 } else { 0.0 };
@@ -564,7 +572,8 @@ impl super::Renderer {
             return;
         }
 
-        let current_time = self.frame as f32 * *TIMESTEP.lock();
+        // Use actual simulation time instead of renderer time
+        let current_time = *crate::renderer::state::SIM_TIME.lock();
         let max_time = 10.0;
         let start_time = current_time - max_time;
 

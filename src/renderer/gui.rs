@@ -12,8 +12,17 @@ impl super::Renderer {
         egui::Window::new("")
             .open(&mut self.settings_window_open)
             .show(ctx, |ui| {
-                let time = self.frame as f32 * *TIMESTEP.lock();
-                ui.label(format!("Time: {:.2} s", time));
+                // Use actual simulation time, not renderer time
+                let sim_time = *SIM_TIME.lock();
+                ui.label(format!("Time: {:.2} s", sim_time));
+                
+                // Show pause status
+                let is_paused = PAUSED.load(std::sync::atomic::Ordering::Relaxed);
+                if is_paused {
+                    ui.colored_label(egui::Color32::YELLOW, "⏸ PAUSED");
+                } else {
+                    ui.colored_label(egui::Color32::GREEN, "▶ RUNNING");
+                }
                 // --- Field Controls ---
                 egui::CollapsingHeader::new("Field Controls").default_open(true).show(ui, |ui| {
                     let mut mag = *FIELD_MAGNITUDE.lock();
@@ -394,8 +403,15 @@ impl super::Renderer {
                             use egui::plot::{Plot, Line, PlotPoints, VLine};
                             let seconds = 5.0;
                             let steps = 200;
-                            // Calculate simulation time from frame count and timestep
-                            let current_time = time;
+                            // Use actual simulation time and respect pause state
+                            let sim_time = *SIM_TIME.lock();
+                            let is_paused = PAUSED.load(std::sync::atomic::Ordering::Relaxed);
+                            let current_time = if is_paused {
+                                // When paused, freeze the time display
+                                sim_time
+                            } else {
+                                sim_time
+                            };
                             let selected_ids = self.selected_foil_ids.clone();
                             Plot::new("foil_wave_plot").height(100.0).allow_scroll(false).allow_zoom(false).show(ui, |plot_ui| {
                                 let colors = [egui::Color32::LIGHT_BLUE, egui::Color32::LIGHT_RED, egui::Color32::LIGHT_GREEN, egui::Color32::YELLOW];
@@ -416,7 +432,11 @@ impl super::Renderer {
                                         // Draw a vertical line for the current phase/position in the pulse
                                         // Find the t in [0, seconds] that matches the current phase
                                         let period = if f.switch_hz > 0.0 { 1.0 / f.switch_hz } else { seconds };
-                                        let t_mod = (current_time % period).max(0.0);
+                                        let t_mod = if period > 0.0 { 
+                                            (current_time % period).max(0.0) 
+                                        } else { 
+                                            0.0 
+                                        };
                                         if t_mod <= seconds {
                                             plot_ui.vline(VLine::new(t_mod as f64).color(egui::Color32::WHITE));
                                         }
