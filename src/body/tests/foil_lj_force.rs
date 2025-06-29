@@ -20,7 +20,7 @@ mod foil_lj_force {
         let metal_body = Body::new(Vec2::new(long_range, 0.0), Vec2::zero(), 1.0, 1.0, 0.0, Species::LithiumMetal);
         sim.bodies.push(metal_body);
         let metal_id = sim.bodies.last().expect("Metal body not found after push").id;
-        sim.foils.push(Foil::new(vec![foil_id], Vec2::zero(), 1.0, 1.0, 0.0));
+        sim.foils.push(Foil::new(vec![foil_id], Vec2::zero(), 1.0, 1.0, 0.0, 0.0));
         sim.quadtree.build(&mut sim.bodies);
         let foil = sim.bodies.iter().find(|b| b.id == foil_id).expect("Foil not found");
         let metal = sim.bodies.iter().find(|b| b.id == metal_id).expect("Metal not found");

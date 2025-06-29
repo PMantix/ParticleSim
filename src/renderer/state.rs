@@ -44,6 +44,10 @@ pub enum SimCommand {
         x: f32,
         y: f32,
     },
+    AddRandom {
+        body: crate::body::Body,
+        count: usize,
+    },
     AddFoil {
         width: f32,
         height: f32,
@@ -57,6 +61,10 @@ pub enum SimCommand {
     SetFoilCurrent {
         foil_id: u64,
         current: f32,
+    },
+    SetFoilFrequency {
+        foil_id: u64,
+        switch_hz: f32,
     },
     SaveState { path: String },
     LoadState { path: String },

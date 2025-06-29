@@ -268,6 +268,26 @@ impl super::Renderer {
                     });
 
                     ui.horizontal(|ui| {
+                        ui.label("Count:");
+                        ui.add(egui::DragValue::new(&mut self.scenario_random_count).speed(1.0));
+                        if ui.button("Add Random").clicked() {
+                            let spec = self.scenario_species;
+                            let props = crate::species::SPECIES_PROPERTIES.get(&spec).unwrap();
+                            let body = make_body_with_species(
+                                ultraviolet::Vec2::zero(),
+                                ultraviolet::Vec2::zero(),
+                                props.mass,
+                                props.radius,
+                                spec,
+                            );
+                            SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::AddRandom {
+                                body,
+                                count: self.scenario_random_count,
+                            }).unwrap();
+                        }
+                    });
+
+                    ui.horizontal(|ui| {
                         // --- Save State UI ---
                         use std::fs;
                         use std::path::PathBuf;
@@ -357,6 +377,54 @@ impl super::Renderer {
                                     SimCommand::SetFoilCurrent { foil_id: selected_id, current }
                                 ).unwrap();
                             }
+
+                            let mut hz = foil.switch_hz;
+                            ui.horizontal(|ui| {
+                                ui.label("Switch Hz:");
+                                ui.add(egui::DragValue::new(&mut hz).speed(0.1));
+                            });
+                            if (hz - foil.switch_hz).abs() > f32::EPSILON {
+                                SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(
+                                    SimCommand::SetFoilFrequency { foil_id: selected_id, switch_hz: hz }
+                                ).unwrap();
+                            }
+
+                            use egui::plot::{Plot, Line, PlotPoints, VLine};
+                            let seconds = 5.0;
+                            let steps = 200;
+                            // Calculate simulation time from frame count and timestep
+                            let current_time = {
+                                let _bodies = BODIES.lock();
+                                // For now, just use 0.0 since we don't have direct access to simulation time
+                                0.0_f32
+                            };
+                            let selected_ids = self.selected_foil_ids.clone();
+                            Plot::new("foil_wave_plot").height(100.0).allow_scroll(false).allow_zoom(false).show(ui, |plot_ui| {
+                                let colors = [egui::Color32::LIGHT_BLUE, egui::Color32::LIGHT_RED, egui::Color32::LIGHT_GREEN, egui::Color32::YELLOW];
+                                let foils = FOILS.lock();
+                                for (idx, fid) in selected_ids.iter().enumerate() {
+                                    if let Some(f) = foils.iter().find(|f| f.id == *fid) {
+                                        let dt = seconds / steps as f32;
+                                        let mut points_vec: Vec<[f64; 2]> = Vec::with_capacity(steps + 1);
+                                        for i in 0..=steps {
+                                            let t = i as f32 * dt;
+                                            let phase = ((current_time + t) * f.switch_hz).fract();
+                                            let sign = if phase < 0.5 { 1.0 } else { -1.0 };
+                                            points_vec.push([t as f64, (sign * f.current) as f64]);
+                                        }
+                                        let points = PlotPoints::from(points_vec);
+                                        plot_ui.line(Line::new(points).color(colors[idx % colors.len()]));
+
+                                        // Draw a vertical line for the current phase/position in the pulse
+                                        // Find the t in [0, seconds] that matches the current phase
+                                        let period = if f.switch_hz > 0.0 { 1.0 / f.switch_hz } else { seconds };
+                                        let t_mod = (current_time % period).max(0.0);
+                                        if t_mod <= seconds {
+                                            plot_ui.vline(VLine::new(t_mod as f64).color(egui::Color32::WHITE));
+                                        }
+                                    }
+                                }
+                            });
                         });
                     }
                 }

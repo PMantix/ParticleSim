@@ -29,6 +29,8 @@ use crate::body::Electron;
 use ultraviolet::Vec2;
 use crate::io::{save_state, load_state};
 
+const RANDOM_ATTEMPTS: usize = 20;
+
 #[cfg(feature = "profiling")]   
 use once_cell::sync::Lazy;
 
@@ -293,6 +295,40 @@ fn main() {
                         }
                     },
 
+                    SimCommand::AddRandom { body, count } => {
+                        for _ in 0..count {
+                            let mut placed = false;
+                            for _ in 0..RANDOM_ATTEMPTS {
+                                let pos = Vec2::new(
+                                    fastrand::f32() * 2.0 * config::DOMAIN_BOUNDS - config::DOMAIN_BOUNDS,
+                                    fastrand::f32() * 2.0 * config::DOMAIN_BOUNDS - config::DOMAIN_BOUNDS,
+                                );
+                                if overlaps_any(&simulation.bodies, pos, body.radius).is_none() {
+                                    let mut new_body = crate::body::Body::new(
+                                        pos,
+                                        Vec2::zero(),
+                                        body.mass,
+                                        body.radius,
+                                        0.0,
+                                        body.species,
+                                    );
+                                    new_body.electrons.clear();
+                                    if matches!(new_body.species, Species::LithiumMetal | Species::ElectrolyteAnion) {
+                                        new_body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+                                    }
+                                    new_body.update_charge_from_electrons();
+                                    new_body.update_species();
+                                    simulation.bodies.push(new_body);
+                                    placed = true;
+                                    break;
+                                }
+                            }
+                            if !placed {
+                                eprintln!("Failed to place random body after {} attempts", RANDOM_ATTEMPTS);
+                            }
+                        }
+                    },
+
                     SimCommand::AddFoil { width, height, x, y, particle_radius, current } => {
                         let origin = Vec2::new(x, y);
                         let particle_diameter = 2.0 * particle_radius;
@@ -324,7 +360,14 @@ fn main() {
                                 simulation.bodies.push(new_body);
                             }
                         }
-                        let foil = crate::body::foil::Foil::new(body_ids.clone(), origin, width, height, current);
+                        let foil = crate::body::foil::Foil::new(
+                            body_ids.clone(),
+                            origin,
+                            width,
+                            height,
+                            current,
+                            0.0,
+                        );
                         for id in &body_ids {
                             simulation.body_to_foil.insert(*id, foil.id);
                         }
@@ -338,6 +381,16 @@ fn main() {
                             .find(|f| f.body_ids.contains(&foil_id))
                         {
                             foil.current = current;
+                        }
+                    },
+
+                    SimCommand::SetFoilFrequency { foil_id, switch_hz } => {
+                        if let Some(foil) = simulation
+                            .foils
+                            .iter_mut()
+                            .find(|f| f.body_ids.contains(&foil_id))
+                        {
+                            foil.switch_hz = switch_hz;
                         }
                     },
 

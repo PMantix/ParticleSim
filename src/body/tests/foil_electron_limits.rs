@@ -15,7 +15,7 @@ mod foil_electron_limits {
         let idx = sim.bodies.len();
         let id = body.id;
         sim.bodies.push(body);
-        let mut foil = Foil::new(vec![id], Vec2::zero(), 1.0, 1.0, -10.0);
+        let mut foil = Foil::new(vec![id], Vec2::zero(), 1.0, 1.0, -10.0, 0.0);
         foil.accum = -100.0;
         sim.foils.push(foil);
         sim.step();
@@ -30,7 +30,7 @@ mod foil_electron_limits {
         let idx = sim.bodies.len();
         let id = body.id;
         sim.bodies.push(body);
-        let mut foil = Foil::new(vec![id], Vec2::zero(), 1.0, 1.0, 2.0);
+        let mut foil = Foil::new(vec![id], Vec2::zero(), 1.0, 1.0, 2.0, 0.0);
         foil.accum = (crate::config::FOIL_MAX_ELECTRONS - crate::config::FOIL_NEUTRAL_ELECTRONS) as f32;
         sim.foils.push(foil);
         sim.step();
