@@ -120,12 +120,13 @@ impl super::Renderer {
                 } else {
                     // Spawning logic (no shift)
                     let mouse = world_mouse();
+                    let spec = self.scenario_species;
                     let body = crate::renderer::gui::make_body_with_species(
                         mouse,
                         Vec2::zero(),
-                        1.0,
-                        1.0,
-                        self.scenario_species,
+                        spec.mass(),
+                        spec.radius(),
+                        spec,
                     );
                     self.spawn_body = Some(body);
                     self.angle = None;

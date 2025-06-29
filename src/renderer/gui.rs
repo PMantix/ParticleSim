@@ -178,12 +178,13 @@ impl super::Renderer {
                         ui.label("Radius:");
                         ui.add(egui::DragValue::new(&mut self.scenario_radius).speed(0.1));
                         if ui.button("Add Ring").clicked() {
+                            let spec = self.scenario_species;
                             let body = make_body_with_species(
                                 ultraviolet::Vec2::zero(),
                                 ultraviolet::Vec2::zero(),
-                                1.0,
+                                spec.mass(),
                                 self.scenario_particle_radius,
-                                self.scenario_species,
+                                spec,
                             );
                             SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::AddRing {
                                 body,
@@ -193,12 +194,13 @@ impl super::Renderer {
                             }).unwrap();
                         }
                         if ui.button("Add Filled Circle").clicked() {
+                            let spec = self.scenario_species;
                             let body = make_body_with_species(
                                 ultraviolet::Vec2::zero(),
                                 ultraviolet::Vec2::zero(),
-                                1.0,
+                                spec.mass(),
                                 self.scenario_particle_radius,
-                                self.scenario_species,
+                                spec,
                             );
                             SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::AddCircle {
                                 body,
@@ -216,12 +218,13 @@ impl super::Renderer {
                         ui.label("Height:");
                         ui.add(egui::DragValue::new(&mut self.scenario_height).speed(0.1));
                         if ui.button("Add Rectangle").clicked() {
+                            let spec = self.scenario_species;
                             let body = make_body_with_species(
                                 ultraviolet::Vec2::zero(),
                                 ultraviolet::Vec2::zero(),
-                                1.0,
+                                spec.mass(),
                                 self.scenario_particle_radius,
-                                self.scenario_species,
+                                spec,
                             );
                             SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::AddRectangle {
                                 body,
