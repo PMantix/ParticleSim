@@ -58,6 +58,10 @@ pub enum SimCommand {
         foil_id: u64,
         current: f32,
     },
+    SetFoilFrequency {
+        foil_id: u64,
+        switch_hz: f32,
+    },
     SaveState { path: String },
     LoadState { path: String },
     StepOnce

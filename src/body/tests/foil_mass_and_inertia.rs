@@ -13,7 +13,7 @@ mod foil_mass_and_inertia {
         let idx = sim.bodies.len();
         let id = body.id;
         sim.bodies.push(body);
-        sim.foils.push(Foil::new(vec![id], Vec2::zero(), 1.0, 1.0, 0.0));
+        sim.foils.push(Foil::new(vec![id], Vec2::zero(), 1.0, 1.0, 0.0, 0.0));
         sim.step();
         assert_eq!(sim.bodies[idx].mass, 1e6, "FoilMetal should have large mass");
     }
