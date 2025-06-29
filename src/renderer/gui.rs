@@ -357,6 +357,40 @@ impl super::Renderer {
                                     SimCommand::SetFoilCurrent { foil_id: selected_id, current }
                                 ).unwrap();
                             }
+
+                            let mut hz = foil.switch_hz;
+                            ui.horizontal(|ui| {
+                                ui.label("Switch Hz:");
+                                ui.add(egui::DragValue::new(&mut hz).speed(0.1));
+                            });
+                            if (hz - foil.switch_hz).abs() > f32::EPSILON {
+                                SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(
+                                    SimCommand::SetFoilFrequency { foil_id: selected_id, switch_hz: hz }
+                                ).unwrap();
+                            }
+
+                            use egui::plot::{Plot, Line, PlotPoints};
+                            let seconds = 5.0;
+                            let steps = 200;
+                            let current_time = 0.0;
+                            let selected_ids = self.selected_foil_ids.clone();
+                            Plot::new("foil_wave_plot").height(100.0).allow_scroll(false).allow_zoom(false).show(ui, |plot_ui| {
+                                let colors = [egui::Color32::LIGHT_BLUE, egui::Color32::LIGHT_RED, egui::Color32::LIGHT_GREEN, egui::Color32::YELLOW];
+                                let foils = FOILS.lock();
+                                for (idx, fid) in selected_ids.iter().enumerate() {
+                                    if let Some(f) = foils.iter().find(|f| f.id == *fid) {
+                                        let dt = seconds / steps as f32;
+                                        let mut points: PlotPoints = Vec::with_capacity(steps + 1);
+                                        for i in 0..=steps {
+                                            let t = i as f32 * dt;
+                                            let phase = ((current_time + t) * f.switch_hz).fract();
+                                            let sign = if phase < 0.5 { 1.0 } else { -1.0 };
+                                            points.push([t as f64, (sign * f.current) as f64]);
+                                        }
+                                        plot_ui.line(Line::new(points).color(colors[idx % colors.len()]));
+                                    }
+                                }
+                            });
                         });
                     }
                 }

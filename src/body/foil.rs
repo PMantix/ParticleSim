@@ -28,6 +28,8 @@ pub struct Foil {
     pub link_id: Option<u64>,
     /// Link mode describing how the currents are related.
     pub mode: LinkMode,
+    /// Frequency in Hz for switching the sign of `current`.
+    pub switch_hz: f32,
 }
 
 impl Foil {
@@ -40,6 +42,7 @@ impl Foil {
             accum: 0.0,
             link_id: None,
             mode: LinkMode::Parallel,
+            switch_hz: 0.0,
         }
     }
 }
