@@ -12,6 +12,8 @@ impl super::Renderer {
         egui::Window::new("")
             .open(&mut self.settings_window_open)
             .show(ctx, |ui| {
+                let time = self.frame as f32 * *TIMESTEP.lock();
+                ui.label(format!("Time: {:.2} s", time));
                 // --- Field Controls ---
                 egui::CollapsingHeader::new("Field Controls").default_open(true).show(ui, |ui| {
                     let mut mag = *FIELD_MAGNITUDE.lock();
@@ -393,11 +395,7 @@ impl super::Renderer {
                             let seconds = 5.0;
                             let steps = 200;
                             // Calculate simulation time from frame count and timestep
-                            let current_time = {
-                                let _bodies = BODIES.lock();
-                                // For now, just use 0.0 since we don't have direct access to simulation time
-                                0.0_f32
-                            };
+                            let current_time = time;
                             let selected_ids = self.selected_foil_ids.clone();
                             Plot::new("foil_wave_plot").height(100.0).allow_scroll(false).allow_zoom(false).show(ui, |plot_ui| {
                                 let colors = [egui::Color32::LIGHT_BLUE, egui::Color32::LIGHT_RED, egui::Color32::LIGHT_GREEN, egui::Color32::YELLOW];
