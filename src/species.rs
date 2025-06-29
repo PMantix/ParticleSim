@@ -16,7 +16,7 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
     m.insert(LithiumIon, SpeciesProps { mass: 1.0, radius: 1.0, damping: 1.0 });
     m.insert(LithiumMetal, SpeciesProps { mass: 1.0, radius: 1.0, damping: 1.0 });
     m.insert(FoilMetal, SpeciesProps { mass: 1e6, radius: 1.0, damping: 1.0 });
-    m.insert(ElectrolyteAnion, SpeciesProps { mass: 1.0, radius: 1.0, damping: 1.0 });
+    m.insert(ElectrolyteAnion, SpeciesProps { mass: 40.0, radius: 1.5, damping: 1.0 });
     m
 });
 
