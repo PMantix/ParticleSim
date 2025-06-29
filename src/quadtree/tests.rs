@@ -47,7 +47,7 @@ mod tests {
 
         for pos in &test_positions {
             // Use the same logic as in the quadtree's field function
-            let field = quadtree.acc_pos(*pos, 1.0, &bodies, K_E);
+            let field = quadtree.acc_pos(*pos, 1.0, 0.0, &bodies, K_E);
             let expected_dir = pos.normalized();
             let field_dir = field.normalized();
             let dot = field_dir.dot(expected_dir);
@@ -71,5 +71,48 @@ mod tests {
                 avg_mag
             );
         }
+    }
+
+    #[test]
+    fn overlapping_particles_produce_finite_force() {
+        // Two bodies occupying nearly the same position
+        let mut bodies = vec![
+            Body {
+                pos: Vec2::zero(),
+                vel: Vec2::zero(),
+                acc: Vec2::zero(),
+                mass: 1.0,
+                radius: 1.0,
+                charge: 1.0,
+                species: Species::LithiumIon,
+                electrons: SmallVec::new(),
+                id: 0,
+                e_field: Vec2::zero(),
+                last_surround_frame: 0,
+                last_surround_pos: Vec2::zero(),
+                surrounded_by_metal: false,
+            },
+            Body {
+                pos: Vec2::new(0.5, 0.0), // overlapping radii
+                vel: Vec2::zero(),
+                acc: Vec2::zero(),
+                mass: 1.0,
+                radius: 1.0,
+                charge: -1.0,
+                species: Species::LithiumIon,
+                electrons: SmallVec::new(),
+                id: 1,
+                e_field: Vec2::zero(),
+                last_surround_frame: 0,
+                last_surround_pos: Vec2::zero(),
+                surrounded_by_metal: false,
+            },
+        ];
+
+        let mut quadtree = Quadtree::new(1.0, 2.0, 8, 32);
+        quadtree.build(&mut bodies);
+
+        let field = quadtree.acc_pos(bodies[0].pos, bodies[0].charge, bodies[0].radius, &bodies, K_E);
+        assert!(field.x.is_finite() && field.y.is_finite(), "Field should be finite for overlapping bodies");
     }
 }

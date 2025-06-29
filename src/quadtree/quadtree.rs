@@ -228,7 +228,7 @@ impl Quadtree {
         println!("Quadtree::build: end");
     }
 
-    pub fn acc_pos(&self, pos: Vec2, q: f32, bodies: &[Body], k_e: f32) -> Vec2 {
+    pub fn acc_pos(&self, pos: Vec2, q: f32, radius: f32, bodies: &[Body], k_e: f32) -> Vec2 {
         let mut acc = Vec2::zero();
         let mut node = Self::ROOT;
         let mut _iter_count = 0;
@@ -241,9 +241,18 @@ impl Quadtree {
 
             let d = pos - n.pos;
             let d_sq = d.mag_sq();
+            let dist = d_sq.sqrt();
 
-            if n.quad.size * n.quad.size < d_sq * self.t_sq {
-                let denom = (d_sq + self.e_sq) * d_sq.sqrt();
+            // Node radius approximated as half the quad size
+            let node_radius = n.quad.size * 0.5;
+
+            // Barnes-Hut opening criterion using distance minus body radius
+            let dist_adj = (dist - radius).max(0.0);
+
+            if n.quad.size * n.quad.size < dist_adj.powi(2) * self.t_sq {
+                let min_sep = radius + node_radius;
+                let r_eff = dist.max(min_sep);
+                let denom = (r_eff * r_eff + self.e_sq) * r_eff;
                 acc += d * (k_e * q * n.charge / denom);
 
                 if n.next == 0 {
@@ -259,8 +268,10 @@ impl Quadtree {
                     }
 
                     let d = pos - body.pos;
-                    let d_sq = d.mag_sq();
-                    let denom = (d_sq + self.e_sq) * d_sq.sqrt();
+                    let dist = d.mag();
+                    let min_sep = radius + body.radius;
+                    let r_eff = dist.max(min_sep);
+                    let denom = (r_eff * r_eff + self.e_sq) * r_eff;
                     acc += d * (k_e * q * body.charge / denom).min(f32::MAX);
                 }
 
@@ -281,7 +292,7 @@ impl Quadtree {
 
         bodies.par_iter_mut().for_each(|body| {
             let bodies = unsafe { &*(bodies_ptr as *const Vec<Body>) };
-            body.acc = self.acc_pos(body.pos, body.charge, bodies, k_e);
+            body.acc = self.acc_pos(body.pos, body.charge, body.radius, bodies, k_e);
         });
     }
 
@@ -292,7 +303,7 @@ impl Quadtree {
         bodies.par_iter_mut().for_each(|body| {
             let bodies = unsafe { &*(bodies_ptr as *const Vec<Body>) };
             // Use test charge q = 1.0 to get the field
-            body.e_field = self.acc_pos(body.pos, 1.0, bodies, k_e);
+            body.e_field = self.acc_pos(body.pos, 1.0, body.radius, bodies, k_e);
         });
     }
 
@@ -340,6 +351,6 @@ impl Quadtree {
     /// Compute the electric field at an arbitrary point using the quadtree (Barnes-Hut).
     pub fn field_at_point(&self, bodies: &[Body], pos: Vec2, k_e: f32) -> Vec2 {
         // This should use the same logic as acc_pos, but with test charge q=1.0
-        self.acc_pos(pos, 1.0, bodies, k_e)
+        self.acc_pos(pos, 1.0, 0.0, bodies, k_e)
     }
 }
