@@ -44,6 +44,10 @@ pub enum SimCommand {
         x: f32,
         y: f32,
     },
+    AddRandom {
+        body: crate::body::Body,
+        count: usize,
+    },
     AddFoil {
         width: f32,
         height: f32,

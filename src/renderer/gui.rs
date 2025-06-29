@@ -268,6 +268,26 @@ impl super::Renderer {
                     });
 
                     ui.horizontal(|ui| {
+                        ui.label("Count:");
+                        ui.add(egui::DragValue::new(&mut self.scenario_random_count).speed(1.0));
+                        if ui.button("Add Random").clicked() {
+                            let spec = self.scenario_species;
+                            let props = crate::species::SPECIES_PROPERTIES.get(&spec).unwrap();
+                            let body = make_body_with_species(
+                                ultraviolet::Vec2::zero(),
+                                ultraviolet::Vec2::zero(),
+                                props.mass,
+                                props.radius,
+                                spec,
+                            );
+                            SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::AddRandom {
+                                body,
+                                count: self.scenario_random_count,
+                            }).unwrap();
+                        }
+                    });
+
+                    ui.horizontal(|ui| {
                         // --- Save State UI ---
                         use std::fs;
                         use std::path::PathBuf;

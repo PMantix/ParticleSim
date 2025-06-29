@@ -29,6 +29,8 @@ use crate::body::Electron;
 use ultraviolet::Vec2;
 use crate::io::{save_state, load_state};
 
+const RANDOM_ATTEMPTS: usize = 20;
+
 #[cfg(feature = "profiling")]   
 use once_cell::sync::Lazy;
 
@@ -289,6 +291,40 @@ fn main() {
                                 new_body.update_charge_from_electrons();
                                 new_body.update_species();
                                 simulation.bodies.push(new_body);
+                            }
+                        }
+                    },
+
+                    SimCommand::AddRandom { body, count } => {
+                        for _ in 0..count {
+                            let mut placed = false;
+                            for _ in 0..RANDOM_ATTEMPTS {
+                                let pos = Vec2::new(
+                                    fastrand::f32() * 2.0 * config::DOMAIN_BOUNDS - config::DOMAIN_BOUNDS,
+                                    fastrand::f32() * 2.0 * config::DOMAIN_BOUNDS - config::DOMAIN_BOUNDS,
+                                );
+                                if overlaps_any(&simulation.bodies, pos, body.radius).is_none() {
+                                    let mut new_body = crate::body::Body::new(
+                                        pos,
+                                        Vec2::zero(),
+                                        body.mass,
+                                        body.radius,
+                                        0.0,
+                                        body.species,
+                                    );
+                                    new_body.electrons.clear();
+                                    if matches!(new_body.species, Species::LithiumMetal | Species::ElectrolyteAnion) {
+                                        new_body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+                                    }
+                                    new_body.update_charge_from_electrons();
+                                    new_body.update_species();
+                                    simulation.bodies.push(new_body);
+                                    placed = true;
+                                    break;
+                                }
+                            }
+                            if !placed {
+                                eprintln!("Failed to place random body after {} attempts", RANDOM_ATTEMPTS);
                             }
                         }
                     },
