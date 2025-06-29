@@ -17,6 +17,7 @@ mod utils;
 mod config;
 mod profiler;
 mod io;
+mod species_properties;
 
 use crate::body::Species;
 //use crate::body::foil::{Foil, LinkMode};
