@@ -324,7 +324,14 @@ fn main() {
                                 simulation.bodies.push(new_body);
                             }
                         }
-                        let foil = crate::body::foil::Foil::new(body_ids.clone(), origin, width, height, current);
+                        let foil = crate::body::foil::Foil::new(
+                            body_ids.clone(),
+                            origin,
+                            width,
+                            height,
+                            current,
+                            0.0,
+                        );
                         for id in &body_ids {
                             simulation.body_to_foil.insert(*id, foil.id);
                         }
