@@ -8,6 +8,7 @@ use crate::config::SimConfig;
 use crate::quadtree::Node;
 use ultraviolet::Vec2;
 use quarkstrom::winit_input_helper::WinitInputHelper;
+use std::collections::HashMap;
 
 pub struct Renderer {
     pos: Vec2,
@@ -29,6 +30,10 @@ pub struct Renderer {
     selected_foil_ids: Vec<u64>,
     selected_particle_ids: Vec<u64>,
     sim_config: SimConfig,
+    /// Local copy of the simulation frame for time-based visualizations
+    frame: usize,
+    /// History of on/off states for selected foils
+    foil_wave_history: HashMap<u64, Vec<(f32, f32)>>,
     // Scenario controls
     scenario_radius: f32,
     scenario_x: f32,
@@ -70,6 +75,8 @@ impl quarkstrom::Renderer for Renderer {
             selected_foil_ids: Vec::new(),
             selected_particle_ids: Vec::new(),
             sim_config: crate::config::LJ_CONFIG.lock().clone(),
+            frame: 0,
+            foil_wave_history: HashMap::new(),
             scenario_radius: 1.0,
             scenario_x: 0.0,
             scenario_y: 0.0,
