@@ -297,6 +297,8 @@ mod tests {
                     link_id: None,
                     body_ids: vec![foil2_id], // Use the saved ID
                     current: 10.0,
+                    dc_current: 10.0,
+                    ac_current: 0.0,
                     accum: 1.5,
                     switch_hz: 0.0,
                     mode: crate::body::foil::LinkMode::Parallel,

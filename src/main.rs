@@ -381,6 +381,28 @@ fn main() {
                             .find(|f| f.body_ids.contains(&foil_id))
                         {
                             foil.current = current;
+                            // Also update DC current to maintain compatibility
+                            foil.dc_current = current;
+                        }
+                    },
+
+                    SimCommand::SetFoilDCCurrent { foil_id, dc_current } => {
+                        if let Some(foil) = simulation
+                            .foils
+                            .iter_mut()
+                            .find(|f| f.body_ids.contains(&foil_id))
+                        {
+                            foil.dc_current = dc_current;
+                        }
+                    },
+
+                    SimCommand::SetFoilACCurrent { foil_id, ac_current } => {
+                        if let Some(foil) = simulation
+                            .foils
+                            .iter_mut()
+                            .find(|f| f.body_ids.contains(&foil_id))
+                        {
+                            foil.ac_current = ac_current;
                         }
                     },
 

@@ -21,7 +21,12 @@ pub struct Foil {
     /// Unique IDs of bodies that belong to this foil within `Simulation::bodies`.
     pub body_ids: Vec<u64>,
     /// Current in electrons per second (positive = source, negative = sink).
+    /// This is the total current when switch_hz = 0, or DC component when switch_hz > 0.
     pub current: f32,
+    /// DC component of current (constant base current).
+    pub dc_current: f32,
+    /// AC component of current (amplitude of oscillating current).
+    pub ac_current: f32,
     /// Internal accumulator used to emit/remove fractional electrons per step.
     pub accum: f32,
     /// Frequency in Hz for toggling the current on/off. `0.0` disables switching.
@@ -46,6 +51,8 @@ impl Foil {
             id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
             body_ids,
             current,
+            dc_current: current, // Initialize DC current to the provided current
+            ac_current: 0.0,     // No AC component by default
             accum: 0.0,
             switch_hz: 0.0,
             link_id: None,

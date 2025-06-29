@@ -376,8 +376,10 @@ impl super::Renderer {
                     if let Some(foil) = maybe_foil {
                         ui.separator();
                         egui::CollapsingHeader::new("Foil Current").default_open(true).show(ui, |ui| {
+                            // Legacy current control (for backwards compatibility when no switching)
                             let mut current = foil.current;
                             ui.horizontal(|ui| {
+                                ui.label("Current (legacy):");
                                 if ui.button("-").clicked() { current -= 1.0; }
                                 if ui.button("+").clicked() { current += 1.0; }
                                 if ui.button("0").clicked() { current = 0.0; }
@@ -386,6 +388,39 @@ impl super::Renderer {
                             if (current - foil.current).abs() > f32::EPSILON {
                                 SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(
                                     SimCommand::SetFoilCurrent { foil_id: selected_id, current }
+                                ).unwrap();
+                            }
+
+                            ui.separator();
+                            ui.label("DC + AC Current Components:");
+                            
+                            // DC Current control
+                            let mut dc_current = foil.dc_current;
+                            ui.horizontal(|ui| {
+                                ui.label("DC Current:");
+                                if ui.button("-").clicked() { dc_current -= 1.0; }
+                                if ui.button("+").clicked() { dc_current += 1.0; }
+                                if ui.button("0").clicked() { dc_current = 0.0; }
+                                ui.add(egui::Slider::new(&mut dc_current, -500.0..=500.00).step_by(0.1));
+                            });
+                            if (dc_current - foil.dc_current).abs() > f32::EPSILON {
+                                SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(
+                                    SimCommand::SetFoilDCCurrent { foil_id: selected_id, dc_current }
+                                ).unwrap();
+                            }
+
+                            // AC Current control
+                            let mut ac_current = foil.ac_current;
+                            ui.horizontal(|ui| {
+                                ui.label("AC Amplitude:");
+                                if ui.button("-").clicked() { ac_current -= 1.0; }
+                                if ui.button("+").clicked() { ac_current += 1.0; }
+                                if ui.button("0").clicked() { ac_current = 0.0; }
+                                ui.add(egui::Slider::new(&mut ac_current, 0.0..=500.00).step_by(0.1));
+                            });
+                            if (ac_current - foil.ac_current).abs() > f32::EPSILON {
+                                SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(
+                                    SimCommand::SetFoilACCurrent { foil_id: selected_id, ac_current }
                                 ).unwrap();
                             }
 
@@ -422,9 +457,16 @@ impl super::Renderer {
                                         let mut points_vec: Vec<[f64; 2]> = Vec::with_capacity(steps + 1);
                                         for i in 0..=steps {
                                             let t = i as f32 * dt;
-                                            let phase = ((current_time + t) * f.switch_hz).fract();
-                                            let sign = if phase < 0.5 { 1.0 } else { -1.0 };
-                                            points_vec.push([t as f64, (sign * f.current) as f64]);
+                                            let effective_current = if f.switch_hz > 0.0 {
+                                                // DC + AC components
+                                                let phase = ((current_time + t) * f.switch_hz).fract();
+                                                let ac_component = if phase < 0.5 { f.ac_current } else { -f.ac_current };
+                                                f.dc_current + ac_component
+                                            } else {
+                                                // Use legacy current field when no switching
+                                                f.current
+                                            };
+                                            points_vec.push([t as f64, effective_current as f64]);
                                         }
                                         let points = PlotPoints::from(points_vec);
                                         plot_ui.line(Line::new(points).color(colors[idx % colors.len()]));

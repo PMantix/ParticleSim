@@ -63,6 +63,14 @@ pub enum SimCommand {
         foil_id: u64,
         current: f32,
     },
+    SetFoilDCCurrent {
+        foil_id: u64,
+        dc_current: f32,
+    },
+    SetFoilACCurrent {
+        foil_id: u64,
+        ac_current: f32,
+    },
     SetFoilFrequency {
         foil_id: u64,
         switch_hz: f32,

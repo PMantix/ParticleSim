@@ -13,6 +13,8 @@ mod tests {
             id: 1,
             body_ids: vec![],
             current: 1.0,
+            dc_current: 1.0,
+            ac_current: 0.0,
             accum: 0.0,
             switch_hz: 0.0,
             link_id: None,

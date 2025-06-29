@@ -545,7 +545,27 @@ impl super::Renderer {
         let time = *crate::renderer::state::SIM_TIME.lock();
         for id in &self.selected_foil_ids {
             if let Some(foil) = self.foils.iter().find(|f| f.id == *id) {
-                let state = if foil.current.abs() > f32::EPSILON { 1.0 } else { 0.0 };
+                // Calculate effective current using the same logic as simulation
+                let effective_current = if foil.switch_hz > 0.0 {
+                    // DC component plus AC component (square wave)
+                    let ac_component = if (time * foil.switch_hz) % 1.0 < 0.5 { 
+                        foil.ac_current 
+                    } else { 
+                        -foil.ac_current 
+                    };
+                    foil.dc_current + ac_component
+                } else {
+                    // Use legacy current field when no switching
+                    foil.current
+                };
+                
+                // Normalize to 0-1 range for wave display (show activity when current != 0)
+                let state = if effective_current.abs() > f32::EPSILON { 
+                    effective_current.signum() 
+                } else { 
+                    0.0 
+                };
+                
                 let entry = self.foil_wave_history.entry(*id).or_insert_with(Vec::new);
                 if let Some(&(_, last)) = entry.last() {
                     if (last - state).abs() > f32::EPSILON {

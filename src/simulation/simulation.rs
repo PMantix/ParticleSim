@@ -118,10 +118,17 @@ impl Simulation {
         let mut foil_current_recipients = vec![false; self.bodies.len()];
         // Apply foil current sources/sinks
         for (_, foil) in self.foils.iter_mut().enumerate() {
-            // Accumulate current for this foil, applying optional switching
+            // Calculate effective current using DC + AC components
             let effective_current = if foil.switch_hz > 0.0 {
-                if (time * foil.switch_hz) % 1.0 < 0.5 { foil.current } else { 0.0 }
+                // DC component plus AC component (square wave)
+                let ac_component = if (time * foil.switch_hz) % 1.0 < 0.5 { 
+                    foil.ac_current 
+                } else { 
+                    -foil.ac_current 
+                };
+                foil.dc_current + ac_component
             } else {
+                // Use legacy current field when no switching
                 foil.current
             };
             foil.accum += effective_current * self.dt;
