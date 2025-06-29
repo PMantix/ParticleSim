@@ -39,7 +39,7 @@ impl Foil {
         _width: f32,
         _height: f32,
         current: f32,
-        switch_hz: f32,
+        _switch_hz: f32,
     ) -> Self {
         static NEXT_ID: AtomicU64 = AtomicU64::new(1);
         Self {
