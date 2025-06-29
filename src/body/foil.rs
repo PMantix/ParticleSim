@@ -30,9 +30,6 @@ pub struct Foil {
     pub link_id: Option<u64>,
     /// Link mode describing how the currents are related.
     pub mode: LinkMode,
-    /// Frequency in Hz to toggle the foil current on/off.
-    /// `0.0` means the foil is always on.
-    pub switch_hz: f32,
 }
 
 impl Foil {
@@ -53,7 +50,6 @@ impl Foil {
             switch_hz: 0.0,
             link_id: None,
             mode: LinkMode::Parallel,
-            switch_hz: 0.0,
         }
     }
 }

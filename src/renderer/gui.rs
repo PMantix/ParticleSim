@@ -369,10 +369,15 @@ impl super::Renderer {
                                 ).unwrap();
                             }
 
-                            use egui::plot::{Plot, Line, PlotPoints};
+                            use egui::plot::{Plot, Line, PlotPoints, VLine};
                             let seconds = 5.0;
                             let steps = 200;
-                            let current_time = 0.0;
+                            // Calculate simulation time from frame count and timestep
+                            let current_time = {
+                                let _bodies = BODIES.lock();
+                                // For now, just use 0.0 since we don't have direct access to simulation time
+                                0.0_f32
+                            };
                             let selected_ids = self.selected_foil_ids.clone();
                             Plot::new("foil_wave_plot").height(100.0).allow_scroll(false).allow_zoom(false).show(ui, |plot_ui| {
                                 let colors = [egui::Color32::LIGHT_BLUE, egui::Color32::LIGHT_RED, egui::Color32::LIGHT_GREEN, egui::Color32::YELLOW];
@@ -389,6 +394,14 @@ impl super::Renderer {
                                         }
                                         let points = PlotPoints::from(points_vec);
                                         plot_ui.line(Line::new(points).color(colors[idx % colors.len()]));
+
+                                        // Draw a vertical line for the current phase/position in the pulse
+                                        // Find the t in [0, seconds] that matches the current phase
+                                        let period = if f.switch_hz > 0.0 { 1.0 / f.switch_hz } else { seconds };
+                                        let t_mod = (current_time % period).max(0.0);
+                                        if t_mod <= seconds {
+                                            plot_ui.vline(VLine::new(t_mod as f64).color(egui::Color32::WHITE));
+                                        }
                                     }
                                 }
                             });
