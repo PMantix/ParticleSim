@@ -15,8 +15,8 @@ mod foil_cohesion_and_overlap {
         let idx = sim.bodies.len();
         let id = body.id;
         sim.bodies.push(body);
-        sim.foils.push(Foil::new(vec![id], Vec2::zero(), 1.0, 1.0, 1.0));
-        sim.foils.push(Foil::new(vec![id], Vec2::zero(), 1.0, 1.0, -1.0));
+        sim.foils.push(Foil::new(vec![id], Vec2::zero(), 1.0, 1.0, 1.0, 0.0));
+        sim.foils.push(Foil::new(vec![id], Vec2::zero(), 1.0, 1.0, -1.0, 0.0));
         sim.step();
         assert_eq!(sim.bodies[idx].electrons.len(), crate::config::FOIL_NEUTRAL_ELECTRONS, "Overlapping foils should not crash and net current is zero");
     }
@@ -40,7 +40,7 @@ mod foil_cohesion_and_overlap {
             ids.push(body.id);
             sim.bodies.push(body);
         }
-        sim.foils.push(Foil::new(ids.clone(), Vec2::zero(), n as f32 * spacing, 1.0, 0.0));
+        sim.foils.push(Foil::new(ids.clone(), Vec2::zero(), n as f32 * spacing, 1.0, 0.0, 0.0));
         let initial_avg_dist: f32 = (0..n-1)
             .map(|i| (sim.bodies[i+1].pos - sim.bodies[i].pos).mag())
             .sum::<f32>() / (n as f32 - 1.0);

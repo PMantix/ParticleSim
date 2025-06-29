@@ -380,13 +380,14 @@ impl super::Renderer {
                                 for (idx, fid) in selected_ids.iter().enumerate() {
                                     if let Some(f) = foils.iter().find(|f| f.id == *fid) {
                                         let dt = seconds / steps as f32;
-                                        let mut points: PlotPoints = Vec::with_capacity(steps + 1);
+                                        let mut points_vec: Vec<[f64; 2]> = Vec::with_capacity(steps + 1);
                                         for i in 0..=steps {
                                             let t = i as f32 * dt;
                                             let phase = ((current_time + t) * f.switch_hz).fract();
                                             let sign = if phase < 0.5 { 1.0 } else { -1.0 };
-                                            points.push([t as f64, (sign * f.current) as f64]);
+                                            points_vec.push([t as f64, (sign * f.current) as f64]);
                                         }
+                                        let points = PlotPoints::from(points_vec);
                                         plot_ui.line(Line::new(points).color(colors[idx % colors.len()]));
                                     }
                                 }

@@ -299,6 +299,7 @@ mod tests {
                     current: 10.0,
                     accum: 1.5,
                     mode: crate::body::foil::LinkMode::Parallel,
+                    switch_hz: 0.0,
                 }],
                 cell_list: CellList::new(10.0, 1.0),
                 body_to_foil: HashMap::new(),
