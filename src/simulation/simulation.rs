@@ -83,14 +83,28 @@ impl Simulation {
         // Update global simulation time for GUI access
         *SIM_TIME.lock() = time;
 
-        // Propagate linked foil currents
+        // Propagate linked foil currents using effective current (DC + AC)
         let mut updates = Vec::new();
         for foil in &self.foils {
             if let Some(link_id) = foil.link_id {
                 if let Some(idx) = self.foils.iter().position(|f| f.id == link_id) {
+                    // Calculate effective current for the source foil
+                    let effective_current = if foil.switch_hz > 0.0 {
+                        // DC component plus AC component (square wave)
+                        let ac_component = if (time * foil.switch_hz) % 1.0 < 0.5 { 
+                            foil.ac_current 
+                        } else { 
+                            -foil.ac_current 
+                        };
+                        foil.dc_current + ac_component
+                    } else {
+                        // Use legacy current field when no switching
+                        foil.current
+                    };
+                    
                     let new_current = match foil.mode {
-                        crate::body::foil::LinkMode::Parallel => foil.current,
-                        crate::body::foil::LinkMode::Opposite => -foil.current,
+                        crate::body::foil::LinkMode::Parallel => effective_current,
+                        crate::body::foil::LinkMode::Opposite => -effective_current,
                     };
                     updates.push((idx, new_current));
                 }
@@ -98,6 +112,7 @@ impl Simulation {
         }
         for (idx, cur) in updates {
             if let Some(f) = self.foils.get_mut(idx) {
+                // Update the legacy current field for linked foils
                 f.current = cur;
             }
         }

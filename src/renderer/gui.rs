@@ -435,7 +435,7 @@ impl super::Renderer {
                                 ).unwrap();
                             }
 
-                            use egui::plot::{Plot, Line, PlotPoints, VLine};
+                            use egui::plot::{Plot, Line, PlotPoints};
                             let seconds = 5.0;
                             let steps = 200;
                             // Use actual simulation time and respect pause state
@@ -458,9 +458,13 @@ impl super::Renderer {
                                         for i in 0..=steps {
                                             let t = i as f32 * dt;
                                             let effective_current = if f.switch_hz > 0.0 {
-                                                // DC + AC components
-                                                let phase = ((current_time + t) * f.switch_hz).fract();
-                                                let ac_component = if phase < 0.5 { f.ac_current } else { -f.ac_current };
+                                                // DC + AC components - use same phase calculation as simulation
+                                                let plot_time = current_time + t;
+                                                let ac_component = if (plot_time * f.switch_hz) % 1.0 < 0.5 { 
+                                                    f.ac_current 
+                                                } else { 
+                                                    -f.ac_current 
+                                                };
                                                 f.dc_current + ac_component
                                             } else {
                                                 // Use legacy current field when no switching
@@ -470,18 +474,6 @@ impl super::Renderer {
                                         }
                                         let points = PlotPoints::from(points_vec);
                                         plot_ui.line(Line::new(points).color(colors[idx % colors.len()]));
-
-                                        // Draw a vertical line for the current phase/position in the pulse
-                                        // Find the t in [0, seconds] that matches the current phase
-                                        let period = if f.switch_hz > 0.0 { 1.0 / f.switch_hz } else { seconds };
-                                        let t_mod = if period > 0.0 { 
-                                            (current_time % period).max(0.0) 
-                                        } else { 
-                                            0.0 
-                                        };
-                                        if t_mod <= seconds {
-                                            plot_ui.vline(VLine::new(t_mod as f64).color(egui::Color32::WHITE));
-                                        }
                                     }
                                 }
                             });
