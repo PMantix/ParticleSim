@@ -84,6 +84,7 @@ This repository contains a modular, parallelized Barnes-Hut simulation for large
 - **`src/body.rs`** — Contains the `Body` struct and methods; now supports explicit electron and polarization handling.
 - **`src/config.rs`** — Configurable simulation parameters, including force constants and visualization options.
 - **`src/main.rs`** — Entry point, handles threading, command processing, and the main simulation loop.
+- See [docs/physics.md](docs/physics.md) for default masses, radii and damping values for each particle species.
 
 ---
 
