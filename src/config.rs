@@ -73,6 +73,8 @@ pub const QUADTREE_THREAD_CAPACITY: usize = 1024;       // Max bodies per thread
 // ====================
 pub const CLUMP_RADIUS: f32 = 20.0;                     // Radius of each clump
 pub const DOMAIN_BOUNDS: f32 = 350.0;                   // Simulation domain boundary
+/// Spring constant for the soft wall repulsion force
+pub const WALL_REPULSION_K: f32 = 50.0;
 
 // ====================
 // Threading/Parallelism

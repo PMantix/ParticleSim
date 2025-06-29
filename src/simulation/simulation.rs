@@ -192,15 +192,18 @@ impl Simulation {
             body.vel += body.acc * dt;
             body.vel *= damping;
             body.pos += body.vel * dt;
+            let k = config::WALL_REPULSION_K;
             for axis in 0..2 {
                 let pos = if axis == 0 { &mut body.pos.x } else { &mut body.pos.y };
                 let vel = if axis == 0 { &mut body.vel.x } else { &mut body.vel.y };
-                if *pos < -bounds {
-                    *pos = -bounds;
-                    *vel = -*vel;
-                } else if *pos > bounds {
-                    *pos = bounds;
-                    *vel = -*vel;
+                let dist_to_wall = bounds - pos.abs();
+                if dist_to_wall < body.radius {
+                    let penetration = body.radius - dist_to_wall;
+                    let dir = -pos.signum();
+                    *vel += dir * k * penetration * dt / body.mass;
+                    if pos.abs() > bounds {
+                        *pos = pos.signum() * bounds;
+                    }
                 }
             }
         });
