@@ -186,12 +186,12 @@ impl Simulation {
         profile_scope!("iterate");
         // Damping factor scales with timestep and is user-configurable
         let dt = self.dt;
-        let base = self.config.damping_base;
+        let base_damping = self.config.damping_base.powf(dt / 0.01);
         let bounds = self.bounds;
         self.bodies.par_iter_mut().for_each(|body| {
             body.vel += body.acc * dt;
-            let damping = body.species.damping() * base;
-            body.vel *= damping.powf(dt / 0.01);
+            let damping = base_damping * body.species.damping();
+            body.vel *= damping;
             body.pos += body.vel * dt;
             for axis in 0..2 {
                 let pos = if axis == 0 { &mut body.pos.x } else { &mut body.pos.y };

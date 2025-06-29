@@ -4,10 +4,12 @@
 use ultraviolet::Vec2;
 use crate::config;
 use super::electron::Electron;
+use crate::species::{SPECIES_PROPERTIES, SpeciesProps};
 use smallvec::SmallVec;
 use serde::{Serialize, Deserialize};
+use std::hash::Hash;
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash, Serialize, Deserialize)]
 pub enum Species {
     LithiumIon,
     LithiumMetal,
@@ -136,5 +138,25 @@ impl Body {
             self.last_surround_pos = self.pos;
             self.last_surround_frame = frame;
         }
+    }
+}
+
+impl Species {
+    fn props(&self) -> &'static SpeciesProps {
+        SPECIES_PROPERTIES
+            .get(self)
+            .expect("missing species properties")
+    }
+
+    pub fn mass(&self) -> f32 {
+        self.props().mass
+    }
+
+    pub fn radius(&self) -> f32 {
+        self.props().radius
+    }
+
+    pub fn damping(&self) -> f32 {
+        self.props().damping
     }
 }

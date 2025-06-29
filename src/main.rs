@@ -17,7 +17,7 @@ mod utils;
 mod config;
 mod profiler;
 mod io;
-mod species_properties;
+mod species;
 
 use crate::body::Species;
 //use crate::body::foil::{Foil, LinkMode};
@@ -64,9 +64,30 @@ fn main() {
     let left_center = Vec2::new(-bounds * 0.6, 0.0);
     let right_center = Vec2::new(bounds * 0.6, 0.0);
     let center = Vec2::zero();
-    let metal_body = crate::body::Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::LithiumMetal);
-    let ion_body = crate::body::Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 1.0, Species::LithiumIon);
-    let anion_body = crate::body::Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, -1.0, Species::ElectrolyteAnion);
+    let metal_body = crate::body::Body::new(
+        Vec2::zero(),
+        Vec2::zero(),
+        Species::LithiumMetal.mass(),
+        Species::LithiumMetal.radius(),
+        0.0,
+        Species::LithiumMetal,
+    );
+    let ion_body = crate::body::Body::new(
+        Vec2::zero(),
+        Vec2::zero(),
+        Species::LithiumIon.mass(),
+        Species::LithiumIon.radius(),
+        1.0,
+        Species::LithiumIon,
+    );
+    let anion_body = crate::body::Body::new(
+        Vec2::zero(),
+        Vec2::zero(),
+        Species::ElectrolyteAnion.mass(),
+        Species::ElectrolyteAnion.radius(),
+        -1.0,
+        Species::ElectrolyteAnion,
+    );
     // Send SimCommands to populate the simulation
     let tx = SIM_COMMAND_SENDER.lock().as_ref().unwrap().clone();
     tx.send(SimCommand::AddCircle { body: metal_body.clone(), x: left_center.x, y: left_center.y, radius: clump_radius }).unwrap();
@@ -291,7 +312,7 @@ fn main() {
                                 let mut new_body = crate::body::Body::new(
                                     pos,
                                     Vec2::zero(),
-                                    1e6, // Large mass for foil
+                                    Species::FoilMetal.mass(),
                                     particle_radius,
                                     0.0,
                                     Species::FoilMetal,
