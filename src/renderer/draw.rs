@@ -541,12 +541,14 @@ impl super::Renderer {
                 let entry = self.foil_wave_history.entry(*id).or_insert_with(Vec::new);
                 if let Some(&(_, last)) = entry.last() {
                     if (last - state).abs() > f32::EPSILON {
+                        // extra points to create a vertical transition
                         entry.push((time, last));
                         entry.push((time, state));
                     }
-                } else {
-                    entry.push((time, state));
                 }
+                // push the current state for this frame
+                entry.push((time, state));
+
                 if entry.len() > 2000 {
                     let excess = entry.len() - 2000;
                     entry.drain(0..excess);
@@ -581,14 +583,32 @@ impl super::Renderer {
                     if let Some((pt, pv)) = prev {
                         let x0 = base_x + (pt - start_time) * x_scale;
                         let x1 = base_x + (t - start_time) * x_scale;
-                        ctx.draw_line(Vec2::new(x0, y_base + pv * amplitude), Vec2::new(x1, y_base + pv * amplitude), [255, 255, 255, 255]);
+                        ctx.draw_line(
+                            Vec2::new(x0, y_base + pv * amplitude),
+                            Vec2::new(x1, y_base + pv * amplitude),
+                            [255, 255, 255, 255],
+                        );
                     }
                     prev = Some((t, state));
                 }
+
                 if let Some((pt, pv)) = prev {
                     let x0 = base_x + (pt - start_time) * x_scale;
                     let x1 = base_x + (current_time - start_time) * x_scale;
-                    ctx.draw_line(Vec2::new(x0, y_base + pv * amplitude), Vec2::new(x1, y_base + pv * amplitude), [255, 255, 255, 255]);
+                    ctx.draw_line(
+                        Vec2::new(x0, y_base + pv * amplitude),
+                        Vec2::new(x1, y_base + pv * amplitude),
+                        [255, 255, 255, 255],
+                    );
+                } else if let Some(&(_, last)) = history.last() {
+                    // Only older points exist, draw a constant line across the window
+                    let x0 = base_x;
+                    let x1 = base_x + (current_time - start_time) * x_scale;
+                    ctx.draw_line(
+                        Vec2::new(x0, y_base + last * amplitude),
+                        Vec2::new(x1, y_base + last * amplitude),
+                        [255, 255, 255, 255],
+                    );
                 }
             }
         }
