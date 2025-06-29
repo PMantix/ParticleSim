@@ -78,6 +78,7 @@ impl Simulation {
         self.background_e_field = Vec2::new(theta.cos(), theta.sin()) * mag;
         self.rewound_flags.par_iter_mut().for_each(|flag| *flag = false);
         self.dt = *TIMESTEP.lock();
+        let time = self.frame as f32 * self.dt;
 
         // Propagate linked foil currents
         let mut updates = Vec::new();
@@ -114,8 +115,13 @@ impl Simulation {
         let mut foil_current_recipients = vec![false; self.bodies.len()];
         // Apply foil current sources/sinks
         for (_, foil) in self.foils.iter_mut().enumerate() {
-            // Accumulate current for this foil
-            foil.accum += foil.current * self.dt;
+            // Accumulate current for this foil, applying optional switching
+            let effective_current = if foil.switch_hz > 0.0 {
+                if (time * foil.switch_hz) % 1.0 < 0.5 { foil.current } else { 0.0 }
+            } else {
+                foil.current
+            };
+            foil.accum += effective_current * self.dt;
 
             let mut rng = rand::rng();
             // Print electron counts for all foil bodies before

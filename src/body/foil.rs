@@ -24,6 +24,8 @@ pub struct Foil {
     pub current: f32,
     /// Internal accumulator used to emit/remove fractional electrons per step.
     pub accum: f32,
+    /// Frequency in Hz for toggling the current on/off. `0.0` disables switching.
+    pub switch_hz: f32,
     /// Identifier of a linked foil, if any.
     pub link_id: Option<u64>,
     /// Link mode describing how the currents are related.
@@ -38,6 +40,7 @@ impl Foil {
             body_ids,
             current,
             accum: 0.0,
+            switch_hz: 0.0,
             link_id: None,
             mode: LinkMode::Parallel,
         }

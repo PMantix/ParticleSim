@@ -298,6 +298,7 @@ mod tests {
                     body_ids: vec![foil2_id], // Use the saved ID
                     current: 10.0,
                     accum: 1.5,
+                    switch_hz: 0.0,
                     mode: crate::body::foil::LinkMode::Parallel,
                 }],
                 cell_list: CellList::new(10.0, 1.0),
