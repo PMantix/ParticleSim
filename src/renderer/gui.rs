@@ -357,6 +357,17 @@ impl super::Renderer {
                                     SimCommand::SetFoilCurrent { foil_id: selected_id, current }
                                 ).unwrap();
                             }
+
+                            let mut freq = foil.switch_hz;
+                            ui.horizontal(|ui| {
+                                ui.label("Switch Hz:");
+                                ui.add(egui::DragValue::new(&mut freq).speed(0.1));
+                            });
+                            if (freq - foil.switch_hz).abs() > f32::EPSILON {
+                                SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(
+                                    SimCommand::SetFoilFrequency { foil_id: selected_id, freq }
+                                ).unwrap();
+                            }
                         });
                     }
                 }

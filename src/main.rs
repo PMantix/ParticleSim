@@ -341,6 +341,16 @@ fn main() {
                         }
                     },
 
+                    SimCommand::SetFoilFrequency { foil_id, freq } => {
+                        if let Some(foil) = simulation
+                            .foils
+                            .iter_mut()
+                            .find(|f| f.body_ids.contains(&foil_id))
+                        {
+                            foil.switch_hz = freq;
+                        }
+                    },
+
                     SimCommand::LinkFoils { a, b, mode } => {
                         let a_idx = simulation.foils.iter().position(|f| f.id == a);
                         let b_idx = simulation.foils.iter().position(|f| f.id == b);
