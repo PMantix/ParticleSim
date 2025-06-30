@@ -512,7 +512,41 @@ impl super::Renderer {
                     ui.checkbox(&mut self.sim_config.show_lj_vs_coulomb_ratio, "Show LJ/Coulomb Force Ratio");
                     ui.checkbox(&mut self.show_electron_deficiency, "Show Electron Deficiency/Excess");
                 });
+
+                // --- Plotting & Analysis ---
+                ui.separator();
+                crate::plotting::gui::show_plotting_controls(
+                    ui,
+                    &mut self.plotting_system,
+                    &mut self.show_plotting_window,
+                    &mut self.new_plot_type,
+                    &mut self.new_plot_quantity,
+                    &mut self.new_plot_sampling_mode,
+                    &mut self.new_plot_title,
+                    &mut self.new_plot_spatial_bins,
+                    &mut self.new_plot_time_window,
+                    &mut self.new_plot_update_frequency,
+                );
             });
+
+        // Show plotting control window if open
+        if self.show_plotting_window {
+            crate::plotting::gui::show_plotting_window(
+                ctx,
+                &mut self.plotting_system,
+                &mut self.show_plotting_window,
+                &mut self.new_plot_type,
+                &mut self.new_plot_quantity,
+                &mut self.new_plot_sampling_mode,
+                &mut self.new_plot_title,
+                &mut self.new_plot_spatial_bins,
+                &mut self.new_plot_time_window,
+                &mut self.new_plot_update_frequency,
+            );
+        }
+
+        // Show individual plot windows
+        crate::plotting::gui::show_plot_windows(ctx, &mut self.plotting_system);
     }
 }
 

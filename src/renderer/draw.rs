@@ -20,6 +20,10 @@ impl super::Renderer {
                 std::mem::swap(&mut self.foils, &mut FOILS.lock());
                 self.frame = self.frame.wrapping_add(1);
                 self.update_foil_wave_history();
+                
+                // Update plotting system with new data
+                let current_time = *crate::renderer::state::SIM_TIME.lock();
+                self.plotting_system.update_plots(&self.bodies, &self.foils, current_time);
             }
             if let Some(body) = self.confirmed_bodies.take() {
                 self.bodies.push(body.clone());

@@ -6,6 +6,7 @@ pub mod draw;
 use crate::body::{Body, Species, foil::Foil};
 use crate::config::SimConfig;
 use crate::quadtree::Node;
+use crate::plotting::{PlottingSystem, PlotType, Quantity, SamplingMode};
 use ultraviolet::Vec2;
 use quarkstrom::winit_input_helper::WinitInputHelper;
 use std::collections::HashMap;
@@ -52,6 +53,17 @@ pub struct Renderer {
     // State saving/loading UI
     pub save_state_name: String,
     pub load_state_selected: Option<String>,
+    // Plotting system
+    plotting_system: PlottingSystem,
+    // Plotting UI state
+    show_plotting_window: bool,
+    new_plot_type: PlotType,
+    new_plot_quantity: Quantity,
+    new_plot_sampling_mode: SamplingMode,
+    new_plot_title: String,
+    new_plot_spatial_bins: usize,
+    new_plot_time_window: f32,
+    new_plot_update_frequency: f32,
 }
 
 impl quarkstrom::Renderer for Renderer {
@@ -94,6 +106,17 @@ impl quarkstrom::Renderer for Renderer {
             show_electron_deficiency: true,
             save_state_name: String::new(),
             load_state_selected: None,
+            // Initialize plotting system with simulation bounds (assuming 50.0 based on typical values)
+            plotting_system: PlottingSystem::new(50.0),
+            // Plotting UI defaults
+            show_plotting_window: false,
+            new_plot_type: PlotType::TimeSeries,
+            new_plot_quantity: Quantity::TotalSpeciesCount(Species::LithiumIon),
+            new_plot_sampling_mode: SamplingMode::Continuous,
+            new_plot_title: "New Plot".to_string(),
+            new_plot_spatial_bins: 50,
+            new_plot_time_window: 10.0,
+            new_plot_update_frequency: 5.0,
         }
     }
 

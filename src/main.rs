@@ -18,6 +18,7 @@ mod config;
 mod profiler;
 mod io;
 mod species;
+mod plotting;
 
 use crate::body::Species;
 //use crate::body::foil::{Foil, LinkMode};
