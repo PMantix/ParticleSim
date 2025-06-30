@@ -6,6 +6,7 @@ use ultraviolet::Vec2;
 use crate::renderer::Body;
 use crate::Electron;
 use crate::config::IsolineFieldMode;
+use egui::plot::{Plot, Line, PlotPoints};
 
 impl super::Renderer {
     pub fn show_gui(&mut self, ctx: &quarkstrom::egui::Context) {
@@ -512,6 +513,68 @@ impl super::Renderer {
                     ui.checkbox(&mut self.sim_config.show_lj_vs_coulomb_ratio, "Show LJ/Coulomb Force Ratio");
                     ui.checkbox(&mut self.show_electron_deficiency, "Show Electron Deficiency/Excess");
                 });
+            });
+
+        egui::Window::new("Plots")
+            .open(&mut self.plots_window_open)
+            .show(ctx, |ui| {
+                ui.horizontal(|ui| {
+                    ui.selectable_value(&mut self.plot_selected, crate::renderer::PlotType::ChargeVsX, "Charge vs X");
+                    ui.selectable_value(&mut self.plot_selected, crate::renderer::PlotType::IonConcentration, "Ion Conc.");
+                    ui.selectable_value(&mut self.plot_selected, crate::renderer::PlotType::FoilCurrent, "Foil Currents");
+                });
+
+                let collector = crate::analysis::ANALYSIS.lock();
+                match self.plot_selected {
+                    crate::renderer::PlotType::ChargeVsX => {
+                        if let Some(last) = collector.history.last() {
+                            let bin_w = 2.0 * collector.bounds / collector.bins as f32;
+                            let points: PlotPoints = last.charge_bins_x.iter().enumerate()
+                                .map(|(i, v)| {
+                                    let x = -collector.bounds + (i as f32 + 0.5) * bin_w;
+                                    [x as f64, *v as f64]
+                                })
+                                .collect();
+                            Plot::new("charge_x").show(ui, |p| {
+                                p.line(Line::new(points));
+                            });
+                        }
+                    }
+                    crate::renderer::PlotType::IonConcentration => {
+                        let pts: PlotPoints = collector.history.iter()
+                            .map(|s| [s.time as f64, s.ion_concentration as f64])
+                            .collect();
+                        Plot::new("ion_conc").show(ui, |p| { p.line(Line::new(pts)); });
+                    }
+                    crate::renderer::PlotType::FoilCurrent => {
+                        let fid = self.plot_selected_foil.or_else(|| self.selected_foil_ids.first().copied());
+                        if let Some(fid) = fid {
+                            self.plot_selected_foil = Some(fid);
+                            let cmd: PlotPoints = collector.history.iter()
+                                .map(|s| [s.time as f64, s.foil_command_current.get(&fid).copied().unwrap_or(0.0) as f64])
+                                .collect();
+                            let resp: PlotPoints = collector.history.iter()
+                                .map(|s| [s.time as f64, s.foil_response_current.get(&fid).copied().unwrap_or(0.0) as f64])
+                                .collect();
+                            Plot::new("foil_curr").legend(Default::default()).show(ui, |p| {
+                                p.line(Line::new(cmd).name("command"));
+                                p.line(Line::new(resp).name("response").color(egui::Color32::RED));
+                            });
+                        } else {
+                            ui.label("Select a foil to plot");
+                        }
+                    }
+                }
+
+                ui.separator();
+                if ui.button("Export CSV").clicked() {
+                    let data = collector.to_csv();
+                    std::fs::write("analysis.csv", data).ok();
+                }
+                if ui.button("Export JSON").clicked() {
+                    let data = collector.to_json();
+                    std::fs::write("analysis.json", data).ok();
+                }
             });
     }
 }

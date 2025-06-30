@@ -10,6 +10,13 @@ use ultraviolet::Vec2;
 use quarkstrom::winit_input_helper::WinitInputHelper;
 use std::collections::HashMap;
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum PlotType {
+    ChargeVsX,
+    IonConcentration,
+    FoilCurrent,
+}
+
 pub struct Renderer {
     pos: Vec2,
     scale: f32,
@@ -34,6 +41,9 @@ pub struct Renderer {
     frame: usize,
     /// History of on/off states for selected foils
     foil_wave_history: HashMap<u64, Vec<(f32, f32)>>,
+    plots_window_open: bool,
+    plot_selected: PlotType,
+    plot_selected_foil: Option<u64>,
     // Scenario controls
     scenario_radius: f32,
     scenario_x: f32,
@@ -78,6 +88,9 @@ impl quarkstrom::Renderer for Renderer {
             sim_config: crate::config::LJ_CONFIG.lock().clone(),
             frame: 0,
             foil_wave_history: HashMap::new(),
+            plots_window_open: false,
+            plot_selected: PlotType::ChargeVsX,
+            plot_selected_foil: None,
             scenario_radius: 1.0,
             scenario_x: 0.0,
             scenario_y: 0.0,

@@ -131,6 +131,7 @@ impl Simulation {
 
         // Track which bodies receive electrons from foil current this step
         let mut foil_current_recipients = vec![false; self.bodies.len()];
+        let mut foil_electron_delta: HashMap<u64, i32> = HashMap::new();
         // Apply foil current sources/sinks
         for (_, foil) in self.foils.iter_mut().enumerate() {
             // Calculate effective current using DC + AC components
@@ -157,12 +158,13 @@ impl Simulation {
                 }
             }
             while foil.accum >= 1.0 {
-
+                
                 if let Some(&id) = foil.body_ids.as_slice().choose(&mut rng) {
                     if let Some((body_idx, body)) = self.bodies.iter_mut().enumerate().find(|(_, b)| b.id == id && b.species == Species::FoilMetal) {
                         if body.electrons.len() < crate::config::FOIL_MAX_ELECTRONS {
                             body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
                             foil_current_recipients[body_idx] = true;
+                            *foil_electron_delta.entry(foil.id).or_insert(0) += 1;
                         }
                     }
                 }
@@ -174,6 +176,7 @@ impl Simulation {
                         if !body.electrons.is_empty() {
                             body.electrons.pop();
                             foil_current_recipients[body_idx] = true;
+                            *foil_electron_delta.entry(foil.id).or_insert(0) -= 1;
                         }
                     }
                 }
@@ -203,6 +206,13 @@ impl Simulation {
         }
         self.perform_electron_hopping_with_exclusions(&foil_current_recipients);
         self.frame += 1;
+        let foil_response_current: HashMap<u64, f32> = foil_electron_delta
+            .into_iter()
+            .map(|(id, d)| (id, d as f32 / self.dt))
+            .collect();
+        crate::analysis::ANALYSIS
+            .lock()
+            .record(self, foil_response_current);
 
         #[cfg(test)]
         // After all updates, print debug info for anions

@@ -4,6 +4,7 @@ mod tests {
     use crate::body::foil::Foil;
     use crate::renderer::Renderer;
     use quarkstrom::Renderer as QuarkstromRenderer;
+    use ultraviolet::Vec2;
 
     #[test]
     fn constant_current_produces_lines() {
@@ -41,5 +42,25 @@ mod tests {
         let first_current = history[0].1;
         let last_current = history[history.len() - 1].1;
         assert!((first_current - last_current).abs() < 0.001, "Current values should be consistent for constant current");
+    }
+
+    #[test]
+    fn analysis_records_frames() {
+        *TIMESTEP.lock() = 0.1;
+        crate::analysis::ANALYSIS.lock().history.clear();
+        let mut sim = crate::simulation::Simulation::new();
+        sim.bodies.push(crate::body::Body::new(
+            Vec2::zero(),
+            Vec2::zero(),
+            1.0,
+            1.0,
+            0.0,
+            crate::body::Species::LithiumMetal,
+        ));
+        sim.quadtree.build(&mut sim.bodies);
+        sim.step();
+        sim.step();
+        let len = crate::analysis::ANALYSIS.lock().history.len();
+        assert_eq!(len, 2, "two frames of data should be recorded");
     }
 }
