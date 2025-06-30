@@ -5,7 +5,9 @@ use crate::body::Species;
 
 #[derive(Clone, Copy, Debug)]
 pub struct SpeciesProps {
+    /// Particle mass in mass units
     pub mass: f32,
+    /// Particle radius in distance units
     pub radius: f32,
     pub damping: f32,
 }

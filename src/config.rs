@@ -3,13 +3,13 @@
 // ====================
 // Electron Parameters
 // ====================
-pub const ELECTRON_SPRING_K: f32 = 0.05;                // Spring constant for electron drift
-pub const ELECTRON_DRIFT_RADIUS_FACTOR: f32 = 1.2;      // Max drift radius as a factor of body radius
-pub const ELECTRON_MAX_SPEED_FACTOR: f32 = 1.2;         // Max electron speed as a factor of body radius per dt
-pub const HOP_RADIUS_FACTOR: f32 = 2.1;                      // Hopping radius as a factor of body radius
-pub const HOP_RATE_K0: f32 = 1.0;            /// Base hop‐rate constant (per unit time) at zero overpotential
-pub const HOP_TRANSFER_COEFF: f32 = 0.5;            /// Transfer coefficient α (unitless, ~0.5)   
-pub const HOP_ACTIVATION_ENERGY: f32 = 0.025;      /// Thermal energy k_BT (in your same charge‐units)
+pub const ELECTRON_SPRING_K: f32 = 0.05;                // Spring constant for electron drift (accel/field units)
+pub const ELECTRON_DRIFT_RADIUS_FACTOR: f32 = 1.2;      // Max drift radius as a factor of body radius (unitless)
+pub const ELECTRON_MAX_SPEED_FACTOR: f32 = 1.2;         // Max electron speed as a factor of body radius per dt (unitless)
+pub const HOP_RADIUS_FACTOR: f32 = 2.1;                      // Hopping radius as a factor of body radius (unitless)
+pub const HOP_RATE_K0: f32 = 1.0;            /// Base hop‐rate constant (per time unit) at zero overpotential
+pub const HOP_TRANSFER_COEFF: f32 = 0.5;            /// Transfer coefficient α (unitless)
+pub const HOP_ACTIVATION_ENERGY: f32 = 0.025;      /// Thermal energy k_BT (energy units)
 
 // ====================
 // Butler-Volmer Parameters
@@ -17,82 +17,82 @@ pub const HOP_ACTIVATION_ENERGY: f32 = 0.025;      /// Thermal energy k_BT (in y
 /// Enable Butler-Volmer kinetics for inter-species electron transfer
 pub const BV_ENABLED: bool = false;
 /// Exchange current density i0 used in the Butler-Volmer expression
-pub const BV_EXCHANGE_CURRENT: f32 = 1.0;
+pub const BV_EXCHANGE_CURRENT: f32 = 1.0;               // Current density in current units
 /// Transfer coefficient alpha used in the Butler-Volmer expression
-pub const BV_TRANSFER_COEFF: f32 = 0.5;
+pub const BV_TRANSFER_COEFF: f32 = 0.5;                 // Unitless
 /// Scale factor corresponding to RT/(nF) for the overpotential term
-pub const BV_OVERPOTENTIAL_SCALE: f32 = 0.025;
+pub const BV_OVERPOTENTIAL_SCALE: f32 = 0.025;          // Potential scale in voltage units
 
 // ====================
 // LJ Force Parameters
 // ====================
-pub const LJ_FORCE_EPSILON: f32 = 2000.0;                  // Lennard-Jones epsilon parameter
-pub const LJ_FORCE_SIGMA: f32 = 1.7;                    // Lennard-Jones sigma parameter
-pub const LJ_FORCE_CUTOFF: f32 = 3.5;                  // Lennard-Jones cutoff distance
-pub const LJ_FORCE_MAX: f32 = 1000.0;                   // Max Lennard-Jones force magnitude
+pub const LJ_FORCE_EPSILON: f32 = 2000.0;                  // Lennard-Jones epsilon parameter (force·distance^6)
+pub const LJ_FORCE_SIGMA: f32 = 1.7;                    // Lennard-Jones sigma parameter (distance)
+pub const LJ_FORCE_CUTOFF: f32 = 3.5;                  // Lennard-Jones cutoff distance (distance)
+pub const LJ_FORCE_MAX: f32 = 1000.0;                   // Max Lennard-Jones force magnitude (force)
 /// Density above which the cell list is used for LJ interactions
-pub const LJ_CELL_DENSITY_THRESHOLD: f32 = 0.001;
+pub const LJ_CELL_DENSITY_THRESHOLD: f32 = 0.001;       // Bodies per distance²
 
 // ====================
 // Species/Body Parameters
 // ====================
 pub const LITHIUM_ION_THRESHOLD: f32 = 0.5;             // Charge threshold for lithium ion/metal transition
-pub const FOIL_NEUTRAL_ELECTRONS: usize = 1;
-pub const LITHIUM_METAL_NEUTRAL_ELECTRONS: usize = 1;
-pub const ELECTROLYTE_ANION_NEUTRAL_ELECTRONS: usize = 1;
-pub const FOIL_MAX_ELECTRONS: usize = 2;           // Max electrons for foil metal
+pub const FOIL_NEUTRAL_ELECTRONS: usize = 1;              // Count
+pub const LITHIUM_METAL_NEUTRAL_ELECTRONS: usize = 1;     // Count
+pub const ELECTROLYTE_ANION_NEUTRAL_ELECTRONS: usize = 1; // Count
+pub const FOIL_MAX_ELECTRONS: usize = 2;           // Max electrons for foil metal (count)
 /// Maximum number of nearby metallic neighbors allowed before ionization is inhibited
 //pub const IONIZATION_NEIGHBOR_THRESHOLD: usize = 4;
 /// Minimum local electric-field magnitude required for ionization/reduction
 //pub const IONIZATION_FIELD_THRESHOLD: f32 = 1.0e3;
 /// Radius factor (times body radius) for determining metal surroundings
-pub const SURROUND_RADIUS_FACTOR: f32 = 3.5;
+pub const SURROUND_RADIUS_FACTOR: f32 = 3.5;             // Radius factor (unitless)
 /// Neighbor count threshold for considering a body "surrounded" by metal
-pub const SURROUND_NEIGHBOR_THRESHOLD: usize = 4;
+pub const SURROUND_NEIGHBOR_THRESHOLD: usize = 4;         // Count
 /// Minimum displacement before recomputing `surrounded_by_metal`
-pub const SURROUND_MOVE_THRESHOLD: f32 = 0.5;
+pub const SURROUND_MOVE_THRESHOLD: f32 = 0.5;             // Distance
 /// Maximum number of frames between surround checks
-pub const SURROUND_CHECK_INTERVAL: usize = 10;
+pub const SURROUND_CHECK_INTERVAL: usize = 10;            // Frames
 
 // ====================
 // Simulation Parameters
 // ====================
-pub const DEFAULT_DT: f32 = 0.005;                     // Reduced minimum simulation timestep for better stability
-pub const COLLISION_PASSES: usize = 3;                  // Number of collision resolution passes
+pub const DEFAULT_DT: f32 = 0.005;                     // Reduced minimum simulation timestep for better stability (seconds)
+pub const COLLISION_PASSES: usize = 3;                  // Number of collision resolution passes (count)
 
 // ====================
 // Quadtree Parameters
 // ====================
-pub const QUADTREE_THETA: f32 = 1.0;                    // Barnes-Hut opening angle
-pub const QUADTREE_EPSILON: f32 = 2.0;                  // Softening parameter
-pub const QUADTREE_LEAF_CAPACITY: usize = 1;            // Max bodies per quadtree leaf
-pub const QUADTREE_THREAD_CAPACITY: usize = 1024;       // Max bodies per thread chunk
+pub const QUADTREE_THETA: f32 = 1.0;                    // Barnes-Hut opening angle (radians)
+pub const QUADTREE_EPSILON: f32 = 2.0;                  // Softening parameter (distance)
+pub const QUADTREE_LEAF_CAPACITY: usize = 1;            // Max bodies per quadtree leaf (count)
+pub const QUADTREE_THREAD_CAPACITY: usize = 1024;       // Max bodies per thread chunk (count)
 
 // ====================
 // Initialization/Clumping
 // ====================
-pub const CLUMP_RADIUS: f32 = 20.0;                     // Radius of each clump
-pub const DOMAIN_BOUNDS: f32 = 350.0;                   // Simulation domain boundary
+pub const CLUMP_RADIUS: f32 = 20.0;                     // Radius of each clump (distance)
+pub const DOMAIN_BOUNDS: f32 = 350.0;                   // Simulation domain boundary (distance)
 
 // ====================
 // Threading/Parallelism
 // ====================
-pub const MIN_THREADS: usize = 3;                       // Minimum number of threads to use
-pub const THREADS_LEAVE_FREE: usize = 2;                // Number of logical cores to leave free
+pub const MIN_THREADS: usize = 3;                       // Minimum number of threads to use (count)
+pub const THREADS_LEAVE_FREE: usize = 2;                // Number of logical cores to leave free (count)
 
 // ====================
 // Window/Rendering
 // ====================
-pub const WINDOW_WIDTH: u32 = 1500;                      // Window width in pixels
-pub const WINDOW_HEIGHT: u32 = 1200;                     // Window height in pixels
+pub const WINDOW_WIDTH: u32 = 1500;                      // Window width in pixels (px)
+pub const WINDOW_HEIGHT: u32 = 1200;                     // Window height in pixels (px)
 
 // ====================
 // DISPLAY/GUI Parameters
 // ====================
-pub const SHOW_FIELD_ISOLINES: bool = false;        /// Show electric field isolines/// Show electric-field isolines
-pub const SHOW_VELOCITY_VECTORS: bool = false;      /// Show velocity vectors
-pub const SHOW_CHARGE_DENSITY: bool = false;      /// Show charge-density heatmap
-pub const SHOW_FIELD_VECTORS: bool = false; // Show electric field vectors
+pub const SHOW_FIELD_ISOLINES: bool = false;        /// Show electric field isolines (bool)
+pub const SHOW_VELOCITY_VECTORS: bool = false;      /// Show velocity vectors (bool)
+pub const SHOW_CHARGE_DENSITY: bool = false;      /// Show charge-density heatmap (bool)
+pub const SHOW_FIELD_VECTORS: bool = false; // Show electric field vectors (bool)
 
 use serde::{Serialize, Deserialize};
 
