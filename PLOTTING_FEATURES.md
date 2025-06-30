@@ -2,7 +2,24 @@
 
 ## Overview
 
-The particle simulation now includes a comprehensive plotting and analysis system that allows you to visualize and analyze simulation results in real-time or at specific time points. The system is designed to be flexible, extensible, and user-friendly.
+The particle simulation now includes a comprehensive plotting and analysis system that allows you to visualize and analyze simulation results in real-time or at specific time points. The system features **actual graphical plots with axes, lines, and proper data visualization** - not just text output. It's designed to be flexible, extensible, and user-friendly.
+
+## Visual Features
+
+### **Real Graphical Plots**
+- **Line graphs** with proper X and Y axes
+- **Automatic scaling** and data range calculation
+- **Axis labels** that adapt to the plot type and quantity
+- **Data point visualization** with connected lines
+- **Grid references** with numerical tick marks
+- **Interactive controls** for clearing data and manual updates
+- **Export capabilities** directly from each plot window
+
+### **Plot Window Management**
+- **Independent windows** for each plot that can be moved and resized
+- **Real-time updates** during simulation
+- **Manual update controls** for snapshot analysis
+- **Data statistics** showing current ranges and point counts
 
 ## Features
 
@@ -68,10 +85,12 @@ Located in the main simulation window under "Data Analysis & Plotting":
 
 - **Open Plotting Window**: Access the full plotting control panel
 - **Quick Plot Buttons**: 
-  - Li+ Population: Tracks lithium ion count over time
-  - Charge vs X: Shows charge distribution along X-axis
-  - Velocity Profile: Velocity distribution along X-axis  
-  - Foil Current: Monitors foil current over time
+  - **Li+ Population vs Time**: Real-time tracking of lithium ion count
+  - **Charge Distribution vs X**: Spatial charge analysis with axis labels
+  - **Velocity Profile vs X**: X-velocity spatial distribution
+  - **All Species vs Time**: Creates separate plots for Li+, Li Metal, and Anions
+  - **Foil Current Analysis**: Current monitoring with time axis
+  - **Electron Count vs X**: Average electron count spatial profile
 
 #### Plotting Control Panel
 Comprehensive interface for creating custom plots:
@@ -89,11 +108,17 @@ Comprehensive interface for creating custom plots:
 
 #### Individual Plot Windows
 Each plot opens in its own window with:
-- Real-time data display
-- Configuration summary
-- Data statistics and range information
-- Manual update controls for single-timestep plots
-- Clear data functionality
+- **Graphical visualization** with X/Y axes and connecting lines
+- **Automatic axis scaling** based on data ranges
+- **Labeled axes** appropriate to the plot type (e.g., "Time (s)" vs "Position")
+- **Numerical tick marks** for precise value reading
+- **Configuration summary** showing plot type, quantity, and sampling mode
+- **Data statistics** showing X/Y ranges and point count
+- **Interactive controls**:
+  - Manual update for single-timestep plots
+  - Clear data functionality
+  - Direct CSV export
+- **Real-time updates** for continuous sampling modes
 
 ### 5. Data Export
 
@@ -108,27 +133,30 @@ Export files are automatically timestamped and saved to a `plots/` directory.
 ## Usage Examples
 
 ### Monitoring Species Evolution
-1. Click "Li+ Population" quick plot button
-2. Watch lithium ion count change during electrochemical reactions
-3. Export data for further analysis
+1. Click "Li+ Population vs Time" quick plot button
+2. **See a real graph** with time on X-axis and particle count on Y-axis
+3. Watch the line change in real-time during electrochemical reactions
+4. Export the graphical data for further analysis
 
 ### Analyzing Charge Distribution  
 1. Open Plotting Window → Create New Plot
 2. Set Plot Type: "Spatial Profile (X)"
 3. Set Quantity: "Charge"
 4. Set Sampling: "Single Timestep"
-5. Click "Create Plot" and manually update as needed
+5. Click "Create Plot" and **see charge plotted vs position** with proper axes
+6. Click "Manual Update" to refresh the spatial distribution
 
 ### Current-Voltage Analysis
 1. Create "Current Analysis" plot for specific foil
 2. Set to continuous sampling at 10 Hz
-3. Compare command vs actual current in real-time
-4. Export data for I-V curve analysis
+3. **Watch current plotted vs time** with labeled axes in real-time
+4. Export data for I-V curve analysis in external tools
 
-### Concentration Mapping
-1. Set up "Species Concentration" plots for each species
-2. Use spatial profiles to see concentration gradients
-3. Track how concentrations change over time
+### Multi-Species Comparison
+1. Click "All Species vs Time" to create multiple plots
+2. **See separate line graphs** for each species type
+3. Compare population changes visually across different windows
+4. Track how different species evolve during the simulation
 
 ## Technical Implementation
 

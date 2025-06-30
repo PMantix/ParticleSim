@@ -116,7 +116,10 @@ impl PlottingSystem {
                 }
 
                 let should_update = match window.config.sampling_mode {
-                    SamplingMode::SingleTimestep => false, // Only update on manual trigger
+                    SamplingMode::SingleTimestep => {
+                        // For single timestep, update if last_update is 0 (manual trigger) or much older than current time
+                        window.last_update == 0.0 || (current_time - window.last_update) > 1.0
+                    },
                     SamplingMode::Continuous => {
                         current_time - window.last_update >= 1.0 / window.config.update_frequency
                     }
@@ -321,6 +324,12 @@ impl PlottingSystem {
 
     pub fn remove_window(&mut self, window_id: &str) {
         self.windows.remove(window_id);
+    }
+
+    pub fn trigger_manual_update(&mut self, window_id: &str) {
+        if let Some(window) = self.windows.get_mut(window_id) {
+            window.last_update = 0.0; // This will trigger an update on next frame
+        }
     }
 
     pub fn export_data(&self, window_id: &str, format: ExportFormat) -> Result<String, String> {

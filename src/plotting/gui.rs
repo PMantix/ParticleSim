@@ -29,56 +29,93 @@ pub fn show_plotting_controls(
             // Quick plot buttons
             ui.label("Quick Plots:");
             ui.horizontal(|ui| {
-                if ui.button("Li+ Population").clicked() {
+                if ui.button("Li+ Population vs Time").clicked() {
                     let config = PlotConfig {
                         plot_type: PlotType::TimeSeries,
                         quantity: Quantity::TotalSpeciesCount(Species::LithiumIon),
                         title: "Lithium Ion Population".to_string(),
                         sampling_mode: SamplingMode::Continuous,
                         spatial_bins: 50,
-                        time_window: 10.0,
-                        update_frequency: 5.0,
+                        time_window: 20.0,
+                        update_frequency: 2.0,
                     };
                     plotting_system.create_plot_window(config);
                 }
                 
-                if ui.button("Charge vs X").clicked() {
+                if ui.button("Charge Distribution vs X").clicked() {
                     let config = PlotConfig {
                         plot_type: PlotType::SpatialProfileX,
                         quantity: Quantity::Charge,
                         title: "Charge Distribution (X-axis)".to_string(),
                         sampling_mode: SamplingMode::SingleTimestep,
-                        spatial_bins: 50,
+                        spatial_bins: 100,
                         time_window: 10.0,
-                        update_frequency: 5.0,
+                        update_frequency: 1.0,
                     };
                     plotting_system.create_plot_window(config);
                 }
             });
             
             ui.horizontal(|ui| {
-                if ui.button("Velocity Profile").clicked() {
+                if ui.button("Velocity Profile vs X").clicked() {
                     let config = PlotConfig {
                         plot_type: PlotType::SpatialProfileX,
                         quantity: Quantity::Velocity,
-                        title: "Velocity Profile (X-axis)".to_string(),
+                        title: "X-Velocity Profile".to_string(),
                         sampling_mode: SamplingMode::SingleTimestep,
-                        spatial_bins: 50,
+                        spatial_bins: 100,
                         time_window: 10.0,
+                        update_frequency: 1.0,
+                    };
+                    plotting_system.create_plot_window(config);
+                }
+                
+                if ui.button("All Species vs Time").clicked() {
+                    // Create plots for all species
+                    for species in [Species::LithiumIon, Species::LithiumMetal, Species::ElectrolyteAnion] {
+                        let species_name = match species {
+                            Species::LithiumIon => "Li+ Ions",
+                            Species::LithiumMetal => "Li Metal",
+                            Species::ElectrolyteAnion => "Anions",
+                            _ => "Unknown",
+                        };
+                        let config = PlotConfig {
+                            plot_type: PlotType::TimeSeries,
+                            quantity: Quantity::TotalSpeciesCount(species),
+                            title: format!("{} Population", species_name),
+                            sampling_mode: SamplingMode::Continuous,
+                            spatial_bins: 50,
+                            time_window: 30.0,
+                            update_frequency: 2.0,
+                        };
+                        plotting_system.create_plot_window(config);
+                    }
+                }
+            });
+            
+            ui.horizontal(|ui| {
+                if ui.button("Foil Current Analysis").clicked() {
+                    let config = PlotConfig {
+                        plot_type: PlotType::TimeSeries,
+                        quantity: Quantity::FoilCurrent(1), // Use foil ID 1 by default
+                        title: "Foil Current vs Time".to_string(),
+                        sampling_mode: SamplingMode::Continuous,
+                        spatial_bins: 50,
+                        time_window: 15.0,
                         update_frequency: 5.0,
                     };
                     plotting_system.create_plot_window(config);
                 }
                 
-                if ui.button("Foil Current").clicked() {
+                if ui.button("Electron Count vs X").clicked() {
                     let config = PlotConfig {
-                        plot_type: PlotType::TimeSeries,
-                        quantity: Quantity::FoilCurrent(1), // Use foil ID 1 by default
-                        title: "Foil Current Analysis".to_string(),
-                        sampling_mode: SamplingMode::Continuous,
-                        spatial_bins: 50,
+                        plot_type: PlotType::SpatialProfileX,
+                        quantity: Quantity::ElectronCount,
+                        title: "Average Electron Count vs X".to_string(),
+                        sampling_mode: SamplingMode::SingleTimestep,
+                        spatial_bins: 80,
                         time_window: 10.0,
-                        update_frequency: 10.0,
+                        update_frequency: 1.0,
                     };
                     plotting_system.create_plot_window(config);
                 }
@@ -280,33 +317,137 @@ fn show_plot_content(ui: &mut egui::Ui, window: &mut crate::plotting::PlotWindow
     
     if window.data.x_data.is_empty() {
         ui.label("No data available yet...");
+        ui.label("Start the simulation or click 'Manual Update' for single-timestep plots");
     } else {
-        // Simple text-based plot display for now
-        ui.label(format!("Data Range: X=[{:.2}, {:.2}], Y=[{:.2}, {:.2}]", 
-            window.data.x_data.iter().fold(f64::INFINITY, |a, &b| a.min(b)),
-            window.data.x_data.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b)),
-            window.data.y_data.iter().fold(f64::INFINITY, |a, &b| a.min(b)),
-            window.data.y_data.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b))
-        ));
+        // Create custom plot visualization using egui's drawing primitives
+        let (x_label, y_label) = get_axis_labels(&window.config);
         
-        // Show recent data points in a scrollable area
-        egui::ScrollArea::vertical()
-            .max_height(200.0)
-            .show(ui, |ui| {
-                let recent_count = window.data.x_data.len().min(10);
-                let start_idx = window.data.x_data.len().saturating_sub(recent_count);
+        // Calculate plot area
+        let available = ui.available_size();
+        let plot_size = egui::Vec2::new(available.x - 20.0, (250.0_f32).min(available.y - 100.0));
+        
+        let (rect, _response) = ui.allocate_exact_size(plot_size, egui::Sense::hover());
+        
+        if ui.is_rect_visible(rect) {
+            // Draw plot background
+            ui.painter().rect_filled(rect, 2.0, egui::Color32::from_gray(240));
+            ui.painter().rect_stroke(rect, 2.0, egui::Stroke::new(1.0, egui::Color32::BLACK));
+            
+            // Calculate data ranges
+            let x_min = window.data.x_data.iter().fold(f64::INFINITY, |a, &b| a.min(b));
+            let x_max = window.data.x_data.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
+            let y_min = window.data.y_data.iter().fold(f64::INFINITY, |a, &b| a.min(b));
+            let y_max = window.data.y_data.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
+            
+            // Add some padding to ranges
+            let x_range = (x_max - x_min).max(0.001);
+            let y_range = (y_max - y_min).max(0.001);
+            let x_padding = x_range * 0.05;
+            let y_padding = y_range * 0.05;
+            
+            let plot_x_min = x_min - x_padding;
+            let plot_x_max = x_max + x_padding;
+            let plot_y_min = y_min - y_padding;
+            let plot_y_max = y_max + y_padding;
+            
+            // Convert data points to screen coordinates
+            let mut screen_points = Vec::new();
+            for i in 0..window.data.x_data.len() {
+                let x_norm = (window.data.x_data[i] - plot_x_min) / (plot_x_max - plot_x_min);
+                let y_norm = 1.0 - (window.data.y_data[i] - plot_y_min) / (plot_y_max - plot_y_min); // Flip Y
                 
-                ui.label("Recent Data Points:");
-                for i in start_idx..window.data.x_data.len() {
-                    ui.label(format!("  {:.3}, {:.3}", window.data.x_data[i], window.data.y_data[i]));
+                let screen_x = rect.min.x + (x_norm as f32) * rect.width();
+                let screen_y = rect.min.y + (y_norm as f32) * rect.height();
+                
+                screen_points.push(egui::Pos2::new(screen_x, screen_y));
+            }
+            
+            // Draw data line
+            if screen_points.len() > 1 {
+                for i in 0..screen_points.len() - 1 {
+                    ui.painter().line_segment(
+                        [screen_points[i], screen_points[i + 1]], 
+                        egui::Stroke::new(2.0, egui::Color32::from_rgb(0, 100, 255))
+                    );
                 }
-            });
+            }
+            
+            // Draw data points
+            for point in &screen_points {
+                ui.painter().circle_filled(*point, 2.0, egui::Color32::from_rgb(0, 100, 255));
+            }
+            
+            // Draw axes labels
+            let label_color = egui::Color32::BLACK;
+            let font = egui::FontId::proportional(12.0);
+            
+            // X-axis label (bottom center)
+            ui.painter().text(
+                egui::Pos2::new(rect.center().x, rect.max.y + 15.0),
+                egui::Align2::CENTER_TOP,
+                x_label,
+                font.clone(),
+                label_color,
+            );
+            
+            // Y-axis label (left center, rotated)
+            ui.painter().text(
+                egui::Pos2::new(rect.min.x - 30.0, rect.center().y),
+                egui::Align2::CENTER_CENTER,
+                y_label,
+                font.clone(),
+                label_color,
+            );
+            
+            // Draw axis tick labels
+            // X-axis ticks
+            for i in 0..=4 {
+                let x_norm = i as f32 / 4.0;
+                let x_val = plot_x_min + (plot_x_max - plot_x_min) * x_norm as f64;
+                let screen_x = rect.min.x + x_norm * rect.width();
+                
+                ui.painter().text(
+                    egui::Pos2::new(screen_x, rect.max.y + 5.0),
+                    egui::Align2::CENTER_TOP,
+                    format!("{:.2}", x_val),
+                    egui::FontId::proportional(10.0),
+                    label_color,
+                );
+            }
+            
+            // Y-axis ticks
+            for i in 0..=4 {
+                let y_norm = i as f32 / 4.0;
+                let y_val = plot_y_min + (plot_y_max - plot_y_min) * (1.0 - y_norm as f64);
+                let screen_y = rect.min.y + y_norm * rect.height();
+                
+                ui.painter().text(
+                    egui::Pos2::new(rect.min.x - 5.0, screen_y),
+                    egui::Align2::RIGHT_CENTER,
+                    format!("{:.2}", y_val),
+                    egui::FontId::proportional(10.0),
+                    label_color,
+                );
+            }
+        }
+        
+        // Show data statistics
+        ui.separator();
+        ui.horizontal(|ui| {
+            let x_min = window.data.x_data.iter().fold(f64::INFINITY, |a, &b| a.min(b));
+            let x_max = window.data.x_data.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
+            let y_min = window.data.y_data.iter().fold(f64::INFINITY, |a, &b| a.min(b));
+            let y_max = window.data.y_data.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
+            
+            ui.label(format!("X: [{:.3}, {:.3}]", x_min, x_max));
+            ui.label(format!("Y: [{:.3}, {:.3}]", y_min, y_max));
+            ui.label(format!("Points: {}", window.data.x_data.len()));
+        });
     }
     
     ui.separator();
     
     ui.horizontal(|ui| {
-        ui.label(format!("Data points: {}", window.data.x_data.len()));
         if let Some(&last_timestamp) = window.data.timestamps.last() {
             ui.label(format!("Last update: {:.2}s", last_timestamp));
         }
@@ -317,8 +458,42 @@ fn show_plot_content(ui: &mut egui::Ui, window: &mut crate::plotting::PlotWindow
             window.data.timestamps.clear();
         }
         
-        if ui.button("Manual Update").clicked() && matches!(window.config.sampling_mode, SamplingMode::SingleTimestep) {
-            // Manual update will be triggered by the main update loop
+        if ui.button("Manual Update").clicked() && matches!(window.config.sampling_mode, crate::plotting::SamplingMode::SingleTimestep) {
+            // This will trigger an update on the next frame
+            window.last_update = 0.0; // Force update
+        }
+        
+        if ui.button("Export CSV").clicked() {
+            if let Ok(path) = crate::plotting::export::export_plot_data(&window.data, crate::plotting::ExportFormat::CSV) {
+                ui.label(format!("Exported to: {}", path));
+            }
         }
     });
+}
+
+fn get_axis_labels(config: &crate::plotting::PlotConfig) -> (&'static str, &'static str) {
+    use crate::plotting::{PlotType, Quantity};
+    
+    let x_label = match config.plot_type {
+        PlotType::SpatialProfileX => "X Position",
+        PlotType::SpatialProfileY => "Y Position", 
+        PlotType::TimeSeries => "Time (s)",
+        PlotType::ConcentrationMap => "X Position",
+        PlotType::ChargeDistribution => "Position",
+        PlotType::SpeciesPopulation => "Time (s)",
+        PlotType::CurrentAnalysis => "Time (s)",
+    };
+    
+    let y_label = match config.quantity {
+        Quantity::Charge => "Charge",
+        Quantity::ElectronCount => "Electron Count",
+        Quantity::Velocity => "Velocity",
+        Quantity::SpeciesConcentration(_) => "Concentration",
+        Quantity::TotalSpeciesCount(_) => "Count",
+        Quantity::FoilCurrent(_) => "Current (A)",
+        Quantity::ElectronHopRate => "Hop Rate (1/s)",
+        Quantity::LocalFieldStrength => "Field Strength",
+    };
+    
+    (x_label, y_label)
 }
