@@ -103,6 +103,7 @@ pub fn calculate_electron_hop_rate(bodies: &[Body], dt: f32) -> f32 {
 }
 
 /// Calculate field strength at position
+#[allow(dead_code)]
 pub fn calculate_local_field_strength(pos: Vec2, bodies: &[Body]) -> f32 {
     let mut field = Vec2::zero();
     const K: f32 = 8.99e9; // Coulomb constant (simplified)

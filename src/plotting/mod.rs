@@ -62,6 +62,7 @@ pub struct PlotData {
 
 #[derive(Debug, Clone)]
 pub struct PlotWindow {
+    #[allow(dead_code)]
     pub id: String,
     pub config: PlotConfig,
     pub data: PlotData,
@@ -141,7 +142,7 @@ impl PlottingSystem {
                             Self::update_time_series_static(window, bodies, foils, current_time);
                         }
                         PlotType::ConcentrationMap => {
-                            // TODO: Implement 2D concentration map
+                            Self::update_concentration_map_static(window, bodies, current_time, self.bounds);
                         }
                         PlotType::ChargeDistribution => {
                             Self::update_spatial_profile_static(window, bodies, current_time, true, self.bounds);
@@ -160,44 +161,69 @@ impl PlottingSystem {
     }
 
     fn update_spatial_profile_static(window: &mut PlotWindow, bodies: &[Body], current_time: f32, is_x_axis: bool, bounds: f32) {
-        let bins = window.config.spatial_bins;
-        let mut bin_values = vec![0.0; bins];
-        let mut bin_counts = vec![0; bins];
-
-        for body in bodies {
-            let position = if is_x_axis { body.pos.x } else { body.pos.y };
-            let bin_idx = ((position + bounds) / (2.0 * bounds) * bins as f32) as usize;
-            
-            if bin_idx < bins {
-                let value = match window.config.quantity {
-                    Quantity::Charge => body.charge,
-                    Quantity::ElectronCount => body.electrons.len() as f32,
-                    Quantity::Velocity => if is_x_axis { body.vel.x } else { body.vel.y },
-                    Quantity::SpeciesConcentration(species) => {
-                        if body.species == species { 1.0 } else { 0.0 }
-                    }
-                    _ => 0.0,
-                };
+        // Use analysis functions for better modularity
+        match window.config.quantity {
+            Quantity::Charge => {
+                let charges = analysis::calculate_charge_distribution(bodies, is_x_axis, bounds, window.config.spatial_bins);
+                window.data.x_data.clear();
+                window.data.y_data.clear();
                 
-                bin_values[bin_idx] += value;
-                bin_counts[bin_idx] += 1;
+                for (i, &charge) in charges.iter().enumerate() {
+                    let x_pos = -bounds + (i as f32 + 0.5) * (2.0 * bounds) / window.config.spatial_bins as f32;
+                    window.data.x_data.push(x_pos as f64);
+                    window.data.y_data.push(charge as f64);
+                }
             }
-        }
+            Quantity::Velocity => {
+                let (positions, velocities) = analysis::calculate_velocity_profile(bodies, is_x_axis, bounds, window.config.spatial_bins);
+                window.data.x_data.clear();
+                window.data.y_data.clear();
+                
+                for (i, &velocity) in velocities.iter().enumerate() {
+                    window.data.x_data.push(positions[i] as f64);
+                    window.data.y_data.push(velocity as f64);
+                }
+            }
+            _ => {
+                // Fallback to original binning approach for other quantities
+                let bins = window.config.spatial_bins;
+                let mut bin_values = vec![0.0; bins];
+                let mut bin_counts = vec![0; bins];
 
-        // Calculate mean values
-        window.data.x_data.clear();
-        window.data.y_data.clear();
-        
-        for i in 0..bins {
-            let x_pos = -bounds + (i as f32 + 0.5) * (2.0 * bounds) / bins as f32;
-            let y_val = if bin_counts[i] > 0 {
-                bin_values[i] / bin_counts[i] as f32
-            } else {
-                0.0
-            };
-            
-            window.data.x_data.push(x_pos as f64);
-            window.data.y_data.push(y_val as f64);
+                for body in bodies {
+                    let position = if is_x_axis { body.pos.x } else { body.pos.y };
+                    let bin_idx = ((position + bounds) / (2.0 * bounds) * bins as f32) as usize;
+                    
+                    if bin_idx < bins {
+                        let value = match window.config.quantity {
+                            Quantity::ElectronCount => body.electrons.len() as f32,
+                            Quantity::SpeciesConcentration(species) => {
+                                if body.species == species { 1.0 } else { 0.0 }
+                            }
+                            _ => 0.0,
+                        };
+                        
+                        bin_values[bin_idx] += value;
+                        bin_counts[bin_idx] += 1;
+                    }
+                }
+
+                // Calculate mean values
+                window.data.x_data.clear();
+                window.data.y_data.clear();
+                
+                for i in 0..bins {
+                    let x_pos = -bounds + (i as f32 + 0.5) * (2.0 * bounds) / bins as f32;
+                    let y_val = if bin_counts[i] > 0 {
+                        bin_values[i] / bin_counts[i] as f32
+                    } else {
+                        0.0
+                    };
+                    
+                    window.data.x_data.push(x_pos as f64);
+                    window.data.y_data.push(y_val as f64);
+                }
+            }
         }
         
         window.data.timestamps.push(current_time as f64);
@@ -206,7 +232,9 @@ impl PlottingSystem {
     fn update_time_series_static(window: &mut PlotWindow, bodies: &[Body], foils: &[Foil], current_time: f32) {
         let value = match window.config.quantity {
             Quantity::TotalSpeciesCount(species) => {
-                bodies.iter().filter(|b| b.species == species).count() as f32
+                // Use analysis function for species populations
+                let populations = analysis::calculate_species_populations(bodies);
+                populations.get(&species).copied().unwrap_or(0) as f32
             }
             Quantity::FoilCurrent(foil_id) => {
                 foils.iter()
@@ -215,8 +243,8 @@ impl PlottingSystem {
                     .unwrap_or(0.0)
             }
             Quantity::ElectronHopRate => {
-                // TODO: Track electron hop events
-                0.0
+                // Use analysis function for electron hop rate
+                analysis::calculate_electron_hop_rate(bodies, 0.016) // Assume ~60fps timestep
             }
             _ => {
                 // Calculate aggregate values
@@ -247,7 +275,9 @@ impl PlottingSystem {
     fn update_species_population_static(window: &mut PlotWindow, bodies: &[Body], current_time: f32) {
         let count = match window.config.quantity {
             Quantity::TotalSpeciesCount(species) => {
-                bodies.iter().filter(|b| b.species == species).count() as f32
+                // Use analysis function for better modularity
+                let populations = analysis::calculate_species_populations(bodies);
+                populations.get(&species).copied().unwrap_or(0) as f32
             }
             _ => 0.0,
         };
@@ -265,71 +295,59 @@ impl PlottingSystem {
         }
     }
 
-    fn update_current_analysis_static(window: &mut PlotWindow, _bodies: &[Body], foils: &[Foil], current_time: f32) {
-        // TODO: Implement current analysis - compare command current vs actual electron flow
-        let _command_current: f32 = foils.iter().map(|f| f.current).sum();
-        let _actual_current = 0.0; // Would need to track electron movements
+    fn update_current_analysis_static(window: &mut PlotWindow, bodies: &[Body], foils: &[Foil], current_time: f32) {
+        // Use analysis functions for current analysis
+        let current_analysis = analysis::calculate_current_analysis(foils, bodies, 0.016); // Assume ~60fps timestep
         
-        // For now, just track command current
         if let Quantity::FoilCurrent(foil_id) = window.config.quantity {
-            if let Some(foil) = foils.iter().find(|f| f.id == foil_id) {
+            if let Some((command_current, actual_current)) = current_analysis.get(&foil_id) {
+                // Store both command and actual current - for now just use command
                 window.data.x_data.push(current_time as f64);
-                window.data.y_data.push(foil.current as f64);
+                window.data.y_data.push(*command_current as f64);
                 window.data.timestamps.push(current_time as f64);
+                
+                // Add metadata about actual current
+                window.data.metadata.insert(
+                    format!("actual_current_{}", current_time),
+                    actual_current.to_string()
+                );
             }
         }
     }
 
-    // Legacy methods - keeping for backward compatibility
-    fn update_charge_distribution(&self, window: &mut PlotWindow, bodies: &[Body], current_time: f32) {
-        // Similar to spatial profile but for charge specifically
-        Self::update_spatial_profile_static(window, bodies, current_time, true, self.bounds);
-    }
-
-    fn update_species_population(&self, window: &mut PlotWindow, bodies: &[Body], current_time: f32) {
-        let count = match window.config.quantity {
-            Quantity::TotalSpeciesCount(species) => {
-                bodies.iter().filter(|b| b.species == species).count() as f32
+    fn update_concentration_map_static(window: &mut PlotWindow, bodies: &[Body], current_time: f32, bounds: f32) {
+        if let Quantity::SpeciesConcentration(species) = window.config.quantity {
+            // Use analysis function to calculate 2D concentration map
+            let grid_size = window.config.spatial_bins; // Use spatial_bins as grid size
+            let concentration_grid = analysis::calculate_concentration_map(bodies, species, bounds, grid_size);
+            
+            // For visualization, we'll flatten the 2D grid into 1D data
+            // X-axis represents grid position, Y-axis represents concentration
+            window.data.x_data.clear();
+            window.data.y_data.clear();
+            
+            // Convert 2D grid to line plot data (sum along Y-axis for each X position)
+            for x in 0..grid_size {
+                let x_pos = -bounds + (x as f32 + 0.5) * (2.0 * bounds) / grid_size as f32;
+                let y_sum: f32 = (0..grid_size).map(|y| concentration_grid[y][x]).sum();
+                
+                window.data.x_data.push(x_pos as f64);
+                window.data.y_data.push(y_sum as f64);
             }
-            _ => 0.0,
-        };
-
-        window.data.x_data.push(current_time as f64);
-        window.data.y_data.push(count as f64);
+            
+            // Store the full 2D grid in metadata for potential future use
+            let grid_json = serde_json::to_string(&concentration_grid).unwrap_or_default();
+            window.data.metadata.insert(
+                format!("concentration_grid_{}", current_time),
+                grid_json
+            );
+        }
+        
         window.data.timestamps.push(current_time as f64);
-
-        // Limit data to time window
-        let cutoff_time = current_time - window.config.time_window;
-        while !window.data.x_data.is_empty() && window.data.x_data[0] < cutoff_time as f64 {
-            window.data.x_data.remove(0);
-            window.data.y_data.remove(0);
-            window.data.timestamps.remove(0);
-        }
-    }
-
-    fn update_current_analysis(&self, window: &mut PlotWindow, _bodies: &[Body], foils: &[Foil], current_time: f32) {
-        // TODO: Implement current analysis - compare command current vs actual electron flow
-        let _command_current: f32 = foils.iter().map(|f| f.current).sum();
-        let _actual_current = 0.0; // Would need to track electron movements
-        
-        // For now, just track command current
-        if let Quantity::FoilCurrent(foil_id) = window.config.quantity {
-            if let Some(foil) = foils.iter().find(|f| f.id == foil_id) {
-                window.data.x_data.push(current_time as f64);
-                window.data.y_data.push(foil.current as f64);
-                window.data.timestamps.push(current_time as f64);
-            }
-        }
     }
 
     pub fn remove_window(&mut self, window_id: &str) {
         self.windows.remove(window_id);
-    }
-
-    pub fn trigger_manual_update(&mut self, window_id: &str) {
-        if let Some(window) = self.windows.get_mut(window_id) {
-            window.last_update = 0.0; // This will trigger an update on next frame
-        }
     }
 
     pub fn export_data(&self, window_id: &str, format: ExportFormat) -> Result<String, String> {

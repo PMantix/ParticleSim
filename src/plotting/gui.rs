@@ -9,13 +9,13 @@ pub fn show_plotting_controls(
     ui: &mut egui::Ui,
     plotting_system: &mut PlottingSystem,
     show_plotting_window: &mut bool,
-    new_plot_type: &mut PlotType,
-    new_plot_quantity: &mut Quantity,
-    new_plot_sampling_mode: &mut SamplingMode,
-    new_plot_title: &mut String,
-    new_plot_spatial_bins: &mut usize,
-    new_plot_time_window: &mut f32,
-    new_plot_update_frequency: &mut f32,
+    _new_plot_type: &mut PlotType,
+    _new_plot_quantity: &mut Quantity,
+    _new_plot_sampling_mode: &mut SamplingMode,
+    _new_plot_title: &mut String,
+    _new_plot_spatial_bins: &mut usize,
+    _new_plot_time_window: &mut f32,
+    _new_plot_update_frequency: &mut f32,
 ) {
     egui::CollapsingHeader::new("Data Analysis & Plotting")
         .default_open(false)
@@ -114,6 +114,19 @@ pub fn show_plotting_controls(
                         title: "Average Electron Count vs X".to_string(),
                         sampling_mode: SamplingMode::SingleTimestep,
                         spatial_bins: 80,
+                        time_window: 10.0,
+                        update_frequency: 1.0,
+                    };
+                    plotting_system.create_plot_window(config);
+                }
+                
+                if ui.button("Li+ Concentration Map").clicked() {
+                    let config = PlotConfig {
+                        plot_type: PlotType::ConcentrationMap,
+                        quantity: Quantity::SpeciesConcentration(Species::LithiumIon),
+                        title: "Li+ Concentration Distribution".to_string(),
+                        sampling_mode: SamplingMode::SingleTimestep,
+                        spatial_bins: 50, // This will be used as grid size
                         time_window: 10.0,
                         update_frequency: 1.0,
                     };
@@ -273,6 +286,18 @@ fn show_active_plots(ui: &mut egui::Ui, plotting_system: &mut PlottingSystem) {
                 
                 if ui.button("Export CSV").clicked() {
                     if let Ok(path) = plotting_system.export_data(&window_id, ExportFormat::CSV) {
+                        println!("Exported plot data to: {}", path);
+                    }
+                }
+                
+                if ui.button("Export JSON").clicked() {
+                    if let Ok(path) = plotting_system.export_data(&window_id, ExportFormat::JSON) {
+                        println!("Exported plot data to: {}", path);
+                    }
+                }
+                
+                if ui.button("Export TSV").clicked() {
+                    if let Ok(path) = plotting_system.export_data(&window_id, ExportFormat::TSV) {
                         println!("Exported plot data to: {}", path);
                     }
                 }
@@ -465,6 +490,18 @@ fn show_plot_content(ui: &mut egui::Ui, window: &mut crate::plotting::PlotWindow
         
         if ui.button("Export CSV").clicked() {
             if let Ok(path) = crate::plotting::export::export_plot_data(&window.data, crate::plotting::ExportFormat::CSV) {
+                ui.label(format!("Exported to: {}", path));
+            }
+        }
+        
+        if ui.button("Export JSON").clicked() {
+            if let Ok(path) = crate::plotting::export::export_plot_data(&window.data, crate::plotting::ExportFormat::JSON) {
+                ui.label(format!("Exported to: {}", path));
+            }
+        }
+        
+        if ui.button("Export TSV").clicked() {
+            if let Ok(path) = crate::plotting::export::export_plot_data(&window.data, crate::plotting::ExportFormat::TSV) {
                 ui.label(format!("Exported to: {}", path));
             }
         }
