@@ -460,9 +460,10 @@ impl super::Renderer {
                     80,
                 ];
 
+                // Draw rectangle from grid corner, not centered on sampling point
                 let rect_min = Vec2::new(
-                    min.x + (ix as f32 + 0.5) * grid_spacing,
-                    min.y + (iy as f32 + 0.5) * grid_spacing,
+                    min.x + ix as f32 * grid_spacing,
+                    min.y + iy as f32 * grid_spacing,
                 );
                 let rect_max = rect_min + Vec2::new(grid_spacing, grid_spacing);
                 ctx.draw_rect(rect_min, rect_max, color);
