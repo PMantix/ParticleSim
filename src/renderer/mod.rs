@@ -46,7 +46,7 @@ pub struct Renderer {
     scenario_random_count: usize,
     //pub scenario_charge: i32,
     pub velocity_vector_scale: f32,
-    scenario_current: f32,
+    //scenario_current: f32,
     pub window_width: u16,
     pub window_height: u16,
     pub show_electron_deficiency: bool,
@@ -64,6 +64,9 @@ pub struct Renderer {
     new_plot_spatial_bins: usize,
     new_plot_time_window: f32,
     new_plot_update_frequency: f32,
+    // Domain size controls
+    pub domain_width: f32,
+    pub domain_height: f32,
 }
 
 impl quarkstrom::Renderer for Renderer {
@@ -100,7 +103,7 @@ impl quarkstrom::Renderer for Renderer {
             scenario_random_count: 1,
             //scenario_charge: 0,
             velocity_vector_scale: 0.1,
-            scenario_current: 0.0,
+            //scenario_current: 0.0,
             window_width: 800, // default value, can be changed
             window_height: 600, // default value, can be changed
             show_electron_deficiency: true,
@@ -117,6 +120,8 @@ impl quarkstrom::Renderer for Renderer {
             new_plot_spatial_bins: 50,
             new_plot_time_window: 10.0,
             new_plot_update_frequency: 5.0,
+            domain_width: 300.0,  // Default domain size
+            domain_height: 300.0,
         }
     }
 

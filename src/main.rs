@@ -296,13 +296,13 @@ fn main() {
                         }
                     },
 
-                    SimCommand::AddRandom { body, count } => {
+                    SimCommand::AddRandom { body, count, domain_width, domain_height } => {
                         for _ in 0..count {
                             let mut placed = false;
                             for _ in 0..RANDOM_ATTEMPTS {
                                 let pos = Vec2::new(
-                                    fastrand::f32() * 2.0 * config::DOMAIN_BOUNDS - config::DOMAIN_BOUNDS,
-                                    fastrand::f32() * 2.0 * config::DOMAIN_BOUNDS - config::DOMAIN_BOUNDS,
+                                    fastrand::f32() * domain_width - domain_width / 2.0,
+                                    fastrand::f32() * domain_height - domain_height / 2.0,
                                 );
                                 if overlaps_any(&simulation.bodies, pos, body.radius).is_none() {
                                     let mut new_body = crate::body::Body::new(
@@ -443,6 +443,24 @@ fn main() {
                         if let Some(foil_b) = simulation.foils.iter_mut().find(|f| f.id == b && f.link_id == Some(a)) {
                             foil_b.link_id = None;
                         }
+                    },
+
+                    SimCommand::SetDomainSize { width, height } => {
+                        // Update the domain bounds
+                        let half_width = width / 2.0;
+                        let half_height = height / 2.0;
+                        
+                        // Remove particles that are outside the new domain bounds
+                        simulation.bodies.retain(|body| {
+                            body.pos.x >= -half_width &&
+                            body.pos.x <= half_width &&
+                            body.pos.y >= -half_height &&
+                            body.pos.y <= half_height
+                        });
+                        
+                        // Update any simulation domain bounds if they exist
+                        // (You may need to adjust this depending on your simulation structure)
+                        simulation.bounds = width.max(height) / 2.0;
                     },
 
                     //SimCommand::Plate { foil_id, amount } => { /* ... */ }
