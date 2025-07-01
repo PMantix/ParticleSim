@@ -48,6 +48,8 @@ pub enum SimCommand {
     AddRandom {
         body: crate::body::Body,
         count: usize,
+        domain_width: f32,
+        domain_height: f32,
     },
     AddFoil {
         width: f32,
@@ -77,7 +79,8 @@ pub enum SimCommand {
     },
     SaveState { path: String },
     LoadState { path: String },
-    StepOnce
+    StepOnce,
+    SetDomainSize { width: f32, height: f32 },
 }
 
 pub static SIM_COMMAND_SENDER: Lazy<Mutex<Option<Sender<SimCommand>>>> = Lazy::new(|| Mutex::new(None));

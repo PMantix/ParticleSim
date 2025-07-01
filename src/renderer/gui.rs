@@ -167,6 +167,33 @@ impl super::Renderer {
                         SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::DeleteAll).unwrap();
                     }
 
+                    // --- Domain Size Controls ---
+                    ui.separator();
+                    ui.label("🌐 Computational Domain:");
+                    ui.horizontal(|ui| {
+                        ui.label("Width:");
+                        let mut domain_width = self.domain_width;
+                        if ui.add(egui::DragValue::new(&mut domain_width).speed(10.0).clamp_range(100.0..=5000.0)).changed() {
+                            self.domain_width = domain_width;
+                            SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::SetDomainSize { 
+                                width: self.domain_width, 
+                                height: self.domain_height 
+                            }).unwrap();
+                        }
+                        ui.label("Height:");
+                        let mut domain_height = self.domain_height;
+                        if ui.add(egui::DragValue::new(&mut domain_height).speed(10.0).clamp_range(100.0..=5000.0)).changed() {
+                            self.domain_height = domain_height;
+                            SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::SetDomainSize { 
+                                width: self.domain_width, 
+                                height: self.domain_height 
+                            }).unwrap();
+                        }
+                    });
+                    ui.label("⚠️ Particles outside domain will be removed");
+
+                    ui.separator();
+
                     // Common controls for all Add scenarios
                     ui.horizontal(|ui| {
                         use crate::species::SPECIES_PROPERTIES;
@@ -190,6 +217,14 @@ impl super::Renderer {
                                 ui.selectable_value(&mut self.scenario_species, Species::LithiumIon, "Lithium Ion");
                                 ui.selectable_value(&mut self.scenario_species, Species::ElectrolyteAnion, "Electrolyte Anion");
                             });
+                    });
+
+                    // Common Width/Height controls (used by Rectangle and Foil)
+                    ui.horizontal(|ui| {
+                        ui.label("Width:");
+                        ui.add(egui::DragValue::new(&mut self.scenario_width).speed(0.1));
+                        ui.label("Height:");
+                        ui.add(egui::DragValue::new(&mut self.scenario_height).speed(0.1));
                     });
 
                     // Add Ring / Filled Circle
@@ -232,12 +267,8 @@ impl super::Renderer {
                         }
                     });
 
-                    // Add Rectangle
+                    // Add Rectangle and Add Foil (using common width/height)
                     ui.horizontal(|ui| {
-                        ui.label("Width:");
-                        ui.add(egui::DragValue::new(&mut self.scenario_width).speed(0.1));
-                        ui.label("Height:");
-                        ui.add(egui::DragValue::new(&mut self.scenario_height).speed(0.1));
                         if ui.button("Add Rectangle").clicked() {
                             let spec = self.scenario_species;
                             let props = crate::species::SPECIES_PROPERTIES.get(&spec).unwrap();
@@ -256,24 +287,14 @@ impl super::Renderer {
                                 height: self.scenario_height,
                             }).unwrap();
                         }
-                    });
-
-                    // Add Foil
-                    ui.horizontal(|ui| {
-                        ui.label("Width:");
-                        ui.add(egui::DragValue::new(&mut self.scenario_width).speed(0.1));
-                        ui.label("Height:");
-                        ui.add(egui::DragValue::new(&mut self.scenario_height).speed(0.1));
-                        ui.label("Current:");
-                        ui.add(egui::DragValue::new(&mut self.scenario_current).speed(0.1));
                         if ui.button("Add Foil").clicked() {
                             SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::AddFoil {
                                 width: self.scenario_width,
                                 height: self.scenario_height,
                                 x: self.scenario_x - self.scenario_width / 2.0,
-                                y: self.scenario_y  - self.scenario_height / 2.0,
+                                y: self.scenario_y - self.scenario_height / 2.0,
                                 particle_radius: self.scenario_particle_radius,
-                                current: self.scenario_current,
+                                current: 0.0, // Always start with 0 current
                             }).unwrap();
                         }
                     });
@@ -294,6 +315,8 @@ impl super::Renderer {
                             SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::AddRandom {
                                 body,
                                 count: self.scenario_random_count,
+                                domain_width: self.domain_width,
+                                domain_height: self.domain_height,
                             }).unwrap();
                         }
                     });

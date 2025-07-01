@@ -45,13 +45,16 @@ pub struct Renderer {
     scenario_random_count: usize,
     //pub scenario_charge: i32,
     pub velocity_vector_scale: f32,
-    scenario_current: f32,
+    //scenario_current: f32,
     pub window_width: u16,
     pub window_height: u16,
     pub show_electron_deficiency: bool,
     // State saving/loading UI
     pub save_state_name: String,
     pub load_state_selected: Option<String>,
+    // Domain size controls
+    pub domain_width: f32,
+    pub domain_height: f32,
 }
 
 impl quarkstrom::Renderer for Renderer {
@@ -88,12 +91,14 @@ impl quarkstrom::Renderer for Renderer {
             scenario_random_count: 1,
             //scenario_charge: 0,
             velocity_vector_scale: 0.1,
-            scenario_current: 0.0,
+            //scenario_current: 0.0,
             window_width: 800, // default value, can be changed
             window_height: 600, // default value, can be changed
             show_electron_deficiency: true,
             save_state_name: String::new(),
             load_state_selected: None,
+            domain_width: 1000.0,  // Default domain size
+            domain_height: 1000.0,
         }
     }
 
