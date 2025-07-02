@@ -42,6 +42,10 @@ pub struct PlotConfig {
     pub spatial_bins: usize,
     pub time_window: f32, // seconds
     pub update_frequency: f32, // Hz
+    pub x_min: Option<f64>,
+    pub x_max: Option<f64>,
+    pub y_min: Option<f64>,
+    pub y_max: Option<f64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
