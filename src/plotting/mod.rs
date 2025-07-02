@@ -15,10 +15,6 @@ pub enum PlotType {
     SpatialProfileX,     // Mean quantity vs X position
     SpatialProfileY,     // Mean quantity vs Y position
     TimeSeries,          // Quantity vs time
-    ConcentrationMap,    // 2D concentration heatmap
-    ChargeDistribution,  // Charge vs position/time
-    SpeciesPopulation,   // Species counts vs time
-    CurrentAnalysis,     // Command vs actual current
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -26,7 +22,6 @@ pub enum Quantity {
     Charge,
     ElectronCount,
     Velocity,
-    SpeciesConcentration(Species),
     TotalSpeciesCount(Species),
     FoilCurrent(u64), // foil_id
     ElectronHopRate,
@@ -141,18 +136,6 @@ impl PlottingSystem {
                         PlotType::TimeSeries => {
                             Self::update_time_series_static(window, bodies, foils, current_time);
                         }
-                        PlotType::ConcentrationMap => {
-                            Self::update_concentration_map_static(window, bodies, current_time, self.bounds);
-                        }
-                        PlotType::ChargeDistribution => {
-                            Self::update_spatial_profile_static(window, bodies, current_time, true, self.bounds);
-                        }
-                        PlotType::SpeciesPopulation => {
-                            Self::update_species_population_static(window, bodies, current_time);
-                        }
-                        PlotType::CurrentAnalysis => {
-                            Self::update_current_analysis_static(window, bodies, foils, current_time);
-                        }
                     }
                     window.last_update = current_time;
                 }
@@ -186,6 +169,20 @@ impl PlottingSystem {
                     window.data.y_data.push(velocity as f64);
                 }
             }
+            Quantity::LocalFieldStrength => {
+                // Calculate field strength distribution
+                let field_strengths = analysis::calculate_field_strength_distribution(bodies, is_x_axis, bounds, window.config.spatial_bins);
+                window.data.x_data.clear();
+                window.data.y_data.clear();
+                
+                let bin_size = (2.0 * bounds) / window.config.spatial_bins as f32;
+                
+                for (i, &field_strength) in field_strengths.iter().enumerate() {
+                    let x_pos = -bounds + (i as f32 + 0.5) * bin_size;
+                    window.data.x_data.push(x_pos as f64);
+                    window.data.y_data.push(field_strength as f64);
+                }
+            }
             _ => {
                 // Fallback to original binning approach for other quantities
                 let bins = window.config.spatial_bins;
@@ -205,9 +202,6 @@ impl PlottingSystem {
                         if bin_idx < bins {
                             let value = match window.config.quantity {
                                 Quantity::ElectronCount => body.electrons.len() as f32,
-                                Quantity::SpeciesConcentration(species) => {
-                                    if body.species == species { 1.0 } else { 0.0 }
-                                }
                                 Quantity::TotalSpeciesCount(species) => {
                                     if body.species == species { 1.0 } else { 0.0 }
                                 }
@@ -227,11 +221,6 @@ impl PlottingSystem {
                 for i in 0..bins {
                     let x_pos = -bounds + (i as f32 + 0.5) * bin_size;
                     let y_val = match window.config.quantity {
-                        Quantity::SpeciesConcentration(_) => {
-                            // For concentration, we want density (count per unit area)
-                            let cell_area = bin_size * bin_size; // Approximate cell area
-                            bin_values[i] / cell_area
-                        }
                         Quantity::TotalSpeciesCount(_) => {
                             // For species count, show total count in each bin
                             bin_values[i]
@@ -309,110 +298,6 @@ impl PlottingSystem {
                 window.data.timestamps.remove(0);
             }
         }
-    }
-
-    fn update_species_population_static(window: &mut PlotWindow, bodies: &[Body], current_time: f32) {
-        let count = match window.config.quantity {
-            Quantity::TotalSpeciesCount(species) => {
-                // Use analysis function for better modularity
-                let populations = analysis::calculate_species_populations(bodies);
-                populations.get(&species).copied().unwrap_or(0) as f32
-            }
-            _ => 0.0,
-        };
-
-        // For single timestep mode, clear existing data before adding new point
-        if matches!(window.config.sampling_mode, SamplingMode::SingleTimestep) {
-            window.data.x_data.clear();
-            window.data.y_data.clear();
-            window.data.timestamps.clear();
-        }
-
-        window.data.x_data.push(current_time as f64);
-        window.data.y_data.push(count as f64);
-        window.data.timestamps.push(current_time as f64);
-
-        // Limit data to time window (only for continuous modes)
-        if !matches!(window.config.sampling_mode, SamplingMode::SingleTimestep) {
-            let cutoff_time = current_time - window.config.time_window;
-            while !window.data.x_data.is_empty() && window.data.x_data[0] < cutoff_time as f64 {
-                window.data.x_data.remove(0);
-                window.data.y_data.remove(0);
-                window.data.timestamps.remove(0);
-            }
-        }
-    }
-
-    fn update_current_analysis_static(window: &mut PlotWindow, bodies: &[Body], foils: &[Foil], current_time: f32) {
-        // Use analysis functions for current analysis
-        let current_analysis = analysis::calculate_current_analysis(foils, bodies, 0.016); // Assume ~60fps timestep
-        
-        if let Quantity::FoilCurrent(foil_id) = window.config.quantity {
-            if let Some((command_current, _actual_current)) = current_analysis.get(&foil_id) {
-                // For single timestep mode, clear existing data before adding new point
-                if matches!(window.config.sampling_mode, SamplingMode::SingleTimestep) {
-                    window.data.x_data.clear();
-                    window.data.y_data.clear();
-                    window.data.timestamps.clear();
-                }
-                
-                // Store command current (main data)
-                window.data.x_data.push(current_time as f64);
-                window.data.y_data.push(*command_current as f64);
-                window.data.timestamps.push(current_time as f64);
-                
-                // Add metadata about actual current
-                window.data.metadata.insert(
-                    format!("actual_current_{}", current_time),
-                    _actual_current.to_string()
-                );
-                
-                // Limit data to time window (only for continuous modes)
-                if !matches!(window.config.sampling_mode, SamplingMode::SingleTimestep) {
-                    let cutoff_time = current_time - window.config.time_window;
-                    while !window.data.x_data.is_empty() && window.data.x_data[0] < cutoff_time as f64 {
-                        window.data.x_data.remove(0);
-                        window.data.y_data.remove(0);
-                        window.data.timestamps.remove(0);
-                    }
-                }
-            }
-        }
-    }
-
-    fn update_concentration_map_static(window: &mut PlotWindow, bodies: &[Body], current_time: f32, bounds: f32) {
-        if let Quantity::SpeciesConcentration(species) = window.config.quantity {
-            // Use analysis function to calculate 2D concentration map
-            let grid_size = window.config.spatial_bins; // Use spatial_bins as grid size
-            let concentration_grid = analysis::calculate_concentration_map(bodies, species, bounds, grid_size);
-            
-            // For visualization, we'll flatten the 2D grid into 1D data
-            // X-axis represents grid position, Y-axis represents concentration
-            window.data.x_data.clear();
-            window.data.y_data.clear();
-            
-            // Convert 2D grid to line plot data (sum along Y-axis for each X position)
-            for x in 0..grid_size {
-                let x_pos = -bounds + (x as f32 + 0.5) * (2.0 * bounds) / grid_size as f32;
-                let y_sum: f32 = (0..grid_size).map(|y| concentration_grid[y][x]).sum();
-                
-                window.data.x_data.push(x_pos as f64);
-                window.data.y_data.push(y_sum as f64);
-            }
-            
-            // Store the full 2D grid in metadata for potential future use
-            let grid_json = serde_json::to_string(&concentration_grid).unwrap_or_default();
-            window.data.metadata.insert(
-                format!("concentration_grid_{}", current_time),
-                grid_json
-            );
-        }
-        
-        // Handle timestamps for concentration maps
-        if matches!(window.config.sampling_mode, SamplingMode::SingleTimestep) {
-            window.data.timestamps.clear();
-        }
-        window.data.timestamps.push(current_time as f64);
     }
 
     pub fn remove_window(&mut self, window_id: &str) {

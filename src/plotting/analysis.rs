@@ -2,46 +2,10 @@
 // Data analysis functions for the plotting system
 
 use crate::body::{Body, Species};
-use crate::body::foil::Foil;
 use ultraviolet::Vec2;
 use std::collections::HashMap;
 
 /// Calculate concentration map of particles in a 2D grid
-pub fn calculate_concentration_map(bodies: &[Body], species: Species, bounds: f32, grid_size: usize) -> Vec<Vec<f32>> {
-    let mut grid = vec![vec![0.0; grid_size]; grid_size];
-    let cell_size = (2.0 * bounds) / grid_size as f32;
-    
-    for body in bodies {
-        if body.species == species {
-            // Fix binning calculation with proper bounds checking
-            let normalized_x = (body.pos.x + bounds) / (2.0 * bounds);
-            let normalized_y = (body.pos.y + bounds) / (2.0 * bounds);
-            let x_idx_f = normalized_x * grid_size as f32;
-            let y_idx_f = normalized_y * grid_size as f32;
-            
-            // Clamp to valid range and convert to usize
-            if x_idx_f >= 0.0 && x_idx_f < grid_size as f32 && y_idx_f >= 0.0 && y_idx_f < grid_size as f32 {
-                let x_idx = x_idx_f.floor() as usize;
-                let y_idx = y_idx_f.floor() as usize;
-                
-                if x_idx < grid_size && y_idx < grid_size {
-                    grid[y_idx][x_idx] += 1.0;
-                }
-            }
-        }
-    }
-    
-    // Normalize by cell area
-    let cell_area = cell_size * cell_size;
-    for row in &mut grid {
-        for cell in row {
-            *cell /= cell_area;
-        }
-    }
-    
-    grid
-}
-
 /// Calculate species population counts
 pub fn calculate_species_populations(bodies: &[Body]) -> HashMap<Species, usize> {
     let mut populations = HashMap::new();
@@ -140,49 +104,32 @@ pub fn calculate_local_field_strength(pos: Vec2, bodies: &[Body]) -> f32 {
     field.mag()
 }
 
-/// Calculate current analysis comparing command vs actual electron flow
-pub fn calculate_current_analysis(foils: &[Foil], bodies: &[Body], dt: f32) -> HashMap<u64, (f32, f32)> {
-    let mut analysis = HashMap::new();
+/// Calculate field strength distribution along an axis
+pub fn calculate_field_strength_distribution(bodies: &[Body], axis_is_x: bool, bounds: f32, bins: usize) -> Vec<f32> {
+    let mut field_strengths = vec![0.0; bins];
+    let bin_size = (2.0 * bounds) / bins as f32;
     
-    for foil in foils {
-        let command_current = foil.current;
+    for i in 0..bins {
+        let pos_along_axis = -bounds + (i as f32 + 0.5) * bin_size;
         
-        // Calculate actual electron flow (simplified)
-        // This would require tracking electron movements across foil boundaries
-        let actual_current = estimate_actual_current(foil, bodies, dt);
+        // Sample field strength at several points along the perpendicular axis
+        let mut avg_field = 0.0;
+        let sample_points = 5;
         
-        analysis.insert(foil.id, (command_current, actual_current));
+        for j in 0..sample_points {
+            let pos_perp = -bounds + (j as f32 / (sample_points - 1) as f32) * (2.0 * bounds);
+            
+            let sample_pos = if axis_is_x {
+                Vec2::new(pos_along_axis, pos_perp)
+            } else {
+                Vec2::new(pos_perp, pos_along_axis)
+            };
+            
+            avg_field += calculate_local_field_strength(sample_pos, bodies);
+        }
+        
+        field_strengths[i] = avg_field / sample_points as f32;
     }
     
-    analysis
-}
-
-fn estimate_actual_current(foil: &Foil, bodies: &[Body], _dt: f32) -> f32 {
-    // Simplified estimation based on foil bodies' electron content
-    // Find bodies that belong to this foil
-    let foil_bodies: Vec<_> = bodies.iter()
-        .filter(|body| foil.body_ids.contains(&body.id))
-        .collect();
-    
-    if foil_bodies.is_empty() {
-        return 0.0;
-    }
-    
-    // Calculate average position of foil bodies
-    let foil_center = foil_bodies.iter()
-        .fold(Vec2::zero(), |acc, body| acc + body.pos) / foil_bodies.len() as f32;
-    
-    // Use average particle radius as size estimate
-    let avg_radius = foil_bodies.iter()
-        .map(|body| body.radius)
-        .sum::<f32>() / foil_bodies.len() as f32;
-    
-    let foil_size = avg_radius * 2.0;
-    
-    let nearby_electrons: usize = bodies.iter()
-        .filter(|body| (body.pos - foil_center).mag() < foil_size)
-        .map(|body| body.electrons.len())
-        .sum();
-    
-    nearby_electrons as f32 * 0.1 // Placeholder conversion factor
+    field_strengths
 }

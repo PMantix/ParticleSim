@@ -119,19 +119,6 @@ pub fn show_plotting_controls(
                     };
                     plotting_system.create_plot_window(config);
                 }
-                
-                if ui.button("Li+ Concentration Map").clicked() {
-                    let config = PlotConfig {
-                        plot_type: PlotType::ConcentrationMap,
-                        quantity: Quantity::SpeciesConcentration(Species::LithiumIon),
-                        title: "Li+ Concentration Distribution".to_string(),
-                        sampling_mode: SamplingMode::SingleTimestep,
-                        spatial_bins: 50, // This will be used as grid size
-                        time_window: 10.0,
-                        update_frequency: 1.0,
-                    };
-                    plotting_system.create_plot_window(config);
-                }
             });
             
             ui.separator();
@@ -188,16 +175,12 @@ pub fn show_plotting_window(
                         ui.selectable_value(new_plot_type, PlotType::TimeSeries, "Time Series");
                         ui.selectable_value(new_plot_type, PlotType::SpatialProfileX, "Spatial Profile (X)");
                         ui.selectable_value(new_plot_type, PlotType::SpatialProfileY, "Spatial Profile (Y)");
-                        ui.selectable_value(new_plot_type, PlotType::ConcentrationMap, "Concentration Map");
-                        ui.selectable_value(new_plot_type, PlotType::ChargeDistribution, "Charge Distribution");
-                        ui.selectable_value(new_plot_type, PlotType::SpeciesPopulation, "Species Population");
-                        ui.selectable_value(new_plot_type, PlotType::CurrentAnalysis, "Current Analysis");
                     });
             });
             
             ui.horizontal(|ui| {
                 ui.label("Quantity:");
-                show_quantity_selector(ui, new_plot_quantity);
+                show_quantity_selector(ui, new_plot_quantity, new_plot_type);
             });
             
             ui.horizontal(|ui| {
@@ -250,21 +233,57 @@ pub fn show_plotting_window(
         });
 }
 
-fn show_quantity_selector(ui: &mut egui::Ui, quantity: &mut Quantity) {
+fn show_quantity_selector(ui: &mut egui::Ui, quantity: &mut Quantity, plot_type: &PlotType) {
+    // First validate that the current quantity is compatible with the plot type
+    if !is_quantity_compatible_with_plot_type(quantity, plot_type) {
+        // Reset to a safe default
+        *quantity = match plot_type {
+            PlotType::TimeSeries => {
+                Quantity::TotalSpeciesCount(Species::LithiumIon)
+            }
+            _ => Quantity::Charge,
+        };
+    }
+    
     egui::ComboBox::from_id_source("quantity")
         .selected_text(format!("{:?}", quantity))
         .show_ui(ui, |ui| {
+            // Always available quantities
             ui.selectable_value(quantity, Quantity::Charge, "Charge");
             ui.selectable_value(quantity, Quantity::ElectronCount, "Electron Count");
             ui.selectable_value(quantity, Quantity::Velocity, "Velocity");
+            
+            // Species-related quantities
             ui.selectable_value(quantity, Quantity::TotalSpeciesCount(Species::LithiumIon), "Li+ Count");
             ui.selectable_value(quantity, Quantity::TotalSpeciesCount(Species::LithiumMetal), "Li Metal Count");
             ui.selectable_value(quantity, Quantity::TotalSpeciesCount(Species::ElectrolyteAnion), "Anion Count");
-            ui.selectable_value(quantity, Quantity::SpeciesConcentration(Species::LithiumIon), "Li+ Concentration");
-            ui.selectable_value(quantity, Quantity::FoilCurrent(1), "Foil Current (ID 1)");
-            ui.selectable_value(quantity, Quantity::ElectronHopRate, "Electron Hop Rate");
-            ui.selectable_value(quantity, Quantity::LocalFieldStrength, "Local Field Strength");
+            
+            // Time series only quantities
+            if matches!(plot_type, PlotType::TimeSeries) {
+                ui.selectable_value(quantity, Quantity::FoilCurrent(1), "Foil Current (ID 1)");
+                ui.selectable_value(quantity, Quantity::ElectronHopRate, "Electron Hop Rate");
+            }
+            
+            // Spatial quantities only
+            if matches!(plot_type, PlotType::SpatialProfileX | PlotType::SpatialProfileY) {
+                ui.selectable_value(quantity, Quantity::LocalFieldStrength, "Local Field Strength");
+            }
         });
+}
+
+fn is_quantity_compatible_with_plot_type(quantity: &Quantity, plot_type: &PlotType) -> bool {
+    match quantity {
+        // These quantities only make sense for time series
+        Quantity::FoilCurrent(_) | Quantity::ElectronHopRate => {
+            matches!(plot_type, PlotType::TimeSeries)
+        }
+        // Local field strength is only meaningful for spatial plots
+        Quantity::LocalFieldStrength => {
+            matches!(plot_type, PlotType::SpatialProfileX | PlotType::SpatialProfileY)
+        }
+        // Other quantities work with most plot types
+        _ => true,
+    }
 }
 
 fn show_active_plots(ui: &mut egui::Ui, plotting_system: &mut PlottingSystem) {
@@ -520,17 +539,12 @@ fn get_axis_labels(config: &crate::plotting::PlotConfig) -> (&'static str, &'sta
         PlotType::SpatialProfileX => "X Position",
         PlotType::SpatialProfileY => "Y Position", 
         PlotType::TimeSeries => "Time (s)",
-        PlotType::ConcentrationMap => "X Position",
-        PlotType::ChargeDistribution => "Position",
-        PlotType::SpeciesPopulation => "Time (s)",
-        PlotType::CurrentAnalysis => "Time (s)",
     };
     
     let y_label = match config.quantity {
         Quantity::Charge => "Charge",
         Quantity::ElectronCount => "Electron Count",
         Quantity::Velocity => "Velocity",
-        Quantity::SpeciesConcentration(_) => "Concentration",
         Quantity::TotalSpeciesCount(_) => "Count",
         Quantity::FoilCurrent(_) => "Current (A)",
         Quantity::ElectronHopRate => "Hop Rate (1/s)",
