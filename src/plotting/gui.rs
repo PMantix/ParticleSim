@@ -338,11 +338,29 @@ fn show_plot_content(ui: &mut egui::Ui, window: &mut crate::plotting::PlotWindow
         ui.label(format!("Sampling: {:?}", window.config.sampling_mode));
     });
     
+    ui.horizontal(|ui| {
+        ui.label(format!("Bins: {}", window.config.spatial_bins));
+        ui.label(format!("Update freq: {:.1} Hz", window.config.update_frequency));
+        if let Some(&last_timestamp) = window.data.timestamps.last() {
+            ui.label(format!("Last data: {:.2}s", last_timestamp));
+        }
+    });
+    
     ui.separator();
     
     if window.data.x_data.is_empty() {
         ui.label("No data available yet...");
-        ui.label("Start the simulation or click 'Manual Update' for single-timestep plots");
+        match window.config.sampling_mode {
+            crate::plotting::SamplingMode::SingleTimestep => {
+                ui.label("Click 'Manual Update' below to capture current state");
+            }
+            crate::plotting::SamplingMode::Continuous => {
+                ui.label("Start or resume the simulation to see live data");
+            }
+            crate::plotting::SamplingMode::TimeAveraged { .. } => {
+                ui.label("Start or resume the simulation to see time-averaged data");
+            }
+        }
     } else {
         // Create custom plot visualization using egui's drawing primitives
         let (x_label, y_label) = get_axis_labels(&window.config);
@@ -358,22 +376,9 @@ fn show_plot_content(ui: &mut egui::Ui, window: &mut crate::plotting::PlotWindow
             ui.painter().rect_filled(rect, 2.0, egui::Color32::from_gray(240));
             ui.painter().rect_stroke(rect, 2.0, egui::Stroke::new(1.0, egui::Color32::BLACK));
             
-            // Calculate data ranges
-            let x_min = window.data.x_data.iter().fold(f64::INFINITY, |a, &b| a.min(b));
-            let x_max = window.data.x_data.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
-            let y_min = window.data.y_data.iter().fold(f64::INFINITY, |a, &b| a.min(b));
-            let y_max = window.data.y_data.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
-            
-            // Add some padding to ranges
-            let x_range = (x_max - x_min).max(0.001);
-            let y_range = (y_max - y_min).max(0.001);
-            let x_padding = x_range * 0.05;
-            let y_padding = y_range * 0.05;
-            
-            let plot_x_min = x_min - x_padding;
-            let plot_x_max = x_max + x_padding;
-            let plot_y_min = y_min - y_padding;
-            let plot_y_max = y_max + y_padding;
+            // Calculate plot ranges - use domain bounds for spatial axes
+            let (plot_x_min, plot_x_max, plot_y_min, plot_y_max) = 
+                calculate_plot_ranges(&window.config, &window.data);
             
             // Convert data points to screen coordinates
             let mut screen_points = Vec::new();
@@ -483,9 +488,9 @@ fn show_plot_content(ui: &mut egui::Ui, window: &mut crate::plotting::PlotWindow
             window.data.timestamps.clear();
         }
         
-        if ui.button("Manual Update").clicked() && matches!(window.config.sampling_mode, crate::plotting::SamplingMode::SingleTimestep) {
-            // This will trigger an update on the next frame
-            window.last_update = 0.0; // Force update
+        if ui.button("Manual Update").clicked() {
+            // This will trigger an update on the next frame by resetting last_update
+            window.last_update = 0.0; // Force update regardless of sampling mode
         }
         
         if ui.button("Export CSV").clicked() {
@@ -533,4 +538,66 @@ fn get_axis_labels(config: &crate::plotting::PlotConfig) -> (&'static str, &'sta
     };
     
     (x_label, y_label)
+}
+
+fn calculate_plot_ranges(config: &crate::plotting::PlotConfig, data: &crate::plotting::PlotData) -> (f64, f64, f64, f64) {
+    use crate::plotting::PlotType;
+    use crate::config::DOMAIN_BOUNDS;
+    
+    // For spatial plots, use domain bounds for the spatial axis
+    match config.plot_type {
+        PlotType::SpatialProfileX => {
+            // X-axis should be domain bounds, Y-axis based on data
+            let x_min = -(DOMAIN_BOUNDS as f64);
+            let x_max = DOMAIN_BOUNDS as f64;
+            
+            let (y_min, y_max) = if data.y_data.is_empty() {
+                (0.0, 1.0)
+            } else {
+                let data_y_min = data.y_data.iter().fold(f64::INFINITY, |a, &b| a.min(b));
+                let data_y_max = data.y_data.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
+                let y_range = (data_y_max - data_y_min).max(0.001);
+                let y_padding = y_range * 0.05;
+                (data_y_min - y_padding, data_y_max + y_padding)
+            };
+            
+            (x_min, x_max, y_min, y_max)
+        }
+        PlotType::SpatialProfileY => {
+            // X-axis should be domain bounds, Y-axis based on data
+            let x_min = -(DOMAIN_BOUNDS as f64);
+            let x_max = DOMAIN_BOUNDS as f64;
+            
+            let (y_min, y_max) = if data.y_data.is_empty() {
+                (0.0, 1.0)
+            } else {
+                let data_y_min = data.y_data.iter().fold(f64::INFINITY, |a, &b| a.min(b));
+                let data_y_max = data.y_data.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
+                let y_range = (data_y_max - data_y_min).max(0.001);
+                let y_padding = y_range * 0.05;
+                (data_y_min - y_padding, data_y_max + y_padding)
+            };
+            
+            (x_min, x_max, y_min, y_max)
+        }
+        _ => {
+            // For all other plot types, use data bounds with padding
+            if data.x_data.is_empty() || data.y_data.is_empty() {
+                (0.0, 1.0, 0.0, 1.0)
+            } else {
+                let data_x_min = data.x_data.iter().fold(f64::INFINITY, |a, &b| a.min(b));
+                let data_x_max = data.x_data.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
+                let data_y_min = data.y_data.iter().fold(f64::INFINITY, |a, &b| a.min(b));
+                let data_y_max = data.y_data.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
+                
+                let x_range = (data_x_max - data_x_min).max(0.001);
+                let y_range = (data_y_max - data_y_min).max(0.001);
+                let x_padding = x_range * 0.05;
+                let y_padding = y_range * 0.05;
+                
+                (data_x_min - x_padding, data_x_max + x_padding, 
+                 data_y_min - y_padding, data_y_max + y_padding)
+            }
+        }
+    }
 }

@@ -4,7 +4,7 @@ pub mod gui;
 pub mod draw;
 
 use crate::body::{Body, Species, foil::Foil};
-use crate::config::SimConfig;
+use crate::config::{SimConfig, DOMAIN_BOUNDS};
 use crate::quadtree::Node;
 use crate::plotting::{PlottingSystem, PlotType, Quantity, SamplingMode};
 use ultraviolet::Vec2;
@@ -109,8 +109,8 @@ impl quarkstrom::Renderer for Renderer {
             show_electron_deficiency: true,
             save_state_name: String::new(),
             load_state_selected: None,
-            // Initialize plotting system with simulation bounds (assuming 50.0 based on typical values)
-            plotting_system: PlottingSystem::new(50.0),
+            // Initialize plotting system with simulation bounds using domain bounds
+            plotting_system: PlottingSystem::new(DOMAIN_BOUNDS),
             // Plotting UI defaults
             show_plotting_window: false,
             new_plot_type: PlotType::TimeSeries,

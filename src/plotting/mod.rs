@@ -118,8 +118,8 @@ impl PlottingSystem {
 
                 let should_update = match window.config.sampling_mode {
                     SamplingMode::SingleTimestep => {
-                        // For single timestep, update if last_update is 0 (manual trigger) or much older than current time
-                        window.last_update == 0.0 || (current_time - window.last_update) > 1.0
+                        // For single timestep, update if manually triggered (last_update = 0) or if it's been a while
+                        window.last_update == 0.0 || (current_time - window.last_update) > 0.1
                     },
                     SamplingMode::Continuous => {
                         current_time - window.last_update >= 1.0 / window.config.update_frequency
@@ -168,8 +168,10 @@ impl PlottingSystem {
                 window.data.x_data.clear();
                 window.data.y_data.clear();
                 
+                let bin_size = (2.0 * bounds) / window.config.spatial_bins as f32;
+                
                 for (i, &charge) in charges.iter().enumerate() {
-                    let x_pos = -bounds + (i as f32 + 0.5) * (2.0 * bounds) / window.config.spatial_bins as f32;
+                    let x_pos = -bounds + (i as f32 + 0.5) * bin_size;
                     window.data.x_data.push(x_pos as f64);
                     window.data.y_data.push(charge as f64);
                 }
@@ -189,35 +191,59 @@ impl PlottingSystem {
                 let bins = window.config.spatial_bins;
                 let mut bin_values = vec![0.0; bins];
                 let mut bin_counts = vec![0; bins];
+                let bin_size = (2.0 * bounds) / bins as f32;
 
                 for body in bodies {
                     let position = if is_x_axis { body.pos.x } else { body.pos.y };
-                    let bin_idx = ((position + bounds) / (2.0 * bounds) * bins as f32) as usize;
+                    // Fix binning calculation with proper bounds checking
+                    let normalized_pos = (position + bounds) / (2.0 * bounds);
+                    let bin_idx_f = normalized_pos * bins as f32;
                     
-                    if bin_idx < bins {
-                        let value = match window.config.quantity {
-                            Quantity::ElectronCount => body.electrons.len() as f32,
-                            Quantity::SpeciesConcentration(species) => {
-                                if body.species == species { 1.0 } else { 0.0 }
-                            }
-                            _ => 0.0,
-                        };
-                        
-                        bin_values[bin_idx] += value;
-                        bin_counts[bin_idx] += 1;
+                    // Clamp to valid range and convert to usize
+                    if bin_idx_f >= 0.0 && bin_idx_f < bins as f32 {
+                        let bin_idx = bin_idx_f.floor() as usize;
+                        if bin_idx < bins {
+                            let value = match window.config.quantity {
+                                Quantity::ElectronCount => body.electrons.len() as f32,
+                                Quantity::SpeciesConcentration(species) => {
+                                    if body.species == species { 1.0 } else { 0.0 }
+                                }
+                                Quantity::TotalSpeciesCount(species) => {
+                                    if body.species == species { 1.0 } else { 0.0 }
+                                }
+                                _ => 0.0,
+                            };
+                            
+                            bin_values[bin_idx] += value;
+                            bin_counts[bin_idx] += 1;
+                        }
                     }
                 }
 
-                // Calculate mean values
+                // Calculate appropriate values for display
                 window.data.x_data.clear();
                 window.data.y_data.clear();
                 
                 for i in 0..bins {
-                    let x_pos = -bounds + (i as f32 + 0.5) * (2.0 * bounds) / bins as f32;
-                    let y_val = if bin_counts[i] > 0 {
-                        bin_values[i] / bin_counts[i] as f32
-                    } else {
-                        0.0
+                    let x_pos = -bounds + (i as f32 + 0.5) * bin_size;
+                    let y_val = match window.config.quantity {
+                        Quantity::SpeciesConcentration(_) => {
+                            // For concentration, we want density (count per unit area)
+                            let cell_area = bin_size * bin_size; // Approximate cell area
+                            bin_values[i] / cell_area
+                        }
+                        Quantity::TotalSpeciesCount(_) => {
+                            // For species count, show total count in each bin
+                            bin_values[i]
+                        }
+                        _ => {
+                            // For other quantities, show mean value
+                            if bin_counts[i] > 0 {
+                                bin_values[i] / bin_counts[i] as f32
+                            } else {
+                                0.0
+                            }
+                        }
                     };
                     
                     window.data.x_data.push(x_pos as f64);
@@ -226,6 +252,10 @@ impl PlottingSystem {
             }
         }
         
+        // Handle timestamps for spatial profiles
+        if matches!(window.config.sampling_mode, SamplingMode::SingleTimestep) {
+            window.data.timestamps.clear();
+        }
         window.data.timestamps.push(current_time as f64);
     }
 
@@ -255,20 +285,29 @@ impl PlottingSystem {
                         _ => 0.0,
                     }
                 }).sum();
-                total / bodies.len().max(1) as f32
+                if bodies.is_empty() { 0.0 } else { total / bodies.len() as f32 }
             }
         };
+
+        // For single timestep mode, clear existing data before adding new point
+        if matches!(window.config.sampling_mode, SamplingMode::SingleTimestep) {
+            window.data.x_data.clear();
+            window.data.y_data.clear();
+            window.data.timestamps.clear();
+        }
 
         window.data.x_data.push(current_time as f64);
         window.data.y_data.push(value as f64);
         window.data.timestamps.push(current_time as f64);
 
-        // Limit data to time window
-        let cutoff_time = current_time - window.config.time_window;
-        while !window.data.x_data.is_empty() && window.data.x_data[0] < cutoff_time as f64 {
-            window.data.x_data.remove(0);
-            window.data.y_data.remove(0);
-            window.data.timestamps.remove(0);
+        // Limit data to time window (only for continuous modes)
+        if !matches!(window.config.sampling_mode, SamplingMode::SingleTimestep) {
+            let cutoff_time = current_time - window.config.time_window;
+            while !window.data.x_data.is_empty() && window.data.x_data[0] < cutoff_time as f64 {
+                window.data.x_data.remove(0);
+                window.data.y_data.remove(0);
+                window.data.timestamps.remove(0);
+            }
         }
     }
 
@@ -282,16 +321,25 @@ impl PlottingSystem {
             _ => 0.0,
         };
 
+        // For single timestep mode, clear existing data before adding new point
+        if matches!(window.config.sampling_mode, SamplingMode::SingleTimestep) {
+            window.data.x_data.clear();
+            window.data.y_data.clear();
+            window.data.timestamps.clear();
+        }
+
         window.data.x_data.push(current_time as f64);
         window.data.y_data.push(count as f64);
         window.data.timestamps.push(current_time as f64);
 
-        // Limit data to time window
-        let cutoff_time = current_time - window.config.time_window;
-        while !window.data.x_data.is_empty() && window.data.x_data[0] < cutoff_time as f64 {
-            window.data.x_data.remove(0);
-            window.data.y_data.remove(0);
-            window.data.timestamps.remove(0);
+        // Limit data to time window (only for continuous modes)
+        if !matches!(window.config.sampling_mode, SamplingMode::SingleTimestep) {
+            let cutoff_time = current_time - window.config.time_window;
+            while !window.data.x_data.is_empty() && window.data.x_data[0] < cutoff_time as f64 {
+                window.data.x_data.remove(0);
+                window.data.y_data.remove(0);
+                window.data.timestamps.remove(0);
+            }
         }
     }
 
@@ -300,8 +348,15 @@ impl PlottingSystem {
         let current_analysis = analysis::calculate_current_analysis(foils, bodies, 0.016); // Assume ~60fps timestep
         
         if let Quantity::FoilCurrent(foil_id) = window.config.quantity {
-            if let Some((command_current, actual_current)) = current_analysis.get(&foil_id) {
-                // Store both command and actual current - for now just use command
+            if let Some((command_current, _actual_current)) = current_analysis.get(&foil_id) {
+                // For single timestep mode, clear existing data before adding new point
+                if matches!(window.config.sampling_mode, SamplingMode::SingleTimestep) {
+                    window.data.x_data.clear();
+                    window.data.y_data.clear();
+                    window.data.timestamps.clear();
+                }
+                
+                // Store command current (main data)
                 window.data.x_data.push(current_time as f64);
                 window.data.y_data.push(*command_current as f64);
                 window.data.timestamps.push(current_time as f64);
@@ -309,8 +364,18 @@ impl PlottingSystem {
                 // Add metadata about actual current
                 window.data.metadata.insert(
                     format!("actual_current_{}", current_time),
-                    actual_current.to_string()
+                    _actual_current.to_string()
                 );
+                
+                // Limit data to time window (only for continuous modes)
+                if !matches!(window.config.sampling_mode, SamplingMode::SingleTimestep) {
+                    let cutoff_time = current_time - window.config.time_window;
+                    while !window.data.x_data.is_empty() && window.data.x_data[0] < cutoff_time as f64 {
+                        window.data.x_data.remove(0);
+                        window.data.y_data.remove(0);
+                        window.data.timestamps.remove(0);
+                    }
+                }
             }
         }
     }
@@ -343,6 +408,10 @@ impl PlottingSystem {
             );
         }
         
+        // Handle timestamps for concentration maps
+        if matches!(window.config.sampling_mode, SamplingMode::SingleTimestep) {
+            window.data.timestamps.clear();
+        }
         window.data.timestamps.push(current_time as f64);
     }
 

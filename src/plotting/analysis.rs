@@ -13,11 +13,20 @@ pub fn calculate_concentration_map(bodies: &[Body], species: Species, bounds: f3
     
     for body in bodies {
         if body.species == species {
-            let x_idx = ((body.pos.x + bounds) / cell_size) as usize;
-            let y_idx = ((body.pos.y + bounds) / cell_size) as usize;
+            // Fix binning calculation with proper bounds checking
+            let normalized_x = (body.pos.x + bounds) / (2.0 * bounds);
+            let normalized_y = (body.pos.y + bounds) / (2.0 * bounds);
+            let x_idx_f = normalized_x * grid_size as f32;
+            let y_idx_f = normalized_y * grid_size as f32;
             
-            if x_idx < grid_size && y_idx < grid_size {
-                grid[y_idx][x_idx] += 1.0;
+            // Clamp to valid range and convert to usize
+            if x_idx_f >= 0.0 && x_idx_f < grid_size as f32 && y_idx_f >= 0.0 && y_idx_f < grid_size as f32 {
+                let x_idx = x_idx_f.floor() as usize;
+                let y_idx = y_idx_f.floor() as usize;
+                
+                if x_idx < grid_size && y_idx < grid_size {
+                    grid[y_idx][x_idx] += 1.0;
+                }
             }
         }
     }
@@ -47,14 +56,19 @@ pub fn calculate_species_populations(bodies: &[Body]) -> HashMap<Species, usize>
 /// Calculate charge distribution along an axis
 pub fn calculate_charge_distribution(bodies: &[Body], axis_is_x: bool, bounds: f32, bins: usize) -> Vec<f32> {
     let mut bin_charges = vec![0.0; bins];
-    let bin_size = (2.0 * bounds) / bins as f32;
     
     for body in bodies {
         let position = if axis_is_x { body.pos.x } else { body.pos.y };
-        let bin_idx = ((position + bounds) / bin_size) as usize;
+        // Fix binning calculation with proper bounds checking
+        let normalized_pos = (position + bounds) / (2.0 * bounds);
+        let bin_idx_f = normalized_pos * bins as f32;
         
-        if bin_idx < bins {
-            bin_charges[bin_idx] += body.charge;
+        // Clamp to valid range and convert to usize
+        if bin_idx_f >= 0.0 && bin_idx_f < bins as f32 {
+            let bin_idx = bin_idx_f.floor() as usize;
+            if bin_idx < bins {
+                bin_charges[bin_idx] += body.charge;
+            }
         }
     }
     
@@ -70,11 +84,17 @@ pub fn calculate_velocity_profile(bodies: &[Body], axis_is_x: bool, bounds: f32,
     for body in bodies {
         let position = if axis_is_x { body.pos.x } else { body.pos.y };
         let velocity = if axis_is_x { body.vel.x } else { body.vel.y };
-        let bin_idx = ((position + bounds) / bin_size) as usize;
+        // Fix binning calculation with proper bounds checking
+        let normalized_pos = (position + bounds) / (2.0 * bounds);
+        let bin_idx_f = normalized_pos * bins as f32;
         
-        if bin_idx < bins {
-            bin_velocities[bin_idx] += velocity;
-            bin_counts[bin_idx] += 1;
+        // Clamp to valid range and convert to usize
+        if bin_idx_f >= 0.0 && bin_idx_f < bins as f32 {
+            let bin_idx = bin_idx_f.floor() as usize;
+            if bin_idx < bins {
+                bin_velocities[bin_idx] += velocity;
+                bin_counts[bin_idx] += 1;
+            }
         }
     }
     
