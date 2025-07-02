@@ -57,7 +57,6 @@ fn export_csv(data: &PlotData) -> Result<String, String> {
         super::PlotType::SpatialProfileX => content.push_str("X_Position,Value\n"),
         super::PlotType::SpatialProfileY => content.push_str("Y_Position,Value\n"),
         super::PlotType::TimeSeries => content.push_str("Time,Value\n"),
-        _ => content.push_str("X,Y\n"),
     }
     
     // Data rows
