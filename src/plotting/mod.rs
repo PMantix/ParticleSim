@@ -3,6 +3,7 @@
 
 use crate::body::{Body, Species};
 use crate::body::foil::Foil;
+use quarkstrom::egui;
 use std::collections::HashMap;
 use serde::{Serialize, Deserialize};
 
@@ -67,6 +68,7 @@ pub struct PlotWindow {
     pub data: PlotData,
     pub is_open: bool,
     pub last_update: f32,
+    pub plot_bounds: egui::plot::PlotBounds,
 }
 
 pub struct PlottingSystem {
@@ -100,6 +102,7 @@ impl PlottingSystem {
             },
             is_open: true,
             last_update: 0.0,
+            plot_bounds: egui::plot::PlotBounds::from_min_max([-1.0, -1.0], [1.0, 1.0]),
         };
 
         self.windows.insert(window_id.clone(), window);

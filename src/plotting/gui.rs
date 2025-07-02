@@ -4,6 +4,7 @@
 use crate::plotting::{PlotType, Quantity, SamplingMode, PlotConfig, PlottingSystem, ExportFormat};
 use crate::body::Species;
 use quarkstrom::egui;
+use egui::plot::{Plot, Line, PlotPoints};
 
 pub fn show_plotting_controls(
     ui: &mut egui::Ui,
@@ -319,126 +320,34 @@ fn show_plot_content(ui: &mut egui::Ui, window: &mut crate::plotting::PlotWindow
         ui.label("No data available yet...");
         ui.label("Start the simulation or click 'Manual Update' for single-timestep plots");
     } else {
-        // Create custom plot visualization using egui's drawing primitives
         let (x_label, y_label) = get_axis_labels(&window.config);
-        
-        // Calculate plot area
-        let available = ui.available_size();
-        let plot_size = egui::Vec2::new(available.x - 20.0, (250.0_f32).min(available.y - 100.0));
-        
-        let (rect, _response) = ui.allocate_exact_size(plot_size, egui::Sense::hover());
-        
-        if ui.is_rect_visible(rect) {
-            // Draw plot background
-            ui.painter().rect_filled(rect, 2.0, egui::Color32::from_gray(240));
-            ui.painter().rect_stroke(rect, 2.0, egui::Stroke::new(1.0, egui::Color32::BLACK));
-            
-            // Calculate data ranges
-            let x_min = window.data.x_data.iter().fold(f64::INFINITY, |a, &b| a.min(b));
-            let x_max = window.data.x_data.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
-            let y_min = window.data.y_data.iter().fold(f64::INFINITY, |a, &b| a.min(b));
-            let y_max = window.data.y_data.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
-            
-            // Add some padding to ranges
-            let x_range = (x_max - x_min).max(0.001);
-            let y_range = (y_max - y_min).max(0.001);
-            let x_padding = x_range * 0.05;
-            let y_padding = y_range * 0.05;
-            
-            let plot_x_min = x_min - x_padding;
-            let plot_x_max = x_max + x_padding;
-            let plot_y_min = y_min - y_padding;
-            let plot_y_max = y_max + y_padding;
-            
-            // Convert data points to screen coordinates
-            let mut screen_points = Vec::new();
-            for i in 0..window.data.x_data.len() {
-                let x_norm = (window.data.x_data[i] - plot_x_min) / (plot_x_max - plot_x_min);
-                let y_norm = 1.0 - (window.data.y_data[i] - plot_y_min) / (plot_y_max - plot_y_min); // Flip Y
-                
-                let screen_x = rect.min.x + (x_norm as f32) * rect.width();
-                let screen_y = rect.min.y + (y_norm as f32) * rect.height();
-                
-                screen_points.push(egui::Pos2::new(screen_x, screen_y));
-            }
-            
-            // Draw data line
-            if screen_points.len() > 1 {
-                for i in 0..screen_points.len() - 1 {
-                    ui.painter().line_segment(
-                        [screen_points[i], screen_points[i + 1]], 
-                        egui::Stroke::new(2.0, egui::Color32::from_rgb(0, 100, 255))
-                    );
-                }
-            }
-            
-            // Draw data points
-            for point in &screen_points {
-                ui.painter().circle_filled(*point, 2.0, egui::Color32::from_rgb(0, 100, 255));
-            }
-            
-            // Draw axes labels
-            let label_color = egui::Color32::BLACK;
-            let font = egui::FontId::proportional(12.0);
-            
-            // X-axis label (bottom center)
-            ui.painter().text(
-                egui::Pos2::new(rect.center().x, rect.max.y + 15.0),
-                egui::Align2::CENTER_TOP,
-                x_label,
-                font.clone(),
-                label_color,
-            );
-            
-            // Y-axis label (left center, rotated)
-            ui.painter().text(
-                egui::Pos2::new(rect.min.x - 30.0, rect.center().y),
-                egui::Align2::CENTER_CENTER,
-                y_label,
-                font.clone(),
-                label_color,
-            );
-            
-            // Draw axis tick labels
-            // X-axis ticks
-            for i in 0..=4 {
-                let x_norm = i as f32 / 4.0;
-                let x_val = plot_x_min + (plot_x_max - plot_x_min) * x_norm as f64;
-                let screen_x = rect.min.x + x_norm * rect.width();
-                
-                ui.painter().text(
-                    egui::Pos2::new(screen_x, rect.max.y + 5.0),
-                    egui::Align2::CENTER_TOP,
-                    format!("{:.2}", x_val),
-                    egui::FontId::proportional(10.0),
-                    label_color,
-                );
-            }
-            
-            // Y-axis ticks
-            for i in 0..=4 {
-                let y_norm = i as f32 / 4.0;
-                let y_val = plot_y_min + (plot_y_max - plot_y_min) * (1.0 - y_norm as f64);
-                let screen_y = rect.min.y + y_norm * rect.height();
-                
-                ui.painter().text(
-                    egui::Pos2::new(rect.min.x - 5.0, screen_y),
-                    egui::Align2::RIGHT_CENTER,
-                    format!("{:.2}", y_val),
-                    egui::FontId::proportional(10.0),
-                    label_color,
-                );
-            }
-        }
-        
-        // Show data statistics
+        let points: Vec<[f64; 2]> = window
+            .data
+            .x_data
+            .iter()
+            .zip(&window.data.y_data)
+            .map(|(&x, &y)| [x, y])
+            .collect();
+
+        let line = egui::plot::Line::new(egui::plot::PlotPoints::from(points));
+        let plot_id = format!("{}_plot", window.id);
+        let response = egui::plot::Plot::new(plot_id)
+            .set_plot_bounds(window.plot_bounds)
+            .x_axis_label(x_label)
+            .y_axis_label(y_label)
+            .show(ui, |plot_ui| {
+                plot_ui.line(line);
+            });
+
+        window.plot_bounds = response.plot_bounds;
+
         ui.separator();
         ui.horizontal(|ui| {
             let x_min = window.data.x_data.iter().fold(f64::INFINITY, |a, &b| a.min(b));
             let x_max = window.data.x_data.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
             let y_min = window.data.y_data.iter().fold(f64::INFINITY, |a, &b| a.min(b));
             let y_max = window.data.y_data.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
-            
+
             ui.label(format!("X: [{:.3}, {:.3}]", x_min, x_max));
             ui.label(format!("Y: [{:.3}, {:.3}]", y_min, y_max));
             ui.label(format!("Points: {}", window.data.x_data.len()));
@@ -456,6 +365,10 @@ fn show_plot_content(ui: &mut egui::Ui, window: &mut crate::plotting::PlotWindow
             window.data.x_data.clear();
             window.data.y_data.clear();
             window.data.timestamps.clear();
+        }
+
+        if ui.button("Reset View").clicked() {
+            window.plot_bounds = egui::plot::PlotBounds::from_min_max([-1.0, -1.0], [1.0, 1.0]);
         }
         
         if ui.button("Manual Update").clicked() && matches!(window.config.sampling_mode, crate::plotting::SamplingMode::SingleTimestep) {
