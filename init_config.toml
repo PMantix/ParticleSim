@@ -1,0 +1,76 @@
+# ParticleSim Initial Configuration
+# This file defines the starting particles and their arrangements
+# Note: All positions (x, y) are CENTER coordinates, not corner coordinates
+
+[simulation]
+# Domain bounds (radius from center, so total width/height = 2 * domain_bounds)
+domain_bounds = 200.0
+
+[particles]
+# Metal rectangles (positions are center coordinates)
+[[particles.metal_rectangles]]
+x = -150.0  # Center X coordinate
+y = 0.0     # Center Y coordinate
+width = 50.0
+height = 100.0
+species = "LithiumMetal"
+
+[[particles.metal_rectangles]]
+x = 150.0   # Center X coordinate
+y = 0.0     # Center Y coordinate
+width = 50.0
+height = 100.0
+species = "LithiumMetal"
+
+# Foil rectangles (positions are center coordinates)
+[[particles.foil_rectangles]]
+x = -150.0  # Center X coordinate (same as metal above)
+y = 0.0     # Center Y coordinate
+width = 7.0
+height = 100.0
+current = 0.0
+
+[[particles.foil_rectangles]]
+x = 150.0   # Center X coordinate (same as metal above)
+y = 0.0     # Center Y coordinate
+width = 7.0
+height = 100.0
+current = 0.0
+
+# Random particles
+[[particles.random]]
+count = 3000
+species = "ElectrolyteAnion"
+domain_width = 400.0  # Full domain width
+domain_height = 400.0 # domain height
+
+[[particles.random]]
+count = 3000
+species = "LithiumIon"
+domain_width = 400.0
+domain_height = 400.0
+
+# Legacy circle configurations (commented out)
+# [[particles.circles]]
+# x = -210.0
+# y = 0.0
+# radius = 20.0
+# species = "LithiumMetal"
+
+# [[particles.circles]]
+# x = 210.0
+# y = 0.0
+# radius = 20.0
+# species = "LithiumMetal"
+
+# [[particles.circles]]
+# x = 0.0
+# y = 0.0
+# radius = 20.0
+# species = "LithiumIon"
+
+# [[particles.circles]]
+# x = 0.0
+# y = 210.0
+# radius = 20.0
+# species = "ElectrolyteAnion"
