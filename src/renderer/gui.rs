@@ -4,7 +4,7 @@ use quarkstrom::egui;
 use crate::renderer::Species;
 use ultraviolet::Vec2;
 use crate::renderer::Body;
-use crate::Electron;
+use crate::body::Electron;
 use crate::config::IsolineFieldMode;
 
 impl super::Renderer {

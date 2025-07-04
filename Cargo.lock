@@ -3,27 +3,6 @@
 version = 4
 
 [[package]]
-name = "ParticleSim"
-version = "0.1.5"
-dependencies = [
- "broccoli",
- "broccoli-rayon",
- "crossbeam",
- "fastrand",
- "once_cell",
- "palette",
- "parking_lot",
- "quarkstrom",
- "rand 0.9.1",
- "rayon",
- "serde",
- "serde_json",
- "smallvec",
- "toml",
- "ultraviolet",
-]
-
-[[package]]
 name = "ab_glyph"
 version = "0.2.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1482,6 +1461,27 @@ name = "partial-min-max"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6448add382c60bbbc64f9dab41309a12ec530c05191601042f911356ac09758c"
+
+[[package]]
+name = "particle_sim"
+version = "0.1.5"
+dependencies = [
+ "broccoli",
+ "broccoli-rayon",
+ "crossbeam",
+ "fastrand",
+ "once_cell",
+ "palette",
+ "parking_lot",
+ "quarkstrom",
+ "rand 0.9.1",
+ "rayon",
+ "serde",
+ "serde_json",
+ "smallvec",
+ "toml",
+ "ultraviolet",
+]
 
 [[package]]
 name = "percent-encoding"

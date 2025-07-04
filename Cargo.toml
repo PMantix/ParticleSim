@@ -1,5 +1,5 @@
 [package]
-name = "ParticleSim"
+name = "particle_sim"
 version = "0.1.5"
 edition = "2021"
 

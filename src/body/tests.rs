@@ -78,7 +78,7 @@ mod tests {
         use std::collections::HashMap;
 
         use crate::body::{Body, Species, Electron};
-        use crate::Simulation;
+        use crate::simulation::Simulation;
         use crate::quadtree::Quadtree;
         use ultraviolet::Vec2;
         use crate::config;
@@ -194,7 +194,7 @@ mod tests {
         #[test]
         fn electron_hops_from_neutral_metal_to_deficient_foil() {
             use crate::body::{Body, Species, Electron};
-            use crate::Simulation;
+            use crate::simulation::Simulation;
             use crate::quadtree::Quadtree;
             use crate::config;
             use crate::config::SimConfig;
@@ -257,7 +257,7 @@ mod tests {
         #[test]
         fn foil_current_accumulation_does_not_cause_neighbor_hopping() {
             use crate::body::{Body, Species, Electron};
-            use crate::Simulation;
+            use crate::simulation::Simulation;
             use crate::quadtree::Quadtree;
             use crate::config;
             use crate::config::SimConfig;

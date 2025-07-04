@@ -1,7 +1,7 @@
 use crate::renderer::state::{SIM_COMMAND_SENDER, SimCommand};
 use crate::renderer::Renderer;
 use crate::simulation::Simulation;
-use crate::body::{Species, Electron};
+use crate::body::Species;
 use ultraviolet::Vec2;
 use std::sync::mpsc::channel;
 
