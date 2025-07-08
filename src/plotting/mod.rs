@@ -26,6 +26,7 @@ pub enum Quantity {
     FoilCurrent(u64), // foil_id
     ElectronHopRate,
     LocalFieldStrength,
+    DendriteFormationRate,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -63,6 +64,7 @@ pub struct PlotWindow {
     pub data: PlotData,
     pub is_open: bool,
     pub last_update: f32,
+    pub prev_metal_count: usize,
 }
 
 pub struct PlottingSystem {
@@ -96,6 +98,7 @@ impl PlottingSystem {
             },
             is_open: true,
             last_update: 0.0,
+            prev_metal_count: 0,
         };
 
         self.windows.insert(window_id.clone(), window);
@@ -264,6 +267,17 @@ impl PlottingSystem {
             Quantity::ElectronHopRate => {
                 // Use analysis function for electron hop rate
                 analysis::calculate_electron_hop_rate(bodies, 0.016) // Assume ~60fps timestep
+            }
+            Quantity::DendriteFormationRate => {
+                let metal_count = bodies.iter().filter(|b| b.species == Species::LithiumMetal).count();
+                let dt = current_time - window.last_update;
+                let rate = if dt > 0.0 {
+                    (metal_count as f32 - window.prev_metal_count as f32) / dt
+                } else {
+                    0.0
+                };
+                window.prev_metal_count = metal_count;
+                rate
             }
             _ => {
                 // Calculate aggregate values

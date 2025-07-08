@@ -262,6 +262,7 @@ fn show_quantity_selector(ui: &mut egui::Ui, quantity: &mut Quantity, plot_type:
             if matches!(plot_type, PlotType::TimeSeries) {
                 ui.selectable_value(quantity, Quantity::FoilCurrent(1), "Foil Current (ID 1)");
                 ui.selectable_value(quantity, Quantity::ElectronHopRate, "Electron Hop Rate");
+                ui.selectable_value(quantity, Quantity::DendriteFormationRate, "Dendrite Formation Rate");
             }
             
             // Spatial quantities only
@@ -274,7 +275,7 @@ fn show_quantity_selector(ui: &mut egui::Ui, quantity: &mut Quantity, plot_type:
 fn is_quantity_compatible_with_plot_type(quantity: &Quantity, plot_type: &PlotType) -> bool {
     match quantity {
         // These quantities only make sense for time series
-        Quantity::FoilCurrent(_) | Quantity::ElectronHopRate => {
+        Quantity::FoilCurrent(_) | Quantity::ElectronHopRate | Quantity::DendriteFormationRate => {
             matches!(plot_type, PlotType::TimeSeries)
         }
         // Local field strength is only meaningful for spatial plots
@@ -549,6 +550,7 @@ fn get_axis_labels(config: &crate::plotting::PlotConfig) -> (&'static str, &'sta
         Quantity::FoilCurrent(_) => "Current (A)",
         Quantity::ElectronHopRate => "Hop Rate (1/s)",
         Quantity::LocalFieldStrength => "Field Strength",
+        Quantity::DendriteFormationRate => "Formation Rate (1/s)",
     };
     
     (x_label, y_label)

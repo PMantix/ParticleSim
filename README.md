@@ -16,7 +16,7 @@ This repository contains a modular, parallelized particle simulation for large-s
   - Lithium ions (Li⁺) and lithium metal (Li) dynamically update their species based on electron count.
   - Electron hopping with strict conservation rules and distance-dependent rates.
 - **Real-time Data Analysis & Plotting**:
-  - **Time Series Plots**: Track species populations, foil currents, and electron hop rates over time.
+  - **Time Series Plots**: Track species populations, foil currents, electron hop rates, and dendrite formation rates over time.
   - **Spatial Profile Plots**: Analyze charge distribution, velocity profiles, and electron counts along X or Y axes.
   - **Full Domain Binning**: Spatial plots always span the entire simulation domain (-350 to +350), regardless of particle locations.
   - **Data Export**: Export plot data in CSV, JSON, or TSV formats for external analysis.
@@ -104,6 +104,7 @@ The simulation includes a comprehensive plotting system for real-time data analy
   - Species population tracking (Li+, Li metal, anions)
   - Foil current monitoring
   - Electron hop rate analysis
+  - Dendrite formation rate tracking
 
 - **Spatial Profile Plots**:
   - Charge distribution along X or Y axes

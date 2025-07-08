@@ -61,6 +61,7 @@ The particle simulation now includes a comprehensive plotting and analysis syste
 - **Foil Current**: Current through specific foils
 - **Electron Hop Rate**: Rate of electron transfer events
 - **Local Field Strength**: Electric field strength at positions
+- **Dendrite Formation Rate**: Rate of Li+ to Li metal transitions
 
 ### 3. Sampling Modes
 
