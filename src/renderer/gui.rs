@@ -397,22 +397,6 @@ impl super::Renderer {
                         foils.iter().find(|f| f.body_ids.contains(&selected_id)).cloned()
                     };
                     if let Some(foil) = maybe_foil {
-                        ui.separator();
-                        egui::CollapsingHeader::new("Foil Current").default_open(true).show(ui, |ui| {
-                            // Legacy current control (for backwards compatibility when no switching)
-                            let mut current = foil.current;
-                            ui.horizontal(|ui| {
-                                ui.label("Current (legacy):");
-                                if ui.button("-").clicked() { current -= 1.0; }
-                                if ui.button("+").clicked() { current += 1.0; }
-                                if ui.button("0").clicked() { current = 0.0; }
-                                ui.add(egui::Slider::new(&mut current, -500.0..=500.00).step_by(0.1));
-                            });
-                            if (current - foil.current).abs() > f32::EPSILON {
-                                SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(
-                                    SimCommand::SetFoilCurrent { foil_id: selected_id, current }
-                                ).unwrap();
-                            }
 
                             ui.separator();
                             ui.label("DC + AC Current Components:");
@@ -500,7 +484,6 @@ impl super::Renderer {
                                     }
                                 }
                             });
-                        });
                     }
                 }
 
