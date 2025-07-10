@@ -18,42 +18,63 @@ pub struct SpeciesProps {
 pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(|| {
     use Species::*;
     let mut m = HashMap::new();
-    m.insert(LithiumIon, SpeciesProps {
-        mass: 1.0,
-        radius: 1.0,
-        damping: 1.0,
-        lj_enabled: false,
-        lj_epsilon: config::LJ_FORCE_EPSILON,
-        lj_sigma: config::LJ_FORCE_SIGMA,
-        lj_cutoff: config::LJ_FORCE_CUTOFF,
-    });
-    m.insert(LithiumMetal, SpeciesProps {
-        mass: 1.0,
-        radius: 1.0,
-        damping: 1.0,
-        lj_enabled: true,
-        lj_epsilon: config::LJ_FORCE_EPSILON,
-        lj_sigma: config::LJ_FORCE_SIGMA,
-        lj_cutoff: config::LJ_FORCE_CUTOFF,
-    });
-    m.insert(FoilMetal, SpeciesProps {
-        mass: 1e6,
-        radius: 1.0,
-        damping: 1.0,
-        lj_enabled: true,
-        lj_epsilon: config::LJ_FORCE_EPSILON,
-        lj_sigma: config::LJ_FORCE_SIGMA,
-        lj_cutoff: config::LJ_FORCE_CUTOFF,
-    });
-    m.insert(ElectrolyteAnion, SpeciesProps {
-        mass: 40.0,
-        radius: 1.5,
-        damping: 1.0,
-        lj_enabled: false,
-        lj_epsilon: config::LJ_FORCE_EPSILON,
-        lj_sigma: config::LJ_FORCE_SIGMA,
-        lj_cutoff: config::LJ_FORCE_CUTOFF,
-    });
+    m.insert(
+        LithiumIon,
+        SpeciesProps {
+            mass: 1.0,
+            radius: 1.0,
+            damping: 1.0,
+            lj_enabled: false,
+            lj_epsilon: 0.0,
+            lj_sigma: config::LJ_FORCE_SIGMA,
+            lj_cutoff: config::LJ_FORCE_CUTOFF,
+        },
+    );
+    m.insert(
+        LithiumMetal,
+        SpeciesProps {
+            mass: 1.0,
+            radius: 1.0,
+            damping: 1.0,
+            lj_enabled: true,
+            lj_epsilon: config::LJ_FORCE_EPSILON,
+            lj_sigma: config::LJ_FORCE_SIGMA,
+            lj_cutoff: config::LJ_FORCE_CUTOFF,
+        },
+    );
+    m.insert(
+        FoilMetal,
+        SpeciesProps {
+            mass: 1e6,
+            radius: 1.0,
+            damping: 1.0,
+            lj_enabled: true,
+            lj_epsilon: config::LJ_FORCE_EPSILON,
+            lj_sigma: config::LJ_FORCE_SIGMA,
+            lj_cutoff: config::LJ_FORCE_CUTOFF,
+        },
+    );
+    m.insert(
+        ElectrolyteAnion,
+        SpeciesProps {
+            mass: 40.0,
+            radius: 1.5,
+            damping: 1.0,
+            lj_enabled: false,
+            lj_epsilon: 0.0,
+            lj_sigma: config::LJ_FORCE_SIGMA,
+            lj_cutoff: config::LJ_FORCE_CUTOFF,
+        },
+    );
     m
 });
+
+/// Maximum LJ interaction range across all species.
+pub fn max_lj_cutoff() -> f32 {
+    SPECIES_PROPERTIES
+        .values()
+        .filter(|p| p.lj_enabled)
+        .map(|p| p.lj_cutoff * p.lj_sigma)
+        .fold(0.0_f32, f32::max)
+}
 

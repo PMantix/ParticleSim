@@ -39,10 +39,7 @@ impl Simulation {
         // Start with no bodies; scenario setup is now done via SimCommand AddCircle/AddBody
         let bodies = Vec::new();
         let quadtree = Quadtree::new(theta, epsilon, leaf_capacity, thread_capacity);
-        let cell_size = crate::species::SPECIES_PROPERTIES
-            .values()
-            .map(|p| p.lj_cutoff * p.lj_sigma)
-            .fold(0.0, f32::max);
+        let cell_size = crate::species::max_lj_cutoff();
         let cell_list = CellList::new(bounds, cell_size);
         let rewound_flags = vec![];
         let sim = Self {
@@ -395,7 +392,7 @@ impl Simulation {
     pub fn update_surrounded_flags(&mut self) {
         if self.bodies.is_empty() { return; }
         let use_cell = self.use_cell_list();
-        let neighbor_radius = Species::LithiumMetal.lj_cutoff() * Species::LithiumMetal.lj_sigma();
+        let neighbor_radius = crate::species::max_lj_cutoff();
         if use_cell {
             self.cell_list.cell_size = neighbor_radius;
             self.cell_list.rebuild(&self.bodies);
