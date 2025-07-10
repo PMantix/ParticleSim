@@ -560,8 +560,8 @@ impl super::Renderer {
                     };
                     foil.dc_current + ac_component
                 } else {
-                    // Use legacy current field when no switching
-                    foil.current
+                    // Use DC current when no switching (legacy current field removed)
+                    foil.dc_current
                 };
                 
                 // Normalize to 0-1 range for wave display (show activity when current != 0)

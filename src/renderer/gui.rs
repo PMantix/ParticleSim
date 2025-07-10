@@ -457,7 +457,7 @@ impl super::Renderer {
                             });
                             if (dc_current - foil.dc_current).abs() > f32::EPSILON {
                                 SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(
-                                    SimCommand::SetFoilDCCurrent { foil_id: selected_id, dc_current }
+                                    SimCommand::SetFoilDCCurrent { foil_id: foil.id, dc_current }
                                 ).unwrap();
                             }
 
@@ -472,7 +472,7 @@ impl super::Renderer {
                             });
                             if (ac_current - foil.ac_current).abs() > f32::EPSILON {
                                 SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(
-                                    SimCommand::SetFoilACCurrent { foil_id: selected_id, ac_current }
+                                    SimCommand::SetFoilACCurrent { foil_id: foil.id, ac_current }
                                 ).unwrap();
                             }
 
@@ -483,7 +483,7 @@ impl super::Renderer {
                             });
                             if (hz - foil.switch_hz).abs() > f32::EPSILON {
                                 SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(
-                                    SimCommand::SetFoilFrequency { foil_id: selected_id, switch_hz: hz }
+                                    SimCommand::SetFoilFrequency { foil_id: foil.id, switch_hz: hz }
                                 ).unwrap();
                             }
 
@@ -545,7 +545,7 @@ impl super::Renderer {
                                                             crate::body::foil::LinkMode::Opposite => -master_current,
                                                         }
                                                     } else {
-                                                        f.current // Fallback
+                                                        f.dc_current // Fallback to DC current
                                                     }
                                                 }
                                             } else {

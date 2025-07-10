@@ -258,7 +258,7 @@ impl PlottingSystem {
             Quantity::FoilCurrent(foil_id) => {
                 foils.iter()
                     .find(|f| f.id == foil_id)
-                    .map(|f| f.current)
+                    .map(|f| f.dc_current) // Use DC current since legacy current field is removed
                     .unwrap_or(0.0)
             }
             Quantity::ElectronHopRate => {

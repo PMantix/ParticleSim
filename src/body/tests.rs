@@ -296,7 +296,6 @@ mod tests {
                     id: 42, // Unique ID for the foil
                     link_id: None,
                     body_ids: vec![foil2_id], // Use the saved ID
-                    current: 10.0,
                     dc_current: 10.0,
                     ac_current: 0.0,
                     accum: 1.5,

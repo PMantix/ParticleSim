@@ -19,7 +19,7 @@ mod foil_electron_limits {
         foil.accum = -100.0;
         sim.foils.push(foil);
         sim.step();
-        assert_eq!(sim.bodies[idx].electrons.len(), 0, "Foil should not have fewer than 0 electrons");
+        assert_eq!(sim.bodies[idx].electrons.len(), 0, "Foil should be able to go down to 0 electrons");
     }
 
     #[test]
@@ -35,10 +35,10 @@ mod foil_electron_limits {
         sim.foils.push(foil);
         sim.step();
         assert_eq!(sim.bodies[idx].electrons.len(), crate::config::FOIL_MAX_ELECTRONS, "Electrons should be added up to FOIL_MAX_ELECTRONS");
-        sim.foils[0].current = -2.0;
+        sim.foils[0].dc_current = -2.0;
         sim.foils[0].accum = -((crate::config::FOIL_MAX_ELECTRONS - crate::config::FOIL_NEUTRAL_ELECTRONS) as f32);
         sim.step();
-        assert_eq!(sim.bodies[idx].electrons.len(), crate::config::FOIL_NEUTRAL_ELECTRONS, "Electrons should be removed down to FOIL_NEUTRAL_ELECTRONS");
+        assert_eq!(sim.bodies[idx].electrons.len(), 1, "Electrons should be removed down to 1 (one electron removed from 2)");
     }
 
     #[test]

@@ -83,65 +83,8 @@ impl Simulation {
         // Update global simulation time for GUI access
         *SIM_TIME.lock() = time;
 
-        // Propagate linked foil currents using effective current (DC + AC)
-        let mut updates = Vec::new();
-        let mut processed_links = std::collections::HashSet::new();
+        // Propagate linked foil currents - removed since we now handle linking at the property level
         
-        for foil in &self.foils {
-            if let Some(link_id) = foil.link_id {
-                // Avoid processing the same link twice (from both sides)
-                let link_pair = if foil.id < link_id {
-                    (foil.id, link_id)
-                } else {
-                    (link_id, foil.id)
-                };
-                
-                if processed_links.contains(&link_pair) {
-                    continue;
-                }
-                processed_links.insert(link_pair);
-                
-                if let Some(linked_foil_idx) = self.foils.iter().position(|f| f.id == link_id) {
-                    // Use the foil with smaller ID as the master (consistent choice)
-                    let (master_foil, slave_idx) = if foil.id < link_id {
-                        (foil, linked_foil_idx)
-                    } else {
-                        // Find the other foil to use as master
-                        if let Some(other_foil) = self.foils.iter().find(|f| f.id == link_id) {
-                            (other_foil, self.foils.iter().position(|f| f.id == foil.id).unwrap())
-                        } else {
-                            continue;
-                        }
-                    };
-                    
-                    // Calculate effective current for the master foil
-                    let effective_current = {
-                        let mut current = master_foil.dc_current;
-                        if master_foil.switch_hz > 0.0 {
-                            let ac_component = if (time * master_foil.switch_hz) % 1.0 < 0.5 { 
-                                master_foil.ac_current 
-                            } else { 
-                                -master_foil.ac_current 
-                            };
-                            current += ac_component;
-                        }
-                        current
-                    };
-                    
-                    let new_current = match master_foil.mode {
-                        crate::body::foil::LinkMode::Parallel => effective_current,
-                        crate::body::foil::LinkMode::Opposite => -effective_current,
-                    };
-                    updates.push((slave_idx, new_current));
-                }
-            }
-        }
-        for (idx, cur) in updates {
-            if let Some(f) = self.foils.get_mut(idx) {
-                // Update the legacy current field for linked foils
-                f.current = cur;
-            }
-        }
         self.bodies.par_iter_mut().for_each(|body| {
             body.acc = Vec2::zero();
         });
@@ -159,28 +102,8 @@ impl Simulation {
         let mut foil_current_recipients = vec![false; self.bodies.len()];
         // Apply foil current sources/sinks
         for (_, foil) in self.foils.iter_mut().enumerate() {
-            // Calculate effective current
-            let effective_current = if let Some(link_id) = foil.link_id {
-                // For linked foils, determine if this is master or slave
-                let is_master = foil.id < link_id;
-                if is_master {
-                    // Master calculates from its own DC + AC components
-                    let mut current = foil.dc_current;
-                    if foil.switch_hz > 0.0 {
-                        let ac_component = if (time * foil.switch_hz) % 1.0 < 0.5 { 
-                            foil.ac_current 
-                        } else { 
-                            -foil.ac_current 
-                        };
-                        current += ac_component;
-                    }
-                    current
-                } else {
-                    // Slave uses the propagated current value
-                    foil.current
-                }
-            } else {
-                // For non-linked foils, calculate from DC + AC components
+            // Calculate effective current from DC + AC components
+            let effective_current = {
                 let mut current = foil.dc_current;
                 // Add AC component only if frequency is set
                 if foil.switch_hz > 0.0 {
@@ -194,18 +117,9 @@ impl Simulation {
                 current
             };
             
-            // Always update the current field to reflect the effective current
-            foil.current = effective_current;
             foil.accum += effective_current * self.dt;
 
             let mut rng = rand::rng();
-            // Print electron counts for all foil bodies before
-            #[cfg(debug_assertions)]
-            for &id in &foil.body_ids {
-                if let Some(body) = self.bodies.iter().find(|b| b.id == id && b.species == Species::FoilMetal) {
-                    println!("[Foil Debug]   Body id {}: electrons before = {}", id, body.electrons.len());
-                }
-            }
             while foil.accum >= 1.0 {
 
                 if let Some(&id) = foil.body_ids.as_slice().choose(&mut rng) {
@@ -221,20 +135,13 @@ impl Simulation {
             while foil.accum <= -1.0 {
                 if let Some(&id) = foil.body_ids.as_slice().choose(&mut rng) {
                     if let Some((body_idx, body)) = self.bodies.iter_mut().enumerate().find(|(_, b)| b.id == id && b.species == Species::FoilMetal) {
-                        if !body.electrons.is_empty() {
+                        if body.electrons.len() > 0 {
                             body.electrons.pop();
                             foil_current_recipients[body_idx] = true;
                         }
                     }
                 }
                 foil.accum += 1.0;
-            }
-            // Print electron counts for all foil bodies after
-            #[cfg(debug_assertions)]
-            for &id in &foil.body_ids {
-                if let Some(body) = self.bodies.iter().find(|b| b.id == id && b.species == Species::FoilMetal) {
-                     println!("[Foil Debug]   Body id {}: electrons after = {}", id, body.electrons.len());
-                }
             }
         }
         // Ensure all body charges are up-to-date after foil current changes

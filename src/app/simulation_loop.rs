@@ -295,37 +295,84 @@ pub fn run_simulation_loop(rx: std::sync::mpsc::Receiver<SimCommand>, mut simula
                     if let Some(foil) = simulation
                         .foils
                         .iter_mut()
-                        .find(|f| f.body_ids.contains(&foil_id))
+                        .find(|f| f.id == foil_id)
                     {
-                        foil.current = current;
-                        foil.dc_current = current;
+                        foil.dc_current = current; // Only set DC current, legacy current field removed
                     }
                 }
                 SimCommand::SetFoilDCCurrent { foil_id, dc_current } => {
+                    // First, find the foil and get its linking information
+                    let link_info = simulation
+                        .foils
+                        .iter()
+                        .find(|f| f.id == foil_id)
+                        .and_then(|foil| foil.link_id.map(|link_id| (link_id, foil.mode)));
+                    
+                    // Update the original foil
                     if let Some(foil) = simulation
                         .foils
                         .iter_mut()
-                        .find(|f| f.body_ids.contains(&foil_id))
+                        .find(|f| f.id == foil_id)
                     {
                         foil.dc_current = dc_current;
                     }
+                    
+                    // Update the linked foil if it exists
+                    if let Some((link_id, mode)) = link_info {
+                        if let Some(linked_foil) = simulation.foils.iter_mut().find(|f| f.id == link_id) {
+                            linked_foil.dc_current = match mode {
+                                crate::body::foil::LinkMode::Parallel => dc_current,
+                                crate::body::foil::LinkMode::Opposite => -dc_current,
+                            };
+                        }
+                    }
                 }
                 SimCommand::SetFoilACCurrent { foil_id, ac_current } => {
+                    // First, find the foil and get its linking information
+                    let link_info = simulation
+                        .foils
+                        .iter()
+                        .find(|f| f.id == foil_id)
+                        .and_then(|foil| foil.link_id.map(|link_id| link_id));
+                    
+                    // Update the original foil
                     if let Some(foil) = simulation
                         .foils
                         .iter_mut()
-                        .find(|f| f.body_ids.contains(&foil_id))
+                        .find(|f| f.id == foil_id)
                     {
                         foil.ac_current = ac_current;
                     }
+                    
+                    // Update the linked foil if it exists
+                    if let Some(link_id) = link_info {
+                        if let Some(linked_foil) = simulation.foils.iter_mut().find(|f| f.id == link_id) {
+                            linked_foil.ac_current = ac_current; // AC amplitude is same for both modes
+                        }
+                    }
                 }
                 SimCommand::SetFoilFrequency { foil_id, switch_hz } => {
+                    // First, find the foil and get its linking information
+                    let link_info = simulation
+                        .foils
+                        .iter()
+                        .find(|f| f.id == foil_id)
+                        .and_then(|foil| foil.link_id.map(|link_id| link_id));
+                    
+                    // Update the original foil
                     if let Some(foil) = simulation
                         .foils
                         .iter_mut()
-                        .find(|f| f.body_ids.contains(&foil_id))
+                        .find(|f| f.id == foil_id)
                     {
                         foil.switch_hz = switch_hz;
+                    }
+                    
+                    // Update the linked foil if it exists
+                    if let Some(link_id) = link_info {
+                        if let Some(linked_foil) = simulation.foils.iter_mut().find(|f| f.id == link_id) {
+                            linked_foil.switch_hz = switch_hz; // Frequency should be the same for linked foils
+                        }
                     }
                 }
                 SimCommand::LinkFoils { a, b, mode } => {

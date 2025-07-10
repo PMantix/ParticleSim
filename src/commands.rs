@@ -363,45 +363,91 @@ fn handle_set_foil_current(simulation: &mut Simulation, foil_id: u64, current: f
     if let Some(foil) = simulation
         .foils
         .iter_mut()
-        .find(|f| f.body_ids.contains(&foil_id))
+        .find(|f| f.id == foil_id)
     {
-        foil.current = current;
-        // Also update DC current to maintain compatibility
-        foil.dc_current = current;
+        foil.dc_current = current; // Only set DC current, no legacy current field
     }
 }
 
 fn handle_set_foil_dc_current(simulation: &mut Simulation, foil_id: u64, dc_current: f32) {
+    // First, find the foil and get its linking information
+    let link_info = simulation
+        .foils
+        .iter()
+        .find(|f| f.id == foil_id)
+        .and_then(|foil| foil.link_id.map(|link_id| (link_id, foil.mode)));
+    
+    // Update the original foil
     if let Some(foil) = simulation
         .foils
         .iter_mut()
-        .find(|f| f.body_ids.contains(&foil_id))
+        .find(|f| f.id == foil_id)
     {
         foil.dc_current = dc_current;
+    }
+    
+    // Update the linked foil if it exists
+    if let Some((link_id, mode)) = link_info {
+        if let Some(linked_foil) = simulation.foils.iter_mut().find(|f| f.id == link_id) {
+            linked_foil.dc_current = match mode {
+                crate::body::foil::LinkMode::Parallel => dc_current,
+                crate::body::foil::LinkMode::Opposite => -dc_current,
+            };
+        }
     }
 }
 
 fn handle_set_foil_ac_current(simulation: &mut Simulation, foil_id: u64, ac_current: f32) {
+    // First, find the foil and get its linking information
+    let link_info = simulation
+        .foils
+        .iter()
+        .find(|f| f.id == foil_id)
+        .and_then(|foil| foil.link_id.map(|link_id| (link_id, foil.mode)));
+    
+    // Update the original foil
     if let Some(foil) = simulation
         .foils
         .iter_mut()
-        .find(|f| f.body_ids.contains(&foil_id))
+        .find(|f| f.id == foil_id)
     {
         foil.ac_current = ac_current;
     }
-}
-
-fn handle_set_foil_frequency(simulation: &mut Simulation, foil_id: u32, switch_hz: f32) {
-    if let Some(foil) = simulation
-        .foils
-        .iter_mut()
-        .find(|f| f.body_ids.contains(&foil_id))
-    {
-        foil.switch_hz = switch_hz;
+    
+    // Update the linked foil if it exists
+    if let Some((link_id, _mode)) = link_info {
+        if let Some(linked_foil) = simulation.foils.iter_mut().find(|f| f.id == link_id) {
+            linked_foil.ac_current = ac_current; // AC amplitude is same for both modes
+        }
     }
 }
 
-fn handle_link_foils(simulation: &mut Simulation, a: u32, b: u32, mode: crate::body::foil::LinkMode) {
+fn handle_set_foil_frequency(simulation: &mut Simulation, foil_id: u64, switch_hz: f32) {
+    // First, find the foil and get its linking information
+    let link_info = simulation
+        .foils
+        .iter()
+        .find(|f| f.id == foil_id)
+        .and_then(|foil| foil.link_id.map(|link_id| link_id));
+    
+    // Update the original foil
+    if let Some(foil) = simulation
+        .foils
+        .iter_mut()
+        .find(|f| f.id == foil_id)
+    {
+        foil.switch_hz = switch_hz;
+    }
+    
+    // Update the linked foil if it exists
+    if let Some(link_id) = link_info {
+        if let Some(linked_foil) = simulation.foils.iter_mut().find(|f| f.id == link_id) {
+            linked_foil.switch_hz = switch_hz; // Frequency should be the same for linked foils
+        }
+    }
+}
+
+fn handle_link_foils(simulation: &mut Simulation, a: u64, b: u64, mode: crate::body::foil::LinkMode) {
     let a_idx = simulation.foils.iter().position(|f| f.id == a);
     let b_idx = simulation.foils.iter().position(|f| f.id == b);
     if let (Some(a_idx), Some(b_idx)) = (a_idx, b_idx) {
@@ -420,7 +466,7 @@ fn handle_link_foils(simulation: &mut Simulation, a: u32, b: u32, mode: crate::b
     }
 }
 
-fn handle_unlink_foils(simulation: &mut Simulation, a: u32, b: u32) {
+fn handle_unlink_foils(simulation: &mut Simulation, a: u64, b: u64) {
     if let Some(foil_a) = simulation.foils.iter_mut().find(|f| f.id == a && f.link_id == Some(b)) {
         foil_a.link_id = None;
     }

@@ -3,7 +3,6 @@ use once_cell::sync::Lazy;
 use std::sync::Mutex;
 
 use crate::body::Species;
-use crate::config;
 
 #[derive(Clone, Copy, Debug)]
 pub struct SpeciesProps {
