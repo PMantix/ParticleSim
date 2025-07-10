@@ -464,18 +464,20 @@ impl super::Renderer {
                                         let mut points_vec: Vec<[f64; 2]> = Vec::with_capacity(steps + 1);
                                         for i in 0..=steps {
                                             let t = i as f32 * dt;
-                                            let effective_current = if f.switch_hz > 0.0 {
-                                                // DC + AC components - use same phase calculation as simulation
-                                                let plot_time = current_time + t;
-                                                let ac_component = if (plot_time * f.switch_hz) % 1.0 < 0.5 { 
-                                                    f.ac_current 
-                                                } else { 
-                                                    -f.ac_current 
-                                                };
-                                                f.dc_current + ac_component
-                                            } else {
-                                                // Use legacy current field when no switching
-                                                f.current
+                                            let effective_current = {
+                                                // DC component is always active
+                                                let mut current = f.dc_current;
+                                                // Add AC component only if frequency is set
+                                                if f.switch_hz > 0.0 {
+                                                    let plot_time = current_time + t;
+                                                    let ac_component = if (plot_time * f.switch_hz) % 1.0 < 0.5 { 
+                                                        f.ac_current 
+                                                    } else { 
+                                                        -f.ac_current 
+                                                    };
+                                                    current += ac_component;
+                                                }
+                                                current
                                             };
                                             points_vec.push([t as f64, effective_current as f64]);
                                         }

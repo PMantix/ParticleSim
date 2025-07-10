@@ -551,17 +551,19 @@ impl super::Renderer {
         for id in &self.selected_foil_ids {
             if let Some(foil) = self.foils.iter().find(|f| f.id == *id) {
                 // Calculate effective current using the same logic as simulation
-                let effective_current = if foil.switch_hz > 0.0 {
-                    // DC component plus AC component (square wave)
-                    let ac_component = if (time * foil.switch_hz) % 1.0 < 0.5 { 
-                        foil.ac_current 
-                    } else { 
-                        -foil.ac_current 
-                    };
-                    foil.dc_current + ac_component
-                } else {
-                    // Use legacy current field when no switching
-                    foil.current
+                let effective_current = {
+                    // DC component is always active
+                    let mut current = foil.dc_current;
+                    // Add AC component only if frequency is set
+                    if foil.switch_hz > 0.0 {
+                        let ac_component = if (time * foil.switch_hz) % 1.0 < 0.5 { 
+                            foil.ac_current 
+                        } else { 
+                            -foil.ac_current 
+                        };
+                        current += ac_component;
+                    }
+                    current
                 };
                 
                 // Normalize to 0-1 range for wave display (show activity when current != 0)
