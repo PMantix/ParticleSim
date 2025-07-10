@@ -37,9 +37,7 @@ pub fn attract(sim: &mut Simulation) {
 /// - Forces are clamped to avoid instability.
 pub fn apply_lj_forces(sim: &mut Simulation) {
     profile_scope!("forces_lj");
-    let sigma = sim.config.lj_force_sigma;
-    let epsilon = sim.config.lj_force_epsilon;
-    let cutoff = sim.config.lj_force_cutoff * sigma;
+    let cutoff = sim.config.lj_force_cutoff * sim.config.lj_force_sigma;
     let use_cell = sim.use_cell_list();
     if use_cell {
         sim.cell_list.cell_size = cutoff;
@@ -49,8 +47,7 @@ pub fn apply_lj_forces(sim: &mut Simulation) {
     }
 
     for i in 0..sim.bodies.len() {
-        // Only apply LJ to LithiumMetal or FoilMetal
-        if !(sim.bodies[i].species == Species::LithiumMetal || sim.bodies[i].species == Species::FoilMetal) {
+        if !sim.bodies[i].species.lj_enabled() {
             continue;
         }
         let neighbors = if use_cell {
@@ -64,12 +61,12 @@ pub fn apply_lj_forces(sim: &mut Simulation) {
                 let (left, right) = sim.bodies.split_at_mut(j);
                 (&mut left[i], &mut right[0])
             };
-            // Apply LJ between LithiumMetal and/or FoilMetal
-            if (a.species == Species::LithiumMetal || a.species == Species::FoilMetal) &&
-               (b.species == Species::LithiumMetal || b.species == Species::FoilMetal) {
+            if a.species.lj_enabled() && b.species.lj_enabled() {
                 let r_vec = b.pos - a.pos;
                 let r = r_vec.mag();
                 if r < cutoff && r > 1e-6 {
+                    let sigma = 0.5 * (a.species.lj_sigma() + b.species.lj_sigma());
+                    let epsilon = 0.5 * (a.species.lj_epsilon() + b.species.lj_epsilon());
                     let sr6 = (sigma / r).powi(6);
                     let max_lj_force = config::COLLISION_PASSES as f32 * config::LJ_FORCE_MAX;
                     let unclamped_force_mag = 24.0 * epsilon * (2.0 * sr6 * sr6 - sr6) / r;
