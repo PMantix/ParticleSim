@@ -123,10 +123,6 @@ pub struct SimConfig {
     pub show_field_vectors: bool, // NEW: show field vectors
     pub isoline_field_mode: IsolineFieldMode,
     pub damping_base: f32, // Add base damping factor
-    // --- LJ parameters for runtime tuning ---
-    pub lj_force_epsilon: f32,
-    pub lj_force_sigma: f32,
-    pub lj_force_cutoff: f32,
     pub show_lj_vs_coulomb_ratio: bool, // Show LJ/Coulomb force ratio debug overlay
     pub cell_list_density_threshold: f32,
 }
@@ -148,9 +144,6 @@ impl Default for SimConfig {
             show_field_vectors: SHOW_FIELD_VECTORS, // NEW
             isoline_field_mode: IsolineFieldMode::Total,
             damping_base: 0.98, // Default base damping
-            lj_force_epsilon: LJ_FORCE_EPSILON,
-            lj_force_sigma: LJ_FORCE_SIGMA,
-            lj_force_cutoff: LJ_FORCE_CUTOFF,
             show_lj_vs_coulomb_ratio: false, // Default off
             cell_list_density_threshold: LJ_CELL_DENSITY_THRESHOLD,
         }

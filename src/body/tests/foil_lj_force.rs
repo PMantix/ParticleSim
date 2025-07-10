@@ -10,8 +10,8 @@ mod foil_lj_force {
     #[test]
     fn foil_lj_force_affects_metal() {
         let mut sim = Simulation::new();
-        let sigma = sim.config.lj_force_sigma;
-        let cutoff = sim.config.lj_force_cutoff * sigma;
+        let sigma = Species::LithiumMetal.lj_sigma();
+        let cutoff = Species::LithiumMetal.lj_cutoff() * sigma;
         let long_range = cutoff * 0.92;
         let mut foil_body = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::FoilMetal);
         foil_body.electrons = smallvec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }; crate::config::FOIL_NEUTRAL_ELECTRONS];
@@ -39,8 +39,7 @@ mod foil_lj_force {
     #[test]
     fn foil_coulomb_force_repels_like_charges() {
         let mut sim = Simulation::new();
-        // Disable LJ by setting epsilon to zero
-        sim.config.lj_force_epsilon = 0.0;
+        // LJ disabled for ions by default; for foils we rely on Coulomb repulsion at larger separation
         // Two bodies with positive charge
         let foil1 = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 1.0, Species::FoilMetal);
         let foil2 = Body::new(Vec2::new(1.0, 0.0), Vec2::zero(), 1.0, 1.0, 1.0, Species::FoilMetal);
@@ -59,8 +58,8 @@ mod foil_lj_force {
     fn foil_lj_force_attracts_at_long_range_repels_at_short_range() {
         let mut sim = Simulation::new();
         // Use LJ parameters from config.rs so test adapts to config changes
-        let sigma = sim.config.lj_force_sigma;
-        let cutoff = sim.config.lj_force_cutoff * sigma;
+        let sigma = Species::LithiumMetal.lj_sigma();
+        let cutoff = Species::LithiumMetal.lj_cutoff() * sigma;
         // Attract at long range (non-overlapping, but within cutoff)
         let long_range = cutoff * 0.92; // safely within cutoff, but > sigma
         let foil1 = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::FoilMetal);
@@ -79,7 +78,7 @@ mod foil_lj_force {
         assert!(new_dist > initial_dist, "LJ force should attract at long range");
         // Repel at short range (overlapping, r < sigma)
         let mut sim = Simulation::new();
-        let sigma = sim.config.lj_force_sigma;
+        let sigma = Species::LithiumMetal.lj_sigma();
         let short_range = sigma * 0.75; // well within repulsive regime
         let foil1 = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::FoilMetal);
         let foil2 = Body::new(Vec2::new(short_range, 0.0), Vec2::zero(), 1.0, 1.0, 0.0, Species::FoilMetal);
@@ -101,8 +100,8 @@ mod foil_lj_force {
     fn foil_combined_lj_and_coulomb_force() {
         use crate::config::FOIL_NEUTRAL_ELECTRONS;
         let mut sim = Simulation::new();
-        let sigma = sim.config.lj_force_sigma;
-        let cutoff = sim.config.lj_force_cutoff * sigma;
+        let sigma = Species::LithiumMetal.lj_sigma();
+        let cutoff = Species::LithiumMetal.lj_cutoff() * sigma;
         let long_range = cutoff * 0.92;
         // Use default LJ settings from config.rs (opposite charges)
         let mut foil1 = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 1.0, Species::FoilMetal);
@@ -136,8 +135,8 @@ mod foil_lj_force {
         use crate::renderer::state::TIMESTEP;
         // --- Small timestep ---
         let mut sim = Simulation::new();
-        let sigma = sim.config.lj_force_sigma;
-        let cutoff = sim.config.lj_force_cutoff * sigma;
+        let sigma = Species::LithiumMetal.lj_sigma();
+        let cutoff = Species::LithiumMetal.lj_cutoff() * sigma;
         let long_range = cutoff * 0.92;
         *TIMESTEP.lock() = 0.0005; // Small, stable timestep
         let foil1 = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::FoilMetal);
@@ -156,8 +155,8 @@ mod foil_lj_force {
 
         // --- Large timestep ---
         let mut sim = Simulation::new();
-        let sigma = sim.config.lj_force_sigma;
-        let cutoff = sim.config.lj_force_cutoff * sigma;
+        let sigma = Species::LithiumMetal.lj_sigma();
+        let cutoff = Species::LithiumMetal.lj_cutoff() * sigma;
         let long_range = cutoff * 0.92;
         *TIMESTEP.lock() = 0.02; // Large, unstable timestep
         let foil1 = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::FoilMetal);
@@ -181,8 +180,8 @@ mod foil_lj_force {
         use crate::config::FOIL_NEUTRAL_ELECTRONS;
         // --- Small timestep ---
         let mut sim = Simulation::new();
-        let sigma = sim.config.lj_force_sigma;
-        let cutoff = sim.config.lj_force_cutoff * sigma;
+        let sigma = Species::LithiumMetal.lj_sigma();
+        let cutoff = Species::LithiumMetal.lj_cutoff() * sigma;
         let long_range = cutoff * 0.92;
         *TIMESTEP.lock() = 0.0005; // Small, stable timestep
         let mut foil1 = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 1.0, Species::FoilMetal);
@@ -211,8 +210,8 @@ mod foil_lj_force {
 
         // --- Large timestep ---
         let mut sim = Simulation::new();
-        let sigma = sim.config.lj_force_sigma;
-        let cutoff = sim.config.lj_force_cutoff * sigma;
+        let sigma = Species::LithiumMetal.lj_sigma();
+        let cutoff = Species::LithiumMetal.lj_cutoff() * sigma;
         let long_range = cutoff * 0.92;
         *TIMESTEP.lock() = 0.02; // Large, unstable timestep
         let mut foil1 = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 1.0, Species::FoilMetal);

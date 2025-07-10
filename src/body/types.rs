@@ -159,4 +159,20 @@ impl Species {
     pub fn damping(&self) -> f32 {
         self.props().damping
     }
+
+    pub fn lj_enabled(&self) -> bool {
+        self.props().lj_enabled
+    }
+
+    pub fn lj_epsilon(&self) -> f32 {
+        self.props().lj_epsilon
+    }
+
+    pub fn lj_sigma(&self) -> f32 {
+        self.props().lj_sigma
+    }
+
+    pub fn lj_cutoff(&self) -> f32 {
+        self.props().lj_cutoff
+    }
 }

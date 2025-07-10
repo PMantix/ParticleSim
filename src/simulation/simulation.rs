@@ -345,7 +345,7 @@ impl Simulation {
     pub fn update_surrounded_flags(&mut self) {
         if self.bodies.is_empty() { return; }
         let use_cell = self.use_cell_list();
-        let neighbor_radius = self.config.lj_force_cutoff * self.config.lj_force_sigma;
+        let neighbor_radius = Species::LithiumMetal.lj_cutoff() * Species::LithiumMetal.lj_sigma();
         if use_cell {
             self.cell_list.cell_size = neighbor_radius;
             self.cell_list.rebuild(&self.bodies);

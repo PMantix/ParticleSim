@@ -37,9 +37,9 @@ pub fn attract(sim: &mut Simulation) {
 /// - Forces are clamped to avoid instability.
 pub fn apply_lj_forces(sim: &mut Simulation) {
     profile_scope!("forces_lj");
-    let sigma = sim.config.lj_force_sigma;
-    let epsilon = sim.config.lj_force_epsilon;
-    let cutoff = sim.config.lj_force_cutoff * sigma;
+    let sigma = Species::LithiumMetal.lj_sigma();
+    let epsilon = Species::LithiumMetal.lj_epsilon();
+    let cutoff = Species::LithiumMetal.lj_cutoff() * sigma;
     let use_cell = sim.use_cell_list();
     if use_cell {
         sim.cell_list.cell_size = cutoff;
@@ -67,6 +67,9 @@ pub fn apply_lj_forces(sim: &mut Simulation) {
             // Apply LJ between LithiumMetal and/or FoilMetal
             if (a.species == Species::LithiumMetal || a.species == Species::FoilMetal) &&
                (b.species == Species::LithiumMetal || b.species == Species::FoilMetal) {
+                let sigma = a.species.lj_sigma();
+                let epsilon = a.species.lj_epsilon();
+                let cutoff = a.species.lj_cutoff() * sigma;
                 let r_vec = b.pos - a.pos;
                 let r = r_vec.mag();
                 if r < cutoff && r > 1e-6 {
