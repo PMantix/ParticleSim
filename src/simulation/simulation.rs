@@ -85,30 +85,54 @@ impl Simulation {
 
         // Propagate linked foil currents using effective current (DC + AC)
         let mut updates = Vec::new();
+        let mut processed_links = std::collections::HashSet::new();
+        
         for foil in &self.foils {
             if let Some(link_id) = foil.link_id {
-                if let Some(idx) = self.foils.iter().position(|f| f.id == link_id) {
-                    // Calculate effective current for the source foil
+                // Avoid processing the same link twice (from both sides)
+                let link_pair = if foil.id < link_id {
+                    (foil.id, link_id)
+                } else {
+                    (link_id, foil.id)
+                };
+                
+                if processed_links.contains(&link_pair) {
+                    continue;
+                }
+                processed_links.insert(link_pair);
+                
+                if let Some(linked_foil_idx) = self.foils.iter().position(|f| f.id == link_id) {
+                    // Use the foil with smaller ID as the master (consistent choice)
+                    let (master_foil, slave_idx) = if foil.id < link_id {
+                        (foil, linked_foil_idx)
+                    } else {
+                        // Find the other foil to use as master
+                        if let Some(other_foil) = self.foils.iter().find(|f| f.id == link_id) {
+                            (other_foil, self.foils.iter().position(|f| f.id == foil.id).unwrap())
+                        } else {
+                            continue;
+                        }
+                    };
+                    
+                    // Calculate effective current for the master foil
                     let effective_current = {
-                        // DC component is always active
-                        let mut current = foil.dc_current;
-                        // Add AC component only if frequency is set
-                        if foil.switch_hz > 0.0 {
-                            let ac_component = if (time * foil.switch_hz) % 1.0 < 0.5 { 
-                                foil.ac_current 
+                        let mut current = master_foil.dc_current;
+                        if master_foil.switch_hz > 0.0 {
+                            let ac_component = if (time * master_foil.switch_hz) % 1.0 < 0.5 { 
+                                master_foil.ac_current 
                             } else { 
-                                -foil.ac_current 
+                                -master_foil.ac_current 
                             };
                             current += ac_component;
                         }
                         current
                     };
                     
-                    let new_current = match foil.mode {
+                    let new_current = match master_foil.mode {
                         crate::body::foil::LinkMode::Parallel => effective_current,
                         crate::body::foil::LinkMode::Opposite => -effective_current,
                     };
-                    updates.push((idx, new_current));
+                    updates.push((slave_idx, new_current));
                 }
             }
         }
@@ -135,9 +159,28 @@ impl Simulation {
         let mut foil_current_recipients = vec![false; self.bodies.len()];
         // Apply foil current sources/sinks
         for (_, foil) in self.foils.iter_mut().enumerate() {
-            // Calculate effective current using DC + AC components
-            let effective_current = {
-                // DC component is always active
+            // Calculate effective current
+            let effective_current = if let Some(link_id) = foil.link_id {
+                // For linked foils, determine if this is master or slave
+                let is_master = foil.id < link_id;
+                if is_master {
+                    // Master calculates from its own DC + AC components
+                    let mut current = foil.dc_current;
+                    if foil.switch_hz > 0.0 {
+                        let ac_component = if (time * foil.switch_hz) % 1.0 < 0.5 { 
+                            foil.ac_current 
+                        } else { 
+                            -foil.ac_current 
+                        };
+                        current += ac_component;
+                    }
+                    current
+                } else {
+                    // Slave uses the propagated current value
+                    foil.current
+                }
+            } else {
+                // For non-linked foils, calculate from DC + AC components
                 let mut current = foil.dc_current;
                 // Add AC component only if frequency is set
                 if foil.switch_hz > 0.0 {

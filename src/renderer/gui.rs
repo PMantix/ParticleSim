@@ -464,10 +464,48 @@ impl super::Renderer {
                                         let mut points_vec: Vec<[f64; 2]> = Vec::with_capacity(steps + 1);
                                         for i in 0..=steps {
                                             let t = i as f32 * dt;
-                                            let effective_current = {
-                                                // DC component is always active
+                                            let effective_current = if let Some(link_id) = f.link_id {
+                                                // For linked foils, determine if this is master or slave
+                                                let is_master = f.id < link_id;
+                                                if is_master {
+                                                    // Master calculates from its own DC + AC components
+                                                    let mut current = f.dc_current;
+                                                    if f.switch_hz > 0.0 {
+                                                        let plot_time = current_time + t;
+                                                        let ac_component = if (plot_time * f.switch_hz) % 1.0 < 0.5 { 
+                                                            f.ac_current 
+                                                        } else { 
+                                                            -f.ac_current 
+                                                        };
+                                                        current += ac_component;
+                                                    }
+                                                    current
+                                                } else {
+                                                    // Slave uses the propagated current value (but for plot, we need to calculate what it would be)
+                                                    // Find the master foil to calculate its effective current
+                                                    if let Some(master_foil) = foils.iter().find(|mf| mf.id == link_id) {
+                                                        let mut master_current = master_foil.dc_current;
+                                                        if master_foil.switch_hz > 0.0 {
+                                                            let plot_time = current_time + t;
+                                                            let ac_component = if (plot_time * master_foil.switch_hz) % 1.0 < 0.5 { 
+                                                                master_foil.ac_current 
+                                                            } else { 
+                                                                -master_foil.ac_current 
+                                                            };
+                                                            master_current += ac_component;
+                                                        }
+                                                        // Apply link mode
+                                                        match master_foil.mode {
+                                                            crate::body::foil::LinkMode::Parallel => master_current,
+                                                            crate::body::foil::LinkMode::Opposite => -master_current,
+                                                        }
+                                                    } else {
+                                                        f.current // Fallback
+                                                    }
+                                                }
+                                            } else {
+                                                // Non-linked foil
                                                 let mut current = f.dc_current;
-                                                // Add AC component only if frequency is set
                                                 if f.switch_hz > 0.0 {
                                                     let plot_time = current_time + t;
                                                     let ac_component = if (plot_time * f.switch_hz) % 1.0 < 0.5 { 
