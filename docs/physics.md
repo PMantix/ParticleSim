@@ -34,3 +34,39 @@ let mut species_properties: HashMap<Species, SpeciesProperties> = HashMap::new()
 3. Optionally extend spawning helpers and GUI controls to expose the new species.
 
 These properties determine the initial mass and size of each body as well as how quickly its velocity decays each frame. Adjusting the map allows rapid experimentation with different particle types and behaviors.
+
+## Lennard-Jones Interactions
+
+Each species also defines Lennard-Jones (LJ) parameters controlling short-range
+attraction and repulsion between like materials. The LJ force can be enabled or
+disabled per species to approximate different phases:
+
+- **Metal-like**: LJ enabled to model cohesive metallic bonding.
+- **Liquid-like**: LJ disabled so only electrostatic forces act.
+
+Example configuration snippet:
+
+```rust
+species_properties.insert(Species::FoilMetal, SpeciesProperties {
+    mass: 1e6,
+    radius: 1.0,
+    damping: 0.98,
+    lj_enabled: true,
+    lj_epsilon: 2000.0,
+    lj_sigma: 1.7,
+});
+
+// Electrolyte acts liquid-like (no LJ attraction)
+species_properties.insert(Species::ElectrolyteAnion, SpeciesProperties {
+    mass: 40.0,
+    radius: 1.5,
+    damping: 0.96,
+    lj_enabled: false,
+    lj_epsilon: 0.0,
+    lj_sigma: 1.7,
+});
+```
+
+With this setup the foil behaves as a solid metal while the electrolyte remains
+liquid. Adjust each species' `lj_enabled` flag and parameters to explore other
+scenarios.

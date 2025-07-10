@@ -32,7 +32,7 @@ This repository contains a modular, parallelized particle simulation for large-s
   - Save and load simulation states for reproducible experiments.
   - Pre-configured scenarios for quick setup.
 - **Configurable Physics**:  
-  - Adjustable Lennard-Jones parameters, electron hopping rates, and Butler-Volmer coefficients.
+  - Adjustable Lennard-Jones parameters per species, electron hopping rates, and Butler-Volmer coefficients. Each species can enable or disable LJ forces to model either "metal-like" cohesion or "liquid-like" behavior.
   - Domain bounds, timestep settings, and force cutoffs can be modified at runtime.
 
 ---
