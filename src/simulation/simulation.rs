@@ -193,6 +193,9 @@ impl Simulation {
                 }
                 current
             };
+            
+            // Always update the current field to reflect the effective current
+            foil.current = effective_current;
             foil.accum += effective_current * self.dt;
 
             let mut rng = rand::rng();
