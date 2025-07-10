@@ -255,29 +255,44 @@ impl super::Renderer {
                 // --- Scenario Controls ---
                 egui::CollapsingHeader::new("Scenario").default_open(true).show(ui, |ui| {
                     ui.horizontal(|ui| {
-                        if ui.button("Delete All Particles").clicked() {
-                            SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::DeleteAll).unwrap();
-                        }
-                        
-                        // Delete specific species dropdown
-                        ui.separator();
-                        ui.label("Delete Species:");
+                        // Delete species dropdown (doesn't delete immediately)
+                        ui.label("Delete:");
                         egui::ComboBox::from_id_source("delete_species_combo")
-                            .selected_text("Select species")
+                            .selected_text(match self.selected_delete_option {
+                                crate::renderer::DeleteOption::AllSpecies => "All Species",
+                                crate::renderer::DeleteOption::LithiumIon => "Li+ Ions",
+                                crate::renderer::DeleteOption::LithiumMetal => "Li Metal", 
+                                crate::renderer::DeleteOption::FoilMetal => "Foil Metal",
+                                crate::renderer::DeleteOption::ElectrolyteAnion => "Anions",
+                            })
                             .show_ui(ui, |ui| {
-                                if ui.selectable_label(false, "Li+ Ions").clicked() {
+                                ui.selectable_value(&mut self.selected_delete_option, crate::renderer::DeleteOption::AllSpecies, "All Species");
+                                ui.selectable_value(&mut self.selected_delete_option, crate::renderer::DeleteOption::LithiumIon, "Li+ Ions");
+                                ui.selectable_value(&mut self.selected_delete_option, crate::renderer::DeleteOption::LithiumMetal, "Li Metal");
+                                ui.selectable_value(&mut self.selected_delete_option, crate::renderer::DeleteOption::FoilMetal, "Foil Metal");
+                                ui.selectable_value(&mut self.selected_delete_option, crate::renderer::DeleteOption::ElectrolyteAnion, "Anions");
+                            });
+                        
+                        // Delete button that actually performs the deletion
+                        if ui.button("Delete").clicked() {
+                            match self.selected_delete_option {
+                                crate::renderer::DeleteOption::AllSpecies => {
+                                    SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::DeleteAll).unwrap();
+                                }
+                                crate::renderer::DeleteOption::LithiumIon => {
                                     SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::DeleteSpecies { species: Species::LithiumIon }).unwrap();
                                 }
-                                if ui.selectable_label(false, "Li Metal").clicked() {
+                                crate::renderer::DeleteOption::LithiumMetal => {
                                     SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::DeleteSpecies { species: Species::LithiumMetal }).unwrap();
                                 }
-                                if ui.selectable_label(false, "Foil Metal").clicked() {
+                                crate::renderer::DeleteOption::FoilMetal => {
                                     SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::DeleteSpecies { species: Species::FoilMetal }).unwrap();
                                 }
-                                if ui.selectable_label(false, "Anions").clicked() {
+                                crate::renderer::DeleteOption::ElectrolyteAnion => {
                                     SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::DeleteSpecies { species: Species::ElectrolyteAnion }).unwrap();
                                 }
-                            });
+                            }
+                        }
                     });
 
                     // --- Domain Size Controls ---

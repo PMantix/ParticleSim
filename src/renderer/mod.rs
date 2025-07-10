@@ -11,6 +11,15 @@ use ultraviolet::Vec2;
 use quarkstrom::winit_input_helper::WinitInputHelper;
 use std::collections::HashMap;
 
+#[derive(Clone, Debug, PartialEq)]
+pub enum DeleteOption {
+    AllSpecies,
+    LithiumIon,
+    LithiumMetal,
+    FoilMetal,
+    ElectrolyteAnion,
+}
+
 pub struct Renderer {
     pos: Vec2,
     scale: f32,
@@ -69,6 +78,8 @@ pub struct Renderer {
     pub domain_height: f32,
     // LJ species selection
     pub selected_lj_species: Species,
+    // Delete species selection
+    pub selected_delete_option: DeleteOption,
 }
 
 impl quarkstrom::Renderer for Renderer {
@@ -125,6 +136,7 @@ impl quarkstrom::Renderer for Renderer {
             domain_width: 300.0,  // Default domain size
             domain_height: 300.0,
             selected_lj_species: Species::LithiumMetal, // Default to LithiumMetal for LJ editing
+            selected_delete_option: DeleteOption::AllSpecies, // Default to All Species
         }
     }
 
