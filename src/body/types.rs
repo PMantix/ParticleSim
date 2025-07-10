@@ -4,7 +4,7 @@
 use ultraviolet::Vec2;
 use crate::config;
 use super::electron::Electron;
-use crate::species::{SPECIES_PROPERTIES, SpeciesProps};
+use crate::species::SpeciesProps;
 use smallvec::SmallVec;
 use serde::{Serialize, Deserialize};
 use std::hash::Hash;
@@ -142,10 +142,8 @@ impl Body {
 }
 
 impl Species {
-    fn props(&self) -> &'static SpeciesProps {
-        SPECIES_PROPERTIES
-            .get(self)
-            .expect("missing species properties")
+    fn props(&self) -> SpeciesProps {
+        crate::species::get_species_props(*self)
     }
 
     pub fn mass(&self) -> f32 {

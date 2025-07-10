@@ -67,6 +67,8 @@ pub struct Renderer {
     // Domain size controls
     pub domain_width: f32,
     pub domain_height: f32,
+    // LJ species selection
+    pub selected_lj_species: Species,
 }
 
 impl quarkstrom::Renderer for Renderer {
@@ -122,6 +124,7 @@ impl quarkstrom::Renderer for Renderer {
             new_plot_update_frequency: 5.0,
             domain_width: 300.0,  // Default domain size
             domain_height: 300.0,
+            selected_lj_species: Species::LithiumMetal, // Default to LithiumMetal for LJ editing
         }
     }
 

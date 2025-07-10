@@ -1,7 +1,7 @@
 use super::state::*;
 use crate::body::foil::LinkMode;
 use quarkstrom::egui;
-use crate::renderer::Species;
+use crate::body::Species;
 use ultraviolet::Vec2;
 use crate::renderer::Body;
 use crate::body::Electron;
@@ -125,7 +125,62 @@ impl super::Renderer {
                 ui.separator();
 
                 // --- Lennard-Jones Parameters ---
-                // Removed runtime sliders; parameters are now set per species.
+                egui::CollapsingHeader::new("Lennard-Jones Parameters").default_open(true).show(ui, |ui| {
+                    // Per-species LJ controls
+                    ui.label("🔬 Per-Species LJ Parameters:");
+                    
+                    // Species selection dropdown
+                    egui::ComboBox::from_label("Edit Species")
+                        .selected_text(format!("{:?}", self.selected_lj_species))
+                        .show_ui(ui, |ui| {
+                            ui.selectable_value(&mut self.selected_lj_species, Species::LithiumMetal, "Lithium Metal");
+                            ui.selectable_value(&mut self.selected_lj_species, Species::LithiumIon, "Lithium Ion");
+                            ui.selectable_value(&mut self.selected_lj_species, Species::FoilMetal, "Foil Metal");
+                            ui.selectable_value(&mut self.selected_lj_species, Species::ElectrolyteAnion, "Electrolyte Anion");
+                        });
+                    
+                    // Get current properties for selected species
+                    let mut current_props = crate::species::get_species_props(self.selected_lj_species);
+                    let mut changed = false;
+                    
+                    // LJ enabled checkbox
+                    if ui.checkbox(&mut current_props.lj_enabled, "Enable LJ for this species").changed() {
+                        changed = true;
+                    }
+                    
+                    // Only show parameter controls if LJ is enabled for this species
+                    if current_props.lj_enabled {
+                        if ui.add(egui::Slider::new(&mut current_props.lj_epsilon, 0.0..=5000.0)
+                            .text("Species LJ Epsilon")
+                            .step_by(1.0)).changed() {
+                            changed = true;
+                        }
+                        if ui.add(egui::Slider::new(&mut current_props.lj_sigma, 0.1..=5.0)
+                            .text("Species LJ Sigma")
+                            .step_by(0.01)).changed() {
+                            changed = true;
+                        }
+                        if ui.add(egui::Slider::new(&mut current_props.lj_cutoff, 0.5..=10.0)
+                            .text("Species LJ Cutoff")
+                            .step_by(0.01)).changed() {
+                            changed = true;
+                        }
+                    } else {
+                        ui.colored_label(egui::Color32::GRAY, "LJ disabled for this species");
+                    }
+                    
+                    // Update species properties if changed
+                    if changed {
+                        crate::species::update_species_props(self.selected_lj_species, current_props);
+                    }
+                    
+                    // Reset to defaults button
+                    if ui.button("Reset to Default Properties").clicked() {
+                        if let Some(default_props) = crate::species::SPECIES_PROPERTIES.get(&self.selected_lj_species) {
+                            crate::species::update_species_props(self.selected_lj_species, *default_props);
+                        }
+                    }
+                });
 
                 ui.separator();
 

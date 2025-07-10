@@ -54,15 +54,16 @@ pub fn apply_lj_forces(sim: &mut Simulation) {
         };
         for &j in &neighbors {
             if j <= i { continue; }
-            if !sim.bodies[j].species.lj_enabled() { continue; }
+            // Check if both particles have LJ enabled
+            if !sim.bodies[i].species.lj_enabled() || !sim.bodies[j].species.lj_enabled() { continue; }
             let (a, b) = {
                 let (left, right) = sim.bodies.split_at_mut(j);
                 (&mut left[i], &mut right[0])
             };
+            // Use per-species LJ parameters only
             let sigma = (a.species.lj_sigma() + b.species.lj_sigma()) * 0.5;
             let epsilon = (a.species.lj_epsilon() * b.species.lj_epsilon()).sqrt();
-            let cutoff =
-                0.5 * (a.species.lj_cutoff() * a.species.lj_sigma() + b.species.lj_cutoff() * b.species.lj_sigma());
+            let cutoff = 0.5 * (a.species.lj_cutoff() * a.species.lj_sigma() + b.species.lj_cutoff() * b.species.lj_sigma());
             let r_vec = b.pos - a.pos;
             let r = r_vec.mag();
             if r < cutoff && r > 1e-6 {

@@ -125,6 +125,10 @@ pub struct SimConfig {
     pub damping_base: f32, // Add base damping factor
     pub show_lj_vs_coulomb_ratio: bool, // Show LJ/Coulomb force ratio debug overlay
     pub cell_list_density_threshold: f32,
+    // Global LJ parameters for GUI control
+    pub lj_force_epsilon: f32,
+    pub lj_force_sigma: f32,
+    pub lj_force_cutoff: f32,
 }
 
 impl Default for SimConfig {
@@ -146,6 +150,9 @@ impl Default for SimConfig {
             damping_base: 0.98, // Default base damping
             show_lj_vs_coulomb_ratio: false, // Default off
             cell_list_density_threshold: LJ_CELL_DENSITY_THRESHOLD,
+            lj_force_epsilon: LJ_FORCE_EPSILON,
+            lj_force_sigma: LJ_FORCE_SIGMA,
+            lj_force_cutoff: LJ_FORCE_CUTOFF,
         }
     }
 }
