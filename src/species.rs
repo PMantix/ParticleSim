@@ -27,8 +27,8 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
             damping: 1.0,
             lj_enabled: false,
             lj_epsilon: 0.0,
-            lj_sigma: config::LJ_FORCE_SIGMA,
-            lj_cutoff: config::LJ_FORCE_CUTOFF,
+            lj_sigma: crate::config::LJ_FORCE_SIGMA,
+            lj_cutoff: crate::config::LJ_FORCE_CUTOFF,
         },
     );
     m.insert(
@@ -38,9 +38,9 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
             radius: 1.0,
             damping: 1.0,
             lj_enabled: true,
-            lj_epsilon: config::LJ_FORCE_EPSILON,
-            lj_sigma: config::LJ_FORCE_SIGMA,
-            lj_cutoff: config::LJ_FORCE_CUTOFF,
+            lj_epsilon: crate::config::LJ_FORCE_EPSILON,
+            lj_sigma: crate::config::LJ_FORCE_SIGMA,
+            lj_cutoff: crate::config::LJ_FORCE_CUTOFF,
         },
     );
     m.insert(
@@ -50,9 +50,9 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
             radius: 1.0,
             damping: 1.0,
             lj_enabled: true,
-            lj_epsilon: config::LJ_FORCE_EPSILON,
-            lj_sigma: config::LJ_FORCE_SIGMA,
-            lj_cutoff: config::LJ_FORCE_CUTOFF,
+            lj_epsilon: crate::config::LJ_FORCE_EPSILON,
+            lj_sigma: crate::config::LJ_FORCE_SIGMA,
+            lj_cutoff: crate::config::LJ_FORCE_CUTOFF,
         },
     );
     m.insert(
@@ -63,8 +63,8 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
             damping: 1.0,
             lj_enabled: false,
             lj_epsilon: 0.0,
-            lj_sigma: config::LJ_FORCE_SIGMA,
-            lj_cutoff: config::LJ_FORCE_CUTOFF,
+            lj_sigma: crate::config::LJ_FORCE_SIGMA,
+            lj_cutoff: crate::config::LJ_FORCE_CUTOFF,
         },
     );
     m
@@ -105,8 +105,8 @@ pub fn get_species_props(species: Species) -> SpeciesProps {
             damping: 1.0,
             lj_enabled: false,
             lj_epsilon: 0.0,
-            lj_sigma: config::LJ_FORCE_SIGMA,
-            lj_cutoff: config::LJ_FORCE_CUTOFF,
+            lj_sigma: crate::config::LJ_FORCE_SIGMA,
+            lj_cutoff: crate::config::LJ_FORCE_CUTOFF,
         }
     })
 }
@@ -117,4 +117,3 @@ pub fn update_species_props(species: Species, props: SpeciesProps) {
         overrides.insert(species, props);
     }
 }
-
