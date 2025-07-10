@@ -31,6 +31,11 @@ pub fn process_command(cmd: SimCommand, simulation: &mut Simulation) {
             handle_delete_all(simulation);
         }
 
+        // Delete all bodies of a specific species
+        SimCommand::DeleteSpecies { species } => {
+            handle_delete_species(simulation, species);
+        }
+
         // Add a circle of bodies with given radius, position, count, and species
         SimCommand::AddCircle { body, x, y, radius } => {
             handle_add_circle(simulation, body, x, y, radius);
@@ -152,6 +157,28 @@ fn handle_delete_all(simulation: &mut Simulation) {
     simulation.foils.clear(); // Also clear all foils when deleting all particles
     simulation.body_to_foil.clear();
     // Optionally clear other simulation state if needed
+}
+
+fn handle_delete_species(simulation: &mut Simulation, species: crate::body::Species) {
+    // Remove all bodies of the specified species
+    simulation.bodies.retain(|body| body.species != species);
+    
+    // Also need to clean up foils if FoilMetal bodies were removed
+    if species == crate::body::Species::FoilMetal {
+        // Remove foils that no longer have any associated bodies
+        let remaining_foil_body_ids: std::collections::HashSet<u64> = simulation.bodies
+            .iter()
+            .filter(|body| body.species == crate::body::Species::FoilMetal)
+            .map(|body| body.id)
+            .collect();
+        
+        simulation.foils.retain(|foil| {
+            foil.body_ids.iter().any(|id| remaining_foil_body_ids.contains(id))
+        });
+        
+        // Clean up body_to_foil mapping
+        simulation.body_to_foil.retain(|body_id, _| remaining_foil_body_ids.contains(body_id));
+    }
 }
 
 fn handle_add_circle(simulation: &mut Simulation, body: crate::body::Body, x: f32, y: f32, radius: f32) {

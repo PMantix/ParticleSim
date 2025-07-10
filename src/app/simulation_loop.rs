@@ -97,6 +97,27 @@ pub fn run_simulation_loop(rx: std::sync::mpsc::Receiver<SimCommand>, mut simula
                     simulation.foils.clear();
                     simulation.body_to_foil.clear();
                 }
+                SimCommand::DeleteSpecies { species } => {
+                    // Remove all bodies of the specified species
+                    simulation.bodies.retain(|body| body.species != species);
+                    
+                    // Also need to clean up foils if FoilMetal bodies were removed
+                    if species == crate::body::Species::FoilMetal {
+                        // Remove foils that no longer have any associated bodies
+                        let remaining_foil_body_ids: std::collections::HashSet<u64> = simulation.bodies
+                            .iter()
+                            .filter(|body| body.species == crate::body::Species::FoilMetal)
+                            .map(|body| body.id)
+                            .collect();
+                        
+                        simulation.foils.retain(|foil| {
+                            foil.body_ids.iter().any(|id| remaining_foil_body_ids.contains(id))
+                        });
+                        
+                        // Clean up body_to_foil mapping
+                        simulation.body_to_foil.retain(|body_id, _| remaining_foil_body_ids.contains(body_id));
+                    }
+                }
                 SimCommand::AddCircle { body, x, y, radius } => {
                     let center = Vec2::new(x, y);
                     let particle_radius = body.radius;

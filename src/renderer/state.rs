@@ -27,6 +27,7 @@ pub enum SimCommand {
     ChangeCharge {id: u64, delta: f32},
     AddBody { body: Body },
     DeleteAll,
+    DeleteSpecies { species: crate::body::Species },
     AddCircle {
         body: crate::body::Body,
         x: f32,
