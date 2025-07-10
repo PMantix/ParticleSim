@@ -8,15 +8,72 @@ pub struct SpeciesProps {
     pub mass: f32,
     pub radius: f32,
     pub damping: f32,
+    pub lj_epsilon: f32,
+    pub lj_sigma: f32,
+    pub lj_cutoff: f32,
+    pub lj_enabled: bool,
 }
 
 pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(|| {
     use Species::*;
     let mut m = HashMap::new();
-    m.insert(LithiumIon, SpeciesProps { mass: 1.0, radius: 1.0, damping: 1.0 });
-    m.insert(LithiumMetal, SpeciesProps { mass: 1.0, radius: 1.0, damping: 1.0 });
-    m.insert(FoilMetal, SpeciesProps { mass: 1e6, radius: 1.0, damping: 1.0 });
-    m.insert(ElectrolyteAnion, SpeciesProps { mass: 40.0, radius: 1.5, damping: 1.0 });
+    m.insert(
+        LithiumIon,
+        SpeciesProps {
+            mass: 1.0,
+            radius: 1.0,
+            damping: 1.0,
+            lj_epsilon: 0.0,
+            lj_sigma: crate::config::LJ_FORCE_SIGMA,
+            lj_cutoff: crate::config::LJ_FORCE_CUTOFF,
+            lj_enabled: false,
+        },
+    );
+    m.insert(
+        LithiumMetal,
+        SpeciesProps {
+            mass: 1.0,
+            radius: 1.0,
+            damping: 1.0,
+            lj_epsilon: crate::config::LJ_FORCE_EPSILON,
+            lj_sigma: crate::config::LJ_FORCE_SIGMA,
+            lj_cutoff: crate::config::LJ_FORCE_CUTOFF,
+            lj_enabled: true,
+        },
+    );
+    m.insert(
+        FoilMetal,
+        SpeciesProps {
+            mass: 1e6,
+            radius: 1.0,
+            damping: 1.0,
+            lj_epsilon: crate::config::LJ_FORCE_EPSILON,
+            lj_sigma: crate::config::LJ_FORCE_SIGMA,
+            lj_cutoff: crate::config::LJ_FORCE_CUTOFF,
+            lj_enabled: true,
+        },
+    );
+    m.insert(
+        ElectrolyteAnion,
+        SpeciesProps {
+            mass: 40.0,
+            radius: 1.5,
+            damping: 1.0,
+            lj_epsilon: 0.0,
+            lj_sigma: crate::config::LJ_FORCE_SIGMA,
+            lj_cutoff: crate::config::LJ_FORCE_CUTOFF,
+            lj_enabled: false,
+        },
+    );
     m
 });
+
+/// Maximum LJ interaction range across all species.
+pub fn max_lj_cutoff() -> f32 {
+    SPECIES_PROPERTIES
+        .values()
+        .filter(|p| p.lj_enabled)
+        .map(|p| p.lj_cutoff * p.lj_sigma)
+        .fold(0.0_f32, f32::max)
+}
 
