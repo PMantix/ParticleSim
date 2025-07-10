@@ -387,22 +387,6 @@ impl super::Renderer {
                         foils.iter().find(|f| f.body_ids.contains(&selected_id)).cloned()
                     };
                     if let Some(foil) = maybe_foil {
-                        ui.separator();
-                        egui::CollapsingHeader::new("Foil Current").default_open(true).show(ui, |ui| {
-                            // Legacy current control (for backwards compatibility when no switching)
-                            let mut current = foil.current;
-                            ui.horizontal(|ui| {
-                                ui.label("Current (legacy):");
-                                if ui.button("-").clicked() { current -= 1.0; }
-                                if ui.button("+").clicked() { current += 1.0; }
-                                if ui.button("0").clicked() { current = 0.0; }
-                                ui.add(egui::Slider::new(&mut current, -500.0..=500.00).step_by(0.1));
-                            });
-                            if (current - foil.current).abs() > f32::EPSILON {
-                                SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(
-                                    SimCommand::SetFoilCurrent { foil_id: selected_id, current }
-                                ).unwrap();
-                            }
 
                             ui.separator();
                             ui.label("DC + AC Current Components:");
@@ -470,18 +454,58 @@ impl super::Renderer {
                                         let mut points_vec: Vec<[f64; 2]> = Vec::with_capacity(steps + 1);
                                         for i in 0..=steps {
                                             let t = i as f32 * dt;
-                                            let effective_current = if f.switch_hz > 0.0 {
-                                                // DC + AC components - use same phase calculation as simulation
-                                                let plot_time = current_time + t;
-                                                let ac_component = if (plot_time * f.switch_hz) % 1.0 < 0.5 { 
-                                                    f.ac_current 
-                                                } else { 
-                                                    -f.ac_current 
-                                                };
-                                                f.dc_current + ac_component
+                                            let effective_current = if let Some(link_id) = f.link_id {
+                                                // For linked foils, determine if this is master or slave
+                                                let is_master = f.id < link_id;
+                                                if is_master {
+                                                    // Master calculates from its own DC + AC components
+                                                    let mut current = f.dc_current;
+                                                    if f.switch_hz > 0.0 {
+                                                        let plot_time = current_time + t;
+                                                        let ac_component = if (plot_time * f.switch_hz) % 1.0 < 0.5 { 
+                                                            f.ac_current 
+                                                        } else { 
+                                                            -f.ac_current 
+                                                        };
+                                                        current += ac_component;
+                                                    }
+                                                    current
+                                                } else {
+                                                    // Slave uses the propagated current value (but for plot, we need to calculate what it would be)
+                                                    // Find the master foil to calculate its effective current
+                                                    if let Some(master_foil) = foils.iter().find(|mf| mf.id == link_id) {
+                                                        let mut master_current = master_foil.dc_current;
+                                                        if master_foil.switch_hz > 0.0 {
+                                                            let plot_time = current_time + t;
+                                                            let ac_component = if (plot_time * master_foil.switch_hz) % 1.0 < 0.5 { 
+                                                                master_foil.ac_current 
+                                                            } else { 
+                                                                -master_foil.ac_current 
+                                                            };
+                                                            master_current += ac_component;
+                                                        }
+                                                        // Apply link mode
+                                                        match master_foil.mode {
+                                                            crate::body::foil::LinkMode::Parallel => master_current,
+                                                            crate::body::foil::LinkMode::Opposite => -master_current,
+                                                        }
+                                                    } else {
+                                                        f.current // Fallback
+                                                    }
+                                                }
                                             } else {
-                                                // Use legacy current field when no switching
-                                                f.current
+                                                // Non-linked foil
+                                                let mut current = f.dc_current;
+                                                if f.switch_hz > 0.0 {
+                                                    let plot_time = current_time + t;
+                                                    let ac_component = if (plot_time * f.switch_hz) % 1.0 < 0.5 { 
+                                                        f.ac_current 
+                                                    } else { 
+                                                        -f.ac_current 
+                                                    };
+                                                    current += ac_component;
+                                                }
+                                                current
                                             };
                                             points_vec.push([t as f64, effective_current as f64]);
                                         }
@@ -490,7 +514,6 @@ impl super::Renderer {
                                     }
                                 }
                             });
-                        });
                     }
                 }
 

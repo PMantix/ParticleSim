@@ -551,17 +551,37 @@ impl super::Renderer {
         for id in &self.selected_foil_ids {
             if let Some(foil) = self.foils.iter().find(|f| f.id == *id) {
                 // Calculate effective current using the same logic as simulation
-                let effective_current = if foil.switch_hz > 0.0 {
-                    // DC component plus AC component (square wave)
-                    let ac_component = if (time * foil.switch_hz) % 1.0 < 0.5 { 
-                        foil.ac_current 
-                    } else { 
-                        -foil.ac_current 
-                    };
-                    foil.dc_current + ac_component
+                let effective_current = if let Some(link_id) = foil.link_id {
+                    // For linked foils, determine if this is master or slave
+                    let is_master = foil.id < link_id;
+                    if is_master {
+                        // Master calculates from its own DC + AC components
+                        let mut current = foil.dc_current;
+                        if foil.switch_hz > 0.0 {
+                            let ac_component = if (time * foil.switch_hz) % 1.0 < 0.5 { 
+                                foil.ac_current 
+                            } else { 
+                                -foil.ac_current 
+                            };
+                            current += ac_component;
+                        }
+                        current
+                    } else {
+                        // Slave uses the propagated current value
+                        foil.current
+                    }
                 } else {
-                    // Use legacy current field when no switching
-                    foil.current
+                    // For non-linked foils, calculate from DC + AC components
+                    let mut current = foil.dc_current;
+                    if foil.switch_hz > 0.0 {
+                        let ac_component = if (time * foil.switch_hz) % 1.0 < 0.5 { 
+                            foil.ac_current 
+                        } else { 
+                            -foil.ac_current 
+                        };
+                        current += ac_component;
+                    }
+                    current
                 };
                 
                 // Normalize to 0-1 range for wave display (show activity when current != 0)
