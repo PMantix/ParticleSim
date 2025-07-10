@@ -22,6 +22,7 @@ pub static SIM_TIME: Lazy<Mutex<f32>> = Lazy::new(|| Mutex::new(0.0));
 
 //Simulation commands
 // These are used to send commands to the simulation thread from the GUI thread
+#[allow(dead_code)]
 pub enum SimCommand {
     ChangeCharge {id: u64, delta: f32},
     AddBody { body: Body },
