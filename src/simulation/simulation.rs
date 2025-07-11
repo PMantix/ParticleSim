@@ -100,49 +100,22 @@ impl Simulation {
 
         // Track which bodies receive electrons from foil current this step
         let mut foil_current_recipients = vec![false; self.bodies.len()];
-        // Apply foil current sources/sinks
-        for (_, foil) in self.foils.iter_mut().enumerate() {
-            // Calculate effective current from DC + AC components
-            let effective_current = {
-                let mut current = foil.dc_current;
-                // Add AC component only if frequency is set
-                if foil.switch_hz > 0.0 {
-                    let ac_component = if (time * foil.switch_hz) % 1.0 < 0.5 { 
-                        foil.ac_current 
-                    } else { 
-                        -foil.ac_current 
-                    };
-                    current += ac_component;
-                }
-                current
-            };
-            
-            foil.accum += effective_current * self.dt;
-
-            let mut rng = rand::rng();
-            while foil.accum >= 1.0 {
-
-                if let Some(&id) = foil.body_ids.as_slice().choose(&mut rng) {
-                    if let Some((body_idx, body)) = self.bodies.iter_mut().enumerate().find(|(_, b)| b.id == id && b.species == Species::FoilMetal) {
-                        if body.electrons.len() < crate::config::FOIL_MAX_ELECTRONS {
-                            body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
-                            foil_current_recipients[body_idx] = true;
-                        }
+        // Apply foil current sources/sinks with linking logic
+        let mut visited = vec![false; self.foils.len()];
+        for i in 0..self.foils.len() {
+            if visited[i] { continue; }
+            if let Some(link_id) = self.foils[i].link_id {
+                if let Some(j) = self.foils.iter().position(|f| f.id == link_id) {
+                    if !visited[j] {
+                        visited[i] = true;
+                        visited[j] = true;
+                        self.process_linked_pair(i, j, time, &mut foil_current_recipients);
+                        continue;
                     }
                 }
-                foil.accum -= 1.0;
             }
-            while foil.accum <= -1.0 {
-                if let Some(&id) = foil.body_ids.as_slice().choose(&mut rng) {
-                    if let Some((body_idx, body)) = self.bodies.iter_mut().enumerate().find(|(_, b)| b.id == id && b.species == Species::FoilMetal) {
-                        if body.electrons.len() > 0 {
-                            body.electrons.pop();
-                            foil_current_recipients[body_idx] = true;
-                        }
-                    }
-                }
-                foil.accum += 1.0;
-            }
+            visited[i] = true;
+            self.process_single_foil(i, time, &mut foil_current_recipients);
         }
         // Ensure all body charges are up-to-date after foil current changes
         self.bodies.par_iter_mut().for_each(|body| body.update_charge_from_electrons());
@@ -316,6 +289,132 @@ impl Simulation {
         let bodies_snapshot: Vec<_> = self.bodies.iter().map(|b| b.clone()).collect();
         for (i, body) in self.bodies.iter_mut().enumerate() {
             body.maybe_update_surrounded(i, &bodies_snapshot, quadtree, cell_list, use_cell, frame);
+        }
+    }
+
+    fn effective_current(foil: &crate::body::foil::Foil, time: f32) -> f32 {
+        let mut current = foil.dc_current;
+        if foil.switch_hz > 0.0 {
+            let ac_component = if (time * foil.switch_hz) % 1.0 < 0.5 {
+                foil.ac_current
+            } else {
+                -foil.ac_current
+            };
+            current += ac_component;
+        }
+        current
+    }
+
+    fn foil_can_add(&self, idx: usize) -> bool {
+        let foil = &self.foils[idx];
+        foil.body_ids.iter().any(|&id| {
+            self.bodies.iter().any(|b| b.id == id && b.species == Species::FoilMetal && b.electrons.len() < crate::config::FOIL_MAX_ELECTRONS)
+        })
+    }
+
+    fn foil_can_remove(&self, idx: usize) -> bool {
+        let foil = &self.foils[idx];
+        foil.body_ids.iter().any(|&id| {
+            self.bodies.iter().any(|b| b.id == id && b.species == Species::FoilMetal && !b.electrons.is_empty())
+        })
+    }
+
+    fn try_add_electron(&mut self, idx: usize, rng: &mut rand::rngs::StdRng, recipients: &mut [bool]) -> bool {
+        let foil = &mut self.foils[idx];
+        if let Some(&id) = foil.body_ids.as_slice().choose(rng) {
+            if let Some((body_idx, body)) = self.bodies.iter_mut().enumerate().find(|(_, b)| b.id == id && b.species == Species::FoilMetal) {
+                if body.electrons.len() < crate::config::FOIL_MAX_ELECTRONS {
+                    body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+                    recipients[body_idx] = true;
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
+    fn try_remove_electron(&mut self, idx: usize, rng: &mut rand::rngs::StdRng, recipients: &mut [bool]) -> bool {
+        let foil = &mut self.foils[idx];
+        if let Some(&id) = foil.body_ids.as_slice().choose(rng) {
+            if let Some((body_idx, body)) = self.bodies.iter_mut().enumerate().find(|(_, b)| b.id == id && b.species == Species::FoilMetal) {
+                if !body.electrons.is_empty() {
+                    body.electrons.pop();
+                    recipients[body_idx] = true;
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
+    fn process_single_foil(&mut self, idx: usize, time: f32, recipients: &mut [bool]) {
+        let dt = self.dt;
+        let current = Self::effective_current(&self.foils[idx], time);
+        self.foils[idx].accum += current * dt;
+        let mut rng = rand::rng();
+        while self.foils[idx].accum >= 1.0 {
+            let _ = self.try_add_electron(idx, &mut rng, recipients);
+            self.foils[idx].accum -= 1.0;
+        }
+        while self.foils[idx].accum <= -1.0 {
+            let _ = self.try_remove_electron(idx, &mut rng, recipients);
+            self.foils[idx].accum += 1.0;
+        }
+    }
+
+    fn process_linked_pair(&mut self, a: usize, b: usize, time: f32, recipients: &mut [bool]) {
+        let dt = self.dt;
+        let mode = self.foils[a].mode;
+        let current_a = Self::effective_current(&self.foils[a], time);
+        let current_b = Self::effective_current(&self.foils[b], time);
+        self.foils[a].accum += current_a * dt;
+        self.foils[b].accum += current_b * dt;
+        let mut rng = rand::rng();
+        loop {
+            match mode {
+                LinkMode::Parallel => {
+                    if self.foils[a].accum >= 1.0 && self.foils[b].accum >= 1.0 {
+                        if self.foil_can_add(a) && self.foil_can_add(b) {
+                            if self.try_add_electron(a, &mut rng, recipients) && self.try_add_electron(b, &mut rng, recipients) {
+                                self.foils[a].accum -= 1.0;
+                                self.foils[b].accum -= 1.0;
+                                continue;
+                            }
+                        }
+                    }
+                    if self.foils[a].accum <= -1.0 && self.foils[b].accum <= -1.0 {
+                        if self.foil_can_remove(a) && self.foil_can_remove(b) {
+                            if self.try_remove_electron(a, &mut rng, recipients) && self.try_remove_electron(b, &mut rng, recipients) {
+                                self.foils[a].accum += 1.0;
+                                self.foils[b].accum += 1.0;
+                                continue;
+                            }
+                        }
+                    }
+                    break;
+                }
+                LinkMode::Opposite => {
+                    if self.foils[a].accum >= 1.0 && self.foils[b].accum <= -1.0 {
+                        if self.foil_can_add(a) && self.foil_can_remove(b) {
+                            if self.try_add_electron(a, &mut rng, recipients) && self.try_remove_electron(b, &mut rng, recipients) {
+                                self.foils[a].accum -= 1.0;
+                                self.foils[b].accum += 1.0;
+                                continue;
+                            }
+                        }
+                    }
+                    if self.foils[a].accum <= -1.0 && self.foils[b].accum >= 1.0 {
+                        if self.foil_can_remove(a) && self.foil_can_add(b) {
+                            if self.try_remove_electron(a, &mut rng, recipients) && self.try_add_electron(b, &mut rng, recipients) {
+                                self.foils[a].accum += 1.0;
+                                self.foils[b].accum -= 1.0;
+                                continue;
+                            }
+                        }
+                    }
+                    break;
+                }
+            }
         }
     }
 }
