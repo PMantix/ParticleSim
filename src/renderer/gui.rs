@@ -166,6 +166,18 @@ impl super::Renderer {
                         .step_by(0.001)).changed() {
                         changed = true;
                     }
+
+                    // Color picker
+                    let mut c = egui::Color32::from_rgba_unmultiplied(
+                        current_props.color[0],
+                        current_props.color[1],
+                        current_props.color[2],
+                        current_props.color[3],
+                    );
+                    if ui.color_edit_button_srgba(&mut c).changed() {
+                        current_props.color = c.to_array();
+                        changed = true;
+                    }
                     
                     ui.separator();
                     ui.label("⚛️ Lennard-Jones Parameters:");

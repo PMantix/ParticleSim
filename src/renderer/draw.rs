@@ -58,22 +58,16 @@ impl super::Renderer {
 						255,
 					];*/
 
-                    let color = match body.species {
-                        Species::LithiumIon => {
-                            if body.surrounded_by_metal {
-                                if self.show_electron_deficiency {
-                                    [192, 190, 190, 255] // orange when surrounded and deficiency visualization is on
-                                } else {
-                                    [192, 192, 192, 255] // silverish when surrounded and deficiency visualization is off
-                                }
+                    let mut color = body.species.color();
+                    if body.species == Species::LithiumIon {
+                        if body.surrounded_by_metal {
+                            if self.show_electron_deficiency {
+                                color = [192, 190, 190, 255];
                             } else {
-                                [255, 255, 0, 255] // yellow otherwise
+                                color = [192, 192, 192, 255];
                             }
                         }
-                        Species::LithiumMetal => [192, 192, 192, 255],  // Silverish
-                        Species::FoilMetal => [128, 64, 0, 255],        // Brownish (example)
-                        Species::ElectrolyteAnion => [0, 128, 255, 255], // Blueish for anion
-                    };
+                    }
 
                     if body.species == Species::FoilMetal {
                         if let Some(foil) = self.foils.iter().find(|f| f.body_ids.contains(&body.id)) {
