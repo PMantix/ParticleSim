@@ -336,19 +336,10 @@ impl super::Renderer {
 
                     // Common controls for all Add scenarios
                     ui.horizontal(|ui| {
-                        use crate::species::SPECIES_PROPERTIES;
                         ui.label("X:");
                         ui.add(egui::DragValue::new(&mut self.scenario_x).speed(0.1));
                         ui.label("Y:");
                         ui.add(egui::DragValue::new(&mut self.scenario_y).speed(0.1));
-                        ui.label("Particle Radius:");
-                        // Set default radius from species if changed
-                        if let Some(props) = SPECIES_PROPERTIES.get(&self.scenario_species) {
-                            if (self.scenario_particle_radius - props.radius).abs() > f32::EPSILON && ui.button("Reset to Default").clicked() {
-                                self.scenario_particle_radius = props.radius;
-                            }
-                        }
-                        ui.add(egui::DragValue::new(&mut self.scenario_particle_radius).speed(0.05));
                         egui::ComboBox::from_label("Species")
                             .selected_text(format!("{:?}", self.scenario_species))
                             .show_ui(ui, |ui| {
@@ -373,12 +364,11 @@ impl super::Renderer {
                         ui.add(egui::DragValue::new(&mut self.scenario_radius).speed(0.1));
                         if ui.button("Add Ring").clicked() {
                             let spec = self.scenario_species;
-                            let props = crate::species::SPECIES_PROPERTIES.get(&spec).unwrap();
                             let body = make_body_with_species(
                                 ultraviolet::Vec2::zero(),
                                 ultraviolet::Vec2::zero(),
-                                props.mass,
-                                props.radius,
+                                spec.mass(),
+                                spec.radius(),
                                 spec,
                             );
                             SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::AddRing {
@@ -390,12 +380,11 @@ impl super::Renderer {
                         }
                         if ui.button("Add Filled Circle").clicked() {
                             let spec = self.scenario_species;
-                            let props = crate::species::SPECIES_PROPERTIES.get(&spec).unwrap();
                             let body = make_body_with_species(
                                 ultraviolet::Vec2::zero(),
                                 ultraviolet::Vec2::zero(),
-                                props.mass,
-                                props.radius,
+                                spec.mass(),
+                                spec.radius(),
                                 spec,
                             );
                             SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::AddCircle {
@@ -411,12 +400,11 @@ impl super::Renderer {
                     ui.horizontal(|ui| {
                         if ui.button("Add Rectangle").clicked() {
                             let spec = self.scenario_species;
-                            let props = crate::species::SPECIES_PROPERTIES.get(&spec).unwrap();
                             let body = make_body_with_species(
                                 ultraviolet::Vec2::zero(),
                                 ultraviolet::Vec2::zero(),
-                                props.mass,
-                                props.radius,
+                                spec.mass(),
+                                spec.radius(),
                                 spec,
                             );
                             SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::AddRectangle {
@@ -433,7 +421,7 @@ impl super::Renderer {
                                 height: self.scenario_height,
                                 x: self.scenario_x - self.scenario_width / 2.0,
                                 y: self.scenario_y - self.scenario_height / 2.0,
-                                particle_radius: self.scenario_particle_radius,
+                                particle_radius: Species::FoilMetal.radius(),
                                 current: 0.0, // Always start with 0 current
                             }).unwrap();
                         }
@@ -444,12 +432,11 @@ impl super::Renderer {
                         ui.add(egui::DragValue::new(&mut self.scenario_random_count).speed(1.0));
                         if ui.button("Add Random").clicked() {
                             let spec = self.scenario_species;
-                            let props = crate::species::SPECIES_PROPERTIES.get(&spec).unwrap();
                             let body = make_body_with_species(
                                 ultraviolet::Vec2::zero(),
                                 ultraviolet::Vec2::zero(),
-                                props.mass,
-                                props.radius,
+                                spec.mass(),
+                                spec.radius(),
                                 spec,
                             );
                             SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::AddRandom {
