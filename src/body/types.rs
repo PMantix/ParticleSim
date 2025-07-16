@@ -158,6 +158,10 @@ impl Species {
         self.props().damping
     }
 
+    pub fn color(&self) -> [u8; 4] {
+        self.props().color
+    }
+
     pub fn lj_enabled(&self) -> bool {
         self.props().lj_enabled
     }

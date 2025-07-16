@@ -20,6 +20,24 @@ pub enum DeleteOption {
     ElectrolyteAnion,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum GuiTab {
+    Simulation,
+    Visualization,
+    Species,
+    Physics,
+    Scenario,
+    Foils,
+    Analysis,
+    Debug,
+}
+
+impl Default for GuiTab {
+    fn default() -> Self {
+        GuiTab::Simulation
+    }
+}
+
 pub struct Renderer {
     pos: Vec2,
     scale: f32,
@@ -79,6 +97,8 @@ pub struct Renderer {
     pub selected_lj_species: Species,
     // Delete species selection
     pub selected_delete_option: DeleteOption,
+    // Current GUI tab
+    pub current_tab: GuiTab,
 }
 
 impl quarkstrom::Renderer for Renderer {
@@ -135,6 +155,7 @@ impl quarkstrom::Renderer for Renderer {
             domain_height: 300.0,
             selected_lj_species: Species::LithiumMetal, // Default to LithiumMetal for LJ editing
             selected_delete_option: DeleteOption::AllSpecies, // Default to All Species
+            current_tab: GuiTab::default(), // Default to Simulation tab
         }
     }
 
