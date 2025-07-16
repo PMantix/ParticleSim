@@ -2,6 +2,7 @@ pub mod state;
 pub mod input;
 pub mod gui;
 pub mod draw;
+pub mod screen_capture;
 
 use crate::body::{Body, Species, foil::Foil};
 use crate::config::{SimConfig, DOMAIN_BOUNDS};
@@ -32,6 +33,7 @@ pub enum GuiTab {
     Analysis,
     Debug,
     Diagnostics,
+    ScreenCapture,
 }
 
 impl Default for GuiTab {
@@ -102,6 +104,19 @@ pub struct Renderer {
     // Current GUI tab
     pub current_tab: GuiTab,
     pub transference_number_diagnostic: Option<TransferenceNumberDiagnostic>,
+    
+    // Screen capture functionality
+    pub screen_capture_enabled: bool,
+    pub capture_interval: f32,  // seconds between captures
+    pub last_capture_time: f32,
+    pub capture_folder: String,
+    pub selection_start: Option<Vec2>,  // for drag selection
+    pub selection_end: Option<Vec2>,
+    pub capture_region: Option<(Vec2, Vec2)>,  // (top_left, bottom_right) in screen space
+    pub is_selecting_region: bool,
+    pub capture_counter: usize,
+    pub show_capture_window: bool,
+    pub should_capture_next_frame: bool,
 }
 
 impl quarkstrom::Renderer for Renderer {
@@ -160,6 +175,19 @@ impl quarkstrom::Renderer for Renderer {
             selected_delete_option: DeleteOption::AllSpecies, // Default to All Species
             current_tab: GuiTab::default(), // Default to Simulation tab
             transference_number_diagnostic: Some(TransferenceNumberDiagnostic::new()),
+            
+            // Screen capture defaults
+            screen_capture_enabled: false,
+            capture_interval: 1.0,  // 1 second between captures
+            last_capture_time: 0.0,
+            capture_folder: "captures".to_string(),
+            selection_start: None,
+            selection_end: None,
+            capture_region: None,
+            is_selecting_region: false,
+            capture_counter: 0,
+            show_capture_window: false,
+            should_capture_next_frame: false,
         }
     }
 

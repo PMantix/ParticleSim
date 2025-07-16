@@ -52,12 +52,40 @@ impl super::Renderer {
             }
         }
 
-        // Camera grab
-        if input.mouse_held(2) {
-            let (mdx, mdy) = input.mouse_diff();
-            self.pos.x -= mdx / (height as f32 * self.scale_factor) * self.scale * 2.0;
-            self.pos.y += mdy / (height as f32 * self.scale_factor) * self.scale * 2.0;
+        // Screen capture region selection handling
+        if self.is_selecting_region {
+            if let Some((mx, my)) = input.mouse() {
+                let screen_pos = Vec2::new(mx, my);
+                
+                if input.mouse_pressed(0) {
+                    // Start selection
+                    self.start_region_selection(screen_pos);
+                } else if input.mouse_held(0) && self.selection_start.is_some() {
+                    // Update selection continuously while dragging
+                    self.update_region_selection(screen_pos);
+                } else if input.mouse_released(0) && self.selection_start.is_some() {
+                    // Finish selection
+                    self.finish_region_selection();
+                }
+                
+                // Cancel selection with right click or escape
+                if input.mouse_pressed(1) || input.key_pressed(VirtualKeyCode::Escape) {
+                    self.cancel_region_selection();
+                }
+            }
+        } else {
+            // Normal input handling when not selecting region
+            // Camera grab
+            if input.mouse_held(2) {
+                let (mdx, mdy) = input.mouse_diff();
+                self.pos.x -= mdx / (height as f32 * self.scale_factor) * self.scale * 2.0;
+                self.pos.y += mdy / (height as f32 * self.scale_factor) * self.scale * 2.0;
+            }
         }
+
+        // Handle screen capture timing
+        let current_time = *crate::renderer::state::SIM_TIME.lock();
+        self.handle_screen_capture(current_time);
 
         // Mouse to world conversion
         let world_mouse = || -> Vec2 {

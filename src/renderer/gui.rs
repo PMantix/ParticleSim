@@ -35,6 +35,10 @@ impl super::Renderer {
                         ui.selectable_value(&mut self.current_tab, super::GuiTab::Foils, "🔋 Foils");
                         ui.selectable_value(&mut self.current_tab, super::GuiTab::Analysis, "📊 Analysis");
                         ui.selectable_value(&mut self.current_tab, super::GuiTab::Diagnostics, "🔬 Diagnostics");
+                    });
+                    // Third row of tabs
+                    ui.horizontal(|ui| {
+                        ui.selectable_value(&mut self.current_tab, super::GuiTab::ScreenCapture, "📷 Screen Capture");
                         ui.selectable_value(&mut self.current_tab, super::GuiTab::Debug, "🐛 Debug");
                     });
                 });
@@ -53,6 +57,7 @@ impl super::Renderer {
                         super::GuiTab::Analysis => self.show_analysis_tab(ui),
                         super::GuiTab::Debug => self.show_debug_tab(ui),
                         super::GuiTab::Diagnostics => self.show_diagnostics_tab(ui),
+                        super::GuiTab::ScreenCapture => self.show_screen_capture_tab(ui),
                     }
                 });
             });
@@ -1112,4 +1117,118 @@ pub fn make_body_with_species(pos: Vec2, vel: Vec2, mass: f32, radius: f32, spec
     body.update_charge_from_electrons();
     body.update_species();
     body
+}
+
+impl super::Renderer {
+    fn show_screen_capture_tab(&mut self, ui: &mut egui::Ui) {
+        ui.heading("📷 Screen Capture");
+        
+        ui.separator();
+        
+        // Recording status
+        ui.horizontal(|ui| {
+            let status_text = if self.screen_capture_enabled {
+                format!("🔴 Recording - Frame {}", self.capture_counter)
+            } else {
+                "⏹️ Not Recording".to_string()
+            };
+            ui.label(status_text);
+        });
+        
+        ui.separator();
+        
+        // Recording controls
+        ui.group(|ui| {
+            ui.label("Recording Controls:");
+            
+            ui.horizontal(|ui| {
+                if ui.button(if self.screen_capture_enabled { "⏹️ Stop Recording" } else { "🔴 Start Recording" }).clicked() {
+                    self.screen_capture_enabled = !self.screen_capture_enabled;
+                    if self.screen_capture_enabled {
+                        self.capture_counter = 0;
+                        self.last_capture_time = 0.0;
+                    }
+                }
+                
+                if ui.button("📷 Capture Now").clicked() {
+                    // Trigger immediate capture
+                    self.trigger_manual_capture();
+                }
+            });
+            
+            ui.horizontal(|ui| {
+                ui.label("Capture interval (seconds):");
+                ui.add(egui::DragValue::new(&mut self.capture_interval)
+                    .clamp_range(0.1..=10.0)
+                    .speed(0.1));
+            });
+            
+            ui.horizontal(|ui| {
+                ui.label("Save folder:");
+                ui.text_edit_singleline(&mut self.capture_folder);
+            });
+        });
+        
+        ui.separator();
+        
+        // Capture region controls
+        ui.group(|ui| {
+            ui.label("Capture Region:");
+            
+            ui.horizontal(|ui| {
+                if ui.button("🎯 Select Region").clicked() {
+                    // This will be handled in input processing
+                    self.is_selecting_region = !self.is_selecting_region;
+                }
+                
+                if ui.button("🌐 Full Screen").clicked() {
+                    self.capture_region = None;
+                }
+                
+                if ui.button("❌ Clear Region").clicked() {
+                    self.clear_capture_region();
+                }
+            });
+            
+            // Show current region info
+            if let Some((start, end)) = self.capture_region {
+                ui.label(format!("Region: ({:.0}, {:.0}) to ({:.0}, {:.0})", 
+                                start.x, start.y, end.x, end.y));
+            } else {
+                ui.label("Region: Full screen");
+            }
+            
+            if self.is_selecting_region {
+                ui.colored_label(egui::Color32::YELLOW, "Click and drag to select capture region");
+            }
+        });
+        
+        ui.separator();
+        
+        // Statistics
+        ui.group(|ui| {
+            ui.label("Statistics:");
+            ui.label(format!("Total captures: {}", self.capture_counter));
+            ui.label(format!("Last capture: {:.1}s ago", 
+                            *crate::renderer::state::SIM_TIME.lock() - self.last_capture_time));
+            
+            if self.screen_capture_enabled && self.capture_interval > 0.0 {
+                let next_capture_in = self.capture_interval - (*crate::renderer::state::SIM_TIME.lock() - self.last_capture_time);
+                if next_capture_in > 0.0 {
+                    ui.label(format!("Next capture in: {:.1}s", next_capture_in));
+                }
+            }
+        });
+        
+        ui.separator();
+        
+        // Help text
+        ui.group(|ui| {
+            ui.label("💡 Tips:");
+            ui.label("• Use 'Select Region' to capture only part of the screen");
+            ui.label("• Hold Ctrl while dragging to select capture region");
+            ui.label("• Images are saved to the specified folder");
+            ui.label("• Lower intervals create more frequent captures");
+        });
+    }
 }

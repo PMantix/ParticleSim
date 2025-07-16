@@ -25,6 +25,7 @@ This repository contains a modular, parallelized particle simulation for large-s
   - **Manual Step Button**: Step the simulation forward by one timestep for precise debugging.
   - Particle selection with detailed diagnostics printed to console.
   - Adjustable visualization overlays (velocity vectors, electron deficiency, etc.).
+  - **Screen Capture**: Periodic screenshot recording with customizable regions and intervals for creating animations and documentation.
 - **Foil Electrodes**:
   - Configurable foil structures that can apply electric currents to drive electrochemical reactions.
   - Real-time current monitoring and analysis.
@@ -71,6 +72,11 @@ This repository contains a modular, parallelized particle simulation for large-s
   - Time series plots for species populations and currents
   - Spatial profile plots for charge and velocity distributions
   - Export data in multiple formats (CSV, JSON, TSV)
+- **Screen Capture**: Record simulation screenshots for animations and documentation
+  - Periodic automatic capture with configurable intervals
+  - Custom region selection for focused recording
+  - Manual capture for specific moments
+  - PNG output with timestamp-based naming
 - **Scenario Controls**: Quick setup with predefined particle arrangements
 - **State Management**: Save and load simulation configurations
 - **Manual Stepping**: Advance simulation one timestep at a time for debugging

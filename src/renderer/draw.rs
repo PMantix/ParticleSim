@@ -12,6 +12,10 @@ impl super::Renderer {
             return;
         }
 
+        // Store current window dimensions
+        self.window_width = width;
+        self.window_height = height;
+
         {
             let mut lock = UPDATE_LOCK.lock();
             if *lock {
@@ -281,6 +285,17 @@ impl super::Renderer {
 
         if !self.selected_foil_ids.is_empty() {
             self.draw_foil_square_waves(ctx);
+        }
+        
+        // Draw screen capture selection rectangle
+        self.draw_capture_selection(ctx, self.window_width, self.window_height);
+        
+        // Handle screen capture if requested
+        if self.should_capture_next_frame {
+            self.should_capture_next_frame = false;
+            if let Err(e) = self.capture_current_frame() {
+                eprintln!("Screen capture failed: {}", e);
+            }
         }
     }
 }
@@ -645,5 +660,85 @@ impl super::Renderer {
                 }
             }
         }
+    }
+}
+
+impl super::Renderer {
+    fn draw_capture_selection(&mut self, ctx: &mut quarkstrom::RenderContext, width: u16, height: u16) {
+        // Draw current capture region if set
+        if let Some((start, end)) = self.capture_region {
+            let top_left = Vec2::new(start.x.min(end.x), start.y.min(end.y));
+            let bottom_right = Vec2::new(start.x.max(end.x), start.y.max(end.y));
+            
+            // Convert screen coordinates to world coordinates for drawing
+            let world_start = self.screen_to_world(top_left, width, height);
+            let world_end = self.screen_to_world(bottom_right, width, height);
+            
+            // Draw rectangle outline
+            ctx.draw_line(
+                Vec2::new(world_start.x, world_start.y),
+                Vec2::new(world_end.x, world_start.y),
+                [0, 255, 0, 255], // Green color
+            );
+            ctx.draw_line(
+                Vec2::new(world_end.x, world_start.y),
+                Vec2::new(world_end.x, world_end.y),
+                [0, 255, 0, 255],
+            );
+            ctx.draw_line(
+                Vec2::new(world_end.x, world_end.y),
+                Vec2::new(world_start.x, world_end.y),
+                [0, 255, 0, 255],
+            );
+            ctx.draw_line(
+                Vec2::new(world_start.x, world_end.y),
+                Vec2::new(world_start.x, world_start.y),
+                [0, 255, 0, 255],
+            );
+        }
+        
+        // Draw current selection if actively selecting
+        if self.is_selecting_region {
+            if let (Some(start), Some(end)) = (self.selection_start, self.selection_end) {
+                let top_left = Vec2::new(start.x.min(end.x), start.y.min(end.y));
+                let bottom_right = Vec2::new(start.x.max(end.x), start.y.max(end.y));
+                
+                // Convert screen coordinates to world coordinates for drawing
+                let world_start = self.screen_to_world(top_left, width, height);
+                let world_end = self.screen_to_world(bottom_right, width, height);
+                
+                // Draw rectangle outline with red color for live selection
+                ctx.draw_line(
+                    Vec2::new(world_start.x, world_start.y),
+                    Vec2::new(world_end.x, world_start.y),
+                    [255, 0, 0, 255], // Red color
+                );
+                ctx.draw_line(
+                    Vec2::new(world_end.x, world_start.y),
+                    Vec2::new(world_end.x, world_end.y),
+                    [255, 0, 0, 255],
+                );
+                ctx.draw_line(
+                    Vec2::new(world_end.x, world_end.y),
+                    Vec2::new(world_start.x, world_end.y),
+                    [255, 0, 0, 255],
+                );
+                ctx.draw_line(
+                    Vec2::new(world_start.x, world_end.y),
+                    Vec2::new(world_start.x, world_start.y),
+                    [255, 0, 0, 255],
+                );
+            }
+        }
+    }
+    
+    pub fn screen_to_world(&self, screen_pos: Vec2, width: u16, height: u16) -> Vec2 {
+        // Convert screen coordinates to world coordinates
+        let mut world_pos = screen_pos;
+        world_pos *= 2.0 / height as f32;
+        world_pos.y -= 1.0;
+        world_pos.y *= -1.0;
+        world_pos.x -= width as f32 / height as f32;
+        world_pos * self.scale + self.pos
     }
 }
