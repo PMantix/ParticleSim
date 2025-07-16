@@ -11,8 +11,12 @@ impl super::super::Renderer {
                 "Show LJ/Coulomb Force Ratio",
             );
             ui.checkbox(
-                &mut self.show_electron_deficiency,
-                "Show Electron Deficiency/Excess",
+                &mut self.show_foil_electron_deficiency,
+                "Show Foil Electron Deficiency/Excess",
+            );
+            ui.checkbox(
+                &mut self.show_metal_electron_deficiency,
+                "Show Metal Electron Deficiency/Excess",
             );
         });
     }

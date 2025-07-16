@@ -57,7 +57,7 @@ impl super::Renderer {
                     let mut color = body.species.color();
                     if body.species == Species::LithiumIon {
                         if body.surrounded_by_metal {
-                            if self.show_electron_deficiency {
+                            if self.show_metal_electron_deficiency {
                                 color = [192, 190, 190, 255];
                             } else {
                                 color = [192, 192, 192, 255];
@@ -76,7 +76,7 @@ impl super::Renderer {
                     ctx.draw_circle(body.pos, body.radius, color);
 
                     // Visualize electron count for FoilMetal
-                    if self.show_electron_deficiency && body.species == Species::FoilMetal {
+                    if self.show_foil_electron_deficiency && body.species == Species::FoilMetal {
                         let neutral_electrons = crate::config::FOIL_NEUTRAL_ELECTRONS;
                         let electron_count = body.electrons.len();
                         if electron_count > neutral_electrons {
@@ -95,7 +95,7 @@ impl super::Renderer {
                     }
 
                     // Visualize electron count for LithiumMetal
-                    if self.show_electron_deficiency && body.species == Species::LithiumMetal {
+                    if self.show_metal_electron_deficiency && body.species == Species::LithiumMetal {
                         let neutral_electrons = 1;
                         let electron_count = body.electrons.len();
                         if electron_count > neutral_electrons {
