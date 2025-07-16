@@ -12,6 +12,7 @@ pub mod species;
 pub mod plotting;
 pub mod init_config;
 pub mod diagnostics;
+pub mod commands;
 
 pub mod app;
 
