@@ -862,6 +862,47 @@ impl super::Renderer {
                 ui.label("• Current controls will appear here when a foil is selected");
             });
         }
+
+        // Direct Current Controls for All Foils
+        ui.separator();
+        let foils = FOILS.lock();
+        if !foils.is_empty() {
+            ui.group(|ui| {
+                ui.label("⚡ Quick Current Controls");
+                ui.label("Adjust any foil's current directly:");
+                
+                for foil in foils.iter() {
+                    ui.horizontal(|ui| {
+                        ui.label(format!("Foil {}", foil.id));
+                        if foil.link_id.is_some() {
+                            ui.label("🔗");
+                        }
+                        
+                        // DC Current
+                        let mut dc_current = foil.dc_current;
+                        if ui.small_button("-1").clicked() { dc_current -= 1.0; }
+                        if ui.small_button("+1").clicked() { dc_current += 1.0; }
+                        ui.add(egui::DragValue::new(&mut dc_current).prefix("DC: ").speed(0.1));
+                        
+                        // AC Current
+                        let mut ac_current = foil.ac_current;
+                        ui.add(egui::DragValue::new(&mut ac_current).prefix("AC: ").speed(0.1).clamp_range(0.0..=500.0));
+                        
+                        // Apply changes
+                        if (dc_current - foil.dc_current).abs() > f32::EPSILON {
+                            SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(
+                                SimCommand::SetFoilDCCurrent { foil_id: foil.id, dc_current }
+                            ).unwrap();
+                        }
+                        if (ac_current - foil.ac_current).abs() > f32::EPSILON {
+                            SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(
+                                SimCommand::SetFoilACCurrent { foil_id: foil.id, ac_current }
+                            ).unwrap();
+                        }
+                    });
+                }
+            });
+        }
     }
 
     fn show_analysis_tab(&mut self, ui: &mut egui::Ui) {
