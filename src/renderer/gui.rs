@@ -453,6 +453,8 @@ impl super::Renderer {
                         use std::fs;
                         use std::path::PathBuf;
                         let saved_state_dir = PathBuf::from("saved_state");
+                        // Ensure directory exists
+                        let _ = fs::create_dir_all(&saved_state_dir);
                         // List all .json files in saved_state
                         let mut state_files: Vec<String> = fs::read_dir(&saved_state_dir)
                             .map(|rd| rd.filter_map(|e| e.ok())
