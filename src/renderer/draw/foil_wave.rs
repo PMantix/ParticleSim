@@ -1,7 +1,7 @@
-use super::super::state::*;
+use crate::renderer::Renderer;
 use ultraviolet::Vec2;
 
-impl super::Renderer {
+impl Renderer {
     /// Update history of selected foil on/off states.
     pub fn update_foil_wave_history(&mut self) {
         if self.selected_foil_ids.is_empty() {

@@ -1,8 +1,8 @@
-use super::super::state::*;
+use crate::renderer::Renderer;
 use ultraviolet::Vec2;
 use rayon::prelude::*;
 
-impl super::Renderer {
+impl Renderer {
     /// Draw a simple charge density heatmap.
     pub fn draw_charge_density(&self, ctx: &mut quarkstrom::RenderContext) {
         let grid_spacing = 5.0;

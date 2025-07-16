@@ -1,10 +1,10 @@
-use super::super::state::*;
-use palette::{Hsluv, IntoColor, Srgba};
+use crate::renderer::Renderer;
+use crate::renderer::state::{FIELD_MAGNITUDE, FIELD_DIRECTION};
 use ultraviolet::Vec2;
 use crate::body::Body;
 use rayon::prelude::*;
 
-impl super::Renderer {
+impl Renderer {
     /// Draw electric field isolines using a simple marching squares algorithm.
     pub fn draw_field_isolines(&mut self, ctx: &mut quarkstrom::RenderContext) {
         let min_spacing = 8.0;

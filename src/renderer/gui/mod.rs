@@ -17,6 +17,8 @@ pub mod simulation_tab;
 pub mod species_tab;
 pub mod visualization_tab;
 
+pub use scenario_tab::make_body_with_species;
+
 impl super::Renderer {
     pub fn show_gui(&mut self, ctx: &quarkstrom::egui::Context) {
         let mut settings_open = self.settings_window_open;

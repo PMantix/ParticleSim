@@ -4,15 +4,13 @@ mod field;
 mod charge;
 mod foil_wave;
 
-pub use field::{compute_field_at_point, compute_potential_at_point};
-
-pub use foil_wave::{update_foil_wave_history, draw_foil_square_waves};
+pub use field::compute_field_at_point;
 
 use super::state::*;
 use palette::{Hsluv, IntoColor, Srgba};
 use ultraviolet::Vec2;
 use crate::quadtree::Quadtree;
-use crate::body::{Species, Body};
+use crate::body::Species;
 use rayon::prelude::*;
 
 impl super::Renderer {
