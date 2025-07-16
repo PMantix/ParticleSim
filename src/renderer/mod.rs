@@ -20,6 +20,27 @@ pub enum DeleteOption {
     ElectrolyteAnion,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SettingsTab {
+    Field,
+    Display,
+    Simulation,
+    Overlays,
+    Species,
+    ButlerVolmer,
+    Scenario,
+    Foil,
+    Links,
+    Debug,
+    Plotting,
+}
+
+impl Default for SettingsTab {
+    fn default() -> Self {
+        Self::Field
+    }
+}
+
 pub struct Renderer {
     pos: Vec2,
     scale: f32,
@@ -39,6 +60,7 @@ pub struct Renderer {
     //foils: Vec<crate::body::foil::Foil>,
     selected_foil_ids: Vec<u64>,
     selected_particle_ids: Vec<u64>,
+    active_tab: SettingsTab,
     sim_config: SimConfig,
     /// Local copy of the simulation frame for time-based visualizations
     frame: usize,
@@ -102,6 +124,7 @@ impl quarkstrom::Renderer for Renderer {
             //foils: Vec::new(),
             selected_foil_ids: Vec::new(),
             selected_particle_ids: Vec::new(),
+            active_tab: SettingsTab::Field,
             sim_config: crate::config::LJ_CONFIG.lock().clone(),
             frame: 0,
             foil_wave_history: HashMap::new(),

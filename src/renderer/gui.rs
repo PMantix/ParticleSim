@@ -6,6 +6,7 @@ use ultraviolet::Vec2;
 use crate::renderer::Body;
 use crate::body::Electron;
 use crate::config::IsolineFieldMode;
+use super::SettingsTab;
 
 impl super::Renderer {
     pub fn show_gui(&mut self, ctx: &quarkstrom::egui::Context) {
@@ -23,8 +24,29 @@ impl super::Renderer {
                 } else {
                     ui.colored_label(egui::Color32::GREEN, "▶ RUNNING");
                 }
-                // --- Field Controls ---
-                egui::CollapsingHeader::new("Field Controls").default_open(true).show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    let tabs = [
+                        (SettingsTab::Field, "Field"),
+                        (SettingsTab::Display, "Display"),
+                        (SettingsTab::Simulation, "Simulation"),
+                        (SettingsTab::Overlays, "Overlays"),
+                        (SettingsTab::Species, "Species"),
+                        (SettingsTab::ButlerVolmer, "ButlerVolmer"),
+                        (SettingsTab::Scenario, "Scenario"),
+                        (SettingsTab::Foil, "Foil"),
+                        (SettingsTab::Links, "Links"),
+                        (SettingsTab::Debug, "Debug"),
+                        (SettingsTab::Plotting, "Plotting"),
+                    ];
+                    for (tab, label) in tabs {
+                        if ui.selectable_label(self.active_tab == tab, label).clicked() {
+                            self.active_tab = tab;
+                        }
+                    }
+                });
+                ui.separator();
+                match self.active_tab {
+                    SettingsTab::Field => {
                     let mut mag = *FIELD_MAGNITUDE.lock();
                     ui.add(
                         egui::Slider::new(&mut mag, 0.0..=200.0)
@@ -41,20 +63,14 @@ impl super::Renderer {
                             .clamp_to_range(true),
                     );
                     *FIELD_DIRECTION.lock() = dir;
-                });
-
-                ui.separator();
-
-                // --- Display Options ---
-                egui::CollapsingHeader::new("Display Options").default_open(true).show(ui, |ui| {
-                    ui.checkbox(&mut self.show_bodies, "Show Bodies");
-                    ui.checkbox(&mut self.show_quadtree, "Show Quadtree");
-                });
-
-                ui.separator();
-
-                // --- Simulation Controls ---
-                egui::CollapsingHeader::new("Simulation Controls").default_open(true).show(ui, |ui| {
+                }
+                    SettingsTab::Display => {
+                        egui::CollapsingHeader::new("Display Options").default_open(true).show(ui, |ui| {
+                            ui.checkbox(&mut self.show_bodies, "Show Bodies");
+                            ui.checkbox(&mut self.show_quadtree, "Show Quadtree");
+                        });
+                    }
+                    SettingsTab::Simulation => {
                     ui.add(
                         egui::Slider::new(&mut *TIMESTEP.lock(), 0.0001..=0.1)
                             .text("Timestep (dt)")
@@ -86,12 +102,8 @@ impl super::Renderer {
                             ui.add(egui::DragValue::new(&mut range.1).speed(0.05));
                         });
                     }
-                });
-
-                ui.separator();
-
-                // --- Visualization Overlays ---
-                egui::CollapsingHeader::new("Visualization Overlays").default_open(true).show(ui, |ui| {
+                    }
+                    SettingsTab::Overlays => {
                     ui.checkbox(&mut self.sim_config.show_field_isolines, "Show Field Isolines");
                     ui.checkbox(&mut self.sim_config.show_velocity_vectors, "Show Velocity Vectors");
                     ui.checkbox(&mut self.sim_config.show_charge_density, "Show Charge Density");
@@ -120,12 +132,9 @@ impl super::Renderer {
                             .text("Velocity Vector Scale")
                             .step_by(0.01),
                     );
-                });
-
-                ui.separator();
-
-                // --- Species Definition ---
-                egui::CollapsingHeader::new("Species Definition").default_open(true).show(ui, |ui| {
+                }
+                    SettingsTab::Species => {
+                        egui::CollapsingHeader::new("Species Definition").default_open(true).show(ui, |ui| {
                     ui.label("🔬 Configure all properties for each species:");
                     
                     // Species selection dropdown
@@ -238,12 +247,8 @@ impl super::Renderer {
                         });
                         ui.label(format!("Effective LJ range: {:.2}", current_props.lj_cutoff * current_props.lj_sigma));
                     }
-                });
-
-                ui.separator();
-
-                // --- Butler-Volmer Parameters ---
-                egui::CollapsingHeader::new("Butler-Volmer Parameters").default_open(true).show(ui, |ui| {
+                }
+                    SettingsTab::ButlerVolmer => {
                     ui.checkbox(&mut self.sim_config.use_butler_volmer, "Use Butler-Volmer");
                     ui.add(
                         egui::Slider::new(&mut self.sim_config.bv_exchange_current, 0.0..=1.0e6)
@@ -260,12 +265,8 @@ impl super::Renderer {
                             .text("Overpotential Scale")
                             .step_by(0.0001),
                     );
-                });
-
-                ui.separator();
-
-                // --- Scenario Controls ---
-                egui::CollapsingHeader::new("Scenario").default_open(true).show(ui, |ui| {
+                }
+                    SettingsTab::Scenario => {
                     ui.horizontal(|ui| {
                         // Delete species dropdown (doesn't delete immediately)
                         ui.label("Delete:");
@@ -515,10 +516,9 @@ impl super::Renderer {
                             }
                         }
                     });
-                });
-
-                // --- Foil Current Controls for Selected Foil ---
-                if let Some(selected_id) = self.selected_particle_id {
+                }
+                    SettingsTab::Foil => {
+                        if let Some(selected_id) = self.selected_particle_id {
                     let maybe_foil = {
                         let foils = FOILS.lock();
                         foils.iter().find(|f| f.body_ids.contains(&selected_id)).cloned()
@@ -653,10 +653,8 @@ impl super::Renderer {
                             });
                     }
                 }
-
-                // --- Foil Linking Controls ---
-                ui.separator();
-                egui::CollapsingHeader::new("Foil Links").default_open(true).show(ui, |ui| {
+                    SettingsTab::Links => {
+                        egui::CollapsingHeader::new("Foil Links").default_open(true).show(ui, |ui| {
                     if self.selected_foil_ids.len() == 2 {
                         let a = self.selected_foil_ids[0];
                         let b = self.selected_foil_ids[1];
@@ -677,29 +675,28 @@ impl super::Renderer {
                             });
                         }
                     }
-                });
-
-                // --- Debug/Diagnostics ---
-                ui.separator();
-                egui::CollapsingHeader::new("Debug/Diagnostics").default_open(true).show(ui, |ui| {
-                    ui.checkbox(&mut self.sim_config.show_lj_vs_coulomb_ratio, "Show LJ/Coulomb Force Ratio");
-                    ui.checkbox(&mut self.show_electron_deficiency, "Show Electron Deficiency/Excess");
-                });
-
-                // --- Plotting & Analysis ---
-                ui.separator();
-                crate::plotting::gui::show_plotting_controls(
-                    ui,
-                    &mut self.plotting_system,
-                    &mut self.show_plotting_window,
-                    &mut self.new_plot_type,
-                    &mut self.new_plot_quantity,
-                    &mut self.new_plot_sampling_mode,
-                    &mut self.new_plot_title,
-                    &mut self.new_plot_spatial_bins,
-                    &mut self.new_plot_time_window,
-                    &mut self.new_plot_update_frequency,
-                );
+                }
+                    SettingsTab::Debug => {
+                        egui::CollapsingHeader::new("Debug/Diagnostics").default_open(true).show(ui, |ui| {
+                            ui.checkbox(&mut self.sim_config.show_lj_vs_coulomb_ratio, "Show LJ/Coulomb Force Ratio");
+                            ui.checkbox(&mut self.show_electron_deficiency, "Show Electron Deficiency/Excess");
+                        });
+                    }
+                    SettingsTab::Plotting => {
+                        crate::plotting::gui::show_plotting_controls(
+                            ui,
+                            &mut self.plotting_system,
+                            &mut self.show_plotting_window,
+                            &mut self.new_plot_type,
+                            &mut self.new_plot_quantity,
+                            &mut self.new_plot_sampling_mode,
+                            &mut self.new_plot_title,
+                            &mut self.new_plot_spatial_bins,
+                            &mut self.new_plot_time_window,
+                            &mut self.new_plot_update_frequency,
+                        );
+                    }
+                }
             });
 
         // Show plotting control window if open
