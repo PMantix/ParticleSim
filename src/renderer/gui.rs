@@ -247,7 +247,7 @@ impl super::Renderer {
                         });
                         ui.label(format!("Effective LJ range: {:.2}", current_props.lj_cutoff * current_props.lj_sigma));
                     }
-                }
+                });
                     SettingsTab::ButlerVolmer => {
                     ui.checkbox(&mut self.sim_config.use_butler_volmer, "Use Butler-Volmer");
                     ui.add(
@@ -652,7 +652,7 @@ impl super::Renderer {
                                 }
                             });
                     }
-                }
+                });
                     SettingsTab::Links => {
                         egui::CollapsingHeader::new("Foil Links").default_open(true).show(ui, |ui| {
                     if self.selected_foil_ids.len() == 2 {
@@ -675,7 +675,7 @@ impl super::Renderer {
                             });
                         }
                     }
-                }
+                });
                     SettingsTab::Debug => {
                         egui::CollapsingHeader::new("Debug/Diagnostics").default_open(true).show(ui, |ui| {
                             ui.checkbox(&mut self.sim_config.show_lj_vs_coulomb_ratio, "Show LJ/Coulomb Force Ratio");
