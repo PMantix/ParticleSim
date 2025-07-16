@@ -18,8 +18,9 @@ This repository contains a modular, parallelized particle simulation for large-s
 - **Real-time Data Analysis & Plotting**:
   - **Time Series Plots**: Track species populations, foil currents, and electron hop rates over time.
   - **Spatial Profile Plots**: Analyze charge distribution, velocity profiles, and electron counts along X or Y axes.
-  - **Full Domain Binning**: Spatial plots always span the entire simulation domain (-350 to +350), regardless of particle locations.
-  - **Data Export**: Export plot data in CSV, JSON, or TSV formats for external analysis.
+- **Full Domain Binning**: Spatial plots always span the entire simulation domain (-350 to +350), regardless of particle locations.
+- **Data Export**: Export plot data in CSV, JSON, or TSV formats for external analysis.
+- **Transient Transference Number**: Measure the instantaneous cation transference number from species drift velocities.
 - **Interactive GUI**:  
   - Real-time visualization and controls via [quarkstrom](https://github.com/DeadlockCode/quarkstrom).
   - **Manual Step Button**: Step the simulation forward by one timestep for precise debugging.
