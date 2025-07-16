@@ -1,7 +1,7 @@
 use super::*;
 
-impl super::Renderer {
-    fn show_physics_tab(&mut self, ui: &mut egui::Ui) {
+impl super::super::Renderer {
+    pub fn show_physics_tab(&mut self, ui: &mut egui::Ui) {
         ui.heading("⚛️ Physics Models");
 
         // Butler-Volmer Parameters

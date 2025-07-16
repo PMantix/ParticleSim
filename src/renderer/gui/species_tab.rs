@@ -1,7 +1,7 @@
 use super::*;
 
-impl super::Renderer {
-    fn show_species_tab(&mut self, ui: &mut egui::Ui) {
+impl super::super::Renderer {
+    pub fn show_species_tab(&mut self, ui: &mut egui::Ui) {
         ui.heading("🔬 Species Configuration");
 
         ui.label("Configure all properties for each species:");

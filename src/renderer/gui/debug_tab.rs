@@ -1,7 +1,7 @@
 use super::*;
 
-impl super::Renderer {
-    fn show_debug_tab(&mut self, ui: &mut egui::Ui) {
+impl super::super::Renderer {
+    pub fn show_debug_tab(&mut self, ui: &mut egui::Ui) {
         ui.heading("🐛 Debug & Diagnostics");
 
         ui.group(|ui| {

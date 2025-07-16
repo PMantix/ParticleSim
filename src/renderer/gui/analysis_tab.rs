@@ -1,7 +1,7 @@
 use super::*;
 
-impl super::Renderer {
-    fn show_analysis_tab(&mut self, ui: &mut egui::Ui) {
+impl super::super::Renderer {
+    pub fn show_analysis_tab(&mut self, ui: &mut egui::Ui) {
         ui.heading("📊 Analysis & Plotting");
 
         // Plotting & Analysis

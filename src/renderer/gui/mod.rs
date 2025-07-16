@@ -17,16 +17,6 @@ pub mod simulation_tab;
 pub mod species_tab;
 pub mod visualization_tab;
 
-pub use analysis_tab::*;
-pub use debug_tab::*;
-pub use diagnostics_tab::*;
-pub use foils_tab::*;
-pub use physics_tab::*;
-pub use scenario_tab::*;
-pub use simulation_tab::*;
-pub use species_tab::*;
-pub use visualization_tab::*;
-
 impl super::Renderer {
     pub fn show_gui(&mut self, ctx: &quarkstrom::egui::Context) {
         let mut settings_open = self.settings_window_open;
