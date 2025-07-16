@@ -20,16 +20,22 @@ impl super::Renderer {
                 
                 ui.separator();
                 
-                // Tab bar
-                ui.horizontal(|ui| {
-                    ui.selectable_value(&mut self.current_tab, super::GuiTab::Simulation, "⚙️ Simulation");
-                    ui.selectable_value(&mut self.current_tab, super::GuiTab::Visualization, "👁️ Visualization");
-                    ui.selectable_value(&mut self.current_tab, super::GuiTab::Species, "🔬 Species");
-                    ui.selectable_value(&mut self.current_tab, super::GuiTab::Physics, "⚛️ Physics");
-                    ui.selectable_value(&mut self.current_tab, super::GuiTab::Scenario, "🌐 Scenario");
-                    ui.selectable_value(&mut self.current_tab, super::GuiTab::Foils, "🔋 Foils");
-                    ui.selectable_value(&mut self.current_tab, super::GuiTab::Analysis, "📊 Analysis");
-                    ui.selectable_value(&mut self.current_tab, super::GuiTab::Debug, "🐛 Debug");
+                // Tab bar - organized in two rows
+                ui.vertical(|ui| {
+                    // First row of tabs
+                    ui.horizontal(|ui| {
+                        ui.selectable_value(&mut self.current_tab, super::GuiTab::Simulation, "⚙️ Simulation");
+                        ui.selectable_value(&mut self.current_tab, super::GuiTab::Visualization, "👁️ Visualization");
+                        ui.selectable_value(&mut self.current_tab, super::GuiTab::Species, "🔬 Species");
+                        ui.selectable_value(&mut self.current_tab, super::GuiTab::Physics, "⚛️ Physics");
+                    });
+                    // Second row of tabs
+                    ui.horizontal(|ui| {
+                        ui.selectable_value(&mut self.current_tab, super::GuiTab::Scenario, "🌐 Scenario");
+                        ui.selectable_value(&mut self.current_tab, super::GuiTab::Foils, "🔋 Foils");
+                        ui.selectable_value(&mut self.current_tab, super::GuiTab::Analysis, "📊 Analysis");
+                        ui.selectable_value(&mut self.current_tab, super::GuiTab::Debug, "🐛 Debug");
+                    });
                 });
                 
                 ui.separator();
@@ -622,6 +628,90 @@ impl super::Renderer {
     fn show_foils_tab(&mut self, ui: &mut egui::Ui) {
         ui.heading("🔋 Foil Controls");
         
+        // Foil Selection for Linking
+        ui.group(|ui| {
+            ui.label("🎯 Foil Selection for Linking");
+            ui.label("Select foils by clicking on them in the simulation, or use the list below:");
+            
+            let foils = FOILS.lock();
+            if !foils.is_empty() {
+                ui.horizontal(|ui| {
+                    ui.label("Available foils:");
+                    for foil in foils.iter() {
+                        let is_selected = self.selected_foil_ids.contains(&foil.id);
+                        let button_text = if is_selected {
+                            format!("✓ Foil {}", foil.id)
+                        } else {
+                            format!("Foil {}", foil.id)
+                        };
+                        
+                        if ui.button(button_text).clicked() {
+                            if is_selected {
+                                // Remove from selection
+                                self.selected_foil_ids.retain(|&id| id != foil.id);
+                            } else {
+                                // Add to selection (limit to 2 for linking)
+                                if self.selected_foil_ids.len() < 2 {
+                                    self.selected_foil_ids.push(foil.id);
+                                } else {
+                                    // Replace oldest selection
+                                    self.selected_foil_ids.remove(0);
+                                    self.selected_foil_ids.push(foil.id);
+                                }
+                            }
+                        }
+                    }
+                });
+                
+                ui.horizontal(|ui| {
+                    ui.label(format!("Selected: {}/2 foils", self.selected_foil_ids.len()));
+                    if ui.button("Clear Selection").clicked() {
+                        self.selected_foil_ids.clear();
+                    }
+                });
+            } else {
+                ui.label("No foils available. Add foils in the Scenario tab first.");
+            }
+        });
+
+        ui.separator();
+
+        // Foil Linking Controls
+        ui.group(|ui| {
+            ui.label("🔗 Foil Link Controls");
+            if self.selected_foil_ids.len() == 2 {
+                let a = self.selected_foil_ids[0];
+                let b = self.selected_foil_ids[1];
+                let foils = FOILS.lock();
+                let linked = foils.iter().find(|f| f.id == a).and_then(|f| f.link_id).map(|id| id == b).unwrap_or(false);
+                
+                ui.label(format!("Selected foils: {} and {}", a, b));
+                
+                if linked {
+                    ui.label("✅ These foils are currently linked");
+                    if ui.button("🔓 Unlink Foils").clicked() {
+                        SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::UnlinkFoils { a, b }).unwrap();
+                    }
+                } else {
+                    ui.label("❌ These foils are not linked");
+                    ui.horizontal(|ui| {
+                        if ui.button("🔗 Link Parallel").clicked() {
+                            SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::LinkFoils { a, b, mode: LinkMode::Parallel }).unwrap();
+                        }
+                        if ui.button("🔗 Link Opposite").clicked() {
+                            SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::LinkFoils { a, b, mode: LinkMode::Opposite }).unwrap();
+                        }
+                    });
+                    ui.label("Parallel: same current | Opposite: inverted current");
+                }
+            } else {
+                ui.label("Select exactly 2 foils above to link them together.");
+                ui.label("Linked foils share current settings - one controls both.");
+            }
+        });
+
+        ui.separator();
+        
         // Foil Current Controls for Selected Foil
         if let Some(selected_id) = self.selected_particle_id {
             let maybe_foil = {
@@ -631,7 +721,7 @@ impl super::Renderer {
             if let Some(foil) = maybe_foil {
                 ui.group(|ui| {
                     ui.label("⚡ Current Controls");
-                    ui.label("DC + AC Current Components:");
+                    ui.label(format!("Configuring Foil {} (selected in simulation)", foil.id));
                     
                     // DC Current control
                     let mut dc_current = foil.dc_current;
@@ -765,37 +855,13 @@ impl super::Renderer {
                 });
             }
         } else {
-            ui.label("Select a foil particle to configure its current settings");
+            ui.group(|ui| {
+                ui.label("� How to control foil currents:");
+                ui.label("• Select a foil particle in the simulation (Shift+Click)");
+                ui.label("• Or create foils in the Scenario tab first");
+                ui.label("• Current controls will appear here when a foil is selected");
+            });
         }
-
-        ui.separator();
-
-        // Foil Linking Controls
-        ui.group(|ui| {
-            ui.label("🔗 Foil Links");
-            if self.selected_foil_ids.len() == 2 {
-                let a = self.selected_foil_ids[0];
-                let b = self.selected_foil_ids[1];
-                let foils = FOILS.lock();
-                let linked = foils.iter().find(|f| f.id == a).and_then(|f| f.link_id).map(|id| id == b).unwrap_or(false);
-                if linked {
-                    if ui.button("Unlink Foils").clicked() {
-                        SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::UnlinkFoils { a, b }).unwrap();
-                    }
-                } else {
-                    ui.horizontal(|ui| {
-                        if ui.button("Link Parallel").clicked() {
-                            SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::LinkFoils { a, b, mode: LinkMode::Parallel }).unwrap();
-                        }
-                        if ui.button("Link Opposite").clicked() {
-                            SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::LinkFoils { a, b, mode: LinkMode::Opposite }).unwrap();
-                        }
-                    });
-                }
-            } else {
-                ui.label("Select exactly 2 foils to link them");
-            }
-        });
     }
 
     fn show_analysis_tab(&mut self, ui: &mut egui::Ui) {
