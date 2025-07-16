@@ -7,6 +7,7 @@ use crate::body::{Body, Species, foil::Foil};
 use crate::config::{SimConfig, DOMAIN_BOUNDS};
 use crate::quadtree::Node;
 use crate::plotting::{PlottingSystem, PlotType, Quantity, SamplingMode};
+use crate::diagnostics::TransferenceNumberDiagnostic;
 use ultraviolet::Vec2;
 use quarkstrom::winit_input_helper::WinitInputHelper;
 use std::collections::HashMap;
@@ -30,6 +31,7 @@ pub enum GuiTab {
     Foils,
     Analysis,
     Debug,
+    Diagnostics,
 }
 
 impl Default for GuiTab {
@@ -99,6 +101,7 @@ pub struct Renderer {
     pub selected_delete_option: DeleteOption,
     // Current GUI tab
     pub current_tab: GuiTab,
+    pub transference_number_diagnostic: Option<TransferenceNumberDiagnostic>,
 }
 
 impl quarkstrom::Renderer for Renderer {
@@ -156,6 +159,7 @@ impl quarkstrom::Renderer for Renderer {
             selected_lj_species: Species::LithiumMetal, // Default to LithiumMetal for LJ editing
             selected_delete_option: DeleteOption::AllSpecies, // Default to All Species
             current_tab: GuiTab::default(), // Default to Simulation tab
+            transference_number_diagnostic: Some(TransferenceNumberDiagnostic::new()),
         }
     }
 

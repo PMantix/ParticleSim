@@ -24,6 +24,11 @@ impl super::Renderer {
                 // Update plotting system with new data
                 let current_time = *crate::renderer::state::SIM_TIME.lock();
                 self.plotting_system.update_plots(&self.bodies, &self.foils, current_time);
+                
+                // Update diagnostics
+                if let Some(ref mut diagnostic) = self.transference_number_diagnostic {
+                    diagnostic.calculate(&self.bodies);
+                }
             }
             if let Some(body) = self.confirmed_bodies.take() {
                 self.bodies.push(body.clone());
