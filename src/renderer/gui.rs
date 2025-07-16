@@ -688,6 +688,28 @@ impl super::Renderer {
                     ui.checkbox(&mut self.show_electron_deficiency, "Show Electron Deficiency/Excess");
                 });
 
+                // --- Screen Capture ---
+                ui.separator();
+                egui::CollapsingHeader::new("Screen Capture").default_open(false).show(ui, |ui| {
+                    if self.recording {
+                        if ui.button("Stop Recording").clicked() {
+                            self.recording = false;
+                        }
+                    } else {
+                        if ui.button("Start Recording").clicked() {
+                            self.start_recording();
+                        }
+                    }
+                    ui.add(egui::DragValue::new(&mut self.capture_interval).prefix("Interval ").speed(0.1));
+                    let mut dir = self.output_dir.to_string_lossy().to_string();
+                    if ui.text_edit_singleline(&mut dir).lost_focus() {
+                        self.output_dir = std::path::PathBuf::from(dir.clone());
+                    }
+                    if ui.button("Create Dir").clicked() {
+                        let _ = std::fs::create_dir_all(&self.output_dir);
+                    }
+                });
+
                 // --- Plotting & Analysis ---
                 ui.separator();
                 crate::plotting::gui::show_plotting_controls(

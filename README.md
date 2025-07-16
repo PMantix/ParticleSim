@@ -31,7 +31,8 @@ This repository contains a modular, parallelized particle simulation for large-s
 - **State Management**:
   - Save and load simulation states for reproducible experiments.
   - Pre-configured scenarios for quick setup.
-- **Configurable Physics**:  
+- **Screen Capture**: Record the simulation view to PNG images at regular intervals.
+- **Configurable Physics**:
   - Adjustable Lennard-Jones parameters per species, electron hopping rates, and Butler-Volmer coefficients. Each species can enable or disable LJ forces to model either "metal-like" cohesion or "liquid-like" behavior.
   - Domain bounds, timestep settings, and force cutoffs can be modified at runtime.
 
@@ -74,6 +75,7 @@ This repository contains a modular, parallelized particle simulation for large-s
 - **Scenario Controls**: Quick setup with predefined particle arrangements
 - **State Management**: Save and load simulation configurations
 - **Manual Stepping**: Advance simulation one timestep at a time for debugging
+- **Screen Capture**: Periodically save the visible region to PNG files
 
 ---
 
@@ -127,6 +129,10 @@ The simulation includes a comprehensive plotting system for real-time data analy
 3. Choose quantity to analyze (charge, velocity, species count, etc.)
 4. Configure sampling mode and update frequency
 5. Export data for external analysis when needed
+6. Use **Screen Capture** to record images:
+   - Open the "Screen Capture" section in the GUI
+   - Click **Start Recording** and drag a box over the area to capture
+   - PNG files will be written to the selected directory at the chosen interval
 
 ---
 
