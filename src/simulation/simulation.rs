@@ -12,7 +12,7 @@ use crate::simulation::utils::can_transfer_electron;
 use rand::prelude::*; // Import all prelude traits for rand 0.9+
 use crate::profile_scope;
 use std::collections::HashMap;
-use crate::diagnostics;
+use crate::diagnostics::TransferenceDiagnostics;
 
 /// The main simulation state and logic for the particle system.
 pub struct Simulation {
@@ -27,7 +27,7 @@ pub struct Simulation {
     pub foils: Vec<crate::body::foil::Foil>,
     pub body_to_foil: HashMap<u64, u64>,
     pub config:config::SimConfig, //
-    pub transference_diagnostics: crate::diagnostics::TransferenceDiagnostics,
+    pub transference_diagnostics: TransferenceDiagnostics,
 }
 
 impl Simulation {
@@ -56,7 +56,7 @@ impl Simulation {
             foils: Vec::new(),
             body_to_foil: HashMap::new(),
             config: config::SimConfig::default(),
-            transference_diagnostics: crate::diagnostics::TransferenceDiagnostics::new(1),
+            transference_diagnostics: TransferenceDiagnostics::new(1),
         };
         // Example: scenario setup using SimCommand (pseudo-code, actual sending is done in main.rs or GUI)
         // let left_center = Vec2::new(-bounds * 0.6, 0.0);

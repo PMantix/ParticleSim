@@ -11,6 +11,7 @@ mod io;
 mod species;
 mod plotting;
 mod init_config;
+mod diagnostics;
 mod app;
 
 #[cfg(feature = "profiling")]
