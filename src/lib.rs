@@ -3,6 +3,7 @@ pub mod partition;
 pub mod quadtree;
 pub mod cell_list;
 pub mod renderer;
+pub mod renderer_utils;
 pub mod simulation;
 pub mod utils;
 pub mod config;
