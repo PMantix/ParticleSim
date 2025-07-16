@@ -12,6 +12,7 @@ use crate::simulation::utils::can_transfer_electron;
 use rand::prelude::*; // Import all prelude traits for rand 0.9+
 use crate::profile_scope;
 use std::collections::HashMap;
+use crate::body::foil::LinkMode;
 
 /// The main simulation state and logic for the particle system.
 pub struct Simulation {
@@ -319,7 +320,7 @@ impl Simulation {
         })
     }
 
-    fn try_add_electron(&mut self, idx: usize, rng: &mut rand::rngs::StdRng, recipients: &mut [bool]) -> bool {
+    fn try_add_electron(&mut self, idx: usize, rng: &mut rand::rngs::ThreadRng, recipients: &mut [bool]) -> bool {
         let foil = &mut self.foils[idx];
         if let Some(&id) = foil.body_ids.as_slice().choose(rng) {
             if let Some((body_idx, body)) = self.bodies.iter_mut().enumerate().find(|(_, b)| b.id == id && b.species == Species::FoilMetal) {
@@ -333,7 +334,7 @@ impl Simulation {
         false
     }
 
-    fn try_remove_electron(&mut self, idx: usize, rng: &mut rand::rngs::StdRng, recipients: &mut [bool]) -> bool {
+    fn try_remove_electron(&mut self, idx: usize, rng: &mut rand::rngs::ThreadRng, recipients: &mut [bool]) -> bool {
         let foil = &mut self.foils[idx];
         if let Some(&id) = foil.body_ids.as_slice().choose(rng) {
             if let Some((body_idx, body)) = self.bodies.iter_mut().enumerate().find(|(_, b)| b.id == id && b.species == Species::FoilMetal) {
