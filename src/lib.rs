@@ -10,6 +10,7 @@ pub mod profiler;
 pub mod io;
 pub mod species;
 pub mod plotting;
+pub mod diagnostics;
 pub mod init_config;
 
 pub mod app;
