@@ -79,7 +79,8 @@ pub struct Renderer {
     //scenario_current: f32,
     pub window_width: u16,
     pub window_height: u16,
-    pub show_electron_deficiency: bool,
+    pub show_foil_electron_deficiency: bool,
+    pub show_metal_electron_deficiency: bool,
     // State saving/loading UI
     pub save_state_name: String,
     pub load_state_selected: Option<String>,
@@ -155,7 +156,8 @@ impl quarkstrom::Renderer for Renderer {
             //scenario_current: 0.0,
             window_width: 800, // default value, can be changed
             window_height: 600, // default value, can be changed
-            show_electron_deficiency: true,
+            show_foil_electron_deficiency: true,
+            show_metal_electron_deficiency: false,
             save_state_name: String::new(),
             load_state_selected: None,
             // Initialize plotting system with simulation bounds using domain bounds
