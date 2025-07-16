@@ -75,6 +75,24 @@ impl super::Renderer {
             mouse * self.scale + self.pos
         };
 
+        if self.recording && self.record_rect.is_none() {
+            if input.mouse_pressed(1) {
+                let m = world_mouse();
+                self.record_rect = Some((m, m));
+            } else if input.mouse_held(1) {
+                if let Some(rect) = &mut self.record_rect {
+                    rect.1 = world_mouse();
+                }
+            } else if input.mouse_released(1) {
+                if let Some(rect) = &mut self.record_rect {
+                    rect.1 = world_mouse();
+                }
+            }
+            if input.mouse_held(1) || input.mouse_pressed(1) {
+                return;
+            }
+        }
+
         if input.mouse_pressed(1) {
             if self.spawn_body.is_none() {
                 // If shift is held, select a particle

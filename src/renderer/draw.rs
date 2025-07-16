@@ -277,6 +277,12 @@ impl super::Renderer {
         if !self.selected_foil_ids.is_empty() {
             self.draw_foil_square_waves(ctx);
         }
+
+        if let Some((a, b)) = self.record_rect {
+            let min = Vec2::new(a.x.min(b.x), a.y.min(b.y));
+            let max = Vec2::new(a.x.max(b.x), a.y.max(b.y));
+            ctx.draw_rect(min, max, [255, 0, 0, 255]);
+        }
     }
 }
 

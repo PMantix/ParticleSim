@@ -41,4 +41,25 @@ mod tests {
         let last_current = history[history.len() - 1].1;
         assert!((first_current - last_current).abs() < 0.001, "Current values should be consistent for constant current");
     }
+
+    #[test]
+    fn start_recording_schedules_next_capture() {
+        let mut r = Renderer::new();
+        r.capture_interval = 0.5;
+        *crate::renderer::state::SIM_TIME.lock() = 1.0;
+        r.start_recording();
+        assert!((r.next_capture_time - 1.5).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn save_image_creates_file() {
+        let mut r = Renderer::new();
+        let dir = std::env::temp_dir().join("psim_test_out");
+        std::fs::create_dir_all(&dir).unwrap();
+        let data = vec![255u8, 0, 0, 255];
+        r.output_dir = dir.clone();
+        r.save_rgba_png(&data, 1, 1, 0.0);
+        assert!(dir.join("frame_0_00.png").exists());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }
