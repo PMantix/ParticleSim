@@ -53,17 +53,24 @@ mod foil_electron_limits {
         use crate::body::foil::LinkMode;
         let mut sim = Simulation::new();
 
-        let mut body_a = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::FoilMetal);
+        // Place bodies far apart to prevent electron hopping
+        let mut body_a = Body::new(Vec2::new(-1000.0, 0.0), Vec2::zero(), 1.0, 1.0, 0.0, Species::FoilMetal);
         body_a.electrons = smallvec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }; crate::config::FOIL_NEUTRAL_ELECTRONS];
         let id_a = body_a.id;
         sim.bodies.push(body_a);
 
-        let body_b = Body::new(Vec2::new(2.0, 0.0), Vec2::zero(), 1.0, 1.0, 0.0, Species::FoilMetal);
+        // Body B starts with neutral electrons but will have them removed before linking
+        let mut body_b = Body::new(Vec2::new(1000.0, 0.0), Vec2::zero(), 1.0, 1.0, 0.0, Species::FoilMetal);
+        body_b.electrons = smallvec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }; crate::config::FOIL_NEUTRAL_ELECTRONS];
         let id_b = body_b.id;
         sim.bodies.push(body_b);
 
-        let mut foil_a = Foil::new(vec![id_a], Vec2::zero(), 1.0, 1.0, 1.0, 0.0);
-        let mut foil_b = Foil::new(vec![id_b], Vec2::zero(), 1.0, 1.0, -1.0, 0.0);
+        // Remove all electrons from body B first to set up the test condition
+        let body_b_idx = sim.bodies.len() - 1;
+        sim.bodies[body_b_idx].electrons.clear();
+
+        let mut foil_a = Foil::new(vec![id_a], Vec2::new(-1000.0, 0.0), 1.0, 1.0, 1.0, 0.0);
+        let mut foil_b = Foil::new(vec![id_b], Vec2::new(1000.0, 0.0), 1.0, 1.0, -1.0, 0.0);
         foil_a.link_id = Some(foil_b.id);
         foil_b.link_id = Some(foil_a.id);
         foil_a.mode = LinkMode::Opposite;
@@ -76,6 +83,6 @@ mod foil_electron_limits {
         sim.step();
 
         assert_eq!(sim.bodies[0].electrons.len(), crate::config::FOIL_NEUTRAL_ELECTRONS, "Foil A should not gain electrons when Foil B cannot lose any");
-        assert_eq!(sim.bodies[1].electrons.len(), 0, "Foil B should remain without electrons");
+        assert_eq!(sim.bodies[1].electrons.len(), 0, "Foil B should remain at 0 electrons since it cannot lose any more");
     }
 }
