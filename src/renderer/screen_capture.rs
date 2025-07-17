@@ -5,7 +5,11 @@ use std::path::Path;
 use chrono::Utc;
 
 impl Renderer {
-    pub fn handle_screen_capture(&mut self, current_time: f32) {
+    pub fn handle_screen_capture(&mut self, current_time: f32, width: u16, height: u16) {
+        // Update our stored dimensions to ensure they're current
+        self.window_width = width;
+        self.window_height = height;
+        
         // Check if we should trigger a capture now (either manual or timed)
         if self.should_capture_next_frame {
             // Manual capture
@@ -308,18 +312,18 @@ impl Renderer {
 
     pub fn finish_region_selection(&mut self, width: u16, height: u16) {
         if let (Some(start), Some(end)) = (self.selection_start, self.selection_end) {
+            // Ensure we're using the absolute current window dimensions
+            self.window_width = width;
+            self.window_height = height;
+            
             // Convert screen coordinates to world coordinates for storage using current window dimensions
             let world_start = self.screen_to_world(start, width, height);
             let world_end = self.screen_to_world(end, width, height);
             
             // Store the world coordinates
             self.capture_region = Some((world_start, world_end));
-            println!("Capture region set to world coordinates: ({:.2}, {:.2}) to ({:.2}, {:.2}) (window: {}x{})", 
-                world_start.x, world_start.y, world_end.x, world_end.y, width, height);
-            
-            // Also update our stored window dimensions to match current
-            self.window_width = width;
-            self.window_height = height;
+            println!("Capture region set to world coordinates: ({:.2}, {:.2}) to ({:.2}, {:.2}) (current window: {}x{}, camera pos: ({:.2}, {:.2}), scale: {:.2})", 
+                world_start.x, world_start.y, world_end.x, world_end.y, width, height, self.pos.x, self.pos.y, self.scale);
         }
         self.is_selecting_region = false;
         self.selection_start = None;
@@ -447,6 +451,35 @@ impl Renderer {
         println!("Could not detect simulation window position, using (0, 0)");
         (0, 0)
     }
+
+    pub fn verify_capture_region_after_resize(&mut self, new_width: u16, new_height: u16) {
+        // If we have a capture region and window dimensions changed significantly
+        if let Some((world_start, world_end)) = self.capture_region {
+            let old_width = self.window_width;
+            let old_height = self.window_height;
+            
+            // Check if aspect ratio changed significantly (more than 5%)
+            let old_aspect = old_width as f32 / old_height as f32;
+            let new_aspect = new_width as f32 / new_height as f32;
+            let aspect_change = (new_aspect - old_aspect).abs() / old_aspect;
+            
+            if aspect_change > 0.05 {
+                println!("Window aspect ratio changed significantly ({:.3} -> {:.3}, change: {:.1}%), capture region may need adjustment", 
+                        old_aspect, new_aspect, aspect_change * 100.0);
+                
+                // Convert world coordinates back to screen coordinates using new dimensions
+                let screen_start = self.world_to_screen(world_start, new_width, new_height);
+                let screen_end = self.world_to_screen(world_end, new_width, new_height);
+                
+                println!("Capture region screen coordinates updated: ({:.1}, {:.1}) to ({:.1}, {:.1}) for new window size {}x{}", 
+                        screen_start.x, screen_start.y, screen_end.x, screen_end.y, new_width, new_height);
+            }
+            
+            // Update stored dimensions
+            self.window_width = new_width;
+            self.window_height = new_height;
+        }
+    }
 }
 
 #[cfg(test)]
@@ -546,17 +579,17 @@ mod tests {
         renderer.last_capture_time = 0.0;
         
         // First call should update timing
-        renderer.handle_screen_capture(1.0);
+        renderer.handle_screen_capture(1.0, 800, 600);
         assert_eq!(renderer.last_capture_time, 1.0);
         assert_eq!(renderer.capture_counter, 1);
         
         // Second call within interval should not update
         let old_counter = renderer.capture_counter;
-        renderer.handle_screen_capture(1.5);
+        renderer.handle_screen_capture(1.5, 800, 600);
         assert_eq!(renderer.capture_counter, old_counter);
         
         // Call after interval should update
-        renderer.handle_screen_capture(2.0);
+        renderer.handle_screen_capture(2.0, 800, 600);
         assert_eq!(renderer.last_capture_time, 2.0);
         assert_eq!(renderer.capture_counter, old_counter + 1);
     }

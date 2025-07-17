@@ -10,6 +10,11 @@ use crate::body::Species;
 
 impl super::Renderer {
     pub fn handle_input(&mut self, input: &WinitInputHelper, width: u16, height: u16) {
+        // Check if window dimensions changed and verify capture region if needed
+        if width != self.window_width || height != self.window_height {
+            self.verify_capture_region_after_resize(width, height);
+        }
+        
         self.settings_window_open ^= input.key_pressed(VirtualKeyCode::E);
 
         if input.key_pressed(VirtualKeyCode::Space) {
@@ -90,7 +95,7 @@ impl super::Renderer {
 
         // Handle screen capture timing
         let current_time = *crate::renderer::state::SIM_TIME.lock();
-        self.handle_screen_capture(current_time);
+        self.handle_screen_capture(current_time, width, height);
 
         // Mouse to world conversion
         let world_mouse = || -> Vec2 {

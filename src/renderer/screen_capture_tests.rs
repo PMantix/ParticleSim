@@ -108,17 +108,17 @@ mod tests {
         renderer.last_capture_time = 0.0;
         
         // First call should update timing
-        renderer.handle_screen_capture(1.0);
+        renderer.handle_screen_capture(1.0, 800, 600);
         assert_eq!(renderer.last_capture_time, 1.0);
         assert_eq!(renderer.capture_counter, 1);
         
         // Second call within interval should not update
         let old_counter = renderer.capture_counter;
-        renderer.handle_screen_capture(1.5);
+        renderer.handle_screen_capture(1.5, 800, 600);
         assert_eq!(renderer.capture_counter, old_counter);
         
         // Call after interval should update
-        renderer.handle_screen_capture(2.0);
+        renderer.handle_screen_capture(2.0, 800, 600);
         assert_eq!(renderer.last_capture_time, 2.0);
         assert_eq!(renderer.capture_counter, old_counter + 1);
     }
