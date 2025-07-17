@@ -24,7 +24,7 @@ impl super::Renderer {
     pub fn show_gui(&mut self, ctx: &quarkstrom::egui::Context) {
         let mut settings_open = self.settings_window_open;
         egui::Window::new("Particle Simulation Controls")
-            .default_width(400.0)
+            .default_width(320.0)
             .resizable(true)
             .open(&mut settings_open)
             .show(ctx, |ui| {
@@ -86,12 +86,22 @@ impl super::Renderer {
                             "🐛 Debug",
                         );
                     });
+                    // Third row of tabs
+                    ui.horizontal(|ui| {
+                        ui.selectable_value(
+                            &mut self.current_tab,
+                            super::GuiTab::ScreenCapture,
+                            "📷 Screen Capture",
+                        );
+                    });
                 });
 
                 ui.separator();
 
                 // Show content based on selected tab
-                egui::ScrollArea::vertical().show(ui, |ui| match self.current_tab {
+                egui::ScrollArea::vertical()
+                    .auto_shrink([true, false])
+                    .show(ui, |ui| match self.current_tab {
                     super::GuiTab::Simulation => self.show_simulation_tab(ui),
                     super::GuiTab::Visualization => self.show_visualization_tab(ui),
                     super::GuiTab::Species => self.show_species_tab(ui),

@@ -58,19 +58,24 @@ impl super::Renderer {
                 let screen_pos = Vec2::new(mx, my);
                 
                 if input.mouse_pressed(0) {
-                    // Start selection
-                    self.start_region_selection(screen_pos);
+                    // Start selection on mouse press
+                    self.selection_start = Some(screen_pos);
+                    self.selection_end = Some(screen_pos);
+                    println!("Region selection: Started at ({:.0}, {:.0})", screen_pos.x, screen_pos.y);
                 } else if input.mouse_held(0) && self.selection_start.is_some() {
                     // Update selection continuously while dragging
-                    self.update_region_selection(screen_pos);
+                    self.selection_end = Some(screen_pos);
                 } else if input.mouse_released(0) && self.selection_start.is_some() {
-                    // Finish selection
+                    // Finish selection on mouse release
+                    self.selection_end = Some(screen_pos);
+                    println!("Region selection: Finished at ({:.0}, {:.0})", screen_pos.x, screen_pos.y);
                     self.finish_region_selection();
                 }
                 
                 // Cancel selection with right click or escape
                 if input.mouse_pressed(1) || input.key_pressed(VirtualKeyCode::Escape) {
                     self.cancel_region_selection();
+                    println!("Region selection cancelled");
                 }
             }
         } else {

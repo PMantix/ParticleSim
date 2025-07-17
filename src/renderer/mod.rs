@@ -113,7 +113,7 @@ pub struct Renderer {
     pub capture_folder: String,
     pub selection_start: Option<Vec2>,  // for drag selection
     pub selection_end: Option<Vec2>,
-    pub capture_region: Option<(Vec2, Vec2)>,  // (top_left, bottom_right) in screen space
+    pub capture_region: Option<(Vec2, Vec2)>,  // (top_left, bottom_right) in world space
     pub is_selecting_region: bool,
     pub capture_counter: usize,
     pub show_capture_window: bool,
