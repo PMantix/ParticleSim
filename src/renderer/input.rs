@@ -69,7 +69,7 @@ impl super::Renderer {
                     // Finish selection on mouse release
                     self.selection_end = Some(screen_pos);
                     println!("Region selection: Finished at ({:.0}, {:.0})", screen_pos.x, screen_pos.y);
-                    self.finish_region_selection();
+                    self.finish_region_selection(width, height);
                 }
                 
                 // Cancel selection with right click or escape

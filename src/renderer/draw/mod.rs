@@ -292,5 +292,25 @@ impl super::Renderer {
                 ctx.draw_line(bottom_left, top_left, red);
             }
         }
+
+        // Draw the saved capture region if one exists
+        if let Some((world_start, world_end)) = self.capture_region {
+            let min_x = world_start.x.min(world_end.x);
+            let max_x = world_start.x.max(world_end.x);
+            let min_y = world_start.y.min(world_end.y);
+            let max_y = world_start.y.max(world_end.y);
+            
+            let top_left = Vec2::new(min_x, max_y);
+            let top_right = Vec2::new(max_x, max_y);
+            let bottom_right = Vec2::new(max_x, min_y);
+            let bottom_left = Vec2::new(min_x, min_y);
+            
+            // Draw rectangle outline in blue with some transparency
+            let blue = [0, 128, 255, 128];
+            ctx.draw_line(top_left, top_right, blue);
+            ctx.draw_line(top_right, bottom_right, blue);
+            ctx.draw_line(bottom_right, bottom_left, blue);
+            ctx.draw_line(bottom_left, top_left, blue);
+        }
     }
 }

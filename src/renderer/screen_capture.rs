@@ -306,16 +306,20 @@ impl Renderer {
         }
     }
 
-    pub fn finish_region_selection(&mut self) {
+    pub fn finish_region_selection(&mut self, width: u16, height: u16) {
         if let (Some(start), Some(end)) = (self.selection_start, self.selection_end) {
-            // Convert screen coordinates to world coordinates for storage
-            let world_start = self.screen_to_world(start, self.window_width, self.window_height);
-            let world_end = self.screen_to_world(end, self.window_width, self.window_height);
+            // Convert screen coordinates to world coordinates for storage using current window dimensions
+            let world_start = self.screen_to_world(start, width, height);
+            let world_end = self.screen_to_world(end, width, height);
             
             // Store the world coordinates
             self.capture_region = Some((world_start, world_end));
-            println!("Capture region set to world coordinates: ({:.2}, {:.2}) to ({:.2}, {:.2})", 
-                world_start.x, world_start.y, world_end.x, world_end.y);
+            println!("Capture region set to world coordinates: ({:.2}, {:.2}) to ({:.2}, {:.2}) (window: {}x{})", 
+                world_start.x, world_start.y, world_end.x, world_end.y, width, height);
+            
+            // Also update our stored window dimensions to match current
+            self.window_width = width;
+            self.window_height = height;
         }
         self.is_selecting_region = false;
         self.selection_start = None;
