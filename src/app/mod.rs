@@ -93,6 +93,23 @@ pub fn run() {
         0.0,
         Species::FoilMetal,
     );
+    // Bodies for solvent molecules
+    let ec_body = crate::body::Body::new(
+        Vec2::zero(),
+        Vec2::zero(),
+        Species::EC.mass(),
+        Species::EC.radius(),
+        0.0,
+        Species::EC,
+    );
+    let dmc_body = crate::body::Body::new(
+        Vec2::zero(),
+        Vec2::zero(),
+        Species::DMC.mass(),
+        Species::DMC.radius(),
+        0.0,
+        Species::DMC,
+    );
 
     for circle_config in &init_config.particles.circles {
         match circle_config.to_species() {
@@ -102,6 +119,8 @@ pub fn run() {
                     Species::LithiumIon => ion_body.clone(),
                     Species::ElectrolyteAnion => anion_body.clone(),
                     Species::FoilMetal => foil_body.clone(),
+                    Species::EC => ec_body.clone(),
+                    Species::DMC => dmc_body.clone(),
                 };
                 tx.send(SimCommand::AddCircle {
                     body,
@@ -127,6 +146,8 @@ pub fn run() {
                     Species::LithiumIon => ion_body.clone(),
                     Species::ElectrolyteAnion => anion_body.clone(),
                     Species::FoilMetal => foil_body.clone(),
+                    Species::EC => ec_body.clone(),
+                    Species::DMC => dmc_body.clone(),
                 };
                 let (origin_x, origin_y) = rect_config.to_origin_coords();
                 tx.send(SimCommand::AddRectangle {
@@ -179,6 +200,8 @@ pub fn run() {
                     Species::LithiumIon => ion_body.clone(),
                     Species::ElectrolyteAnion => anion_body.clone(),
                     Species::FoilMetal => foil_body.clone(),
+                    Species::EC => ec_body.clone(),
+                    Species::DMC => dmc_body.clone(),
                 };
                 tx.send(SimCommand::AddRandom {
                     body,

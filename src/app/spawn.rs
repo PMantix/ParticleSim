@@ -156,6 +156,8 @@ pub fn add_random(
     domain_width: f32,
     domain_height: f32,
 ) {
+    // Attempt to place 'count' random bodies, tracking failures
+    let mut failures = 0;
     for _ in 0..count {
         let mut placed = false;
         for _ in 0..RANDOM_ATTEMPTS {
@@ -173,14 +175,8 @@ pub fn add_random(
                     body.species,
                 );
                 new_body.electrons.clear();
-                if matches!(
-                    new_body.species,
-                    Species::LithiumMetal | Species::ElectrolyteAnion | Species::EC | Species::DMC
-                ) {
-                    new_body.electrons.push(Electron {
-                        rel_pos: Vec2::zero(),
-                        vel: Vec2::zero(),
-                    });
+                if matches!(new_body.species, Species::LithiumMetal | Species::ElectrolyteAnion | Species::EC | Species::DMC) {
+                    new_body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
                 }
                 new_body.update_charge_from_electrons();
                 new_body.update_species();
@@ -190,11 +186,12 @@ pub fn add_random(
             }
         }
         if !placed {
-            eprintln!(
-                "Failed to place random body after {} attempts",
-                RANDOM_ATTEMPTS
-            );
+            failures += 1;
         }
+    }
+    // Report summary of placement failures only once
+    if failures > 0 {
+        eprintln!("Failed to place {} random bodies out of {} after {} attempts each", failures, count, RANDOM_ATTEMPTS);
     }
 }
 
