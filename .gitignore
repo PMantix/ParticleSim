@@ -2,3 +2,4 @@
 
 # Ignore saved simulation states
 saved_state/
+captures/
