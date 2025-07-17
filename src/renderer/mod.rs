@@ -114,6 +114,7 @@ pub struct Renderer {
     pub selection_start: Option<Vec2>,  // for drag selection
     pub selection_end: Option<Vec2>,
     pub capture_region: Option<(Vec2, Vec2)>,  // (top_left, bottom_right) in world space
+    pub capture_region_ratio: Option<(Vec2, Vec2)>,
     pub is_selecting_region: bool,
     pub capture_counter: usize,
     pub show_capture_window: bool,
@@ -186,6 +187,7 @@ impl quarkstrom::Renderer for Renderer {
             selection_start: None,
             selection_end: None,
             capture_region: None,
+            capture_region_ratio: None,
             is_selecting_region: false,
             capture_counter: 0,
             show_capture_window: false,

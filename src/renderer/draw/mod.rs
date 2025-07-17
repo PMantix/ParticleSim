@@ -294,7 +294,12 @@ impl super::Renderer {
         }
 
         // Draw the saved capture region if one exists
-        if let Some((world_start, world_end)) = self.capture_region {
+        if let Some((ratio_start, ratio_end)) = self.capture_region_ratio {
+            let start_screen = Vec2::new(ratio_start.x * width as f32, ratio_start.y * height as f32);
+            let end_screen = Vec2::new(ratio_end.x * width as f32, ratio_end.y * height as f32);
+            let world_start = self.screen_to_world(start_screen, width, height);
+            let world_end = self.screen_to_world(end_screen, width, height);
+
             let min_x = world_start.x.min(world_end.x);
             let max_x = world_start.x.max(world_end.x);
             let min_y = world_start.y.min(world_end.y);

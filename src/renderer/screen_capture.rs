@@ -145,15 +145,11 @@ impl Renderer {
             };
             
             // Apply region cropping if specified
-            let final_image = if let Some((world_start, world_end)) = self.capture_region {
-                // Convert world coordinates to screen coordinates for cropping
-                let screen_start = self.world_to_screen(world_start, width as u16, height as u16);
-                let screen_end = self.world_to_screen(world_end, width as u16, height as u16);
-                
-                let x1 = screen_start.x.min(screen_end.x).max(0.0) as u32;
-                let y1 = screen_start.y.min(screen_end.y).max(0.0) as u32;
-                let x2 = screen_start.x.max(screen_end.x).min(width as f32) as u32;
-                let y2 = screen_start.y.max(screen_end.y).min(height as f32) as u32;
+            let final_image = if let Some((ratio_start, ratio_end)) = self.capture_region_ratio {
+                let x1 = (ratio_start.x.min(ratio_end.x) * width as f32).max(0.0) as u32;
+                let y1 = (ratio_start.y.min(ratio_end.y) * height as f32).max(0.0) as u32;
+                let x2 = (ratio_start.x.max(ratio_end.x) * width as f32).min(width as f32) as u32;
+                let y2 = (ratio_start.y.max(ratio_end.y) * height as f32).min(height as f32) as u32;
                 let crop_width = x2.saturating_sub(x1);
                 let crop_height = y2.saturating_sub(y1);
                 
@@ -216,7 +212,7 @@ impl Renderer {
         };
 
         // For region capture, we'll need to crop after converting to an image::DynamicImage
-        if let Some((world_start, world_end)) = self.capture_region {
+        if let Some((ratio_start, ratio_end)) = self.capture_region_ratio {
             // Convert screenshots::Image to image::DynamicImage for cropping
             let width = image.width();
             let height = image.height();
@@ -231,18 +227,11 @@ impl Renderer {
                 }
             };
             
-            // Convert world coordinates to screen coordinates for cropping
-            let screen_start = self.world_to_screen(world_start, self.window_width, self.window_height);
-            let screen_end = self.world_to_screen(world_end, self.window_width, self.window_height);
-            
-            // Get window position to adjust coordinates for full screen capture
             let (window_x, window_y) = self.get_window_position();
-            
-            // Calculate crop region - adjust for window position on screen
-            let x1 = (screen_start.x.min(screen_end.x) + window_x as f32).max(0.0) as u32;
-            let y1 = (screen_start.y.min(screen_end.y) + window_y as f32).max(0.0) as u32;
-            let x2 = (screen_start.x.max(screen_end.x) + window_x as f32).min(width as f32) as u32;
-            let y2 = (screen_start.y.max(screen_end.y) + window_y as f32).min(height as f32) as u32;
+            let x1 = (ratio_start.x.min(ratio_end.x) * self.window_width as f32 + window_x as f32).max(0.0) as u32;
+            let y1 = (ratio_start.y.min(ratio_end.y) * self.window_height as f32 + window_y as f32).max(0.0) as u32;
+            let x2 = (ratio_start.x.max(ratio_end.x) * self.window_width as f32 + window_x as f32).min(width as f32) as u32;
+            let y2 = (ratio_start.y.max(ratio_end.y) * self.window_height as f32 + window_y as f32).min(height as f32) as u32;
             
             let crop_width = x2.saturating_sub(x1);
             let crop_height = y2.saturating_sub(y1);
@@ -320,10 +309,23 @@ impl Renderer {
             let world_start = self.screen_to_world(start, width, height);
             let world_end = self.screen_to_world(end, width, height);
             
-            // Store the world coordinates
             self.capture_region = Some((world_start, world_end));
-            println!("Capture region set to world coordinates: ({:.2}, {:.2}) to ({:.2}, {:.2}) (current window: {}x{}, camera pos: ({:.2}, {:.2}), scale: {:.2})", 
-                world_start.x, world_start.y, world_end.x, world_end.y, width, height, self.pos.x, self.pos.y, self.scale);
+            let start_ratio = Vec2::new(start.x / width as f32, start.y / height as f32);
+            let end_ratio = Vec2::new(end.x / width as f32, end.y / height as f32);
+            self.capture_region_ratio = Some((start_ratio, end_ratio));
+            println!(
+                "Capture region set: world ({:.2}, {:.2}) -> ({:.2}, {:.2}), ratios ({:.3}, {:.3}) -> ({:.3}, {:.3}) at {}x{}",
+                world_start.x,
+                world_start.y,
+                world_end.x,
+                world_end.y,
+                start_ratio.x,
+                start_ratio.y,
+                end_ratio.x,
+                end_ratio.y,
+                width,
+                height
+            );
         }
         self.is_selecting_region = false;
         self.selection_start = None;
@@ -338,6 +340,7 @@ impl Renderer {
 
     pub fn clear_capture_region(&mut self) {
         self.capture_region = None;
+        self.capture_region_ratio = None;
         println!("Capture region cleared - now capturing full screen");
     }
 
@@ -454,7 +457,7 @@ impl Renderer {
 
     pub fn verify_capture_region_after_resize(&mut self, new_width: u16, new_height: u16) {
         // If we have a capture region and window dimensions changed significantly
-        if let Some((world_start, world_end)) = self.capture_region {
+        if let Some((ratio_start, ratio_end)) = self.capture_region_ratio {
             let old_width = self.window_width;
             let old_height = self.window_height;
             
@@ -467,15 +470,16 @@ impl Renderer {
                 println!("Window aspect ratio changed significantly ({:.3} -> {:.3}, change: {:.1}%), capture region may need adjustment", 
                         old_aspect, new_aspect, aspect_change * 100.0);
                 
-                // Convert world coordinates back to screen coordinates using new dimensions
-                let screen_start = self.world_to_screen(world_start, new_width, new_height);
-                let screen_end = self.world_to_screen(world_end, new_width, new_height);
-                
-                println!("Capture region screen coordinates updated: ({:.1}, {:.1}) to ({:.1}, {:.1}) for new window size {}x{}", 
+                let screen_start = Vec2::new(ratio_start.x * new_width as f32, ratio_start.y * new_height as f32);
+                let screen_end = Vec2::new(ratio_end.x * new_width as f32, ratio_end.y * new_height as f32);
+
+                println!("Capture region screen coordinates updated: ({:.1}, {:.1}) to ({:.1}, {:.1}) for new window size {}x{}",
                         screen_start.x, screen_start.y, screen_end.x, screen_end.y, new_width, new_height);
             }
-            
-            // Update stored dimensions
+            let start_world = self.screen_to_world(Vec2::new(ratio_start.x * new_width as f32, ratio_start.y * new_height as f32), new_width, new_height);
+            let end_world = self.screen_to_world(Vec2::new(ratio_end.x * new_width as f32, ratio_end.y * new_height as f32), new_width, new_height);
+            self.capture_region = Some((start_world, end_world));
+
             self.window_width = new_width;
             self.window_height = new_height;
         }
@@ -537,7 +541,7 @@ mod tests {
         renderer.update_region_selection(end);
         assert_eq!(renderer.selection_end, Some(end));
         
-        renderer.finish_region_selection();
+        renderer.finish_region_selection(800, 600);
         assert!(!renderer.is_selecting_region);
         assert_eq!(renderer.capture_region, Some((start, end)));
         assert!(renderer.selection_start.is_none());
