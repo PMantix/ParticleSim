@@ -537,7 +537,7 @@ mod tests {
         renderer.update_region_selection(end);
         assert_eq!(renderer.selection_end, Some(end));
         
-        renderer.finish_region_selection();
+        renderer.finish_region_selection(800, 600);
         assert!(!renderer.is_selecting_region);
         assert_eq!(renderer.capture_region, Some((start, end)));
         assert!(renderer.selection_start.is_none());
