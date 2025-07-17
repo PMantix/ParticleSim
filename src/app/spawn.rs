@@ -56,7 +56,7 @@ pub fn add_circle(
             new_body.electrons.clear();
             if matches!(
                 new_body.species,
-                Species::LithiumMetal | Species::ElectrolyteAnion
+                Species::LithiumMetal | Species::ElectrolyteAnion | Species::EC | Species::DMC
             ) {
                 new_body.electrons.push(Electron {
                     rel_pos: Vec2::zero(),
@@ -88,7 +88,7 @@ pub fn add_ring(simulation: &mut Simulation, body: crate::body::Body, x: f32, y:
         new_body.electrons.clear();
         if matches!(
             new_body.species,
-            Species::LithiumMetal | Species::ElectrolyteAnion
+            Species::LithiumMetal | Species::ElectrolyteAnion | Species::EC | Species::DMC
         ) {
             new_body.electrons.push(Electron {
                 rel_pos: Vec2::zero(),
@@ -135,7 +135,7 @@ pub fn add_rectangle(
             new_body.electrons.clear();
             if matches!(
                 new_body.species,
-                Species::LithiumMetal | Species::ElectrolyteAnion
+                Species::LithiumMetal | Species::ElectrolyteAnion | Species::EC | Species::DMC
             ) {
                 new_body.electrons.push(Electron {
                     rel_pos: Vec2::zero(),
@@ -175,7 +175,7 @@ pub fn add_random(
                 new_body.electrons.clear();
                 if matches!(
                     new_body.species,
-                    Species::LithiumMetal | Species::ElectrolyteAnion
+                    Species::LithiumMetal | Species::ElectrolyteAnion | Species::EC | Species::DMC
                 ) {
                     new_body.electrons.push(Electron {
                         rel_pos: Vec2::zero(),

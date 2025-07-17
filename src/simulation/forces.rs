@@ -29,6 +29,30 @@ pub fn attract(sim: &mut Simulation) {
     }
 }
 
+/// Apply polarization forces for polar solvent molecules.
+///
+/// Each EC or DMC molecule carries a single bound electron that can drift
+/// relative to the molecular center. The nucleus experiences the field at the
+/// body position while the electron feels the field at its displaced position.
+/// The force difference creates an effective dipole interaction.
+pub fn apply_polar_forces(sim: &mut Simulation) {
+    use crate::body::Species;
+    profile_scope!("forces_polar");
+    if sim.bodies.is_empty() { return; }
+    let bodies_snapshot = sim.bodies.clone();
+    let quadtree = &sim.quadtree;
+    for (i, body) in sim.bodies.iter_mut().enumerate() {
+        if !matches!(body.species, Species::EC | Species::DMC) {
+            continue;
+        }
+        if body.electrons.is_empty() { continue; }
+        let e_pos = body.pos + body.electrons[0].rel_pos;
+        let electron_field = quadtree.field_at_point(&bodies_snapshot, e_pos, K_E) + sim.background_e_field;
+        let force = body.e_field - electron_field;
+        body.acc += force / body.mass;
+    }
+}
+
 /// Apply Lennard-Jones (LJ) forces between metals.
 ///
 /// - Only applies to pairs within the LJ cutoff distance.

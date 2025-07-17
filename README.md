@@ -31,7 +31,7 @@ This repository contains a modular, parallelized particle simulation for large-s
   - Real-time current monitoring and analysis.
 - **Polar Solvents**:
   - Ethylene carbonate (EC) and dimethyl carbonate (DMC) are modeled as neutral molecules with a bound electron.
-  - Their polarity allows lithium ions to form realistic solvent shells without Lennard-Jones interactions.
+  - A polarization force is applied between the displaced electron and the molecular center, enabling solvent shells around lithium ions without Lennard-Jones attraction.
 - **State Management**:
   - Save and load simulation states for reproducible experiments.
   - Pre-configured scenarios for quick setup.

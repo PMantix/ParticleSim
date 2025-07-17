@@ -78,5 +78,7 @@ scenarios.
 
 EC and DMC are modeled as neutral but polar molecules. Each carries a single
 bound electron that drifts within the molecule to form an electric dipole.
-Charged particles interact with this dipole, allowing solvent shells to form
-around ions without any Lennard-Jones attraction.
+During force calculation a polarization force is applied based on the
+difference between the electric field at the electron and at the molecular
+center. This allows charged particles to interact with the induced dipole so
+solvent shells form naturally without any Lennard-Jones attraction.
