@@ -117,7 +117,6 @@ pub struct Renderer {
     pub capture_region_ratio: Option<(Vec2, Vec2)>,
     pub is_selecting_region: bool,
     pub capture_counter: usize,
-    pub show_capture_window: bool,
     pub should_capture_next_frame: bool,
 }
 
@@ -190,7 +189,6 @@ impl quarkstrom::Renderer for Renderer {
             capture_region_ratio: None,
             is_selecting_region: false,
             capture_counter: 0,
-            show_capture_window: false,
             should_capture_next_frame: false,
         }
     }
