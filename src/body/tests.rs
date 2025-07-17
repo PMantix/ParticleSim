@@ -74,6 +74,19 @@ mod tests {
         assert_eq!(bodies[0].species, Species::LithiumIon);
     }
 
+    #[test]
+    fn ec_and_dmc_remain_neutral() {
+        for species in [Species::EC, Species::DMC] {
+            let mut body = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, species);
+            body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+            body.update_charge_from_electrons();
+            assert_eq!(body.charge, 0.0);
+            let old_species = body.species;
+            body.apply_redox();
+            assert_eq!(body.species, old_species);
+        }
+    }
+
     mod physics {
         use std::collections::HashMap;
 

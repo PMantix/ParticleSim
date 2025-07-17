@@ -82,6 +82,8 @@ impl CircleConfig {
             "LithiumIon" => Ok(Species::LithiumIon),
             "ElectrolyteAnion" => Ok(Species::ElectrolyteAnion),
             "FoilMetal" => Ok(Species::FoilMetal),
+            "EC" => Ok(Species::EC),
+            "DMC" => Ok(Species::DMC),
             _ => Err(format!("Unknown species: {}", self.species)),
         }
     }
@@ -94,6 +96,8 @@ impl MetalRectangleConfig {
             "LithiumIon" => Ok(Species::LithiumIon),
             "ElectrolyteAnion" => Ok(Species::ElectrolyteAnion),
             "FoilMetal" => Ok(Species::FoilMetal),
+            "EC" => Ok(Species::EC),
+            "DMC" => Ok(Species::DMC),
             _ => Err(format!("Unknown species: {}", self.species)),
         }
     }
@@ -126,6 +130,8 @@ impl RandomConfig {
             "LithiumIon" => Ok(Species::LithiumIon),
             "ElectrolyteAnion" => Ok(Species::ElectrolyteAnion),
             "FoilMetal" => Ok(Species::FoilMetal),
+            "EC" => Ok(Species::EC),
+            "DMC" => Ok(Species::DMC),
             _ => Err(format!("Unknown species: {}", self.species)),
         }
     }

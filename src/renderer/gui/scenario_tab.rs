@@ -449,6 +449,10 @@ pub fn make_body_with_species(
                 }
             }
         }
+        Species::EC | Species::DMC => {
+            // Neutral solvent molecules with a single drifting electron
+            body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+        }
     }
     body.update_charge_from_electrons();
     body.update_species();

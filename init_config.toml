@@ -50,6 +50,18 @@ species = "LithiumIon"
 domain_width = 400.0
 domain_height = 400.0
 
+[[particles.random]]
+count = 22470
+species = "EC"
+domain_width = 400.0
+domain_height = 400.0
+
+[[particles.random]]
+count = 17820
+species = "DMC"
+domain_width = 400.0
+domain_height = 400.0
+
 # Legacy circle configurations (commented out)
 # [[particles.circles]]
 # x = -210.0

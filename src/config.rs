@@ -40,6 +40,8 @@ pub const LITHIUM_ION_THRESHOLD: f32 = 0.5;             // Charge threshold for 
 pub const FOIL_NEUTRAL_ELECTRONS: usize = 1;
 pub const LITHIUM_METAL_NEUTRAL_ELECTRONS: usize = 1;
 pub const ELECTROLYTE_ANION_NEUTRAL_ELECTRONS: usize = 1;
+pub const EC_NEUTRAL_ELECTRONS: usize = 1;
+pub const DMC_NEUTRAL_ELECTRONS: usize = 1;
 pub const FOIL_MAX_ELECTRONS: usize = 2;           // Max electrons for foil metal
 /// Maximum number of nearby metallic neighbors allowed before ionization is inhibited
 //pub const IONIZATION_NEIGHBOR_THRESHOLD: usize = 4;

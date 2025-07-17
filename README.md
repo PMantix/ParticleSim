@@ -29,6 +29,9 @@ This repository contains a modular, parallelized particle simulation for large-s
 - **Foil Electrodes**:
   - Configurable foil structures that can apply electric currents to drive electrochemical reactions.
   - Real-time current monitoring and analysis.
+- **Polar Solvents**:
+  - Ethylene carbonate (EC) and dimethyl carbonate (DMC) are modeled as neutral molecules with a bound electron.
+  - Their polarity allows lithium ions to form realistic solvent shells without Lennard-Jones interactions.
 - **State Management**:
   - Save and load simulation states for reproducible experiments.
   - Pre-configured scenarios for quick setup.

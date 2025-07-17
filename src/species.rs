@@ -71,13 +71,39 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
             lj_cutoff: crate::config::LJ_FORCE_CUTOFF,
         },
     );
+    m.insert(
+        EC,
+        SpeciesProps {
+            mass: 88.0,
+            radius: 1.7,
+            damping: 1.0,
+            color: [0, 255, 0, 255],
+            lj_enabled: false,
+            lj_epsilon: 0.0,
+            lj_sigma: crate::config::LJ_FORCE_SIGMA,
+            lj_cutoff: crate::config::LJ_FORCE_CUTOFF,
+        },
+    );
+    m.insert(
+        DMC,
+        SpeciesProps {
+            mass: 90.0,
+            radius: 1.7,
+            damping: 1.0,
+            color: [0, 255, 128, 255],
+            lj_enabled: false,
+            lj_epsilon: 0.0,
+            lj_sigma: crate::config::LJ_FORCE_SIGMA,
+            lj_cutoff: crate::config::LJ_FORCE_CUTOFF,
+        },
+    );
     m
 });
 
 /// Maximum LJ interaction range across all species.
 pub fn max_lj_cutoff() -> f32 {
     use Species::*;
-    let species_list = [LithiumIon, LithiumMetal, FoilMetal, ElectrolyteAnion];
+    let species_list = [LithiumIon, LithiumMetal, FoilMetal, ElectrolyteAnion, EC, DMC];
     
     species_list
         .iter()

@@ -19,8 +19,8 @@ impl Body {
             Species::LithiumIon => {
                 self.charge = 1.0 - (self.electrons.len() as f32);
             }
-            Species::ElectrolyteAnion => {
-                self.charge = -(self.electrons.len() as f32);
+            Species::ElectrolyteAnion | Species::EC | Species::DMC => {
+                self.charge = -(self.electrons.len() as f32 - self.neutral_electron_count() as f32);
             }
         }
     }
@@ -41,8 +41,8 @@ impl Body {
             Species::FoilMetal => {
                 // FoilMetal never changes species
             }
-            Species::ElectrolyteAnion => {
-                // Electrolyte anions remain the same species
+            Species::ElectrolyteAnion | Species::EC | Species::DMC => {
+                // Electrolyte anions and solvent molecules remain the same species
             }
         }
     }

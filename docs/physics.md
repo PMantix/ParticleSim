@@ -26,6 +26,11 @@ let mut species_properties: HashMap<Species, SpeciesProperties> = HashMap::new()
   - `mass`: `1e6` (large mass keeps foil bodies effectively fixed)
   - `radius`: defined by the spawning code
   - `damping`: `0.98`
+- **EC / DMC (Solvent molecules)**
+  - `mass`: `~90.0`
+  - `radius`: `1.7`
+  - `damping`: `1.0`
+  - `lj_enabled`: `false` (no Lennard-Jones attraction)
 
 ### Adding a new species
 
@@ -70,3 +75,8 @@ species_properties.insert(Species::ElectrolyteAnion, SpeciesProperties {
 With this setup the foil behaves as a solid metal while the electrolyte remains
 liquid. Adjust each species' `lj_enabled` flag and parameters to explore other
 scenarios.
+
+EC and DMC are modeled as neutral but polar molecules. Each carries a single
+bound electron that drifts within the molecule to form an electric dipole.
+Charged particles interact with this dipole, allowing solvent shells to form
+around ions without any Lennard-Jones attraction.

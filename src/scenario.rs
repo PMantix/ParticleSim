@@ -159,6 +159,22 @@ fn create_body_templates() -> BodyTemplates {
             0.0,
             Species::FoilMetal,
         ),
+        ec_body: crate::body::Body::new(
+            Vec2::zero(),
+            Vec2::zero(),
+            Species::EC.mass(),
+            Species::EC.radius(),
+            0.0,
+            Species::EC,
+        ),
+        dmc_body: crate::body::Body::new(
+            Vec2::zero(),
+            Vec2::zero(),
+            Species::DMC.mass(),
+            Species::DMC.radius(),
+            0.0,
+            Species::DMC,
+        ),
     }
 }
 
@@ -168,6 +184,8 @@ struct BodyTemplates {
     ion_body: crate::body::Body,
     anion_body: crate::body::Body,
     foil_body: crate::body::Body,
+    ec_body: crate::body::Body,
+    dmc_body: crate::body::Body,
 }
 
 /// Get the appropriate body template for a given species
@@ -177,6 +195,8 @@ fn get_body_for_species(templates: &BodyTemplates, species: Species) -> crate::b
         Species::LithiumIon => templates.ion_body.clone(),
         Species::ElectrolyteAnion => templates.anion_body.clone(),
         Species::FoilMetal => templates.foil_body.clone(),
+        Species::EC => templates.ec_body.clone(),
+        Species::DMC => templates.dmc_body.clone(),
     }
 }
 
