@@ -39,25 +39,25 @@ current = 0.0
 
 # Random particles
 [[particles.random]]
-count = 300
+count = 450
 species = "ElectrolyteAnion"
 domain_width = 400.0  # Full domain width
 domain_height = 400.0 # domain height
 
 [[particles.random]]
-count = 300
+count = 450
 species = "LithiumIon"
 domain_width = 400.0
 domain_height = 400.0
 
 [[particles.random]]
-count = 2247
+count = 3370
 species = "EC"
 domain_width = 400.0
 domain_height = 400.0
 
 [[particles.random]]
-count = 1782
+count = 2673
 species = "DMC"
 domain_width = 400.0
 domain_height = 400.0

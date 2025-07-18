@@ -37,7 +37,7 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
         SpeciesProps {
             mass: 1.0,
             radius: 1.0,
-            damping: 1.0,
+            damping: 0.3,
             color: [192, 192, 192, 255],
             lj_enabled: true,
             lj_epsilon: crate::config::LJ_FORCE_EPSILON,
@@ -50,7 +50,7 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
         SpeciesProps {
             mass: 1e6,
             radius: 1.0,
-            damping: 1.0,
+            damping: 0.3,
             color: [128, 64, 0, 255],
             lj_enabled: true,
             lj_epsilon: crate::config::LJ_FORCE_EPSILON,
@@ -61,8 +61,8 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
     m.insert(
         ElectrolyteAnion,
         SpeciesProps {
-            mass: 40.0,
-            radius: 1.5,
+            mass: 20.88,
+            radius: 1.45,
             damping: 1.0,
             color: [0, 128, 255, 255],
             lj_enabled: false,
@@ -74,8 +74,8 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
     m.insert(
         EC,
         SpeciesProps {
-            mass: 88.0,
-            radius: 1.7,
+            mass: 12.69,
+            radius: 1.3,
             damping: 1.0,
             color: [0, 255, 0, 255],
             lj_enabled: false,
@@ -87,8 +87,8 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
     m.insert(
         DMC,
         SpeciesProps {
-            mass: 90.0,
-            radius: 1.7,
+            mass: 12.98,
+            radius: 1.4,
             damping: 1.0,
             color: [0, 255, 128, 255],
             lj_enabled: false,

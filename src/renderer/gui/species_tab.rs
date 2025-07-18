@@ -70,7 +70,7 @@ impl super::super::Renderer {
             // Damping control
             if ui
                 .add(
-                    egui::Slider::new(&mut current_props.damping, 0.5..=1.0)
+                    egui::Slider::new(&mut current_props.damping, 0.1..=1.0)
                         .text("Damping")
                         .step_by(0.001),
                 )
@@ -110,7 +110,7 @@ impl super::super::Renderer {
             if current_props.lj_enabled {
                 if ui
                     .add(
-                        egui::Slider::new(&mut current_props.lj_epsilon, 0.0..=5000.0)
+                        egui::Slider::new(&mut current_props.lj_epsilon, 0.0..=15000.0)
                             .text("LJ Epsilon (depth)")
                             .step_by(1.0),
                     )

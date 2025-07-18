@@ -41,7 +41,7 @@ pub fn apply_polar_forces(sim: &mut Simulation) {
     if sim.bodies.is_empty() { return; }
     let bodies_snapshot = sim.bodies.clone();
     let quadtree = &sim.quadtree;
-    for (i, body) in sim.bodies.iter_mut().enumerate() {
+    for (_i, body) in sim.bodies.iter_mut().enumerate() {
         if !matches!(body.species, Species::EC | Species::DMC) {
             continue;
         }

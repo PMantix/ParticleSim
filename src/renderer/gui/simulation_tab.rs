@@ -43,7 +43,7 @@ impl super::super::Renderer {
 
             let mut passes = COLLISION_PASSES.lock();
             ui.add(
-                egui::Slider::new(&mut *passes, 2..=20)
+                egui::Slider::new(&mut *passes, 2..=50)
                     .text("Collision Passes")
                     .clamp_to_range(true),
             );
