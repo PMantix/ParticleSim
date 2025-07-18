@@ -3,7 +3,7 @@
 // ====================
 // Electron Parameters
 // ====================
-pub const ELECTRON_SPRING_K: f32 = 0.05;                // Spring constant for electron drift
+pub const ELECTRON_SPRING_K: f32 = 0.005;                // Spring constant for electron drift
 pub const ELECTRON_DRIFT_RADIUS_FACTOR: f32 = 1.2;      // Max drift radius as a factor of body radius
 pub const ELECTRON_MAX_SPEED_FACTOR: f32 = 1.2;         // Max electron speed as a factor of body radius per dt
 pub const HOP_RADIUS_FACTOR: f32 = 2.1;                      // Hopping radius as a factor of body radius
@@ -26,10 +26,10 @@ pub const BV_OVERPOTENTIAL_SCALE: f32 = 0.025;
 // ====================
 // LJ Force Parameters
 // ====================
-pub const LJ_FORCE_EPSILON: f32 = 4000.0;                  // Lennard-Jones epsilon parameter
-pub const LJ_FORCE_SIGMA: f32 = 1.10;                    // Lennard-Jones sigma parameter
-pub const LJ_FORCE_CUTOFF: f32 = 3.0;                  // Lennard-Jones cutoff distance
-pub const LJ_FORCE_MAX: f32 = 300.0;                   // Max Lennard-Jones force magnitude
+pub const LJ_FORCE_EPSILON: f32 = 10000.0;                  // Lennard-Jones epsilon parameter
+pub const LJ_FORCE_SIGMA: f32 = 1.80;                    // Lennard-Jones sigma parameter
+pub const LJ_FORCE_CUTOFF: f32 = 2.2;                  // Lennard-Jones cutoff distance
+pub const LJ_FORCE_MAX: f32 = 200.0;                   // Max Lennard-Jones force magnitude
 /// Density above which the cell list is used for LJ interactions
 pub const LJ_CELL_DENSITY_THRESHOLD: f32 = 0.001;
 
