@@ -3,8 +3,8 @@
 // ====================
 // Electron Parameters
 // ====================
-pub const ELECTRON_SPRING_K: f32 = 0.005;                // Spring constant for electron drift
-pub const ELECTRON_DRIFT_RADIUS_FACTOR: f32 = 1.2;      // Max drift radius as a factor of body radius
+pub const ELECTRON_SPRING_K: f32 = 0.0005;                // Spring constant for electron drift
+pub const ELECTRON_DRIFT_RADIUS_FACTOR: f32 = 1.05;      // Max drift radius as a factor of body radius
 pub const ELECTRON_MAX_SPEED_FACTOR: f32 = 1.2;         // Max electron speed as a factor of body radius per dt
 pub const HOP_RADIUS_FACTOR: f32 = 2.1;                      // Hopping radius as a factor of body radius
 pub const HOP_RATE_K0: f32 = 1.0;            /// Base hop‐rate constant (per unit time) at zero overpotential
