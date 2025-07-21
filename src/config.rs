@@ -4,6 +4,22 @@
 // Electron Parameters
 // ====================
 pub const ELECTRON_SPRING_K: f32 = 0.05;                // Spring constant for electron drift
+pub const ELECTRON_SPRING_K_METAL: f32 = ELECTRON_SPRING_K; // Metal-specific spring constant
+pub const ELECTRON_SPRING_K_EC: f32 = ELECTRON_SPRING_K;    // EC-specific spring constant
+pub const ELECTRON_SPRING_K_DMC: f32 = ELECTRON_SPRING_K;   // DMC-specific spring constant
+
+use crate::body::Species;
+
+/// Get the electron spring constant for a given species
+pub fn electron_spring_k(species: Species) -> f32 {
+    use Species::*;
+    match species {
+        LithiumMetal | FoilMetal => ELECTRON_SPRING_K_METAL,
+        EC => ELECTRON_SPRING_K_EC,
+        DMC => ELECTRON_SPRING_K_DMC,
+        _ => ELECTRON_SPRING_K,
+    }
+}
 pub const ELECTRON_DRIFT_RADIUS_FACTOR: f32 = 1.2;      // Max drift radius as a factor of body radius
 pub const ELECTRON_MAX_SPEED_FACTOR: f32 = 1.2;         // Max electron speed as a factor of body radius per dt
 pub const HOP_RADIUS_FACTOR: f32 = 2.1;                      // Hopping radius as a factor of body radius

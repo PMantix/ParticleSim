@@ -22,7 +22,7 @@ impl Body {
         background_field: Vec2,
         dt: f32,
     ) {
-        let k = config::ELECTRON_SPRING_K;
+        let k = config::electron_spring_k(self.species);
         for e in &mut self.electrons {
             let electron_pos = self.pos + e.rel_pos;
             let local_field =
