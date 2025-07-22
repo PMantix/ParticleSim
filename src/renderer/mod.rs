@@ -20,6 +20,8 @@ pub enum DeleteOption {
     LithiumMetal,
     FoilMetal,
     ElectrolyteAnion,
+    EC,
+    DMC,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
