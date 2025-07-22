@@ -8,7 +8,7 @@ use crate::body::{Body, Species, foil::Foil};
 use crate::config::{SimConfig, DOMAIN_BOUNDS};
 use crate::quadtree::Node;
 use crate::plotting::{PlottingSystem, PlotType, Quantity, SamplingMode};
-use crate::diagnostics::TransferenceNumberDiagnostic;
+use crate::diagnostics::{TransferenceNumberDiagnostic, FoilElectronFractionDiagnostic};
 use ultraviolet::Vec2;
 use quarkstrom::winit_input_helper::WinitInputHelper;
 use std::collections::HashMap;
@@ -105,6 +105,7 @@ pub struct Renderer {
     // Current GUI tab
     pub current_tab: GuiTab,
     pub transference_number_diagnostic: Option<TransferenceNumberDiagnostic>,
+    pub foil_electron_fraction_diagnostic: Option<FoilElectronFractionDiagnostic>,
     
     // Screen capture functionality
     pub screen_capture_enabled: bool,
@@ -177,6 +178,7 @@ impl quarkstrom::Renderer for Renderer {
             selected_delete_option: DeleteOption::AllSpecies, // Default to All Species
             current_tab: GuiTab::default(), // Default to Simulation tab
             transference_number_diagnostic: Some(TransferenceNumberDiagnostic::new()),
+            foil_electron_fraction_diagnostic: Some(FoilElectronFractionDiagnostic::new()),
             
             // Screen capture defaults
             screen_capture_enabled: false,

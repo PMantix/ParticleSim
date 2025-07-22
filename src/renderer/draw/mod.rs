@@ -37,6 +37,9 @@ impl super::Renderer {
                 if let Some(ref mut diagnostic) = self.transference_number_diagnostic {
                     diagnostic.calculate(&self.bodies);
                 }
+                if let Some(ref mut diag) = self.foil_electron_fraction_diagnostic {
+                    diag.calculate(&self.bodies, &self.foils);
+                }
             }
             if let Some(body) = self.confirmed_bodies.take() {
                 self.bodies.push(body.clone());

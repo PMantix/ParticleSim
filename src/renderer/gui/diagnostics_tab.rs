@@ -61,6 +61,25 @@ impl super::super::Renderer {
 
         ui.separator();
 
+        // Foil electron fraction diagnostic
+        ui.group(|ui| {
+            ui.label("🔋 Foil Electron Ratio");
+            if let Some(diag) = &self.foil_electron_fraction_diagnostic {
+                for foil in &self.foils {
+                    if let Some(frac) = diag.fractions.get(&foil.id) {
+                        ui.horizontal(|ui| {
+                            ui.label(format!("Foil {}:", foil.id));
+                            ui.label(format!("{:.3}", frac));
+                        });
+                    }
+                }
+            } else {
+                ui.label("❌ No diagnostic data available.");
+            }
+        });
+
+        ui.separator();
+
         // Additional diagnostic information
         ui.group(|ui| {
             ui.label("📈 Simulation Statistics");
