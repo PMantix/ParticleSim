@@ -16,6 +16,8 @@ impl super::super::Renderer {
                         crate::renderer::DeleteOption::LithiumMetal => "Li Metal",
                         crate::renderer::DeleteOption::FoilMetal => "Foil Metal",
                         crate::renderer::DeleteOption::ElectrolyteAnion => "Anions",
+                        crate::renderer::DeleteOption::EC => "EC",
+                        crate::renderer::DeleteOption::DMC => "DMC",
                     })
                     .show_ui(ui, |ui| {
                         ui.selectable_value(
@@ -42,6 +44,16 @@ impl super::super::Renderer {
                             &mut self.selected_delete_option,
                             crate::renderer::DeleteOption::ElectrolyteAnion,
                             "Anions",
+                        );
+                        ui.selectable_value(
+                            &mut self.selected_delete_option,
+                            crate::renderer::DeleteOption::EC,
+                            "EC",
+                        );
+                        ui.selectable_value(
+                            &mut self.selected_delete_option,
+                            crate::renderer::DeleteOption::DMC,
+                            "DMC",
                         );
                     });
 
@@ -93,6 +105,26 @@ impl super::super::Renderer {
                                 .unwrap()
                                 .send(SimCommand::DeleteSpecies {
                                     species: Species::ElectrolyteAnion,
+                                })
+                                .unwrap();
+                        }
+                        crate::renderer::DeleteOption::EC => {
+                            SIM_COMMAND_SENDER
+                                .lock()
+                                .as_ref()
+                                .unwrap()
+                                .send(SimCommand::DeleteSpecies {
+                                    species: Species::EC,
+                                })
+                                .unwrap();
+                        }
+                        crate::renderer::DeleteOption::DMC => {
+                            SIM_COMMAND_SENDER
+                                .lock()
+                                .as_ref()
+                                .unwrap()
+                                .send(SimCommand::DeleteSpecies {
+                                    species: Species::DMC,
                                 })
                                 .unwrap();
                         }
@@ -183,6 +215,16 @@ impl super::super::Renderer {
                             &mut self.scenario_species,
                             Species::ElectrolyteAnion,
                             "Electrolyte Anion",
+                        );
+                        ui.selectable_value(
+                            &mut self.scenario_species,
+                            Species::EC,
+                            "EC",
+                        );
+                        ui.selectable_value(
+                            &mut self.scenario_species,
+                            Species::DMC,
+                            "DMC",
                         );
                     });
             });

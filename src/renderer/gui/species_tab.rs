@@ -30,6 +30,16 @@ impl super::super::Renderer {
                     Species::ElectrolyteAnion,
                     "Electrolyte Anion",
                 );
+                ui.selectable_value(
+                    &mut self.selected_lj_species,
+                    Species::EC,
+                    "EC",
+                );
+                ui.selectable_value(
+                    &mut self.selected_lj_species,
+                    Species::DMC,
+                    "DMC",
+                );
             });
 
         // Get current properties for selected species
