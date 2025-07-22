@@ -357,12 +357,14 @@ impl Renderer {
         Vec2::new(world_x, world_y)
     }
 
+    #[allow(dead_code)]
     pub fn start_region_selection(&mut self, start_pos: Vec2) {
         self.is_selecting_region = true;
         self.selection_start = Some(start_pos);
         self.selection_end = None;
     }
 
+    #[allow(dead_code)]
     pub fn update_region_selection(&mut self, end_pos: Vec2) {
         self.selection_end = Some(end_pos);
     }
