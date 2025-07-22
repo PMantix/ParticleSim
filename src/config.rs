@@ -42,10 +42,10 @@ pub const BV_OVERPOTENTIAL_SCALE: f32 = 0.025;
 // ====================
 // LJ Force Parameters
 // ====================
-pub const LJ_FORCE_EPSILON: f32 = 4000.0;                  // Lennard-Jones epsilon parameter
-pub const LJ_FORCE_SIGMA: f32 = 1.10;                    // Lennard-Jones sigma parameter
-pub const LJ_FORCE_CUTOFF: f32 = 3.0;                  // Lennard-Jones cutoff distance
-pub const LJ_FORCE_MAX: f32 = 300.0;                   // Max Lennard-Jones force magnitude
+pub const LJ_FORCE_EPSILON: f32 = 10000.0;                  // Lennard-Jones epsilon parameter
+pub const LJ_FORCE_SIGMA: f32 = 1.80;                    // Lennard-Jones sigma parameter
+pub const LJ_FORCE_CUTOFF: f32 = 2.2;                  // Lennard-Jones cutoff distance
+pub const LJ_FORCE_MAX: f32 = 200.0;                   // Max Lennard-Jones force magnitude
 /// Density above which the cell list is used for LJ interactions
 pub const LJ_CELL_DENSITY_THRESHOLD: f32 = 0.001;
 

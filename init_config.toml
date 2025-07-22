@@ -11,14 +11,14 @@ domain_bounds = 200.0
 [[particles.metal_rectangles]]
 x = -150.0  # Center X coordinate
 y = 0.0     # Center Y coordinate
-width = 50.0
+width = 51.0
 height = 100.0
 species = "LithiumMetal"
 
 [[particles.metal_rectangles]]
 x = 150.0   # Center X coordinate
 y = 0.0     # Center Y coordinate
-width = 50.0
+width = 51.0
 height = 100.0
 species = "LithiumMetal"
 
