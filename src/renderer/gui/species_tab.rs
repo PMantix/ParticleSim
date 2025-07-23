@@ -156,6 +156,22 @@ impl super::super::Renderer {
             }
         });
 
+        ui.separator();
+
+        // Electron Polarization
+        ui.group(|ui| {
+            ui.label("🌀 Electron Polarization");
+            if ui
+                .add(
+                    egui::Slider::new(&mut current_props.polar_offset, 0.0..=1.5)
+                        .text("Drift Radius Factor"),
+                )
+                .changed()
+            {
+                changed = true;
+            }
+        });
+
         // Update species properties if changed
         if changed {
             crate::species::update_species_props(self.selected_lj_species, current_props);

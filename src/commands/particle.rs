@@ -16,7 +16,7 @@ pub fn handle_change_charge(simulation: &mut Simulation, id: u64, delta: f32) {
                 let angle = fastrand::f32() * std::f32::consts::TAU;
                 let rel_pos = Vec2::new(angle.cos(), angle.sin())
                     * body.radius
-                    * crate::config::ELECTRON_DRIFT_RADIUS_FACTOR;
+                    * body.species.polar_offset();
                 body.electrons.push(Electron { rel_pos, vel: Vec2::zero() });
             }
         }

@@ -36,7 +36,7 @@ impl Body {
                 e.vel = e.vel / speed * max_speed;
             }
             e.rel_pos += e.vel * dt;
-            let max_dist = config::ELECTRON_DRIFT_RADIUS_FACTOR * self.radius;
+            let max_dist = self.species.polar_offset() * self.radius;
             if e.rel_pos.mag() > max_dist {
                 e.rel_pos = e.rel_pos.normalized() * max_dist;
             }
@@ -47,7 +47,7 @@ impl Body {
             let desired = 1 + (-self.charge).round() as usize;
             while self.electrons.len() < desired {
                 let angle = fastrand::f32() * std::f32::consts::TAU;
-                let rel_pos = Vec2::new(angle.cos(), angle.sin()) * self.radius * config::ELECTRON_DRIFT_RADIUS_FACTOR;
+                let rel_pos = Vec2::new(angle.cos(), angle.sin()) * self.radius * self.species.polar_offset();
                 self.electrons.push(Electron { rel_pos, vel: Vec2::zero() });
             }
             while self.electrons.len() > desired {

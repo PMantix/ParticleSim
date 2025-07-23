@@ -18,7 +18,7 @@ pub fn handle_command(cmd: SimCommand, simulation: &mut Simulation) {
                         let angle = fastrand::f32() * std::f32::consts::TAU;
                         let rel_pos = ultraviolet::Vec2::new(angle.cos(), angle.sin())
                             * body.radius
-                            * crate::config::ELECTRON_DRIFT_RADIUS_FACTOR;
+                            * body.species.polar_offset();
                         body.electrons.push(crate::body::Electron {
                             rel_pos,
                             vel: ultraviolet::Vec2::zero(),

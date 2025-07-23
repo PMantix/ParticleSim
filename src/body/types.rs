@@ -184,4 +184,8 @@ impl Species {
     pub fn lj_cutoff(&self) -> f32 {
         self.props().lj_cutoff
     }
+
+    pub fn polar_offset(&self) -> f32 {
+        self.props().polar_offset
+    }
 }
