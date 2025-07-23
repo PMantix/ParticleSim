@@ -357,18 +357,6 @@ impl Renderer {
         Vec2::new(world_x, world_y)
     }
 
-    #[allow(dead_code)]
-    pub fn start_region_selection(&mut self, start_pos: Vec2) {
-        self.is_selecting_region = true;
-        self.selection_start = Some(start_pos);
-        self.selection_end = None;
-    }
-
-    #[allow(dead_code)]
-    pub fn update_region_selection(&mut self, end_pos: Vec2) {
-        self.selection_end = Some(end_pos);
-    }
-
     // Helper method to get the simulation window handle specifically
     pub fn get_simulation_window_handle(&self) -> Option<*mut std::ffi::c_void> {
         #[cfg(windows)]
@@ -482,6 +470,35 @@ impl Renderer {
             self.window_width = new_width;
             self.window_height = new_height;
         }
+    }
+
+    #[cfg(test)]
+    pub fn start_region_selection(&mut self, start: Vec2) {
+        self.is_selecting_region = true;
+        self.selection_start = Some(start);
+        self.selection_end = Some(start);
+        println!("Started region selection at ({:.1}, {:.1})", start.x, start.y);
+    }
+
+    #[cfg(test)]
+    pub fn update_region_selection(&mut self, end: Vec2) {
+        if self.is_selecting_region {
+            self.selection_end = Some(end);
+        }
+    }
+
+    #[allow(dead_code)]
+    pub fn world_to_screen(&self, world_pos: Vec2, width: u16, height: u16) -> Vec2 {
+        // Apply inverse camera transformation
+        let aspect_ratio = width as f32 / height as f32;
+        let x = (world_pos.x - self.pos.x) / (self.scale * aspect_ratio);
+        let y = (world_pos.y - self.pos.y) / self.scale;
+        
+        // Convert from normalized device coordinates to screen coordinates
+        let screen_x = (x + 1.0) * width as f32 / 2.0;
+        let screen_y = (1.0 - y) * height as f32 / 2.0;
+        
+        Vec2::new(screen_x, screen_y)
     }
 }
 

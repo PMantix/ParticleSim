@@ -38,7 +38,13 @@ impl super::Renderer {
                     diagnostic.calculate(&self.bodies);
                 }
                 if let Some(ref mut diag) = self.foil_electron_fraction_diagnostic {
-                    diag.calculate(&self.bodies, &self.foils);
+                    // Create a temporary quadtree for diagnostic calculation
+                    let mut temp_quadtree = crate::quadtree::Quadtree::new(1.0, 2.0, 1, 1024);
+                    temp_quadtree.nodes = self.quadtree.clone();
+                    
+                    // Use time-throttled calculation to avoid performance issues
+                    let current_time = *crate::renderer::state::SIM_TIME.lock();
+                    diag.calculate_if_needed(&self.bodies, &self.foils, &temp_quadtree, current_time, 1.0);
                 }
             }
             if let Some(body) = self.confirmed_bodies.take() {
