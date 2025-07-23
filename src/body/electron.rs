@@ -3,6 +3,7 @@
 
 use ultraviolet::Vec2;
 use crate::config;
+use crate::config::ELECTRON_MASS;
 use serde::{Serialize, Deserialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -30,6 +31,8 @@ impl Body {
                     + background_field;
             let acc = -local_field * k;
             e.vel += acc * dt;
+            // Apply equal and opposite reaction on the nucleus
+            self.acc -= acc * ELECTRON_MASS / self.mass;
             let speed = e.vel.mag();
             let max_speed = config::ELECTRON_MAX_SPEED_FACTOR * self.radius / dt;
             if speed > max_speed {

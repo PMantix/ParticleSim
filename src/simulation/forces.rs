@@ -37,6 +37,7 @@ pub fn attract(sim: &mut Simulation) {
 /// The force difference creates an effective dipole interaction.
 pub fn apply_polar_forces(sim: &mut Simulation) {
     use crate::body::Species;
+    use crate::config::ELECTRON_MASS;
     profile_scope!("forces_polar");
     if sim.bodies.is_empty() { return; }
     let bodies_snapshot = sim.bodies.clone();
@@ -47,9 +48,17 @@ pub fn apply_polar_forces(sim: &mut Simulation) {
         }
         if body.electrons.is_empty() { continue; }
         let e_pos = body.pos + body.electrons[0].rel_pos;
+        let nucleus_field = quadtree.field_at_point(&bodies_snapshot, body.pos, K_E) + sim.background_e_field;
         let electron_field = quadtree.field_at_point(&bodies_snapshot, e_pos, K_E) + sim.background_e_field;
-        let force = body.e_field - electron_field;
-        body.acc += force / body.mass;
+        let field_diff = nucleus_field - electron_field;
+        let effective_charge = 1.0_f32;
+        body.acc += (field_diff * effective_charge) / body.mass;
+        body.electrons[0].vel -= (field_diff * effective_charge / ELECTRON_MASS) * sim.dt;
+        // Restoring spring to keep electron bound
+        let k = config::electron_spring_k(body.species);
+        let spring_force = -body.electrons[0].rel_pos * k;
+        body.electrons[0].vel += (spring_force / ELECTRON_MASS) * sim.dt;
+        body.acc -= spring_force / body.mass;
     }
 }
 
