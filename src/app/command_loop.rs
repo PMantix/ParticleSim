@@ -53,7 +53,10 @@ pub fn handle_command(cmd: SimCommand, simulation: &mut Simulation) {
             body.electrons.clear();
             if matches!(
                 body.species,
-                crate::body::Species::LithiumMetal | crate::body::Species::ElectrolyteAnion
+                crate::body::Species::LithiumMetal
+                    | crate::body::Species::ElectrolyteAnion
+                    | crate::body::Species::EC
+                    | crate::body::Species::DMC
             ) {
                 body.electrons.push(crate::body::Electron {
                     rel_pos: ultraviolet::Vec2::zero(),

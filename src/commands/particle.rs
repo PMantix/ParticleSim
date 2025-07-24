@@ -63,8 +63,14 @@ pub fn handle_change_charge(simulation: &mut Simulation, id: u64, delta: f32) {
 
 pub fn handle_add_body(simulation: &mut Simulation, body: &mut crate::body::Body) {
     body.electrons.clear();
-    if matches!(body.species, Species::LithiumMetal | Species::ElectrolyteAnion) {
-        body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+    if matches!(
+        body.species,
+        Species::LithiumMetal | Species::ElectrolyteAnion | Species::EC | Species::DMC
+    ) {
+        body.electrons.push(Electron {
+            rel_pos: Vec2::zero(),
+            vel: Vec2::zero(),
+        });
     }
     body.update_charge_from_electrons();
     body.update_species();
