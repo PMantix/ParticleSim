@@ -85,3 +85,8 @@ elementary charge. Instead the effective charge is scaled per species
 (0.49e for EC and 0.054e for DMC). This allows charged particles to interact
 with the induced dipole so solvent shells form naturally without any
 Lennard-Jones attraction.
+
+Polarization interactions now conserve momentum by applying equal and opposite
+forces to the neighboring charge that creates the field difference. A single ion
+and a single solvent molecule therefore maintain nearly zero center-of-mass
+velocity when isolated.

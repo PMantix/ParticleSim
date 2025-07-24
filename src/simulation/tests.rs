@@ -617,3 +617,64 @@ mod reactions {
         }
     }
 }
+
+#[cfg(test)]
+mod polarization_conservation {
+    use super::*;
+    use crate::cell_list::CellList;
+    use std::collections::HashMap;
+    use crate::simulation::forces;
+
+    #[test]
+    fn ion_solvent_com_stable() {
+        let mut ion = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 1.0, Species::LithiumIon);
+        ion.update_charge_from_electrons();
+
+        let mut solvent = Body::new(
+            Vec2::new(2.0, 0.0),
+            Vec2::zero(),
+            1.0,
+            1.0,
+            0.0,
+            Species::EC,
+        );
+        solvent.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+        solvent.update_charge_from_electrons();
+
+        let mut sim = Simulation {
+            dt: 0.01,
+            frame: 0,
+            bodies: vec![ion, solvent],
+            quadtree: Quadtree::new(
+                config::QUADTREE_THETA,
+                config::QUADTREE_EPSILON,
+                config::QUADTREE_LEAF_CAPACITY,
+                config::QUADTREE_THREAD_CAPACITY,
+            ),
+            bounds: 10.0,
+            rewound_flags: vec![false; 2],
+            background_e_field: Vec2::zero(),
+            config: Default::default(),
+            foils: Vec::new(),
+            cell_list: CellList::new(10.0, 1.0),
+            body_to_foil: HashMap::new(),
+        };
+
+        sim.quadtree.build(&mut sim.bodies);
+
+        forces::attract(&mut sim);
+        forces::apply_polar_forces(&mut sim);
+
+        let total_mass = sim.bodies[0].mass + sim.bodies[1].mass;
+        let com_acc =
+            (sim.bodies[0].acc * sim.bodies[0].mass + sim.bodies[1].acc * sim.bodies[1].mass)
+                / total_mass;
+        assert!(com_acc.mag() < 1e-4, "Center-of-mass acceleration = {:?}", com_acc);
+
+        sim.iterate();
+        let com_vel =
+            (sim.bodies[0].vel * sim.bodies[0].mass + sim.bodies[1].vel * sim.bodies[1].mass)
+                / total_mass;
+        assert!(com_vel.mag() < 1e-4, "Center-of-mass velocity = {:?}", com_vel);
+    }
+}
