@@ -449,52 +449,13 @@ pub fn make_body_with_species(
     radius: f32,
     species: Species,
 ) -> Body {
-    use crate::config::{FOIL_NEUTRAL_ELECTRONS, LITHIUM_METAL_NEUTRAL_ELECTRONS};
     let mut body = Body::new(pos, vel, mass, radius, 0.0, species);
     body.electrons.clear();
-    match species {
-        Species::LithiumMetal => {
-            for _ in 0..LITHIUM_METAL_NEUTRAL_ELECTRONS {
-                body.electrons.push(Electron {
-                    rel_pos: Vec2::zero(),
-                    vel: Vec2::zero(),
-                });
-            }
-        }
-        Species::FoilMetal => {
-            for _ in 0..FOIL_NEUTRAL_ELECTRONS {
-                body.electrons.push(Electron {
-                    rel_pos: Vec2::zero(),
-                    vel: Vec2::zero(),
-                });
-            }
-        }
-        Species::LithiumIon => {
-            // Ions: one less electron than neutral metal, positive charge
-            if LITHIUM_METAL_NEUTRAL_ELECTRONS > 0 {
-                for _ in 0..(LITHIUM_METAL_NEUTRAL_ELECTRONS - 1) {
-                    body.electrons.push(Electron {
-                        rel_pos: Vec2::zero(),
-                        vel: Vec2::zero(),
-                    });
-                }
-            }
-        }
-        Species::ElectrolyteAnion => {
-            // Anions: one more electron than neutral metal, negative charge
-            if LITHIUM_METAL_NEUTRAL_ELECTRONS > 0 {
-                for _ in 0..(LITHIUM_METAL_NEUTRAL_ELECTRONS + 1) {
-                    body.electrons.push(Electron {
-                        rel_pos: Vec2::zero(),
-                        vel: Vec2::zero(),
-                    });
-                }
-            }
-        }
-        Species::EC | Species::DMC => {
-            // Neutral solvent molecules with a single drifting electron
-            body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
-        }
+    for _ in 0..body.neutral_electron_count() {
+        body.electrons.push(Electron {
+            rel_pos: Vec2::zero(),
+            vel: Vec2::zero(),
+        });
     }
     body.update_charge_from_electrons();
     body.update_species();
