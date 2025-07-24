@@ -8,6 +8,11 @@ pub const ELECTRON_SPRING_K_METAL: f32 = ELECTRON_SPRING_K; // Metal-specific sp
 pub const ELECTRON_SPRING_K_EC: f32 = ELECTRON_SPRING_K;    // EC-specific spring constant
 pub const ELECTRON_SPRING_K_DMC: f32 = ELECTRON_SPRING_K;   // DMC-specific spring constant
 
+// Effective polarization charge (in units of e) for solvent molecules
+pub const POLAR_CHARGE_EC: f32 = 0.49;
+pub const POLAR_CHARGE_DMC: f32 = 0.054;
+pub const POLAR_CHARGE_DEFAULT: f32 = 1.0;
+
 use crate::body::Species;
 
 /// Get the electron spring constant for a given species
@@ -26,6 +31,16 @@ pub const HOP_RADIUS_FACTOR: f32 = 2.1;                      // Hopping radius a
 pub const HOP_RATE_K0: f32 = 1.0;            /// Base hop‐rate constant (per unit time) at zero overpotential
 pub const HOP_TRANSFER_COEFF: f32 = 0.5;            /// Transfer coefficient α (unitless, ~0.5)   
 pub const HOP_ACTIVATION_ENERGY: f32 = 0.025;      /// Thermal energy k_BT (in your same charge‐units)
+
+/// Get the effective polarization charge for a given species
+pub fn polar_charge(species: Species) -> f32 {
+    use Species::*;
+    match species {
+        EC => POLAR_CHARGE_EC,
+        DMC => POLAR_CHARGE_DMC,
+        _ => POLAR_CHARGE_DEFAULT,
+    }
+}
 
 // ====================
 // Butler-Volmer Parameters

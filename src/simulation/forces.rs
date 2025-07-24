@@ -48,7 +48,9 @@ pub fn apply_polar_forces(sim: &mut Simulation) {
         if body.electrons.is_empty() { continue; }
         let e_pos = body.pos + body.electrons[0].rel_pos;
         let electron_field = quadtree.field_at_point(&bodies_snapshot, e_pos, K_E) + sim.background_e_field;
-        let force = body.e_field - electron_field;
+        let diff = body.e_field - electron_field;
+        let q_effective = config::polar_charge(body.species);
+        let force = diff * q_effective;
         body.acc += force / body.mass;
     }
 }
