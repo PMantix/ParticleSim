@@ -42,7 +42,7 @@ pub const BV_OVERPOTENTIAL_SCALE: f32 = 0.025;
 // ====================
 // LJ Force Parameters
 // ====================
-pub const LJ_FORCE_EPSILON: f32 = 10000.0;                  // Lennard-Jones epsilon parameter
+pub const LJ_FORCE_EPSILON: f32 = 5000.0;                  // Lennard-Jones epsilon parameter
 pub const LJ_FORCE_SIGMA: f32 = 1.80;                    // Lennard-Jones sigma parameter
 pub const LJ_FORCE_CUTOFF: f32 = 2.2;                  // Lennard-Jones cutoff distance
 pub const LJ_FORCE_MAX: f32 = 200.0;                   // Max Lennard-Jones force magnitude
@@ -59,6 +59,7 @@ pub const ELECTROLYTE_ANION_NEUTRAL_ELECTRONS: usize = 0;
 pub const EC_NEUTRAL_ELECTRONS: usize = 1;
 pub const DMC_NEUTRAL_ELECTRONS: usize = 1;
 pub const FOIL_MAX_ELECTRONS: usize = 2;           // Max electrons for foil metal
+pub const LITHIUM_METAL_MAX_ELECTRONS: usize = 3;     // Max electrons for lithium metal
 /// Maximum number of nearby metallic neighbors allowed before ionization is inhibited
 //pub const IONIZATION_NEIGHBOR_THRESHOLD: usize = 4;
 /// Minimum local electric-field magnitude required for ionization/reduction

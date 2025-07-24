@@ -12,7 +12,24 @@ pub fn handle_change_charge(simulation: &mut Simulation, id: u64, delta: f32) {
                 body.electrons.pop();
             }
         } else if delta < 0.0 {
-            for _ in 0..(-delta).round() as usize {
+            // Calculate maximum electrons allowed for this species
+            let max_electrons = match body.species {
+                Species::FoilMetal => crate::config::FOIL_MAX_ELECTRONS,
+                Species::LithiumMetal => crate::config::LITHIUM_METAL_MAX_ELECTRONS,
+                _ => usize::MAX, // No limit for other species
+            };
+            
+            let requested_additions = (-delta).round() as usize;
+            let current_count = body.electrons.len();
+            let available_capacity = max_electrons.saturating_sub(current_count);
+            let actual_additions = requested_additions.min(available_capacity);
+            
+            if actual_additions < requested_additions {
+                println!("Warning: Particle {} can only accept {} more electrons (max: {}, current: {})", 
+                         id, actual_additions, max_electrons, current_count);
+            }
+            
+            for _ in 0..actual_additions {
                 let angle = fastrand::f32() * std::f32::consts::TAU;
                 let rel_pos = Vec2::new(angle.cos(), angle.sin())
                     * body.radius
