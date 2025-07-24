@@ -63,8 +63,11 @@ pub fn handle_change_charge(simulation: &mut Simulation, id: u64, delta: f32) {
 
 pub fn handle_add_body(simulation: &mut Simulation, body: &mut crate::body::Body) {
     body.electrons.clear();
-    if matches!(body.species, Species::LithiumMetal | Species::ElectrolyteAnion) {
-        body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+    for _ in 0..body.neutral_electron_count() {
+        body.electrons.push(Electron {
+            rel_pos: Vec2::zero(),
+            vel: Vec2::zero(),
+        });
     }
     body.update_charge_from_electrons();
     body.update_species();
@@ -128,7 +131,7 @@ pub fn handle_add_circle(
                 body.species,
             );
             new_body.electrons.clear();
-            if matches!(new_body.species, Species::LithiumMetal | Species::ElectrolyteAnion) {
+            for _ in 0..new_body.neutral_electron_count() {
                 new_body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
             }
             new_body.update_charge_from_electrons();
@@ -166,7 +169,7 @@ pub fn handle_add_ring(
             body.species,
         );
         new_body.electrons.clear();
-        if matches!(new_body.species, Species::LithiumMetal | Species::ElectrolyteAnion) {
+        for _ in 0..new_body.neutral_electron_count() {
             new_body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
         }
         new_body.update_charge_from_electrons();
@@ -207,7 +210,7 @@ pub fn handle_add_rectangle(
                 body.species,
             );
             new_body.electrons.clear();
-            if matches!(new_body.species, Species::LithiumMetal | Species::ElectrolyteAnion) {
+            for _ in 0..new_body.neutral_electron_count() {
                 new_body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
             }
             new_body.update_charge_from_electrons();
@@ -241,7 +244,7 @@ pub fn handle_add_random(
                     body.species,
                 );
                 new_body.electrons.clear();
-                if matches!(new_body.species, Species::LithiumMetal | Species::ElectrolyteAnion) {
+                for _ in 0..new_body.neutral_electron_count() {
                     new_body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
                 }
                 new_body.update_charge_from_electrons();

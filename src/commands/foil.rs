@@ -28,7 +28,9 @@ pub fn handle_add_foil(simulation: &mut Simulation, width: f32, height: f32, x: 
                 0.0,
                 Species::FoilMetal,
             );
-            new_body.electrons = smallvec::smallvec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }; crate::config::FOIL_NEUTRAL_ELECTRONS];
+            for _ in 0..new_body.neutral_electron_count() {
+                new_body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+            }
             new_body.update_charge_from_electrons();
             body_ids.push(new_body.id);
             simulation.bodies.push(new_body);
