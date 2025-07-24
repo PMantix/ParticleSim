@@ -30,18 +30,21 @@ pub fn load_and_apply_scenario() -> Result<(), Box<dyn std::error::Error>> {
 fn apply_configuration(init_config: InitConfig) -> Result<(), Box<dyn std::error::Error>> {
     let tx = SIM_COMMAND_SENDER.lock().as_ref().unwrap().clone();
     
-    // Apply domain bounds if specified in config
-    if let Some(ref sim_config) = init_config.simulation {
-        if let Some(domain_bounds) = sim_config.domain_bounds {
-            println!("Setting domain bounds to: {}", domain_bounds);
-            // Update the simulation bounds - domain_bounds is the radius, so full width/height is 2x
-            let domain_size = domain_bounds * 2.0;
-            tx.send(SimCommand::SetDomainSize { 
-                width: domain_size, 
-                height: domain_size 
-            })?;
-        }
-    }
+    // Determine domain size from config or fallback constant
+    let (global_width, global_height) = if let Some(ref sim_config) = init_config.simulation {
+        let width = sim_config
+            .domain_width
+            .unwrap_or(crate::config::DOMAIN_BOUNDS * 2.0);
+        let height = sim_config
+            .domain_height
+            .unwrap_or(crate::config::DOMAIN_BOUNDS * 2.0);
+        println!("Setting domain size to {}x{}", width, height);
+        tx.send(SimCommand::SetDomainSize { width, height })?;
+        (width, height)
+    } else {
+        let size = crate::config::DOMAIN_BOUNDS * 2.0;
+        (size, size)
+    };
     
     // Create template bodies for each species
     let body_templates = create_body_templates();
@@ -106,15 +109,16 @@ fn apply_configuration(init_config: InitConfig) -> Result<(), Box<dyn std::error
         match random_config.to_species() {
             Ok(species) => {
                 let body = get_body_for_species(&body_templates, species);
-                tx.send(SimCommand::AddRandom { 
-                    body, 
-                    count: random_config.count, 
-                    domain_width: random_config.domain_width, 
-                    domain_height: random_config.domain_height 
+                let width = random_config.domain_width.unwrap_or(global_width);
+                let height = random_config.domain_height.unwrap_or(global_height);
+                tx.send(SimCommand::AddRandom {
+                    body,
+                    count: random_config.count,
+                    domain_width: width,
+                    domain_height: height
                 })?;
-                println!("Added {} random {} particles in {}x{} domain", 
-                         random_config.count, random_config.species, 
-                         random_config.domain_width, random_config.domain_height);
+                println!("Added {} random {} particles in {}x{} domain",
+                         random_config.count, random_config.species, width, height);
             }
             Err(e) => eprintln!("Error in random config: {}", e),
         }

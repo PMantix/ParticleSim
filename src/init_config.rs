@@ -14,7 +14,10 @@ pub struct InitConfig {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct SimulationConfig {
-    pub domain_bounds: Option<f32>,
+    /// Optional simulation domain width. Falls back to the default when omitted.
+    pub domain_width: Option<f32>,
+    /// Optional simulation domain height. Falls back to the default when omitted.
+    pub domain_height: Option<f32>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -59,8 +62,10 @@ pub struct FoilRectangleConfig {
 pub struct RandomConfig {
     pub count: usize,
     pub species: String,
-    pub domain_width: f32,
-    pub domain_height: f32,
+    /// Optional override for the domain width used when placing particles
+    pub domain_width: Option<f32>,
+    /// Optional override for the domain height used when placing particles
+    pub domain_height: Option<f32>,
 }
 
 impl InitConfig {
