@@ -20,6 +20,17 @@ pub struct SimulationConfig {
     pub domain_height: Option<f32>,
 }
 
+impl SimulationConfig {
+    /// Return the domain width and height, using the global defaults when values are not provided.
+    pub fn domain_size(&self) -> (f32, f32) {
+        let default = crate::config::DOMAIN_BOUNDS * 2.0;
+        (
+            self.domain_width.unwrap_or(default),
+            self.domain_height.unwrap_or(default),
+        )
+    }
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ParticlesConfig {
     #[serde(default)]

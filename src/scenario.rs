@@ -32,12 +32,7 @@ fn apply_configuration(init_config: InitConfig) -> Result<(), Box<dyn std::error
     
     // Determine domain size from config or fallback constant
     let (global_width, global_height) = if let Some(ref sim_config) = init_config.simulation {
-        let width = sim_config
-            .domain_width
-            .unwrap_or(crate::config::DOMAIN_BOUNDS * 2.0);
-        let height = sim_config
-            .domain_height
-            .unwrap_or(crate::config::DOMAIN_BOUNDS * 2.0);
+        let (width, height) = sim_config.domain_size();
         println!("Setting domain size to {}x{}", width, height);
         tx.send(SimCommand::SetDomainSize { width, height })?;
         (width, height)
