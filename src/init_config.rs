@@ -14,7 +14,21 @@ pub struct InitConfig {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct SimulationConfig {
-    pub domain_bounds: Option<f32>,
+    /// Optional simulation domain width. Falls back to the default when omitted.
+    pub domain_width: Option<f32>,
+    /// Optional simulation domain height. Falls back to the default when omitted.
+    pub domain_height: Option<f32>,
+}
+
+impl SimulationConfig {
+    /// Return the domain width and height, using the global defaults when values are not provided.
+    pub fn domain_size(&self) -> (f32, f32) {
+        let default = crate::config::DOMAIN_BOUNDS * 2.0;
+        (
+            self.domain_width.unwrap_or(default),
+            self.domain_height.unwrap_or(default),
+        )
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -59,8 +73,10 @@ pub struct FoilRectangleConfig {
 pub struct RandomConfig {
     pub count: usize,
     pub species: String,
-    pub domain_width: f32,
-    pub domain_height: f32,
+    /// Optional override for the domain width used when placing particles
+    pub domain_width: Option<f32>,
+    /// Optional override for the domain height used when placing particles
+    pub domain_height: Option<f32>,
 }
 
 impl InitConfig {

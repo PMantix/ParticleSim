@@ -49,17 +49,16 @@ pub fn run() {
 
     let tx = SIM_COMMAND_SENDER.lock().as_ref().unwrap().clone();
 
-    if let Some(ref sim_config) = init_config.simulation {
-        if let Some(domain_bounds) = sim_config.domain_bounds {
-            println!("Setting domain bounds to: {}", domain_bounds);
-            let domain_size = domain_bounds * 2.0;
-            tx.send(SimCommand::SetDomainSize {
-                width: domain_size,
-                height: domain_size,
-            })
-            .unwrap();
-        }
-    }
+    // Determine the domain size from configuration
+    let (global_width, global_height) = if let Some(ref sim_config) = init_config.simulation {
+        let (width, height) = sim_config.domain_size();
+        println!("Setting domain size to {}x{}", width, height);
+        tx.send(SimCommand::SetDomainSize { width, height }).unwrap();
+        (width, height)
+    } else {
+        let size = crate::config::DOMAIN_BOUNDS * 2.0;
+        (size, size)
+    };
 
     let metal_body = crate::body::Body::new(
         Vec2::zero(),
@@ -203,19 +202,25 @@ pub fn run() {
                     Species::EC => ec_body.clone(),
                     Species::DMC => dmc_body.clone(),
                 };
+                let width = random_config
+                    .domain_width
+                    .unwrap_or(global_width);
+                let height = random_config
+                    .domain_height
+                    .unwrap_or(global_height);
                 tx.send(SimCommand::AddRandom {
                     body,
                     count: random_config.count,
-                    domain_width: random_config.domain_width,
-                    domain_height: random_config.domain_height,
+                    domain_width: width,
+                    domain_height: height,
                 })
                 .unwrap();
                 println!(
                     "Added {} random {} particles in {}x{} domain",
                     random_config.count,
                     random_config.species,
-                    random_config.domain_width,
-                    random_config.domain_height
+                    width,
+                    height
                 );
             }
             Err(e) => eprintln!("Error in random config: {}", e),
