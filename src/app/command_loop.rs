@@ -245,6 +245,10 @@ pub fn handle_command(cmd: SimCommand, simulation: &mut Simulation) {
                     && body.pos.y >= -half_height
                     && body.pos.y <= half_height
             });
+            // Update rectangular domain dimensions
+            simulation.domain_width = half_width;
+            simulation.domain_height = half_height;
+            // Keep bounds for backward compatibility (use larger dimension)
             simulation.bounds = width.max(height) / 2.0;
         }
     }

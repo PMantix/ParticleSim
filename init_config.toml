@@ -5,7 +5,7 @@
 [simulation]
 # Domain size (full width/height of the simulation domain)
 domain_width = 400.0
-domain_height = 300.0
+domain_height = 250.0
 
 [particles]
 # Metal rectangles (positions are center coordinates)

@@ -21,7 +21,9 @@ pub struct Simulation {
     pub bodies: Vec<Body>,
     pub quadtree: Quadtree,
     pub cell_list: CellList,
-    pub bounds: f32,
+    pub bounds: f32, // Legacy field for backward compatibility
+    pub domain_width: f32,  // Half-width of the domain (from center to edge)
+    pub domain_height: f32, // Half-height of the domain (from center to edge)
     pub rewound_flags: Vec<bool>,
     pub background_e_field: Vec2,
     pub foils: Vec<crate::body::foil::Foil>,
@@ -50,6 +52,8 @@ impl Simulation {
             quadtree,
             cell_list,
             bounds,
+            domain_width: bounds,   // Initialize with square domain, will be updated by SetDomainSize command
+            domain_height: bounds,  // Initialize with square domain, will be updated by SetDomainSize command
             rewound_flags,
             background_e_field: Vec2::zero(),
             foils: Vec::new(),
@@ -150,28 +154,36 @@ impl Simulation {
         // Damping factor scales with timestep and is user-configurable
         let dt = self.dt;
         let base_damping = self.config.damping_base.powf(dt / 0.01);
-        let bounds = self.bounds;
+        let domain_width = self.domain_width;
+        let domain_height = self.domain_height;
         self.bodies.par_iter_mut().for_each(|body| {
             body.vel += body.acc * dt;
             let damping = base_damping * body.species.damping();
             body.vel *= damping;
             body.pos += body.vel * dt;
-            for axis in 0..2 {
-                let pos = if axis == 0 { &mut body.pos.x } else { &mut body.pos.y };
-                let vel = if axis == 0 { &mut body.vel.x } else { &mut body.vel.y };
-                if *pos < -bounds {
-                    *pos = -bounds;
-                    *vel = -*vel;
-                } else if *pos > bounds {
-                    *pos = bounds;
-                    *vel = -*vel;
-                }
+            
+            // X-axis boundary enforcement
+            if body.pos.x < -domain_width {
+                body.pos.x = -domain_width;
+                body.vel.x = -body.vel.x;
+            } else if body.pos.x > domain_width {
+                body.pos.x = domain_width;
+                body.vel.x = -body.vel.x;
+            }
+            
+            // Y-axis boundary enforcement
+            if body.pos.y < -domain_height {
+                body.pos.y = -domain_height;
+                body.vel.y = -body.vel.y;
+            } else if body.pos.y > domain_height {
+                body.pos.y = domain_height;
+                body.vel.y = -body.vel.y;
             }
         });
     }
 
     pub fn use_cell_list(&self) -> bool {
-        let area = (2.0 * self.bounds) * (2.0 * self.bounds);
+        let area = (2.0 * self.domain_width) * (2.0 * self.domain_height);
         let density = self.bodies.len() as f32 / area;
         density > self.config.cell_list_density_threshold
     }
