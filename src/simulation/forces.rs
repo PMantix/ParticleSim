@@ -18,7 +18,7 @@ pub const K_E: f32 = 8.988e3 * 0.5;
 pub fn attract(sim: &mut Simulation) {
     profile_scope!("forces_attract");
     sim.quadtree.build(&mut sim.bodies);
-    sim.quadtree.field(&mut sim.bodies, K_E);
+    sim.quadtree.field(&mut sim.bodies, sim.config.coulomb_constant);
     for body in &mut sim.bodies {
         body.e_field += sim.background_e_field;
     }
@@ -74,13 +74,14 @@ pub fn apply_polar_forces(sim: &mut Simulation) {
                 continue;
             }
 
+            let k_e = sim.config.coulomb_constant;
             let field_from = |point: ultraviolet::Vec2, point_radius: f32| {
                 let d = point - sim.bodies[j].pos;
                 let dist = d.mag();
                 let min_sep = point_radius + sim.bodies[j].radius;
                 let r_eff = dist.max(min_sep);
                 let denom = (r_eff * r_eff + epsilon_sq) * r_eff;
-                d * (K_E * sim.bodies[j].charge / denom)
+                d * (k_e * sim.bodies[j].charge / denom)
             };
 
             let field_nucleus = field_from(sim.bodies[i].pos, sim.bodies[i].radius);

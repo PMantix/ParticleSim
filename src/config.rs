@@ -163,6 +163,7 @@ pub struct SimConfig {
     pub lj_force_epsilon: f32,
     pub lj_force_sigma: f32,
     pub lj_force_cutoff: f32,
+    pub coulomb_constant: f32,
 }
 
 impl Default for SimConfig {
@@ -187,6 +188,7 @@ impl Default for SimConfig {
             lj_force_epsilon: LJ_FORCE_EPSILON,
             lj_force_sigma: LJ_FORCE_SIGMA,
             lj_force_cutoff: LJ_FORCE_CUTOFF,
+            coulomb_constant: crate::simulation::forces::K_E,
         }
     }
 }

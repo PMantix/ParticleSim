@@ -134,7 +134,13 @@ impl Simulation {
         for i in 0..len {
             let bodies_slice = unsafe { std::slice::from_raw_parts(bodies_ptr, len) };
             let body = &mut self.bodies[i];
-            body.update_electrons(bodies_slice, quadtree, self.background_e_field, self.dt);
+            body.update_electrons(
+                bodies_slice,
+                quadtree,
+                self.background_e_field,
+                self.dt,
+                self.config.coulomb_constant,
+            );
             body.update_charge_from_electrons();
         }
         self.perform_electron_hopping_with_exclusions(&foil_current_recipients);
@@ -241,7 +247,7 @@ impl Simulation {
                 let hop_vec = dst_body.pos - src_body.pos;
                 let hop_dir = if hop_vec.mag() > 1e-6 { hop_vec.normalized() } else { Vec2::zero() };
                 let local_field = self.background_e_field
-                    + self.quadtree.field_at_point(&self.bodies, src_body.pos, crate::simulation::forces::K_E);
+                    + self.quadtree.field_at_point(&self.bodies, src_body.pos, self.config.coulomb_constant);
                 let field_dir = if local_field.mag() > 1e-6 { local_field.normalized() } else { Vec2::zero() };
                 let mut alignment = (-hop_dir.dot(field_dir)).max(0.0);
                 if field_dir == Vec2::zero() { alignment = 1.0; }

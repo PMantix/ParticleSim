@@ -93,5 +93,18 @@ impl super::super::Renderer {
             ui.label("• External field affects all particles uniformly");
             ui.label("• Adjust in Simulation tab for basic controls");
         });
+
+        ui.separator();
+
+        // Coulomb constant control
+        ui.group(|ui| {
+            ui.label("🔌 Coulomb Constant");
+            ui.add(
+                egui::Slider::new(&mut self.sim_config.coulomb_constant, 1000.0..=20000.0)
+                    .text("k_e")
+                    .step_by(1.0)
+                    .logarithmic(true),
+            );
+        });
     }
 }

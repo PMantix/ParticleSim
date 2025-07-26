@@ -172,7 +172,7 @@ pub fn compute_potential_at_point(
         for body in bodies {
             let r = pos - body.pos;
             let dist = r.mag().max(1e-4);
-            potential += crate::simulation::forces::K_E * body.charge / dist;
+            potential += config.coulomb_constant * body.charge / dist;
         }
     }
 

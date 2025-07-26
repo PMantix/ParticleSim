@@ -149,7 +149,7 @@ mod tests {
             println!("After qt.build");
             let bodies_clone = bodies.clone();
             println!("Before update: rel_pos = {:?}, vel = {:?}", bodies[0].electrons[0].rel_pos, bodies[0].electrons[0].vel);
-            bodies[0].update_electrons(&bodies_clone, &qt, field, 0.1);
+            bodies[0].update_electrons(&bodies_clone, &qt, field, 0.1, crate::simulation::forces::K_E);
             println!("After update: rel_pos = {:?}, vel = {:?}", bodies[0].electrons[0].rel_pos, bodies[0].electrons[0].vel);
             assert!(bodies[0].electrons[0].rel_pos.x < 0.0,
                 "Expected electron to drift left (x < 0), but rel_pos.x = {}", bodies[0].electrons[0].rel_pos.x);

@@ -21,12 +21,13 @@ impl Body {
         quadtree: &Quadtree,
         background_field: Vec2,
         dt: f32,
+        coulomb_constant: f32,
     ) {
         let k = config::electron_spring_k(self.species);
         for e in &mut self.electrons {
             let electron_pos = self.pos + e.rel_pos;
             let local_field =
-                quadtree.field_at_point(bodies, electron_pos, crate::simulation::forces::K_E)
+                quadtree.field_at_point(bodies, electron_pos, coulomb_constant)
                     + background_field;
             let acc = -local_field * k;
             e.vel += acc * dt;
