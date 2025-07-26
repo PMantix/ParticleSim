@@ -15,6 +15,7 @@ pub struct SpeciesProps {
     pub lj_sigma: f32,
     pub lj_cutoff: f32,
     pub polar_offset: f32,
+    pub polar_charge: f32,
 }
 
 pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(|| {
@@ -32,6 +33,7 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
             lj_sigma: crate::config::LJ_FORCE_SIGMA,
             lj_cutoff: crate::config::LJ_FORCE_CUTOFF,
             polar_offset: 0.0,
+            polar_charge: crate::config::POLAR_CHARGE_DEFAULT,
         },
     );
     m.insert(
@@ -46,6 +48,7 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
             lj_sigma: crate::config::LJ_FORCE_SIGMA,
             lj_cutoff: crate::config::LJ_FORCE_CUTOFF,
             polar_offset: crate::config::ELECTRON_DRIFT_RADIUS_FACTOR,
+            polar_charge: crate::config::POLAR_CHARGE_DEFAULT,
         },
     );
     m.insert(
@@ -60,6 +63,7 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
             lj_sigma: crate::config::LJ_FORCE_SIGMA,
             lj_cutoff: crate::config::LJ_FORCE_CUTOFF,
             polar_offset: 0.0,
+            polar_charge: crate::config::POLAR_CHARGE_DEFAULT,
         },
     );
     m.insert(
@@ -74,6 +78,7 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
             lj_sigma: crate::config::LJ_FORCE_SIGMA,
             lj_cutoff: crate::config::LJ_FORCE_CUTOFF,
             polar_offset: crate::config::ELECTRON_DRIFT_RADIUS_FACTOR,
+            polar_charge: crate::config::POLAR_CHARGE_DEFAULT,
         },
     );
     m.insert(
@@ -88,6 +93,7 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
             lj_sigma: crate::config::LJ_FORCE_SIGMA,
             lj_cutoff: crate::config::LJ_FORCE_CUTOFF,
             polar_offset: crate::config::ELECTRON_DRIFT_RADIUS_FACTOR,
+            polar_charge: crate::config::POLAR_CHARGE_EC,
         },
     );
     m.insert(
@@ -102,6 +108,7 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
             lj_sigma: crate::config::LJ_FORCE_SIGMA,
             lj_cutoff: crate::config::LJ_FORCE_CUTOFF,
             polar_offset: crate::config::ELECTRON_DRIFT_RADIUS_FACTOR,
+            polar_charge: crate::config::POLAR_CHARGE_DMC,
         },
     );
     m
@@ -146,6 +153,7 @@ pub fn get_species_props(species: Species) -> SpeciesProps {
             lj_sigma: crate::config::LJ_FORCE_SIGMA,
             lj_cutoff: crate::config::LJ_FORCE_CUTOFF,
             polar_offset: 0.0,
+            polar_charge: crate::config::POLAR_CHARGE_DEFAULT,
         }
     })
 }
