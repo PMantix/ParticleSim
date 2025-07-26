@@ -16,6 +16,9 @@ pub struct SpeciesProps {
     pub lj_cutoff: f32,
     pub polar_offset: f32,
     pub polar_charge: f32,
+    pub enable_repulsion: bool,
+    pub repulsion_strength: f32,
+    pub repulsion_cutoff: f32,
 }
 
 pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(|| {
@@ -34,6 +37,9 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
             lj_cutoff: crate::config::LJ_FORCE_CUTOFF,
             polar_offset: 0.0,
             polar_charge: crate::config::POLAR_CHARGE_DEFAULT,
+            enable_repulsion: false,
+            repulsion_strength: 5.0,
+            repulsion_cutoff: 2.0,
         },
     );
     m.insert(
@@ -49,6 +55,9 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
             lj_cutoff: crate::config::LJ_FORCE_CUTOFF,
             polar_offset: crate::config::ELECTRON_DRIFT_RADIUS_FACTOR,
             polar_charge: crate::config::POLAR_CHARGE_DEFAULT,
+            enable_repulsion: false,
+            repulsion_strength: 5.0,
+            repulsion_cutoff: 2.0,
         },
     );
     m.insert(
@@ -64,6 +73,9 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
             lj_cutoff: crate::config::LJ_FORCE_CUTOFF,
             polar_offset: 0.0,
             polar_charge: crate::config::POLAR_CHARGE_DEFAULT,
+            enable_repulsion: false,
+            repulsion_strength: 5.0,
+            repulsion_cutoff: 2.0,
         },
     );
     m.insert(
@@ -79,6 +91,9 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
             lj_cutoff: crate::config::LJ_FORCE_CUTOFF,
             polar_offset: crate::config::ELECTRON_DRIFT_RADIUS_FACTOR,
             polar_charge: crate::config::POLAR_CHARGE_DEFAULT,
+            enable_repulsion: false,
+            repulsion_strength: 5.0,
+            repulsion_cutoff: 2.0,
         },
     );
     m.insert(
@@ -94,6 +109,9 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
             lj_cutoff: crate::config::LJ_FORCE_CUTOFF,
             polar_offset: crate::config::ELECTRON_DRIFT_RADIUS_FACTOR,
             polar_charge: crate::config::POLAR_CHARGE_EC,
+            enable_repulsion: false,
+            repulsion_strength: 5.0,
+            repulsion_cutoff: 2.0,
         },
     );
     m.insert(
@@ -109,6 +127,9 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
             lj_cutoff: crate::config::LJ_FORCE_CUTOFF,
             polar_offset: crate::config::ELECTRON_DRIFT_RADIUS_FACTOR,
             polar_charge: crate::config::POLAR_CHARGE_DMC,
+            enable_repulsion: false,
+            repulsion_strength: 5.0,
+            repulsion_cutoff: 2.0,
         },
     );
     m
@@ -124,6 +145,19 @@ pub fn max_lj_cutoff() -> f32 {
         .map(|&species| get_species_props(species))
         .filter(|p| p.lj_enabled)
         .map(|p| p.lj_cutoff * p.lj_sigma)
+        .fold(0.0_f32, f32::max)
+}
+
+/// Maximum repulsion cutoff across all species.
+pub fn max_repulsion_cutoff() -> f32 {
+    use Species::*;
+    let species_list = [LithiumIon, LithiumMetal, FoilMetal, ElectrolyteAnion, EC, DMC];
+
+    species_list
+        .iter()
+        .map(|&species| get_species_props(species))
+        .filter(|p| p.enable_repulsion)
+        .map(|p| p.repulsion_cutoff)
         .fold(0.0_f32, f32::max)
 }
 
@@ -154,6 +188,9 @@ pub fn get_species_props(species: Species) -> SpeciesProps {
             lj_cutoff: crate::config::LJ_FORCE_CUTOFF,
             polar_offset: 0.0,
             polar_charge: crate::config::POLAR_CHARGE_DEFAULT,
+            enable_repulsion: false,
+            repulsion_strength: 5.0,
+            repulsion_cutoff: 2.0,
         }
     })
 }

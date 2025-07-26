@@ -156,3 +156,53 @@ pub fn apply_lj_forces(sim: &mut Simulation) {
         }
     }
 }
+
+/// Compute soft-core repulsive force between two bodies.
+pub fn compute_repulsive_force(p1: &crate::body::Body, p2: &crate::body::Body, r_vec: ultraviolet::Vec2, r: f32) -> ultraviolet::Vec2 {
+    let r0 = 0.5 * (p1.species.repulsion_cutoff() + p2.species.repulsion_cutoff());
+    if r >= r0 || r <= 0.0 {
+        return ultraviolet::Vec2::zero();
+    }
+    let k = 0.5 * (p1.species.repulsion_strength() + p2.species.repulsion_strength());
+    let mag = k * (1.0 - r / r0) / r;
+    r_vec * mag
+}
+
+/// Apply short-range repulsive forces when enabled for both species.
+pub fn apply_repulsive_forces(sim: &mut Simulation) {
+    profile_scope!("forces_repulsion");
+    let max_cutoff = crate::species::max_repulsion_cutoff();
+    if max_cutoff <= 0.0 { return; }
+    let use_cell = sim.use_cell_list();
+    if use_cell {
+        sim.cell_list.cell_size = max_cutoff;
+        sim.cell_list.rebuild(&sim.bodies);
+    } else {
+        sim.quadtree.build(&mut sim.bodies);
+    }
+
+    for i in 0..sim.bodies.len() {
+        if !sim.bodies[i].species.repulsion_enabled() { continue; }
+        let cutoff = sim.bodies[i].species.repulsion_cutoff();
+        let neighbors = if use_cell {
+            sim.cell_list.find_neighbors_within(&sim.bodies, i, cutoff)
+        } else {
+            sim.quadtree.find_neighbors_within(&sim.bodies, i, cutoff)
+        };
+        for &j in &neighbors {
+            if j <= i { continue; }
+            if !sim.bodies[j].species.repulsion_enabled() { continue; }
+            let r_vec = sim.bodies[j].pos - sim.bodies[i].pos;
+            let r = r_vec.mag();
+            let f = compute_repulsive_force(&sim.bodies[i], &sim.bodies[j], r_vec, r);
+            if f != ultraviolet::Vec2::zero() {
+                let (a, b) = {
+                    let (left, right) = sim.bodies.split_at_mut(j);
+                    (&mut left[i], &mut right[0])
+                };
+                a.acc -= f / a.mass;
+                b.acc += f / b.mass;
+            }
+        }
+    }
+}
