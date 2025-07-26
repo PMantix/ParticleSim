@@ -170,6 +170,15 @@ impl super::super::Renderer {
             {
                 changed = true;
             }
+            if ui
+                .add(
+                    egui::Slider::new(&mut current_props.polar_charge, 0.0..=1.0)
+                        .text("Effective Charge"),
+                )
+                .changed()
+            {
+                changed = true;
+            }
         });
 
         // Update species properties if changed
@@ -195,6 +204,10 @@ impl super::super::Renderer {
                 ui.label(format!("Mass: {:.2}", current_props.mass));
                 ui.label(format!("Radius: {:.2}", current_props.radius));
                 ui.label(format!("Damping: {:.3}", current_props.damping));
+            });
+            ui.horizontal(|ui| {
+                ui.label(format!("Polar offset: {:.2}", current_props.polar_offset));
+                ui.label(format!("Polar charge: {:.2}", current_props.polar_charge));
             });
             if current_props.lj_enabled {
                 ui.horizontal(|ui| {

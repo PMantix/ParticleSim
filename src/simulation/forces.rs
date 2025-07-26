@@ -85,7 +85,7 @@ pub fn apply_polar_forces(sim: &mut Simulation) {
 
             let field_nucleus = field_from(sim.bodies[i].pos, sim.bodies[i].radius);
             let field_electron = field_from(e_pos, 0.0);
-            let q_eff = config::polar_charge(sim.bodies[i].species);
+            let q_eff = sim.bodies[i].species.polar_charge();
             let force = (field_nucleus - field_electron) * q_eff;
 
             if i < j {

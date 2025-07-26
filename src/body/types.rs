@@ -188,4 +188,8 @@ impl Species {
     pub fn polar_offset(&self) -> f32 {
         self.props().polar_offset
     }
+
+    pub fn polar_charge(&self) -> f32 {
+        self.props().polar_charge
+    }
 }
