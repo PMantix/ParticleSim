@@ -97,6 +97,7 @@ impl Simulation {
         forces::attract(self);
         forces::apply_polar_forces(self);
         forces::apply_lj_forces(self);
+        forces::apply_repulsive_forces(self);
         self.iterate();
         let num_passes = *COLLISION_PASSES.lock();
         for _ in 1..num_passes {

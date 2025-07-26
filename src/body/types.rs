@@ -192,4 +192,16 @@ impl Species {
     pub fn polar_charge(&self) -> f32 {
         self.props().polar_charge
     }
+
+    pub fn repulsion_enabled(&self) -> bool {
+        self.props().enable_repulsion
+    }
+
+    pub fn repulsion_strength(&self) -> f32 {
+        self.props().repulsion_strength
+    }
+
+    pub fn repulsion_cutoff(&self) -> f32 {
+        self.props().repulsion_cutoff
+    }
 }
