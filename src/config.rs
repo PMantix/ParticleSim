@@ -33,14 +33,14 @@ pub const HOP_TRANSFER_COEFF: f32 = 0.5;            /// Transfer coefficient α 
 pub const HOP_ACTIVATION_ENERGY: f32 = 0.025;      /// Thermal energy k_BT (in your same charge‐units)
 
 /// Get the effective polarization charge for a given species
-pub fn polar_charge(species: Species) -> f32 {
+/* 
     use Species::*;
     match species {
         EC => POLAR_CHARGE_EC,
         DMC => POLAR_CHARGE_DMC,
         _ => POLAR_CHARGE_DEFAULT,
     }
-}
+}*/
 
 // ====================
 // Butler-Volmer Parameters

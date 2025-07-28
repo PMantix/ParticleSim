@@ -80,7 +80,7 @@ impl super::super::Renderer {
             // Damping control
             if ui
                 .add(
-                    egui::Slider::new(&mut current_props.damping, 0.1..=1.0)
+                    egui::Slider::new(&mut current_props.damping, 0.01..=1.0)
                         .text("Damping")
                         .step_by(0.001),
                 )
@@ -170,7 +170,7 @@ impl super::super::Renderer {
             if current_props.enable_repulsion {
                 if ui
                     .add(
-                        egui::Slider::new(&mut current_props.repulsion_strength, 0.0..=20.0)
+                        egui::Slider::new(&mut current_props.repulsion_strength, 0.0..=100.0)
                             .text("Strength k")
                             .step_by(0.1),
                     )
@@ -180,7 +180,7 @@ impl super::super::Renderer {
                 }
                 if ui
                     .add(
-                        egui::Slider::new(&mut current_props.repulsion_cutoff, 0.1..=5.0)
+                        egui::Slider::new(&mut current_props.repulsion_cutoff, 0.1..=20.0)
                             .text("Cutoff r0")
                             .step_by(0.01),
                     )
