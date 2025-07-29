@@ -83,6 +83,7 @@ pub enum SimCommand {
     LoadState { path: String },
     StepOnce,
     SetDomainSize { width: f32, height: f32 },
+    SetTemperature { temperature: f32 },
 }
 
 pub static SIM_COMMAND_SENDER: Lazy<Mutex<Option<Sender<SimCommand>>>> = Lazy::new(|| Mutex::new(None));

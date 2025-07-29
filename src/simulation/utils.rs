@@ -29,6 +29,19 @@ pub fn can_transfer_electron(src: &Body, dst: &Body) -> bool {
     }
 }
 
+/// Compute the instantaneous temperature from particle velocities.
+/// Assumes 2D simulation and k_B = 1.
+pub fn compute_temperature(bodies: &[Body]) -> f32 {
+    if bodies.is_empty() {
+        return 0.0;
+    }
+    let kinetic: f32 = bodies
+        .iter()
+        .map(|b| 0.5 * b.mass * b.vel.mag_sq())
+        .sum();
+    (2.0 * kinetic) / (2.0 * bodies.len() as f32)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -106,5 +106,24 @@ impl super::super::Renderer {
                     .logarithmic(true),
             );
         });
+
+        ui.separator();
+
+        ui.group(|ui| {
+            ui.label("🌡️ Simulation Temperature");
+            let mut temp = self.sim_config.temperature;
+            if ui
+                .add(egui::Slider::new(&mut temp, 0.01..=10.0).text("T").step_by(0.01))
+                .changed()
+            {
+                self.sim_config.temperature = temp;
+                SIM_COMMAND_SENDER
+                    .lock()
+                    .as_ref()
+                    .unwrap()
+                    .send(SimCommand::SetTemperature { temperature: temp })
+                    .unwrap();
+            }
+        });
     }
 }

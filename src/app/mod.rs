@@ -47,6 +47,13 @@ pub fn run() {
         }
     };
 
+    // Apply initial temperature from configuration if provided
+    if let Some(sim_cfg) = &init_config.simulation {
+        if let Some(temp) = sim_cfg.initial_temperature {
+            crate::config::LJ_CONFIG.lock().temperature = temp;
+        }
+    }
+
     let tx = SIM_COMMAND_SENDER.lock().as_ref().unwrap().clone();
 
     // Determine the domain size from configuration

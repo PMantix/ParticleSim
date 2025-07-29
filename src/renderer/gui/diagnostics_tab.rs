@@ -113,6 +113,8 @@ impl super::super::Renderer {
             ui.label(format!("Anion particles: {}", anion_count));
             ui.label(format!("Foil particles: {}", foil_count));
             ui.label(format!("Total particles: {}", self.bodies.len()));
+            let temp = crate::simulation::compute_temperature(&self.bodies);
+            ui.label(format!("Temperature: {:.3}", temp));
         });
     }
 }

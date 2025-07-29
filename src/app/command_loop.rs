@@ -63,6 +63,8 @@ pub fn handle_command(cmd: SimCommand, simulation: &mut Simulation) {
                     vel: ultraviolet::Vec2::zero(),
                 });
             }
+            let temp = crate::config::LJ_CONFIG.lock().temperature;
+            body.vel = super::spawn::sample_velocity(body.mass, temp);
             body.update_charge_from_electrons();
             body.update_species();
             simulation.bodies.push(body);
@@ -235,6 +237,16 @@ pub fn handle_command(cmd: SimCommand, simulation: &mut Simulation) {
             {
                 foil_b.link_id = None;
             }
+        }
+        SimCommand::SetTemperature { temperature } => {
+            let current = crate::simulation::utils::compute_temperature(&simulation.bodies);
+            if current > 0.0 {
+                let scale = (temperature / current).sqrt();
+                for body in &mut simulation.bodies {
+                    body.vel *= scale;
+                }
+            }
+            crate::config::LJ_CONFIG.lock().temperature = temperature;
         }
         SimCommand::SetDomainSize { width, height } => {
             let half_width = width / 2.0;

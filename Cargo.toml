@@ -33,6 +33,7 @@ rayon = "1.10.0"
 crossbeam = "0.8.4"
 broccoli-rayon = "0.4.0"
 rand = "0.9.1"
+rand_distr = "0.4"
 smallvec = { version = "1.10.0", features = ["serde"] }
 
 [features]

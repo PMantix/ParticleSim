@@ -128,6 +128,12 @@ pub const SHOW_VELOCITY_VECTORS: bool = false;      /// Show velocity vectors
 pub const SHOW_CHARGE_DENSITY: bool = false;      /// Show charge-density heatmap
 pub const SHOW_FIELD_VECTORS: bool = false; // Show electric field vectors
 
+// ====================
+// Temperature
+// ====================
+/// Default simulation temperature in arbitrary units
+pub const DEFAULT_TEMPERATURE: f32 = 1.0;
+
 use serde::{Serialize, Deserialize};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -164,6 +170,8 @@ pub struct SimConfig {
     pub lj_force_sigma: f32,
     pub lj_force_cutoff: f32,
     pub coulomb_constant: f32,
+    /// Current simulation temperature
+    pub temperature: f32,
 }
 
 impl Default for SimConfig {
@@ -189,6 +197,7 @@ impl Default for SimConfig {
             lj_force_sigma: LJ_FORCE_SIGMA,
             lj_force_cutoff: LJ_FORCE_CUTOFF,
             coulomb_constant: crate::simulation::forces::K_E,
+            temperature: DEFAULT_TEMPERATURE,
         }
     }
 }

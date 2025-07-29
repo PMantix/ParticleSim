@@ -7,6 +7,7 @@ pub mod collision;
 pub mod simulation;
 pub use simulation::*;
 pub mod utils;
+pub use utils::compute_temperature;
 
 #[cfg(test)]
 mod tests;

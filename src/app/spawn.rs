@@ -1,9 +1,20 @@
 use crate::body::{Electron, Species};
 use crate::simulation::Simulation;
+use rand_distr::{Distribution, StandardNormal};
+use rand::thread_rng;
 use smallvec::smallvec;
 use ultraviolet::Vec2;
 
 const RANDOM_ATTEMPTS: usize = super::RANDOM_ATTEMPTS;
+
+/// Sample a random velocity vector from a Maxwell-Boltzmann distribution.
+pub fn sample_velocity(mass: f32, temperature: f32) -> Vec2 {
+    let sigma = (temperature / mass).sqrt();
+    let mut rng = thread_rng();
+    let vx: f64 = StandardNormal.sample(&mut rng);
+    let vy: f64 = StandardNormal.sample(&mut rng);
+    Vec2::new(vx as f32 * sigma, vy as f32 * sigma)
+}
 
 pub fn overlaps_any(existing: &[crate::body::Body], pos: Vec2, radius: f32) -> Option<usize> {
     existing
@@ -27,6 +38,7 @@ pub fn add_circle(
     y: f32,
     radius: f32,
 ) {
+    let temp = crate::config::LJ_CONFIG.lock().temperature;
     let center = Vec2::new(x, y);
     let particle_radius = body.radius;
     let particle_diameter = 2.0 * particle_radius;
@@ -53,6 +65,7 @@ pub fn add_circle(
                 0.0,
                 body.species,
             );
+            new_body.vel = sample_velocity(new_body.mass, temp);
             new_body.electrons.clear();
             if matches!(
                 new_body.species,
@@ -72,6 +85,7 @@ pub fn add_circle(
 }
 
 pub fn add_ring(simulation: &mut Simulation, body: crate::body::Body, x: f32, y: f32, radius: f32) {
+    let temp = crate::config::LJ_CONFIG.lock().temperature;
     let center = Vec2::new(x, y);
     let particle_radius = body.radius;
     let particle_diameter = 2.0 * particle_radius;
@@ -85,6 +99,7 @@ pub fn add_ring(simulation: &mut Simulation, body: crate::body::Body, x: f32, y:
         }
         let mut new_body =
             crate::body::Body::new(pos, Vec2::zero(), body.mass, body.radius, 0.0, body.species);
+        new_body.vel = sample_velocity(new_body.mass, temp);
         new_body.electrons.clear();
         if matches!(
             new_body.species,
@@ -109,6 +124,7 @@ pub fn add_rectangle(
     width: f32,
     height: f32,
 ) {
+    let temp = crate::config::LJ_CONFIG.lock().temperature;
     let origin = Vec2::new(x, y);
     let particle_radius = body.radius;
     let particle_diameter = 2.0 * particle_radius;
@@ -158,6 +174,7 @@ pub fn add_random(
 ) {
     // Attempt to place 'count' random bodies, tracking failures
     let mut failures = 0;
+    let temp = crate::config::LJ_CONFIG.lock().temperature;
     for _ in 0..count {
         let mut placed = false;
         for _ in 0..RANDOM_ATTEMPTS {
@@ -174,6 +191,7 @@ pub fn add_random(
                     0.0,
                     body.species,
                 );
+                new_body.vel = sample_velocity(new_body.mass, temp);
                 new_body.electrons.clear();
                 if matches!(new_body.species, Species::LithiumMetal | Species::ElectrolyteAnion | Species::EC | Species::DMC) {
                     new_body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
@@ -204,6 +222,7 @@ pub fn add_foil(
     particle_radius: f32,
     current: f32,
 ) {
+    let temp = crate::config::LJ_CONFIG.lock().temperature;
     let origin = Vec2::new(x, y);
     let particle_diameter = 2.0 * particle_radius;
     let cols = (width / particle_diameter).floor() as usize;
@@ -227,6 +246,7 @@ pub fn add_foil(
                 0.0,
                 Species::FoilMetal,
             );
+            new_body.vel = sample_velocity(new_body.mass, temp);
             new_body.electrons = smallvec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }; crate::config::FOIL_NEUTRAL_ELECTRONS];
             new_body.update_charge_from_electrons();
             body_ids.push(new_body.id);

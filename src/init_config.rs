@@ -18,6 +18,8 @@ pub struct SimulationConfig {
     pub domain_width: Option<f32>,
     /// Optional simulation domain height. Falls back to the default when omitted.
     pub domain_height: Option<f32>,
+    /// Optional initial temperature for velocity initialization
+    pub initial_temperature: Option<f32>,
 }
 
 impl SimulationConfig {
