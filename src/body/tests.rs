@@ -128,6 +128,82 @@ mod tests {
         }
 
         #[test]
+        fn radius_updates_when_species_changes() {
+            // Test ion -> metal radius change
+            let mut b = Body::new(
+                Vec2::zero(),
+                Vec2::zero(),
+                1.0,
+                1.0,
+                0.0, // Low charge, should become metal
+                Species::LithiumIon,
+            );
+            let ion_radius = Species::LithiumIon.radius();
+            let metal_radius = Species::LithiumMetal.radius();
+            
+            println!("Ion radius: {}, Metal radius: {}", ion_radius, metal_radius);
+            
+            // Initially should have ion radius
+            b.radius = ion_radius;
+            assert_eq!(b.radius, ion_radius);
+            assert_eq!(b.species, Species::LithiumIon);
+            
+            // After update_species, should become metal with metal radius
+            b.update_species();
+            println!("After update: species={:?}, radius={}", b.species, b.radius);
+            assert_eq!(b.species, Species::LithiumMetal);
+            assert_eq!(b.radius, metal_radius);
+            
+            // Test metal -> ion radius change
+            b.charge = 1.0; // High charge, should become ion
+            b.update_species();
+            println!("After ion conversion: species={:?}, radius={}", b.species, b.radius);
+            assert_eq!(b.species, Species::LithiumIon);
+            assert_eq!(b.radius, ion_radius);
+        }
+
+        #[test]
+        fn species_transition_debug_test() {
+            let ion_radius = Species::LithiumIon.radius();
+            let metal_radius = Species::LithiumMetal.radius();
+            
+            println!("Direct species calls:");
+            println!("LithiumIon.radius() = {}", ion_radius);
+            println!("LithiumMetal.radius() = {}", metal_radius);
+            
+            // Create an ion with charge 1.0
+            let mut ion = Body::new_from_species(Vec2::zero(), Vec2::zero(), 1.0, Species::LithiumIon);
+            println!("Created ion: species={:?}, radius={}, charge={}", ion.species, ion.radius, ion.charge);
+            
+            // Change charge to 0 to trigger metal conversion
+            ion.charge = 0.0;
+            println!("Before update: species={:?}, radius={}, charge={}", ion.species, ion.radius, ion.charge);
+            
+            ion.update_species();
+            println!("After update: species={:?}, radius={}, charge={}", ion.species, ion.radius, ion.charge);
+            
+            assert_eq!(ion.species, Species::LithiumMetal);
+            assert_eq!(ion.radius, metal_radius);
+        }
+
+        #[test]
+        fn new_from_species_uses_correct_radius() {
+            let ion = Body::new_from_species(Vec2::zero(), Vec2::zero(), 1.0, Species::LithiumIon);
+            let metal = Body::new_from_species(Vec2::zero(), Vec2::zero(), 0.0, Species::LithiumMetal);
+            
+            assert_eq!(ion.radius, Species::LithiumIon.radius());
+            assert_eq!(ion.mass, Species::LithiumIon.mass());
+            assert_eq!(ion.species, Species::LithiumIon);
+            
+            assert_eq!(metal.radius, Species::LithiumMetal.radius());
+            assert_eq!(metal.mass, Species::LithiumMetal.mass());
+            assert_eq!(metal.species, Species::LithiumMetal);
+            
+            // Should be different radii
+            assert_ne!(ion.radius, metal.radius);
+        }
+
+        #[test]
         fn electron_moves_under_field() {
             println!("Starting electron movement test");
             let mut b = Body::new(

@@ -28,7 +28,7 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
         LithiumIon,
         SpeciesProps {
             mass: 1.0,
-            radius: 1.0,
+            radius: 0.6667,
             damping: 1.0,
             color: [255, 255, 0, 255],
             lj_enabled: false,
@@ -82,7 +82,7 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
         ElectrolyteAnion,
         SpeciesProps {
             mass: 20.88,
-            radius: 1.45,
+            radius: 1.6667,
             damping: 1.0,
             color: [0, 128, 255, 255],
             lj_enabled: false,
@@ -100,7 +100,7 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
         EC,
         SpeciesProps {
             mass: 12.69,
-            radius: 1.3,
+            radius: 1.5,
             damping: 1.0,
             color: [0, 255, 0, 255],
             lj_enabled: false,
@@ -118,7 +118,7 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
         DMC,
         SpeciesProps {
             mass: 12.98,
-            radius: 1.4,
+            radius: 1.5,
             damping: 1.0,
             color: [0, 255, 128, 255],
             lj_enabled: false,
@@ -127,7 +127,7 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
             lj_cutoff: crate::config::LJ_FORCE_CUTOFF,
             polar_offset: crate::config::ELECTRON_DRIFT_RADIUS_FACTOR,
             polar_charge: crate::config::POLAR_CHARGE_DMC,
-            enable_repulsion: false,
+            enable_repulsion: true,
             repulsion_strength: 5.0,
             repulsion_cutoff: 2.0,
         },

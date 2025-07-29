@@ -64,6 +64,8 @@ impl super::Renderer {
             if self.show_bodies {
                 for body in &self.bodies {
                     let mut color = body.species.color();
+                    let mut draw_radius = body.radius;
+                    
                     if body.species == Species::LithiumIon {
                         if body.surrounded_by_metal {
                             if self.show_metal_electron_deficiency {
@@ -71,6 +73,8 @@ impl super::Renderer {
                             } else {
                                 color = [192, 192, 192, 255];
                             }
+                            // Force surrounded ions to appear with metal radius
+                            draw_radius = Species::LithiumMetal.radius();
                         }
                     }
 
@@ -82,7 +86,7 @@ impl super::Renderer {
                         }
                     }
 
-                    ctx.draw_circle(body.pos, body.radius, color);
+                    ctx.draw_circle(body.pos, draw_radius, color);
 
                     // Visualize electron count for FoilMetal
                     if self.show_foil_electron_deficiency && body.species == Species::FoilMetal {

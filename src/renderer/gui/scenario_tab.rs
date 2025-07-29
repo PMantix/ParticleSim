@@ -246,8 +246,6 @@ impl super::super::Renderer {
                     let body = make_body_with_species(
                         ultraviolet::Vec2::zero(),
                         ultraviolet::Vec2::zero(),
-                        spec.mass(),
-                        spec.radius(),
                         spec,
                     );
                     SIM_COMMAND_SENDER
@@ -267,8 +265,6 @@ impl super::super::Renderer {
                     let body = make_body_with_species(
                         ultraviolet::Vec2::zero(),
                         ultraviolet::Vec2::zero(),
-                        spec.mass(),
-                        spec.radius(),
                         spec,
                     );
                     SIM_COMMAND_SENDER
@@ -292,8 +288,6 @@ impl super::super::Renderer {
                     let body = make_body_with_species(
                         ultraviolet::Vec2::zero(),
                         ultraviolet::Vec2::zero(),
-                        spec.mass(),
-                        spec.radius(),
                         spec,
                     );
                     SIM_COMMAND_SENDER
@@ -334,8 +328,6 @@ impl super::super::Renderer {
                     let body = make_body_with_species(
                         ultraviolet::Vec2::zero(),
                         ultraviolet::Vec2::zero(),
-                        spec.mass(),
-                        spec.radius(),
                         spec,
                     );
                     SIM_COMMAND_SENDER
@@ -445,12 +437,11 @@ impl super::super::Renderer {
 pub fn make_body_with_species(
     pos: Vec2,
     vel: Vec2,
-    mass: f32,
-    radius: f32,
     species: Species,
 ) -> Body {
     use crate::config::{FOIL_NEUTRAL_ELECTRONS, LITHIUM_METAL_NEUTRAL_ELECTRONS};
-    let mut body = Body::new(pos, vel, mass, radius, 0.0, species);
+    // Always use species properties for mass and radius to ensure consistency
+    let mut body = Body::new(pos, vel, species.mass(), species.radius(), 0.0, species);
     body.electrons.clear();
     match species {
         Species::LithiumMetal => {
@@ -499,4 +490,26 @@ pub fn make_body_with_species(
     body.update_charge_from_electrons();
     body.update_species();
     body
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn make_body_with_species_uses_correct_radius() {
+        let ion = make_body_with_species(Vec2::zero(), Vec2::zero(), Species::LithiumIon);
+        let metal = make_body_with_species(Vec2::zero(), Vec2::zero(), Species::LithiumMetal);
+        
+        assert_eq!(ion.radius, Species::LithiumIon.radius());
+        assert_eq!(ion.mass, Species::LithiumIon.mass());
+        assert_eq!(ion.species, Species::LithiumIon);
+        
+        assert_eq!(metal.radius, Species::LithiumMetal.radius());
+        assert_eq!(metal.mass, Species::LithiumMetal.mass());
+        assert_eq!(metal.species, Species::LithiumMetal);
+        
+        // Should be different radii
+        assert_ne!(ion.radius, metal.radius);
+    }
 }
