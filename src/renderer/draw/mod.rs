@@ -46,6 +46,9 @@ impl super::Renderer {
                     let current_time = *crate::renderer::state::SIM_TIME.lock();
                     diag.calculate_if_needed(&self.bodies, &self.foils, &temp_quadtree, current_time, 1.0);
                 }
+                if let Some(ref mut diag) = self.solvation_diagnostic {
+                    diag.calculate(&self.bodies);
+                }
             }
             if let Some(body) = self.confirmed_bodies.take() {
                 self.bodies.push(body.clone());

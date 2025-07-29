@@ -108,6 +108,7 @@ pub struct Renderer {
     pub current_tab: GuiTab,
     pub transference_number_diagnostic: Option<TransferenceNumberDiagnostic>,
     pub foil_electron_fraction_diagnostic: Option<FoilElectronFractionDiagnostic>,
+    pub solvation_diagnostic: Option<crate::diagnostics::SolvationDiagnostic>,
     
     // Screen capture functionality
     pub screen_capture_enabled: bool,
@@ -181,6 +182,7 @@ impl quarkstrom::Renderer for Renderer {
             current_tab: GuiTab::default(), // Default to Simulation tab
             transference_number_diagnostic: Some(TransferenceNumberDiagnostic::new()),
             foil_electron_fraction_diagnostic: Some(FoilElectronFractionDiagnostic::new()),
+            solvation_diagnostic: Some(crate::diagnostics::SolvationDiagnostic::new()),
             
             // Screen capture defaults
             screen_capture_enabled: false,
