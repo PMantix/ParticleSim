@@ -58,6 +58,18 @@ impl Body {
             last_surround_frame: 0,
         }
     }
+
+    /// Create a new Body using species properties for mass and radius
+    pub fn new_from_species(pos: Vec2, vel: Vec2, charge: f32, species: Species) -> Self {
+        Self::new(
+            pos,
+            vel,
+            species.mass(),
+            species.radius(),
+            charge,
+            species
+        )
+    }
     pub fn update_species(&mut self) {
         if matches!(
             self.species,
@@ -66,10 +78,18 @@ impl Body {
             // Don't auto-convert FoilMetal, Anions, or solvent molecules
             return;
         }
+        
+        let old_species = self.species;
+        
         if self.charge > config::LITHIUM_ION_THRESHOLD {
             self.species = Species::LithiumIon;
         } else if self.charge <= 0.0 {
             self.species = Species::LithiumMetal;
+        }
+        
+        // Update radius if species changed
+        if old_species != self.species {
+            self.radius = self.species.radius();
         }
     }
 

@@ -128,6 +128,54 @@ mod tests {
         }
 
         #[test]
+        fn radius_updates_when_species_changes() {
+            // Test ion -> metal radius change
+            let mut b = Body::new(
+                Vec2::zero(),
+                Vec2::zero(),
+                1.0,
+                1.0,
+                0.0, // Low charge, should become metal
+                Species::LithiumIon,
+            );
+            let ion_radius = Species::LithiumIon.radius();
+            let metal_radius = Species::LithiumMetal.radius();
+            
+            // Initially should have ion radius
+            b.radius = ion_radius;
+            assert_eq!(b.radius, ion_radius);
+            assert_eq!(b.species, Species::LithiumIon);
+            
+            // After update_species, should become metal with metal radius
+            b.update_species();
+            assert_eq!(b.species, Species::LithiumMetal);
+            assert_eq!(b.radius, metal_radius);
+            
+            // Test metal -> ion radius change
+            b.charge = 1.0; // High charge, should become ion
+            b.update_species();
+            assert_eq!(b.species, Species::LithiumIon);
+            assert_eq!(b.radius, ion_radius);
+        }
+
+        #[test]
+        fn new_from_species_uses_correct_radius() {
+            let ion = Body::new_from_species(Vec2::zero(), Vec2::zero(), 1.0, Species::LithiumIon);
+            let metal = Body::new_from_species(Vec2::zero(), Vec2::zero(), 0.0, Species::LithiumMetal);
+            
+            assert_eq!(ion.radius, Species::LithiumIon.radius());
+            assert_eq!(ion.mass, Species::LithiumIon.mass());
+            assert_eq!(ion.species, Species::LithiumIon);
+            
+            assert_eq!(metal.radius, Species::LithiumMetal.radius());
+            assert_eq!(metal.mass, Species::LithiumMetal.mass());
+            assert_eq!(metal.species, Species::LithiumMetal);
+            
+            // Should be different radii
+            assert_ne!(ion.radius, metal.radius);
+        }
+
+        #[test]
         fn electron_moves_under_field() {
             println!("Starting electron movement test");
             let mut b = Body::new(

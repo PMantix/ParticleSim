@@ -30,8 +30,6 @@ pub fn _uniform_disc(n: usize) -> Vec<Body> {
 
         let vel = Vec2::new(0.0, 0.0);
         let mass = 0.5f32;
-        let radius = 1.0 * mass.cbrt();
-
         let charge = if pos.x < 0.0 { 1.0 } else { -1.0 };
 
         let species = if charge > 0.5 {
@@ -41,6 +39,8 @@ pub fn _uniform_disc(n: usize) -> Vec<Body> {
         } else {
             Species::LithiumIon
         };
+
+        let radius = species.radius();
 
         bodies.push(Body::new(pos, vel, mass, radius, charge, species));
     }
@@ -97,8 +97,8 @@ pub fn _two_lithium_clumps_with_ions(
     for _ in 0..clump_size {
         let pos = random_in_disc(left_center);
         let vel = Vec2::zero();
-        let mass:f32 = 1.0;
-        let radius:f32 = 1.0 * mass.cbrt();
+        let mass = Species::LithiumMetal.mass();
+        let radius = Species::LithiumMetal.radius();
         let mut body = Body::new(pos, vel, mass, radius, 0.0, Species::LithiumMetal);
         body.electrons = smallvec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }];
         body.update_charge_from_electrons();
@@ -109,8 +109,8 @@ pub fn _two_lithium_clumps_with_ions(
     for _ in 0..clump_size {
         let pos = random_in_disc(right_center);
         let vel = Vec2::zero();
-        let mass:f32 = 1.0;
-        let radius:f32 = 1.0 * mass.cbrt();
+        let mass = Species::LithiumMetal.mass();
+        let radius = Species::LithiumMetal.radius();
         let mut body = Body::new(pos, vel, mass, radius, 0.0, Species::LithiumMetal);
         body.electrons = smallvec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }];
         body.update_charge_from_electrons();
@@ -121,8 +121,8 @@ pub fn _two_lithium_clumps_with_ions(
     for _ in 0..clump_size*2 {
         let pos = random_in_disc(center);
         let vel = Vec2::zero();
-        let mass:f32 = 1.0;
-        let radius = 1.0 * mass.cbrt();
+        let mass = Species::LithiumIon.mass();
+        let radius = Species::LithiumIon.radius();
         let mut body = Body::new(pos, vel, mass, radius, 1.0, Species::LithiumIon);
         body.electrons.clear();
         body.update_charge_from_electrons();
@@ -144,4 +144,61 @@ pub fn _two_lithium_clumps_with_ions(
     }*/
 
     bodies
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn uniform_disc_creates_ions_with_correct_radius() {
+        let bodies = _uniform_disc(10);
+        
+        for body in &bodies {
+            let expected_radius = body.species.radius();
+            assert_eq!(body.radius, expected_radius, 
+                "Body with species {:?} should have radius {} but got {}", 
+                body.species, expected_radius, body.radius);
+        }
+        
+        // Check that we have both LithiumIon and LithiumMetal particles with different radii
+        let ions: Vec<_> = bodies.iter().filter(|b| b.species == Species::LithiumIon).collect();
+        let metals: Vec<_> = bodies.iter().filter(|b| b.species == Species::LithiumMetal).collect();
+        
+        assert!(!ions.is_empty(), "Should have some ions");
+        assert!(!metals.is_empty(), "Should have some metals");
+        
+        // Verify ions have different radius than metals
+        if !ions.is_empty() && !metals.is_empty() {
+            assert_ne!(ions[0].radius, metals[0].radius, 
+                "Ion radius ({}) should be different from metal radius ({})", 
+                ions[0].radius, metals[0].radius);
+        }
+    }
+
+    #[test] 
+    fn two_lithium_clumps_with_ions_creates_correct_radii() {
+        let bodies = _two_lithium_clumps_with_ions(20, 5, 10.0, 50.0);
+        
+        for body in &bodies {
+            let expected_radius = body.species.radius();
+            assert_eq!(body.radius, expected_radius,
+                "Body with species {:?} should have radius {} but got {}",
+                body.species, expected_radius, body.radius);
+        }
+        
+        // Check that we have both species with different radii
+        let ions: Vec<_> = bodies.iter().filter(|b| b.species == Species::LithiumIon).collect();
+        let metals: Vec<_> = bodies.iter().filter(|b| b.species == Species::LithiumMetal).collect();
+        
+        assert!(!ions.is_empty(), "Should have some ions");
+        assert!(!metals.is_empty(), "Should have some metals");
+        
+        // Verify different radii
+        if !ions.is_empty() && !metals.is_empty() {
+            assert_ne!(ions[0].radius, metals[0].radius,
+                "Ion radius ({}) should be different from metal radius ({})",
+                ions[0].radius, metals[0].radius);
+        }
+    }
 }
