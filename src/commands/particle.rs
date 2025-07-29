@@ -279,6 +279,17 @@ pub fn handle_set_domain_size(simulation: &mut Simulation, width: f32, height: f
     simulation.bounds = width.max(height) / 2.0;
 }
 
+pub fn handle_set_temperature(simulation: &mut Simulation, temperature: f32) {
+    let current = crate::simulation::utils::compute_temperature(&simulation.bodies);
+    if current > 0.0 {
+        let scale = (temperature / current).sqrt();
+        for body in &mut simulation.bodies {
+            body.vel *= scale;
+        }
+    }
+    crate::config::LJ_CONFIG.lock().temperature = temperature;
+}
+
 pub fn overlaps_any(existing: &[crate::body::Body], pos: Vec2, radius: f32) -> Option<usize> {
     existing.iter().position(|b| (b.pos - pos).mag() < (b.radius + radius))
 }

@@ -1,19 +1,22 @@
 use crate::body::{Electron, Species};
 use crate::simulation::Simulation;
-use rand_distr::{Distribution, StandardNormal};
-use rand::thread_rng;
 use smallvec::smallvec;
 use ultraviolet::Vec2;
 
 const RANDOM_ATTEMPTS: usize = super::RANDOM_ATTEMPTS;
 
 /// Sample a random velocity vector from a Maxwell-Boltzmann distribution.
+/// Uses Box-Muller transform with fastrand for normal distribution.
 pub fn sample_velocity(mass: f32, temperature: f32) -> Vec2 {
     let sigma = (temperature / mass).sqrt();
-    let mut rng = thread_rng();
-    let vx: f64 = StandardNormal.sample(&mut rng);
-    let vy: f64 = StandardNormal.sample(&mut rng);
-    Vec2::new(vx as f32 * sigma, vy as f32 * sigma)
+    
+    // Box-Muller transform for normal distribution
+    let u1 = fastrand::f32();
+    let u2 = fastrand::f32();
+    let z0 = (-2.0 * u1.ln()).sqrt() * (2.0 * std::f32::consts::PI * u2).cos();
+    let z1 = (-2.0 * u1.ln()).sqrt() * (2.0 * std::f32::consts::PI * u2).sin();
+    
+    Vec2::new(z0 * sigma, z1 * sigma)
 }
 
 pub fn overlaps_any(existing: &[crate::body::Body], pos: Vec2, radius: f32) -> Option<usize> {
@@ -124,7 +127,7 @@ pub fn add_rectangle(
     width: f32,
     height: f32,
 ) {
-    let temp = crate::config::LJ_CONFIG.lock().temperature;
+    let _temp = crate::config::LJ_CONFIG.lock().temperature;
     let origin = Vec2::new(x, y);
     let particle_radius = body.radius;
     let particle_diameter = 2.0 * particle_radius;

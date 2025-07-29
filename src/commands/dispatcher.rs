@@ -33,6 +33,9 @@ pub fn process_command(cmd: SimCommand, simulation: &mut Simulation) {
         SimCommand::SetDomainSize { width, height } => {
             particle::handle_set_domain_size(simulation, width, height);
         }
+        SimCommand::SetTemperature { temperature } => {
+            particle::handle_set_temperature(simulation, temperature);
+        }
         SimCommand::AddFoil { width, height, x, y, particle_radius, current } => {
             foil::handle_add_foil(simulation, width, height, x, y, particle_radius, current);
         }

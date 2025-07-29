@@ -9,8 +9,8 @@ pub const ELECTRON_SPRING_K_EC: f32 = ELECTRON_SPRING_K;    // EC-specific sprin
 pub const ELECTRON_SPRING_K_DMC: f32 = ELECTRON_SPRING_K;   // DMC-specific spring constant
 
 // Effective polarization charge (in units of e) for solvent molecules
-pub const POLAR_CHARGE_EC: f32 = 0.49;
-pub const POLAR_CHARGE_DMC: f32 = 0.054;
+pub const POLAR_CHARGE_EC: f32 = 0.51;
+pub const POLAR_CHARGE_DMC: f32 = 0.10; //0.054;
 pub const POLAR_CHARGE_DEFAULT: f32 = 1.0;
 
 use crate::body::Species;
@@ -25,7 +25,7 @@ pub fn electron_spring_k(species: Species) -> f32 {
         _ => ELECTRON_SPRING_K,
     }
 }
-pub const ELECTRON_DRIFT_RADIUS_FACTOR: f32 = 0.5;      // Max drift radius as a factor of body radius
+pub const ELECTRON_DRIFT_RADIUS_FACTOR: f32 = 1.0;      // Max drift radius as a factor of body radius
 pub const ELECTRON_MAX_SPEED_FACTOR: f32 = 1.2;         // Max electron speed as a factor of body radius per dt
 pub const HOP_RADIUS_FACTOR: f32 = 2.1;                      // Hopping radius as a factor of body radius
 pub const HOP_RATE_K0: f32 = 1.0;            /// Base hop‐rate constant (per unit time) at zero overpotential
@@ -46,7 +46,7 @@ pub const HOP_ACTIVATION_ENERGY: f32 = 0.025;      /// Thermal energy k_BT (in y
 // Butler-Volmer Parameters
 // ====================
 /// Enable Butler-Volmer kinetics for inter-species electron transfer
-pub const BV_ENABLED: bool = false;
+pub const BV_ENABLED: bool = true;
 /// Exchange current density i0 used in the Butler-Volmer expression
 pub const BV_EXCHANGE_CURRENT: f32 = 1.0;
 /// Transfer coefficient alpha used in the Butler-Volmer expression
@@ -91,8 +91,8 @@ pub const SURROUND_CHECK_INTERVAL: usize = 10;
 // ====================
 // Simulation Parameters
 // ====================
-pub const DEFAULT_DT: f32 = 0.010;                     // Reduced minimum simulation timestep for better stability
-pub const COLLISION_PASSES: usize =83;                  // Number of collision resolution passes
+pub const DEFAULT_DT: f32 = 0.015;                     // Reduced minimum simulation timestep for better stability
+pub const COLLISION_PASSES: usize =9;                  // Number of collision resolution passes
 
 // ====================
 // Quadtree Parameters
@@ -132,7 +132,7 @@ pub const SHOW_FIELD_VECTORS: bool = false; // Show electric field vectors
 // Temperature
 // ====================
 /// Default simulation temperature in arbitrary units
-pub const DEFAULT_TEMPERATURE: f32 = 1.0;
+pub const DEFAULT_TEMPERATURE: f32 = 293.13; // 300 K in Kelvin scale
 
 use serde::{Serialize, Deserialize};
 
@@ -190,7 +190,7 @@ impl Default for SimConfig {
             show_charge_density: SHOW_CHARGE_DENSITY,
             show_field_vectors: SHOW_FIELD_VECTORS, // NEW
             isoline_field_mode: IsolineFieldMode::Total,
-            damping_base: 0.98, // Default base damping
+            damping_base: 1.00, // Default base damping
             show_lj_vs_coulomb_ratio: false, // Default off
             cell_list_density_threshold: LJ_CELL_DENSITY_THRESHOLD,
             lj_force_epsilon: LJ_FORCE_EPSILON,
