@@ -162,8 +162,6 @@ impl super::Renderer {
                     let body = crate::renderer::gui::make_body_with_species(
                         mouse,
                         Vec2::zero(),
-                        spec.mass(),
-                        spec.radius(),
                         spec,
                     );
                     self.spawn_body = Some(body);
