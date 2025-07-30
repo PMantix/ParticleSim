@@ -112,6 +112,17 @@ impl super::super::Renderer {
                     "CIP: {:.3}\nSIP: {:.3}\nS2IP: {:.3}\nFD: {:.3}",
                     diag.cip_fraction, diag.sip_fraction, diag.s2ip_fraction, diag.fd_fraction
                 ));
+                
+                ui.separator();
+                ui.label("🔍 Visual Overlays:");
+                ui.horizontal(|ui| {
+                    ui.checkbox(&mut self.show_cip_ions, "Show CIP");
+                    ui.checkbox(&mut self.show_sip_ions, "Show SIP");
+                });
+                ui.horizontal(|ui| {
+                    ui.checkbox(&mut self.show_s2ip_ions, "Show S2IP");
+                    ui.checkbox(&mut self.show_fd_ions, "Show FD");
+                });
             } else {
                 ui.label("❌ No diagnostic data available.");
             }
