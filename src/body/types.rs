@@ -34,6 +34,7 @@ pub struct Body {
     pub surrounded_by_metal: bool,
     pub last_surround_pos: Vec2,
     pub last_surround_frame: usize,
+    pub thermal_reservoir: f32,
 }
 
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -56,6 +57,7 @@ impl Body {
             surrounded_by_metal: false,
             last_surround_pos: pos,
             last_surround_frame: 0,
+            thermal_reservoir: 0.0,
         }
     }
 

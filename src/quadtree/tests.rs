@@ -23,6 +23,7 @@ mod tests {
             last_surround_frame: 0,
             last_surround_pos: Vec2::zero(),
             surrounded_by_metal: false,
+            thermal_reservoir: 0.0,
         };
         let mut bodies = vec![body];
 
@@ -88,12 +89,13 @@ mod tests {
                 electrons: SmallVec::new(),
                 id: 0,
                 e_field: Vec2::zero(),
-                last_surround_frame: 0,
-                last_surround_pos: Vec2::zero(),
-                surrounded_by_metal: false,
-            },
-            Body {
-                pos: Vec2::new(0.5, 0.0), // overlapping radii
+            last_surround_frame: 0,
+            last_surround_pos: Vec2::zero(),
+            surrounded_by_metal: false,
+            thermal_reservoir: 0.0,
+        },
+        Body {
+            pos: Vec2::new(0.5, 0.0), // overlapping radii
                 vel: Vec2::zero(),
                 acc: Vec2::zero(),
                 mass: 1.0,
@@ -103,10 +105,11 @@ mod tests {
                 electrons: SmallVec::new(),
                 id: 1,
                 e_field: Vec2::zero(),
-                last_surround_frame: 0,
-                last_surround_pos: Vec2::zero(),
-                surrounded_by_metal: false,
-            },
+            last_surround_frame: 0,
+            last_surround_pos: Vec2::zero(),
+            surrounded_by_metal: false,
+            thermal_reservoir: 0.0,
+        },
         ];
 
         let mut quadtree = Quadtree::new(1.0, 2.0, 8, 32);

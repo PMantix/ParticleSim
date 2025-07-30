@@ -166,7 +166,15 @@ impl Simulation {
         self.bodies.par_iter_mut().for_each(|body| {
             body.vel += body.acc * dt;
             let damping = base_damping * body.species.damping();
+            let pre_damp = body.vel;
             body.vel *= damping;
+            let delta_e = 0.5 * body.mass * (pre_damp.mag_sq() - body.vel.mag_sq());
+            if delta_e > 0.0 {
+                body.thermal_reservoir += delta_e;
+            }
+            if body.thermal_reservoir < 0.0 {
+                body.thermal_reservoir = 0.0;
+            }
             body.pos += body.vel * dt;
             
             // X-axis boundary enforcement

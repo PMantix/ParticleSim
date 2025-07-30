@@ -9,6 +9,21 @@ use ultraviolet::Vec2;
 use crate::simulation::Simulation;
 use crate::profile_scope;
 
+fn elastic_result(v1: Vec2, v2: Vec2, m1: f32, m2: f32, normal: Vec2) -> (Vec2, Vec2) {
+    if normal == Vec2::zero() {
+        return (v1, v2);
+    }
+    let v1n = v1.dot(normal);
+    let v2n = v2.dot(normal);
+    let v1t = v1 - normal * v1n;
+    let v2t = v2 - normal * v2n;
+    let v1n_after = (v1n * (m1 - m2) + 2.0 * m2 * v2n) / (m1 + m2);
+    let v2n_after = (v2n * (m2 - m1) + 2.0 * m1 * v1n) / (m1 + m2);
+    let v1_final = v1t + normal * v1n_after;
+    let v2_final = v2t + normal * v2n_after;
+    (v1_final, v2_final)
+}
+
 pub fn collide(sim: &mut Simulation) {
     profile_scope!("collision");
     let mut rects = sim
@@ -80,4 +95,35 @@ fn resolve(sim: &mut Simulation, i: usize, j: usize, num_passes: usize) {
     sim.bodies[j].vel = v2;
     sim.bodies[i].pos += v1 * t;
     sim.bodies[j].pos += v2 * t;
+
+    // Thermal energy transfer
+    let normal = if d != Vec2::zero() { d.normalized() } else { Vec2::zero() };
+    let damped1 = sim.bodies[i].species.damping() < 1.0;
+    let damped2 = sim.bodies[j].species.damping() < 1.0;
+    if damped1 ^ damped2 {
+        let (d_idx, u_idx, m_d, m_u, v_d_pre, v_u_pre) = if damped1 {
+            (i, j, m1, m2, v1, v2)
+        } else {
+            (j, i, m2, m1, v2, v1)
+        };
+        let reservoir = sim.bodies[d_idx].thermal_reservoir;
+        if reservoir > 0.0 {
+            let thermal_speed = (2.0 * reservoir / m_d).sqrt();
+            let thermal_vel = normal * thermal_speed;
+            let (_v_d_base, v_u_base) = elastic_result(v_d_pre, v_u_pre, m_d, m_u, normal);
+            let (_v_d_therm, v_u_therm) = elastic_result(v_d_pre + thermal_vel, v_u_pre, m_d, m_u, normal);
+            let delta_e_full = 0.5 * m_u * (v_u_therm.mag_sq() - v_u_base.mag_sq());
+            if delta_e_full > 0.0 {
+                let injection = delta_e_full.min(reservoir);
+                let delta_v_full = v_u_therm - v_u_base;
+                let scale = (injection / delta_e_full).sqrt();
+                let delta_v = delta_v_full * scale;
+                sim.bodies[u_idx].vel += delta_v;
+                sim.bodies[d_idx].thermal_reservoir -= injection;
+                if sim.bodies[d_idx].thermal_reservoir < 0.0 {
+                    sim.bodies[d_idx].thermal_reservoir = 0.0;
+                }
+            }
+        }
+    }
 }

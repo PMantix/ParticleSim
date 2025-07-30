@@ -496,6 +496,7 @@ mod reactions {
                 last_surround_frame: 0,
                 last_surround_pos: Vec2::zero(),
                 surrounded_by_metal: false,
+                thermal_reservoir: 0.0,
             };
             let bodies = vec![body];
             let config = crate::config::SimConfig::default();
@@ -583,6 +584,7 @@ mod reactions {
                 last_surround_frame: 0,
                 last_surround_pos: Vec2::zero(),
                 surrounded_by_metal: false,
+                thermal_reservoir: 0.0,
             };
             
             let mut bodies = vec![body];
