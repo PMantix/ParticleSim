@@ -108,6 +108,13 @@ pub struct Renderer {
     pub current_tab: GuiTab,
     pub transference_number_diagnostic: Option<TransferenceNumberDiagnostic>,
     pub foil_electron_fraction_diagnostic: Option<FoilElectronFractionDiagnostic>,
+    pub solvation_diagnostic: Option<crate::diagnostics::SolvationDiagnostic>,
+    
+    // Solvation visualization flags
+    pub show_cip_ions: bool,
+    pub show_sip_ions: bool,
+    pub show_s2ip_ions: bool,
+    pub show_fd_ions: bool,
     
     // Screen capture functionality
     pub screen_capture_enabled: bool,
@@ -181,6 +188,13 @@ impl quarkstrom::Renderer for Renderer {
             current_tab: GuiTab::default(), // Default to Simulation tab
             transference_number_diagnostic: Some(TransferenceNumberDiagnostic::new()),
             foil_electron_fraction_diagnostic: Some(FoilElectronFractionDiagnostic::new()),
+            solvation_diagnostic: Some(crate::diagnostics::SolvationDiagnostic::new()),
+            
+            // Solvation visualization flags - default to false
+            show_cip_ions: false,
+            show_sip_ions: false,
+            show_s2ip_ions: false,
+            show_fd_ions: false,
             
             // Screen capture defaults
             screen_capture_enabled: false,

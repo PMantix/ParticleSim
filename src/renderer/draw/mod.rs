@@ -46,6 +46,9 @@ impl super::Renderer {
                     let current_time = *crate::renderer::state::SIM_TIME.lock();
                     diag.calculate_if_needed(&self.bodies, &self.foils, &temp_quadtree, current_time, 1.0);
                 }
+                if let Some(ref mut diag) = self.solvation_diagnostic {
+                    diag.calculate(&self.bodies);
+                }
             }
             if let Some(body) = self.confirmed_bodies.take() {
                 self.bodies.push(body.clone());
@@ -143,6 +146,61 @@ impl super::Renderer {
                 for body in &self.bodies {
                     let end = body.pos + body.vel * scale;
                     ctx.draw_line(body.pos, end, color);
+                }
+            }
+
+            // --- Ion Classification Overlay ---
+            if let Some(ref solvation_diag) = self.solvation_diagnostic {
+                // Draw CIP ions with red circles
+                if self.show_cip_ions {
+                    for &ion_id in &solvation_diag.cip_ion_ids {
+                        if let Some(body) = self.bodies.iter().find(|b| b.id == ion_id) {
+                            ctx.draw_circle(
+                                body.pos,
+                                body.radius * 2.0,
+                                [255, 0, 0, 80], // red with transparency for outline effect
+                            );
+                        }
+                    }
+                }
+
+                // Draw SIP ions with orange circles
+                if self.show_sip_ions {
+                    for &ion_id in &solvation_diag.sip_ion_ids {
+                        if let Some(body) = self.bodies.iter().find(|b| b.id == ion_id) {
+                            ctx.draw_circle(
+                                body.pos,
+                                body.radius * 2.0,
+                                [255, 165, 0, 80], // orange with transparency
+                            );
+                        }
+                    }
+                }
+
+                // Draw S2IP ions with yellow circles
+                if self.show_s2ip_ions {
+                    for &ion_id in &solvation_diag.s2ip_ion_ids {
+                        if let Some(body) = self.bodies.iter().find(|b| b.id == ion_id) {
+                            ctx.draw_circle(
+                                body.pos,
+                                body.radius * 2.0,
+                                [255, 255, 0, 80], // yellow with transparency
+                            );
+                        }
+                    }
+                }
+
+                // Draw FD (free/dissociated) ions with blue circles
+                if self.show_fd_ions {
+                    for &ion_id in &solvation_diag.fd_ion_ids {
+                        if let Some(body) = self.bodies.iter().find(|b| b.id == ion_id) {
+                            ctx.draw_circle(
+                                body.pos,
+                                body.radius * 2.0,
+                                [0, 0, 255, 80], // blue with transparency
+                            );
+                        }
+                    }
                 }
             }
 
