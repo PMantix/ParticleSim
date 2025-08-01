@@ -113,25 +113,31 @@ fn resolve(sim: &mut Simulation, i: usize, j: usize, num_passes: usize) {
         } else {
             (j, i, m2, m1, v2_initial, v1_initial)
         };
-        let reservoir = sim.bodies[d_idx].thermal_reservoir;
-        if reservoir > 0.0 {
-            let thermal_speed = (2.0 * reservoir / m_d).sqrt();
+        let reservoir_before = sim.bodies[d_idx].thermal_reservoir;
+        if reservoir_before > 0.0 {
+            let thermal_speed = (2.0 * reservoir_before / m_d).sqrt();
             let thermal_vel = normal * thermal_speed;
             let (_v_d_base, v_u_base) = elastic_result(v_d_pre, v_u_pre, m_d, m_u, normal);
             let (_v_d_therm, v_u_therm) =
                 elastic_result(v_d_pre + thermal_vel, v_u_pre, m_d, m_u, normal);
             let delta_e_full = 0.5 * m_u * (v_u_therm.mag_sq() - v_u_base.mag_sq());
             if delta_e_full > 0.0 {
-                let injection = delta_e_full.min(reservoir);
+                let injection = delta_e_full.min(reservoir_before);
                 let delta_v_full = v_u_therm - v_u_base;
                 let scale = (injection / delta_e_full).sqrt();
                 let delta_v = delta_v_full * scale;
                 sim.bodies[u_idx].vel += delta_v;
                 sim.bodies[d_idx].thermal_reservoir -= injection;
-                if sim.bodies[d_idx].thermal_reservoir < 0.0 {
-                    sim.bodies[d_idx].thermal_reservoir = 0.0;
-                }
             }
+        }
+        // Store any energy the undamped particle lost in the collision
+        let v_u_after = sim.bodies[u_idx].vel;
+        let delta_e = 0.5 * m_u * (v_u_after.mag_sq() - v_u_pre.mag_sq());
+        if delta_e < 0.0 {
+            sim.bodies[d_idx].thermal_reservoir += -delta_e;
+        }
+        if sim.bodies[d_idx].thermal_reservoir < 0.0 {
+            sim.bodies[d_idx].thermal_reservoir = 0.0;
         }
     }
 }
