@@ -711,7 +711,7 @@ mod thermal_reservoir {
 
     #[test]
     fn damping_increases_thermal_reservoir() {
-        let mut body = Body::new(Vec2::zero(), Vec2::new(1.0, 0.0), 1.0, 1.0, 0.0, Species::LithiumMetal);
+        let body = Body::new(Vec2::zero(), Vec2::new(1.0, 0.0), 1.0, 1.0, 0.0, Species::LithiumMetal);
         let mut sim = Simulation {
             dt: 0.1,
             frame: 0,
@@ -771,8 +771,8 @@ mod thermal_reservoir {
         // Setup: one damped (with reservoir), one undamped
         let mut damped = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::LithiumMetal);
         damped.thermal_reservoir = 1.0;
-        let mut undamped = Body::new(Vec2::new(1.0, 0.0), Vec2::zero(), 1.0, 1.0, 0.0, Species::LithiumIon);
-        let mut sim = Simulation {
+        let undamped = Body::new(Vec2::new(1.0, 0.0), Vec2::zero(), 1.0, 1.0, 0.0, Species::LithiumIon);
+        let sim = Simulation {
             dt: 0.1,
             frame: 0,
             bodies: vec![damped, undamped],
