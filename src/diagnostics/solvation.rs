@@ -18,6 +18,11 @@ pub struct SolvationDiagnostic {
     pub sip_ion_ids: Vec<u64>,
     pub s2ip_ion_ids: Vec<u64>,
     pub fd_ion_ids: Vec<u64>,
+    // New: For overlays, track paired anion and solvent IDs for each cation
+    pub cip_pairs: Vec<(u64, u64, Vec<u64>, Vec<u64>)>, // (cation_id, anion_id, cation_solvent_ids, anion_solvent_ids)
+    pub sip_pairs: Vec<(u64, u64, Vec<u64>, Vec<u64>)>,
+    pub s2ip_pairs: Vec<(u64, u64, Vec<u64>, Vec<u64>)>,
+    pub fd_cations: Vec<(u64, Vec<u64>)>, // (cation_id, cation_solvent_ids)
 }
 
 impl SolvationDiagnostic {
@@ -36,11 +41,16 @@ impl SolvationDiagnostic {
             sip_ion_ids: Vec::new(),
             s2ip_ion_ids: Vec::new(),
             fd_ion_ids: Vec::new(),
+            cip_pairs: Vec::new(),
+            sip_pairs: Vec::new(),
+            s2ip_pairs: Vec::new(),
+            fd_cations: Vec::new(),
         }
     }
 
     pub fn calculate(&mut self, bodies: &[Body]) {
-        const SHELL_FACTOR: f32 = 2.0; // Reduced from 3.0 for tighter solvation shell
+        const CATION_SHELL_FACTOR: f32 = 4.5; // Larger shell for small lithium ions to capture solvents
+        const ANION_SHELL_FACTOR: f32 = 2.5;  // Smaller shell for larger anions
         const CONTACT_BUFFER: f32 = 0.1;
 
         let mut li_coord_total = 0usize;
@@ -53,6 +63,10 @@ impl SolvationDiagnostic {
         self.sip_ion_ids.clear();
         self.s2ip_ion_ids.clear();
         self.fd_ion_ids.clear();
+        self.cip_pairs.clear();
+        self.sip_pairs.clear();
+        self.s2ip_pairs.clear();
+        self.fd_cations.clear();
 
         // Get typical solvent radius (average of EC and DMC)
         let ec_radius = crate::body::Species::EC.radius();
@@ -62,44 +76,62 @@ impl SolvationDiagnostic {
         for (i, body) in bodies.iter().enumerate() {
             match body.species {
                 Species::LithiumIon => {
+                    // Skip ions that are surrounded by metal (not truly ionic)
+                    if body.surrounded_by_metal {
+                        continue;
+                    }
+                    
                     li_count += 1;
-                    let shell = body.radius * SHELL_FACTOR;
-                    let li_solvents = count_solvent_neighbors(bodies, i, shell);
+                    let li_shell = body.radius * CATION_SHELL_FACTOR; // Use larger shell for small lithium
+                    let li_solvent_ids: Vec<u64> = bodies.iter().enumerate()
+                        .filter(|(k, b)| *k != i && matches!(b.species, Species::EC | Species::DMC) && (b.pos - body.pos).mag() < li_shell)
+                        .map(|(_, b)| b.id)
+                        .collect();
+                    let li_solvents = li_solvent_ids.len();
                     li_coord_total += li_solvents;
 
                     if let Some((j, dist)) = nearest_body_with_species(bodies, i, Species::ElectrolyteAnion) {
-                        // Calculate max pairing distance: Li+ radius + 1.5*solvent radius + anion radius
-                        let max_pairing_distance = body.radius + 1.5 * avg_solvent_radius + bodies[j].radius;
+                        // Calculate max pairing distance: cation radius + anion radius + 2*average solvent radius
+                        let max_pairing_distance = body.radius + bodies[j].radius + 2.0 * avg_solvent_radius;
                         
                         if dist > max_pairing_distance {
                             // Too far from any anion to be considered paired
                             self.fd_ion_ids.push(body.id);
+                            self.fd_cations.push((body.id, li_solvent_ids));
                         } else {
-                            let an_shell = bodies[j].radius * SHELL_FACTOR;
-                            let an_solvents = count_solvent_neighbors(bodies, j, an_shell);
+                            let an_shell = bodies[j].radius * ANION_SHELL_FACTOR; // Use smaller shell for larger anion
+                            let an_solvent_ids: Vec<u64> = bodies.iter().enumerate()
+                                .filter(|(k, b)| *k != j && matches!(b.species, Species::EC | Species::DMC) && (b.pos - bodies[j].pos).mag() < an_shell)
+                                .map(|(_, b)| b.id)
+                                .collect();
+                            let an_solvents = an_solvent_ids.len();
                             an_coord_total += an_solvents;
 
                             let contact_cutoff = body.radius + bodies[j].radius + CONTACT_BUFFER;
                             if dist < contact_cutoff {
                                 self.cip_ion_ids.push(body.id);
-                            } else if li_solvents >= 2 && an_solvents >= 2 {
+                                self.cip_pairs.push((body.id, bodies[j].id, li_solvent_ids, an_solvent_ids));
+                            } else if li_solvents >= 4 && an_solvents >= 3 { // Relaxed S2IP criteria: at least 1 solvent each
                                 self.s2ip_ion_ids.push(body.id);
+                                self.s2ip_pairs.push((body.id, bodies[j].id, li_solvent_ids, an_solvent_ids));
                             } else {
                                 self.sip_ion_ids.push(body.id);
+                                self.sip_pairs.push((body.id, bodies[j].id, li_solvent_ids, an_solvent_ids));
                             }
                         }
                     } else {
                         // No anions exist in the simulation
                         self.fd_ion_ids.push(body.id);
+                        self.fd_cations.push((body.id, li_solvent_ids));
                     }
                 }
                 Species::ElectrolyteAnion => {
                     anion_count += 1;
-                    let shell = body.radius * SHELL_FACTOR;
-                    let solvents = count_solvent_neighbors(bodies, i, shell);
+                    let an_shell = body.radius * ANION_SHELL_FACTOR; // Use anion shell factor
+                    let solvents = count_solvent_neighbors(bodies, i, an_shell);
                     an_coord_total += solvents;
                 }
-                _ => {}
+                Species::LithiumMetal | Species::FoilMetal | Species::EC | Species::DMC => {}
             }
         }
 

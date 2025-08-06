@@ -61,6 +61,7 @@ impl Body {
         }
     }
 
+    #[allow(dead_code)]
     /// Create a new Body using species properties for mass and radius
     pub fn new_from_species(pos: Vec2, vel: Vec2, charge: f32, species: Species) -> Self {
         Self::new(

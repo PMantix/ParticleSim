@@ -151,54 +151,96 @@ impl super::Renderer {
 
             // --- Ion Classification Overlay ---
             if let Some(ref solvation_diag) = self.solvation_diagnostic {
-                // Draw CIP ions with red circles
+                // Draw CIP pairs with red for cation, dark red for anion, light red for solvents
                 if self.show_cip_ions {
-                    for &ion_id in &solvation_diag.cip_ion_ids {
-                        if let Some(body) = self.bodies.iter().find(|b| b.id == ion_id) {
-                            ctx.draw_circle(
-                                body.pos,
-                                body.radius * 2.0,
-                                [255, 0, 0, 80], // red with transparency for outline effect
-                            );
+                    for &(cation_id, anion_id, ref cation_solvents, ref anion_solvents) in &solvation_diag.cip_pairs {
+                        // Draw cation
+                        if let Some(body) = self.bodies.iter().find(|b| b.id == cation_id) {
+                            ctx.draw_circle(body.pos, body.radius * 2.0, [255, 0, 0, 80]);
+                        }
+                        // Draw anion
+                        if let Some(body) = self.bodies.iter().find(|b| b.id == anion_id) {
+                            ctx.draw_circle(body.pos, body.radius * 2.0, [150, 0, 0, 80]);
+                        }
+                        // Draw cation solvents
+                        for &solvent_id in cation_solvents {
+                            if let Some(body) = self.bodies.iter().find(|b| b.id == solvent_id) {
+                                ctx.draw_circle(body.pos, body.radius * 1.5, [255, 100, 100, 60]);
+                            }
+                        }
+                        // Draw anion solvents
+                        for &solvent_id in anion_solvents {
+                            if let Some(body) = self.bodies.iter().find(|b| b.id == solvent_id) {
+                                ctx.draw_circle(body.pos, body.radius * 1.5, [200, 50, 50, 60]);
+                            }
                         }
                     }
                 }
 
-                // Draw SIP ions with orange circles
+                // Draw SIP pairs with orange for cation, dark orange for anion, light orange for solvents
                 if self.show_sip_ions {
-                    for &ion_id in &solvation_diag.sip_ion_ids {
-                        if let Some(body) = self.bodies.iter().find(|b| b.id == ion_id) {
-                            ctx.draw_circle(
-                                body.pos,
-                                body.radius * 2.0,
-                                [255, 165, 0, 80], // orange with transparency
-                            );
+                    for &(cation_id, anion_id, ref cation_solvents, ref anion_solvents) in &solvation_diag.sip_pairs {
+                        // Draw cation
+                        if let Some(body) = self.bodies.iter().find(|b| b.id == cation_id) {
+                            ctx.draw_circle(body.pos, body.radius * 2.0, [255, 165, 0, 80]);
+                        }
+                        // Draw anion
+                        if let Some(body) = self.bodies.iter().find(|b| b.id == anion_id) {
+                            ctx.draw_circle(body.pos, body.radius * 2.0, [200, 120, 0, 80]);
+                        }
+                        // Draw cation solvents
+                        for &solvent_id in cation_solvents {
+                            if let Some(body) = self.bodies.iter().find(|b| b.id == solvent_id) {
+                                ctx.draw_circle(body.pos, body.radius * 1.5, [255, 200, 100, 60]);
+                            }
+                        }
+                        // Draw anion solvents
+                        for &solvent_id in anion_solvents {
+                            if let Some(body) = self.bodies.iter().find(|b| b.id == solvent_id) {
+                                ctx.draw_circle(body.pos, body.radius * 1.5, [220, 150, 50, 60]);
+                            }
                         }
                     }
                 }
 
-                // Draw S2IP ions with yellow circles
+                // Draw S2IP pairs with yellow for cation, dark yellow for anion, light yellow for solvents
                 if self.show_s2ip_ions {
-                    for &ion_id in &solvation_diag.s2ip_ion_ids {
-                        if let Some(body) = self.bodies.iter().find(|b| b.id == ion_id) {
-                            ctx.draw_circle(
-                                body.pos,
-                                body.radius * 2.0,
-                                [255, 255, 0, 80], // yellow with transparency
-                            );
+                    for &(cation_id, anion_id, ref cation_solvents, ref anion_solvents) in &solvation_diag.s2ip_pairs {
+                        // Draw cation
+                        if let Some(body) = self.bodies.iter().find(|b| b.id == cation_id) {
+                            ctx.draw_circle(body.pos, body.radius * 2.0, [255, 255, 0, 80]);
+                        }
+                        // Draw anion
+                        if let Some(body) = self.bodies.iter().find(|b| b.id == anion_id) {
+                            ctx.draw_circle(body.pos, body.radius * 2.0, [200, 200, 0, 80]);
+                        }
+                        // Draw cation solvents
+                        for &solvent_id in cation_solvents {
+                            if let Some(body) = self.bodies.iter().find(|b| b.id == solvent_id) {
+                                ctx.draw_circle(body.pos, body.radius * 1.5, [255, 255, 150, 60]);
+                            }
+                        }
+                        // Draw anion solvents
+                        for &solvent_id in anion_solvents {
+                            if let Some(body) = self.bodies.iter().find(|b| b.id == solvent_id) {
+                                ctx.draw_circle(body.pos, body.radius * 1.5, [220, 220, 100, 60]);
+                            }
                         }
                     }
                 }
 
-                // Draw FD (free/dissociated) ions with blue circles
+                // Draw FD (free/dissociated) cations with blue for cation, light blue for solvents
                 if self.show_fd_ions {
-                    for &ion_id in &solvation_diag.fd_ion_ids {
-                        if let Some(body) = self.bodies.iter().find(|b| b.id == ion_id) {
-                            ctx.draw_circle(
-                                body.pos,
-                                body.radius * 2.0,
-                                [0, 0, 255, 80], // blue with transparency
-                            );
+                    for &(cation_id, ref cation_solvents) in &solvation_diag.fd_cations {
+                        // Draw cation
+                        if let Some(body) = self.bodies.iter().find(|b| b.id == cation_id) {
+                            ctx.draw_circle(body.pos, body.radius * 2.0, [0, 0, 255, 80]);
+                        }
+                        // Draw cation solvents
+                        for &solvent_id in cation_solvents {
+                            if let Some(body) = self.bodies.iter().find(|b| b.id == solvent_id) {
+                                ctx.draw_circle(body.pos, body.radius * 1.5, [100, 150, 255, 60]);
+                            }
                         }
                     }
                 }
