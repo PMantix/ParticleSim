@@ -2,7 +2,6 @@
 // Calculates coordination numbers and solvation state distribution
 
 use crate::body::{Body, Species};
-use crate::simulation::compute_temperature;
 
 pub struct SolvationDiagnostic {
     pub temperature: f32,
@@ -135,7 +134,18 @@ impl SolvationDiagnostic {
             }
         }
 
-        self.temperature = compute_temperature(bodies);
+        // Calculate temperature as average kinetic energy per unit mass (physically correct)
+        let undamped_bodies: Vec<&crate::body::Body> = bodies.iter()
+            .filter(|body| body.species.damping() >= 1.0)
+            .collect();
+        self.temperature = if !undamped_bodies.is_empty() {
+            let total_temp: f32 = undamped_bodies.iter()
+                .map(|b| 0.5 * b.mass * b.vel.mag_sq() / b.mass) // KE/mass per particle
+                .sum();
+            total_temp / undamped_bodies.len() as f32
+        } else {
+            0.0
+        };
         self.avg_li_coordination = if li_count > 0 { li_coord_total as f32 / li_count as f32 } else { 0.0 };
         self.avg_anion_coordination = if anion_count > 0 { an_coord_total as f32 / anion_count as f32 } else { 0.0 };
         if li_count > 0 {

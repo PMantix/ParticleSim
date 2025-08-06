@@ -153,8 +153,20 @@ impl super::super::Renderer {
             ui.label(format!("Anion particles: {}", anion_count));
             ui.label(format!("Foil particles: {}", foil_count));
             ui.label(format!("Total particles: {}", self.bodies.len()));
-            let temp = crate::simulation::compute_temperature(&self.bodies);
-            ui.label(format!("Temperature: {:.3}", temp));
+            
+            // Calculate temperature as average kinetic energy per unit mass (physically correct)
+            let undamped_bodies: Vec<&crate::body::Body> = self.bodies.iter()
+                .filter(|body| body.species.damping() >= 1.0)
+                .collect();
+            let undamped_temp = if !undamped_bodies.is_empty() {
+                let total_temp: f32 = undamped_bodies.iter()
+                    .map(|b| 0.5 * b.mass * b.vel.mag_sq() / b.mass) // KE/mass per particle
+                    .sum();
+                total_temp / undamped_bodies.len() as f32
+            } else {
+                0.0
+            };
+            ui.label(format!("Temperature (undamped): {:.3}", undamped_temp));
         });
     }
 }

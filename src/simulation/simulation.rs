@@ -225,6 +225,7 @@ impl Simulation {
         }
         
         // Calculate average kinetic energy per unit mass (temperature) for undamped particles
+        // This ensures all species have similar temperatures regardless of mass differences
         let total_temperature: f32 = undamped_particles.iter()
             .map(|&i| {
                 let body = &self.bodies[i];
@@ -232,7 +233,11 @@ impl Simulation {
             })
             .sum();
         
-        let current_temperature = total_temperature / undamped_particles.len() as f32;
+        let current_temperature = if undamped_particles.len() > 0 {
+            total_temperature / undamped_particles.len() as f32 // Average temperature
+        } else {
+            0.0
+        };
         
         // Apply thermostat correction if there's a significant difference
         let temperature_error = target_temperature - current_temperature;
