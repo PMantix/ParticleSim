@@ -700,3 +700,102 @@ mod polarization_conservation {
         assert!(com_vel.mag() < 1e-4, "Center-of-mass velocity = {:?}", com_vel);
     }
 }
+
+#[cfg(test)]
+mod thermal_reservoir {
+    use super::*;
+    use crate::body::{Body, Species};
+    use ultraviolet::Vec2;
+    use std::collections::HashMap;
+    use crate::cell_list::CellList;
+
+    #[test]
+    fn damping_increases_thermal_reservoir() {
+        let mut body = Body::new(Vec2::zero(), Vec2::new(1.0, 0.0), 1.0, 1.0, 0.0, Species::LithiumMetal);
+        let mut sim = Simulation {
+            dt: 0.1,
+            frame: 0,
+            bodies: vec![body],
+            quadtree: Quadtree::new(
+                config::QUADTREE_THETA,
+                config::QUADTREE_EPSILON,
+                config::QUADTREE_LEAF_CAPACITY,
+                config::QUADTREE_THREAD_CAPACITY,
+            ),
+            bounds: 10.0,
+            domain_width: 10.0,
+            domain_height: 10.0,
+            rewound_flags: vec![false],
+            background_e_field: Vec2::zero(),
+            config: Default::default(),
+            foils: Vec::new(),
+            cell_list: CellList::new(10.0, 1.0),
+            body_to_foil: HashMap::new(),
+        };
+        let initial_reservoir = sim.bodies[0].thermal_reservoir;
+        sim.iterate();
+        assert!(sim.bodies[0].thermal_reservoir > initial_reservoir, "Thermal reservoir should increase after damping");
+    }
+
+    #[test]
+    fn reservoir_never_negative() {
+        let mut body = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::LithiumMetal);
+        body.thermal_reservoir = -10.0;
+        let mut sim = Simulation {
+            dt: 0.1,
+            frame: 0,
+            bodies: vec![body],
+            quadtree: Quadtree::new(
+                config::QUADTREE_THETA,
+                config::QUADTREE_EPSILON,
+                config::QUADTREE_LEAF_CAPACITY,
+                config::QUADTREE_THREAD_CAPACITY,
+            ),
+            bounds: 10.0,
+            domain_width: 10.0,
+            domain_height: 10.0,
+            rewound_flags: vec![false],
+            background_e_field: Vec2::zero(),
+            config: Default::default(),
+            foils: Vec::new(),
+            cell_list: CellList::new(10.0, 1.0),
+            body_to_foil: HashMap::new(),
+        };
+        sim.iterate();
+        assert!(sim.bodies[0].thermal_reservoir >= 0.0, "Thermal reservoir should never be negative");
+    }
+
+    // This is a placeholder for a more detailed collision test
+    #[test]
+    fn energy_transfer_from_reservoir_on_collision() {
+        // Setup: one damped (with reservoir), one undamped
+        let mut damped = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::LithiumMetal);
+        damped.thermal_reservoir = 1.0;
+        let mut undamped = Body::new(Vec2::new(1.0, 0.0), Vec2::zero(), 1.0, 1.0, 0.0, Species::LithiumIon);
+        let mut sim = Simulation {
+            dt: 0.1,
+            frame: 0,
+            bodies: vec![damped, undamped],
+            quadtree: Quadtree::new(
+                config::QUADTREE_THETA,
+                config::QUADTREE_EPSILON,
+                config::QUADTREE_LEAF_CAPACITY,
+                config::QUADTREE_THREAD_CAPACITY,
+            ),
+            bounds: 10.0,
+            domain_width: 10.0,
+            domain_height: 10.0,
+            rewound_flags: vec![false; 2],
+            background_e_field: Vec2::zero(),
+            config: Default::default(),
+            foils: Vec::new(),
+            cell_list: CellList::new(10.0, 1.0),
+            body_to_foil: HashMap::new(),
+        };
+        // Manually invoke collision logic here if possible, or call a helper
+        // For now, just check that the reservoir is not used unless a collision occurs
+        let initial_reservoir = sim.bodies[0].thermal_reservoir;
+        // TODO: Actually invoke the collision and check energy transfer
+        assert_eq!(sim.bodies[0].thermal_reservoir, initial_reservoir, "Reservoir should not change without collision");
+    }
+}

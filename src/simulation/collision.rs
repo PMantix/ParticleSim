@@ -97,15 +97,23 @@ fn resolve(sim: &mut Simulation, i: usize, j: usize, num_passes: usize) {
     sim.bodies[j].pos += v2 * t;
 
     // Thermal energy transfer
-    let normal = if d != Vec2::zero() { d.normalized() } else { Vec2::zero() };
+    // Ensure the virtual velocity is always injected away from the damped cell (along the contact normal)
+    let mut normal = if d != Vec2::zero() { d.normalized() } else { Vec2::zero() };
     let damped1 = sim.bodies[i].species.damping() < 1.0;
     let damped2 = sim.bodies[j].species.damping() < 1.0;
+    // Only allow energy transfer from damped to undamped in mixed collisions
     if damped1 ^ damped2 {
-        let (d_idx, u_idx, m_d, m_u, v_d_pre, v_u_pre) = if damped1 {
-            (i, j, m1, m2, v1, v2)
+        // d_idx: damped, u_idx: undamped
+        let (d_idx, u_idx, m_d, m_u, v_d_pre, v_u_pre, p_d, p_u) = if damped1 {
+            (i, j, m1, m2, v1, v2, p1, p2)
         } else {
-            (j, i, m2, m1, v2, v1)
+            (j, i, m2, m1, v2, v1, p2, p1)
         };
+        // Ensure normal points from damped to undamped
+        let contact = p_u - p_d;
+        if contact.dot(normal) < 0.0 {
+            normal = -normal;
+        }
         let reservoir = sim.bodies[d_idx].thermal_reservoir;
         if reservoir > 0.0 {
             let thermal_speed = (2.0 * reservoir / m_d).sqrt();
@@ -126,4 +134,5 @@ fn resolve(sim: &mut Simulation, i: usize, j: usize, num_passes: usize) {
             }
         }
     }
+    // Do NOT allow energy transfer or reservoir increase for damped-damped collisions
 }
