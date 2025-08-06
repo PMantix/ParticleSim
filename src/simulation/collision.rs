@@ -78,48 +78,14 @@ fn resolve(sim: &mut Simulation, i: usize, j: usize, num_passes: usize) {
     let tmp = d * (1.5 * d_dot_v / d_sq);
     let v1_final = v1_initial + tmp * weight1;
     let v2_final = v2_initial - tmp * weight2;
+    
+    // Apply standard collision velocities - simple approach since thermostat will handle temperature
     sim.bodies[i].vel = v1_final;
     sim.bodies[j].vel = v2_final;
-    sim.bodies[i].pos += v1_final * t;
-    sim.bodies[j].pos += v2_final * t;
-
-    // Thermal energy transfer - simple approach
-    let damped1 = sim.bodies[i].species.damping() < 1.0;
-    let damped2 = sim.bodies[j].species.damping() < 1.0;
     
-    // New approach: Track energy lost from undamped particles and restore it randomly
-    if damped1 ^ damped2 {
-        // Identify which is undamped
-        let (u_idx, m_u) = if damped1 {
-            (j, m2)
-        } else {
-            (i, m1)
-        };
-        
-        // Calculate energy of undamped particle before collision
-        let v_u_before = if damped1 { v2_initial } else { v1_initial };
-        let energy_before = 0.5 * m_u * v_u_before.mag_sq();
-        
-        // Get energy of undamped particle after collision
-        let v_u_after = sim.bodies[u_idx].vel;
-        let energy_after = 0.5 * m_u * v_u_after.mag_sq();
-        
-        // Calculate energy lost by the undamped particle
-        let energy_lost = energy_before - energy_after;
-        
-        // If undamped particle lost energy, restore it with a random direction
-        if energy_lost > 0.0 {
-            // Generate a random unit vector for energy restoration
-            let random_angle = rand::random::<f32>() * 2.0 * std::f32::consts::PI;
-            let random_direction = Vec2::new(random_angle.cos(), random_angle.sin());
-            
-            // Calculate velocity magnitude needed to restore the lost energy
-            let speed_to_add = (2.0 * energy_lost / m_u).sqrt();
-            let velocity_to_add = random_direction * speed_to_add;
-            
-            // Add the random thermal velocity to the undamped particle
-            sim.bodies[u_idx].vel += velocity_to_add;
-        }
-    }
-    // Do NOT allow energy transfer or reservoir increase for damped-damped collisions
+    // Store final velocities to avoid borrow conflicts
+    let final_vel1 = sim.bodies[i].vel;
+    let final_vel2 = sim.bodies[j].vel;
+    sim.bodies[i].pos += final_vel1 * t;
+    sim.bodies[j].pos += final_vel2 * t;
 }

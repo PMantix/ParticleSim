@@ -163,10 +163,24 @@ impl Simulation {
         let base_damping = self.config.damping_base.powf(dt / 0.01);
         let domain_width = self.domain_width;
         let domain_height = self.domain_height;
+        
+        // Apply forces first
         self.bodies.par_iter_mut().for_each(|body| {
             body.vel += body.acc * dt;
+        });
+        
+        // Apply damping only to damped particles
+        self.bodies.iter_mut().for_each(|body| {
             let damping = base_damping * body.species.damping();
-            body.vel *= damping; // Simple damping without energy storage
+            if damping < 1.0 {
+                // This is a damped particle - apply damping
+                body.vel *= damping;
+            }
+            // No damping for undamped particles (damping >= 1.0)
+        });
+        
+        // Update positions and handle boundaries
+        self.bodies.par_iter_mut().for_each(|body| {
             body.pos += body.vel * dt;
             
             // X-axis boundary enforcement
@@ -187,6 +201,54 @@ impl Simulation {
                 body.vel.y = -body.vel.y;
             }
         });
+        
+        // Simple thermostat: Apply temperature control to undamped particles only
+        self.apply_thermostat();
+    }
+    
+    /// Simple thermostat that maintains target temperature for undamped particles
+    fn apply_thermostat(&mut self) {
+        // Get target temperature from config (this will be set by GUI)
+        let target_temperature = self.config.temperature;
+        if target_temperature <= 0.0 {
+            return; // No temperature control when target is zero or negative
+        }
+        
+        // Calculate current temperature of undamped particles
+        let undamped_particles: Vec<usize> = self.bodies.iter().enumerate()
+            .filter(|(_, body)| body.species.damping() >= 1.0)
+            .map(|(i, _)| i)
+            .collect();
+            
+        if undamped_particles.is_empty() {
+            return;
+        }
+        
+        // Calculate average kinetic energy per unit mass (temperature) for undamped particles
+        let total_temperature: f32 = undamped_particles.iter()
+            .map(|&i| {
+                let body = &self.bodies[i];
+                0.5 * body.mass * body.vel.mag_sq() / body.mass // KE/mass = temperature
+            })
+            .sum();
+        
+        let current_temperature = total_temperature / undamped_particles.len() as f32;
+        
+        // Apply thermostat correction if there's a significant difference
+        let temperature_error = target_temperature - current_temperature;
+        if temperature_error.abs() > 0.1 { // Only apply correction for significant differences
+            let scale_factor = (target_temperature / current_temperature.max(1e-6)).sqrt();
+            
+            for &i in &undamped_particles {
+                self.bodies[i].vel *= scale_factor;
+            }
+            
+            // Debug output every 1000 frames
+            if self.frame % 1000 == 0 {
+                println!("Frame {}: Thermostat applied - Target: {:.2}, Current: {:.2}, Scale: {:.3}", 
+                         self.frame, target_temperature, current_temperature, scale_factor);
+            }
+        }
     }
 
     pub fn use_cell_list(&self) -> bool {
