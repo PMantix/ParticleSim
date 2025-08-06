@@ -166,7 +166,7 @@ impl Simulation {
         self.bodies.par_iter_mut().for_each(|body| {
             body.vel += body.acc * dt;
             let damping = base_damping * body.species.damping();
-            body.vel *= damping;
+            body.vel *= damping; // Simple damping without energy storage
             body.pos += body.vel * dt;
             
             // X-axis boundary enforcement

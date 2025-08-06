@@ -1,28 +1,12 @@
 // simulation/collision.rs
 // Contains collision detection and resolution functions
 
-// Removed unused import: Body
 use crate::profile_scope;
 use crate::renderer::state::COLLISION_PASSES;
 use crate::simulation::Simulation;
 use broccoli::aabb::Rect;
 use broccoli_rayon::{build::RayonBuildPar, prelude::RayonQueryPar};
 use ultraviolet::Vec2;
-
-fn elastic_result(v1: Vec2, v2: Vec2, m1: f32, m2: f32, normal: Vec2) -> (Vec2, Vec2) {
-    if normal == Vec2::zero() {
-        return (v1, v2);
-    }
-    let v1n = v1.dot(normal);
-    let v2n = v2.dot(normal);
-    let v1t = v1 - normal * v1n;
-    let v2t = v2 - normal * v2n;
-    let v1n_after = (v1n * (m1 - m2) + 2.0 * m2 * v2n) / (m1 + m2);
-    let v2n_after = (v2n * (m2 - m1) + 2.0 * m1 * v1n) / (m1 + m2);
-    let v1_final = v1t + normal * v1n_after;
-    let v2_final = v2t + normal * v2n_after;
-    (v1_final, v2_final)
-}
 
 pub fn collide(sim: &mut Simulation) {
     profile_scope!("collision");
@@ -99,68 +83,42 @@ fn resolve(sim: &mut Simulation, i: usize, j: usize, num_passes: usize) {
     sim.bodies[i].pos += v1_final * t;
     sim.bodies[j].pos += v2_final * t;
 
-    // Thermal energy transfer
-<<<<<<< HEAD
-    // Ensure the virtual velocity is always injected away from the damped cell (along the contact normal)
-    let mut normal = if d != Vec2::zero() { d.normalized() } else { Vec2::zero() };
-=======
-    let normal = if d != Vec2::zero() {
-        d.normalized()
-    } else {
-        Vec2::zero()
-    };
->>>>>>> 0ab9afb6f04adab403abb036a0ee7ead6b7c9171
+    // Thermal energy transfer - simple approach
     let damped1 = sim.bodies[i].species.damping() < 1.0;
     let damped2 = sim.bodies[j].species.damping() < 1.0;
-    // Only allow energy transfer from damped to undamped in mixed collisions
+    
+    // New approach: Track energy lost from undamped particles and restore it randomly
     if damped1 ^ damped2 {
-<<<<<<< HEAD
-        // d_idx: damped, u_idx: undamped
-        let (d_idx, u_idx, m_d, m_u, v_d_pre, v_u_pre, p_d, p_u) = if damped1 {
-            (i, j, m1, m2, v1, v2, p1, p2)
+        // Identify which is undamped
+        let (u_idx, m_u) = if damped1 {
+            (j, m2)
         } else {
-            (j, i, m2, m1, v2, v1, p2, p1)
+            (i, m1)
         };
-        // Ensure normal points from damped to undamped
-        let contact = p_u - p_d;
-        if contact.dot(normal) < 0.0 {
-            normal = -normal;
-        }
-        let reservoir = sim.bodies[d_idx].thermal_reservoir;
-        if reservoir > 0.0 {
-            let thermal_speed = (2.0 * reservoir / m_d).sqrt();
-=======
-        let (d_idx, u_idx, m_d, m_u, v_d_pre, v_u_pre) = if damped1 {
-            (i, j, m1, m2, v1_initial, v2_initial)
-        } else {
-            (j, i, m2, m1, v2_initial, v1_initial)
-        };
-        let reservoir_before = sim.bodies[d_idx].thermal_reservoir;
-        if reservoir_before > 0.0 {
-            let thermal_speed = (2.0 * reservoir_before / m_d).sqrt();
->>>>>>> 0ab9afb6f04adab403abb036a0ee7ead6b7c9171
-            let thermal_vel = normal * thermal_speed;
-            let (_v_d_base, v_u_base) = elastic_result(v_d_pre, v_u_pre, m_d, m_u, normal);
-            let (_v_d_therm, v_u_therm) =
-                elastic_result(v_d_pre + thermal_vel, v_u_pre, m_d, m_u, normal);
-            let delta_e_full = 0.5 * m_u * (v_u_therm.mag_sq() - v_u_base.mag_sq());
-            if delta_e_full > 0.0 {
-                let injection = delta_e_full.min(reservoir_before);
-                let delta_v_full = v_u_therm - v_u_base;
-                let scale = (injection / delta_e_full).sqrt();
-                let delta_v = delta_v_full * scale;
-                sim.bodies[u_idx].vel += delta_v;
-                sim.bodies[d_idx].thermal_reservoir -= injection;
-            }
-        }
-        // Store any energy the undamped particle lost in the collision
+        
+        // Calculate energy of undamped particle before collision
+        let v_u_before = if damped1 { v2_initial } else { v1_initial };
+        let energy_before = 0.5 * m_u * v_u_before.mag_sq();
+        
+        // Get energy of undamped particle after collision
         let v_u_after = sim.bodies[u_idx].vel;
-        let delta_e = 0.5 * m_u * (v_u_after.mag_sq() - v_u_pre.mag_sq());
-        if delta_e < 0.0 {
-            sim.bodies[d_idx].thermal_reservoir += -delta_e;
-        }
-        if sim.bodies[d_idx].thermal_reservoir < 0.0 {
-            sim.bodies[d_idx].thermal_reservoir = 0.0;
+        let energy_after = 0.5 * m_u * v_u_after.mag_sq();
+        
+        // Calculate energy lost by the undamped particle
+        let energy_lost = energy_before - energy_after;
+        
+        // If undamped particle lost energy, restore it with a random direction
+        if energy_lost > 0.0 {
+            // Generate a random unit vector for energy restoration
+            let random_angle = rand::random::<f32>() * 2.0 * std::f32::consts::PI;
+            let random_direction = Vec2::new(random_angle.cos(), random_angle.sin());
+            
+            // Calculate velocity magnitude needed to restore the lost energy
+            let speed_to_add = (2.0 * energy_lost / m_u).sqrt();
+            let velocity_to_add = random_direction * speed_to_add;
+            
+            // Add the random thermal velocity to the undamped particle
+            sim.bodies[u_idx].vel += velocity_to_add;
         }
     }
     // Do NOT allow energy transfer or reservoir increase for damped-damped collisions
