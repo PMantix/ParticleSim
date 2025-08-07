@@ -239,13 +239,7 @@ pub fn handle_command(cmd: SimCommand, simulation: &mut Simulation) {
             }
         }
         SimCommand::SetTemperature { temperature } => {
-            let current = crate::simulation::utils::compute_temperature(&simulation.bodies);
-            if current > 0.0 {
-                let scale = (temperature / current).sqrt();
-                for body in &mut simulation.bodies {
-                    body.vel *= scale;
-                }
-            }
+            // Just update the target temperature; thermostat will be applied periodically
             crate::config::LJ_CONFIG.lock().temperature = temperature;
         }
         SimCommand::SetDomainSize { width, height } => {

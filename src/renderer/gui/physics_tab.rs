@@ -124,6 +124,20 @@ impl super::super::Renderer {
                     .send(SimCommand::SetTemperature { temperature: temp })
                     .unwrap();
             }
+            
+            ui.separator();
+            
+            ui.label("⏱️ Thermostat Frequency");
+            ui.horizontal(|ui| {
+                ui.add(
+                    egui::Slider::new(&mut self.sim_config.thermostat_frequency, 0.1..=10.0)
+                        .text("Period")
+                        .step_by(0.1)
+                );
+                ui.label("time units");
+            });
+            ui.small("How often to enforce temperature constraint");
+            ui.small("Lower = more frequent, higher = more natural dynamics");
         });
     }
 }

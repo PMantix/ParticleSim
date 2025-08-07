@@ -172,6 +172,8 @@ pub struct SimConfig {
     pub coulomb_constant: f32,
     /// Current simulation temperature
     pub temperature: f32,
+    /// How frequently (in simulation time units) to apply the thermostat
+    pub thermostat_frequency: f32,
 }
 
 impl Default for SimConfig {
@@ -198,6 +200,7 @@ impl Default for SimConfig {
             lj_force_cutoff: LJ_FORCE_CUTOFF,
             coulomb_constant: crate::simulation::forces::K_E,
             temperature: DEFAULT_TEMPERATURE,
+            thermostat_frequency: 1.0, // Apply thermostat every 1.0 time units by default
         }
     }
 }

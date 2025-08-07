@@ -29,6 +29,8 @@ pub struct Simulation {
     pub foils: Vec<crate::body::foil::Foil>,
     pub body_to_foil: HashMap<u64, u64>,
     pub config:config::SimConfig, //
+    /// Track when thermostat was last applied (in simulation time)
+    pub last_thermostat_time: f32,
 }
 
 impl Simulation {
@@ -59,6 +61,7 @@ impl Simulation {
             foils: Vec::new(),
             body_to_foil: HashMap::new(),
             config: config::SimConfig::default(),
+            last_thermostat_time: 0.0,
         };
         // Example: scenario setup using SimCommand (pseudo-code, actual sending is done in main.rs or GUI)
         // let left_center = Vec2::new(-bounds * 0.6, 0.0);
@@ -145,6 +148,13 @@ impl Simulation {
             body.update_charge_from_electrons();
         }
         self.perform_electron_hopping_with_exclusions(&foil_current_recipients);
+        
+        // Apply periodic thermostat if enough time has passed
+        if time - self.last_thermostat_time >= self.config.thermostat_frequency {
+            self.apply_thermostat();
+            self.last_thermostat_time = time;
+        }
+        
         self.frame += 1;
 
         #[cfg(test)]
@@ -434,6 +444,52 @@ impl Simulation {
                         }
                     }
                     break;
+                }
+            }
+        }
+    }
+    
+    /// Apply Maxwell-Boltzmann thermostat to maintain target temperature
+    /// Only applies to solvent particles (EC/DMC), excludes metals
+    pub fn apply_thermostat(&mut self) {
+        use crate::body::Species;
+        
+        let target_temp = self.config.temperature;
+        if target_temp <= 0.0 {
+            return;
+        }
+        
+        // Calculate current temperature of solvent particles only
+        let mut solvent_ke = 0.0;
+        let mut solvent_count = 0;
+        
+        for body in &self.bodies {
+            match body.species {
+                Species::EC | Species::DMC => {
+                    solvent_ke += 0.5 * body.mass * body.vel.mag_sq();
+                    solvent_count += 1;
+                }
+                _ => {} // Skip metals and ions
+            }
+        }
+        
+        if solvent_count == 0 {
+            return; // No solvent particles to thermostat
+        }
+        
+        // T = (2 * KE) / (DOF * k_B), where DOF = 2 for 2D, k_B = 1 in simulation units
+        let current_temp = solvent_ke / solvent_count as f32;
+        
+        if current_temp > 0.0 {
+            let scale = (target_temp / current_temp).sqrt();
+            
+            // Scale velocities of solvent particles only
+            for body in &mut self.bodies {
+                match body.species {
+                    Species::EC | Species::DMC => {
+                        body.vel *= scale;
+                    }
+                    _ => {} // Don't modify metals or ions
                 }
             }
         }
