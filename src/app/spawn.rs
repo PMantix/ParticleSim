@@ -20,9 +20,15 @@ pub fn sample_velocity(mass: f32, temperature: f32) -> Vec2 {
 }
 
 pub fn overlaps_any(existing: &[crate::body::Body], pos: Vec2, radius: f32) -> Option<usize> {
+    // Allow some overlap - particles can overlap up to 50% of their combined radii
+    let overlap_tolerance = 0.65;
     existing
         .iter()
-        .position(|b| (b.pos - pos).mag() < (b.radius + radius))
+        .position(|b| {
+            let distance = (b.pos - pos).mag();
+            let min_separation = (b.radius + radius) * overlap_tolerance;
+            distance < min_separation
+        })
 }
 
 pub fn remove_body_with_foils(simulation: &mut Simulation, idx: usize) {
