@@ -317,28 +317,6 @@ dependencies = [
  "objc2 0.5.2",
 ]
 
-[[package]]
-name = "broccoli"
-version = "6.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9ca486941fb11a79e86d9c16712e0a380a4497281c04d4f5266f10a5b80d2458"
-dependencies = [
- "axgeom",
- "compt",
- "revec",
- "slice-group-by",
- "twounordered",
-]
-
-[[package]]
-name = "broccoli-rayon"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9fa8ad0a864060cab9b6d15e24e147c58462c79eb77379843514fd9fb0719994"
-dependencies = [
- "broccoli",
- "rayon",
-]
 
 [[package]]
 name = "built"
@@ -1923,8 +1901,6 @@ checksum = "6448add382c60bbbc64f9dab41309a12ec530c05191601042f911356ac09758c"
 name = "particle_sim"
 version = "0.1.5"
 dependencies = [
- "broccoli",
- "broccoli-rayon",
  "chrono",
  "crossbeam",
  "fastrand",
