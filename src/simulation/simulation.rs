@@ -20,6 +20,7 @@ pub struct Simulation {
     pub frame: usize,
     pub bodies: Vec<Body>,
     pub quadtree: Quadtree,
+    pub quadtree_dirty: bool,
     pub cell_list: CellList,
     pub bounds: f32, // Legacy field for backward compatibility
     pub domain_width: f32,  // Half-width of the domain (from center to edge)
@@ -50,6 +51,7 @@ impl Simulation {
             frame: 0,
             bodies,
             quadtree,
+            quadtree_dirty: true,
             cell_list,
             bounds,
             domain_width: bounds,   // Initialize with square domain, will be updated by SetDomainSize command
@@ -93,12 +95,17 @@ impl Simulation {
         self.bodies.par_iter_mut().for_each(|body| {
             body.acc = Vec2::zero();
         });
+        if self.quadtree_dirty {
+            self.quadtree.build(&mut self.bodies);
+            self.quadtree_dirty = false;
+        }
 
         forces::attract(self);
         forces::apply_polar_forces(self);
         forces::apply_lj_forces(self);
         forces::apply_repulsive_forces(self);
         self.iterate();
+        self.quadtree_dirty = true;
         let num_passes = *COLLISION_PASSES.lock();
         for _ in 1..num_passes {
             collision::collide(self);
@@ -125,9 +132,14 @@ impl Simulation {
             self.process_single_foil(i, time, &mut foil_current_recipients);
         }
         // Ensure all body charges are up-to-date after foil current changes
-        self.bodies.par_iter_mut().for_each(|body| body.update_charge_from_electrons());
-        // Rebuild the quadtree after charge/electron changes so field is correct for hopping
-        self.quadtree.build(&mut self.bodies);
+        self.bodies
+            .par_iter_mut()
+            .for_each(|body| body.update_charge_from_electrons());
+        self.quadtree_dirty = true;
+        if self.quadtree_dirty {
+            self.quadtree.build(&mut self.bodies);
+            self.quadtree_dirty = false;
+        }
 
         let quadtree = &self.quadtree;
         let len = self.bodies.len();
@@ -145,6 +157,7 @@ impl Simulation {
             body.update_charge_from_electrons();
         }
         self.perform_electron_hopping_with_exclusions(&foil_current_recipients);
+        self.quadtree_dirty = true;
         self.frame += 1;
 
         #[cfg(test)]
@@ -305,6 +318,7 @@ impl Simulation {
         let mut src_indices: Vec<usize> = (0..n).collect();
         let mut rng = rand::rng();
         src_indices.shuffle(&mut rng);
+        let mut neighbor_buf = Vec::new();
         for &src_idx in &src_indices {
             if donated_electron[src_idx] || exclude_donor[src_idx] { continue; }
             let src_body = &self.bodies[src_idx];
@@ -315,9 +329,12 @@ impl Simulation {
             let hop_radius = self.config.hop_radius_factor * src_body.radius;
 
             // Use quadtree for neighbor search!
-            let mut candidate_neighbors = self.quadtree
-                .find_neighbors_within(&self.bodies, src_idx, hop_radius)
-                .into_iter()
+            neighbor_buf.clear();
+            self.quadtree
+                .find_neighbors_within(&self.bodies, src_idx, hop_radius, &mut neighbor_buf);
+            let mut candidate_neighbors = neighbor_buf
+                .iter()
+                .copied()
                 .filter(|&dst_idx| dst_idx != src_idx && !received_electron[dst_idx])
                 .filter(|&dst_idx| {
                     let dst_body = &self.bodies[dst_idx];
@@ -395,8 +412,9 @@ impl Simulation {
         if use_cell {
             self.cell_list.cell_size = neighbor_radius;
             self.cell_list.rebuild(&self.bodies);
-        } else {
+        } else if self.quadtree_dirty {
             self.quadtree.build(&mut self.bodies);
+            self.quadtree_dirty = false;
         }
         let quadtree = &self.quadtree;
         let cell_list = &self.cell_list;

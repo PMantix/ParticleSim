@@ -4,33 +4,35 @@
 use crate::profile_scope;
 use crate::renderer::state::COLLISION_PASSES;
 use crate::simulation::Simulation;
-use broccoli::aabb::Rect;
-use broccoli_rayon::{build::RayonBuildPar, prelude::RayonQueryPar};
 use ultraviolet::Vec2;
 
 pub fn collide(sim: &mut Simulation) {
     profile_scope!("collision");
-    let mut rects = sim
+    if sim.quadtree_dirty {
+        sim.quadtree.build(&mut sim.bodies);
+        sim.quadtree_dirty = false;
+    }
+    let num_passes = *COLLISION_PASSES.lock();
+    let max_radius = sim
         .bodies
         .iter()
-        .enumerate()
-        .map(|(index, body)| {
-            let pos = body.pos;
-            let radius = body.radius;
-            let min = pos - Vec2::one() * radius;
-            let max = pos + Vec2::one() * radius;
-            (Rect::new(min.x, max.x, min.y, max.y), index)
-        })
-        .collect::<Vec<_>>();
-    let mut broccoli = broccoli::Tree::par_new(&mut rects);
-    let ptr = sim as *mut Simulation as usize;
-    let num_passes = *COLLISION_PASSES.lock();
-    broccoli.par_find_colliding_pairs(|i, j| {
-        let sim = unsafe { &mut *(ptr as *mut Simulation) };
-        let i = *i.unpack_inner();
-        let j = *j.unpack_inner();
-        resolve(sim, i, j, num_passes);
-    });
+        .map(|b| b.radius)
+        .fold(0.0_f32, f32::max);
+    let mut neighbors = Vec::new();
+    for i in 0..sim.bodies.len() {
+        let cutoff = sim.bodies[i].radius + max_radius;
+        neighbors.clear();
+        sim.quadtree
+            .find_neighbors_within(&sim.bodies, i, cutoff, &mut neighbors);
+        for &j in &neighbors {
+            if j <= i {
+                continue;
+            }
+            resolve(sim, i, j, num_passes);
+        }
+    }
+    // Positions may have changed during resolution
+    sim.quadtree_dirty = true;
 }
 
 fn resolve(sim: &mut Simulation, i: usize, j: usize, num_passes: usize) {

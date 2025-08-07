@@ -39,15 +39,17 @@ impl FoilElectronFractionDiagnostic {
             }
 
             // BFS to find all connected metal bodies using quadtree for neighbor search
+            let mut nearby_indices = Vec::new();
             while let Some(idx) = queue.pop_front() {
                 let body = &bodies[idx];
                 total_electrons += body.electrons.len();
                 total_neutral += body.neutral_electron_count();
-                
+
                 // Use quadtree to efficiently find nearby neighbors
                 let search_radius = body.radius * 2.2; // Slightly larger than connection threshold
-                let nearby_indices = quadtree.find_neighbors_within(bodies, idx, search_radius);
-                
+                nearby_indices.clear();
+                quadtree.find_neighbors_within(bodies, idx, search_radius, &mut nearby_indices);
+
                 for &neighbor_idx in &nearby_indices {
                     if visited.contains(&neighbor_idx) {
                         continue;

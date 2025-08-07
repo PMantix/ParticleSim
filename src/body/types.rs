@@ -127,10 +127,10 @@ impl Body {
             if use_cell {
                 cell_list.metal_neighbor_count(bodies, i, radius)
             } else {
-                quadtree
-                    .find_neighbors_within(bodies, i, radius)
-                    .into_iter()
-                    .filter(|&n| matches!(bodies[n].species, Species::LithiumMetal | Species::FoilMetal))
+                let mut buf = Vec::new();
+                quadtree.find_neighbors_within(bodies, i, radius, &mut buf);
+                buf.iter()
+                    .filter(|&&n| matches!(bodies[n].species, Species::LithiumMetal | Species::FoilMetal))
                     .count()
             }
         } else {
@@ -158,10 +158,10 @@ impl Body {
             let count = if use_cell {
                 cell_list.metal_neighbor_count(bodies, index, radius)
             } else {
-                quadtree
-                    .find_neighbors_within(bodies, index, radius)
-                    .into_iter()
-                    .filter(|&n| matches!(bodies[n].species, Species::LithiumMetal | Species::FoilMetal))
+                let mut buf = Vec::new();
+                quadtree.find_neighbors_within(bodies, index, radius, &mut buf);
+                buf.iter()
+                    .filter(|&&n| matches!(bodies[n].species, Species::LithiumMetal | Species::FoilMetal))
                     .count()
             };
             self.surrounded_by_metal = count >= config::SURROUND_NEIGHBOR_THRESHOLD;
