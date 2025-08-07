@@ -132,7 +132,7 @@ pub const SHOW_FIELD_VECTORS: bool = false; // Show electric field vectors
 // Temperature
 // ====================
 /// Default simulation temperature in arbitrary units
-pub const DEFAULT_TEMPERATURE: f32 = 20.0; // Starting temperature for GUI
+pub const DEFAULT_TEMPERATURE: f32 = 5.0; // Starting temperature for GUI
 
 use serde::{Serialize, Deserialize};
 

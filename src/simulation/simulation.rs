@@ -242,16 +242,44 @@ impl Simulation {
         // Apply thermostat correction if there's a significant difference
         let temperature_error = target_temperature - current_temperature;
         if temperature_error.abs() > 0.1 { // Only apply correction for significant differences
-            let scale_factor = (target_temperature / current_temperature.max(1e-6)).sqrt();
+            
+            // Use randomized Maxwell-Boltzmann thermostat instead of velocity scaling
+            // This breaks coherent motion by randomizing velocity directions
+            let mut rng = rand::rng();
             
             for &i in &undamped_particles {
-                self.bodies[i].vel *= scale_factor;
+                let body = &mut self.bodies[i];
+                
+                // Calculate target speed from Maxwell-Boltzmann distribution
+                // For 2D: v = sqrt(2 * T / m) where T is kinetic energy per unit mass
+                let target_speed = (2.0 * target_temperature).sqrt();
+                
+                // Generate random direction (uniform on unit circle)
+                let angle: f32 = rng.random_range(0.0..std::f32::consts::TAU);
+                let random_direction = Vec2::new(angle.cos(), angle.sin());
+                
+                // Mix current velocity with random velocity to gradually break coherence
+                let mixing_factor = 0.05; // 5% randomization per thermostat application
+                
+                // Keep 95% of current direction, add 5% random direction
+                let current_direction = if body.vel.mag_sq() > 1e-6 {
+                    body.vel.normalized()
+                } else {
+                    random_direction // If velocity is zero, use random direction
+                };
+                
+                let mixed_direction = (current_direction * (1.0 - mixing_factor) + 
+                                     random_direction * mixing_factor).normalized();
+                
+                // Set velocity with mixed direction and target thermal speed
+                body.vel = mixed_direction * target_speed;
             }
             
             // Debug output every 1000 frames
+            #[cfg(debug_assertions)]
             if self.frame % 1000 == 0 {
-                println!("Frame {}: Thermostat applied - Target: {:.2}, Current: {:.2}, Scale: {:.3}", 
-                         self.frame, target_temperature, current_temperature, scale_factor);
+                println!("Frame {}: Randomized thermostat applied - Target: {:.2}, Current: {:.2}", 
+                         self.frame, target_temperature, current_temperature);
             }
         }
     }
