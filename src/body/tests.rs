@@ -272,6 +272,7 @@ mod tests {
                 foils: Vec::new(),
                 cell_list: CellList::new(10.0, 1.0),
                 body_to_foil: HashMap::new(),
+                last_thermostat_time: 0.0,
             };
             assert_eq!(sim.bodies[0].electrons.len(), 0);
             assert_eq!(sim.bodies[1].electrons.len(), crate::config::FOIL_NEUTRAL_ELECTRONS + 1);
@@ -334,6 +335,7 @@ mod tests {
                 foils: Vec::new(),
                 cell_list: CellList::new(10.0, 1.0),
                 body_to_foil: HashMap::new(),
+                last_thermostat_time: 0.0,
             };
         
             // Build quadtree before hopping.
@@ -399,6 +401,7 @@ mod tests {
                 }],
                 cell_list: CellList::new(10.0, 1.0),
                 body_to_foil: HashMap::new(),
+                last_thermostat_time: 0.0,
             };
 
             // Build quadtree before step

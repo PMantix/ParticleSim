@@ -45,6 +45,7 @@ mod reactions {
             foils: Vec::new(),
             cell_list: CellList::new(10.0, 1.0),
             body_to_foil: HashMap::new(),
+            last_thermostat_time: 0.0,
         };
         sim.quadtree.build(&mut sim.bodies);
         //let bodies_snapshot = sim.bodies.clone();
@@ -84,6 +85,7 @@ mod reactions {
             foils: Vec::new(),
             cell_list: CellList::new(10.0, 1.0),
             body_to_foil: HashMap::new(),
+            last_thermostat_time: 0.0,
         };
         sim.quadtree.build(&mut sim.bodies);
         //let bodies_snapshot = sim.bodies.clone();
@@ -184,6 +186,7 @@ mod reactions {
             foils: Vec::new(),
             cell_list: CellList::new(10.0, 1.0),
             body_to_foil: HashMap::new(),
+            last_thermostat_time: 0.0,
         };
         sim.quadtree.build(&mut sim.bodies);
 
@@ -222,6 +225,7 @@ mod reactions {
             foils: Vec::new(),
             cell_list: CellList::new(10.0, 1.0),
             body_to_foil: HashMap::new(),
+            last_thermostat_time: 0.0,
         };
         sim.quadtree.build(&mut sim.bodies);
 
@@ -279,7 +283,8 @@ mod reactions {
                 foils: Vec::new(),
                 cell_list: CellList::new(10.0, 1.0),
                 body_to_foil: HashMap::new(),
-            };
+            last_thermostat_time: 0.0,
+        };
             sim.quadtree.build(&mut sim.bodies);
             let exclude = vec![false; sim.bodies.len()];
             sim.perform_electron_hopping_with_exclusions(&exclude);
@@ -330,7 +335,8 @@ mod reactions {
                 foils: Vec::new(),
                 cell_list: CellList::new(10.0, 1.0),
                 body_to_foil: HashMap::new(),
-            };
+            last_thermostat_time: 0.0,
+        };
             sim.quadtree.build(&mut sim.bodies);
 
             let exclude = vec![false; sim.bodies.len()];
@@ -378,7 +384,8 @@ mod reactions {
                 foils: Vec::new(),
                 cell_list: CellList::new(10.0, 1.0),
                 body_to_foil: HashMap::new(),
-            };
+            last_thermostat_time: 0.0,
+        };
             sim.quadtree.build(&mut sim.bodies);
 
             let exclude = vec![false; sim.bodies.len()];
@@ -422,7 +429,8 @@ mod reactions {
                 foils: Vec::new(),
                 cell_list: CellList::new(10.0, 1.0),
                 body_to_foil: HashMap::new(),
-            };
+            last_thermostat_time: 0.0,
+        };
             sim.quadtree.build(&mut sim.bodies);
             let exclude = vec![false; sim.bodies.len()];
             sim.perform_electron_hopping_with_exclusions(&exclude);
@@ -471,7 +479,8 @@ mod reactions {
                 foils: Vec::new(),
                 cell_list: CellList::new(10.0, 1.0),
                 body_to_foil: HashMap::new(),
-            };
+            last_thermostat_time: 0.0,
+        };
             sim.quadtree.build(&mut sim.bodies);
             let exclude = vec![false; sim.bodies.len()];
             sim.perform_electron_hopping_with_exclusions(&exclude);
@@ -678,6 +687,7 @@ mod polarization_conservation {
             foils: Vec::new(),
             cell_list: CellList::new(10.0, 1.0),
             body_to_foil: HashMap::new(),
+            last_thermostat_time: 0.0,
         };
 
         sim.quadtree.build(&mut sim.bodies);
@@ -698,3 +708,4 @@ mod polarization_conservation {
         assert!(com_vel.mag() < 1e-4, "Center-of-mass velocity = {:?}", com_vel);
     }
 }
+
