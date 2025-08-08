@@ -22,7 +22,7 @@ pub fn sample_velocity(mass: f32, temperature: f32) -> Vec2 {
 pub fn overlaps_any(existing: &[crate::body::Body], pos: Vec2, radius: f32) -> Option<usize> {
     existing
         .iter()
-        .position(|b| (b.pos - pos).mag() < (b.radius + radius))
+        .position(|b| (b.pos - pos).mag() < (b.radius + radius) * 0.65)
 }
 
 pub fn remove_body_with_foils(simulation: &mut Simulation, idx: usize) {
