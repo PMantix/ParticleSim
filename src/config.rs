@@ -25,7 +25,8 @@ pub fn electron_spring_k(species: Species) -> f32 {
         _ => ELECTRON_SPRING_K,
     }
 }
-pub const ELECTRON_DRIFT_RADIUS_FACTOR: f32 = 1.0;      // Max drift radius as a factor of body radius
+pub const ELECTRON_DRIFT_RADIUS_FACTOR_EC: f32 = 1.0;         // Max electron speed as a factor of body radius per 
+pub const ELECTRON_DRIFT_RADIUS_FACTOR_DMC: f32 = 0.7;      // DMC-specific drift radius factor
 pub const ELECTRON_MAX_SPEED_FACTOR: f32 = 1.2;         // Max electron speed as a factor of body radius per dt
 pub const HOP_RADIUS_FACTOR: f32 = 2.1;                      // Hopping radius as a factor of body radius
 pub const HOP_RATE_K0: f32 = 1.0;            /// Base hop‐rate constant (per unit time) at zero overpotential
