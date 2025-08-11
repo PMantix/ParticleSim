@@ -110,23 +110,8 @@ impl Simulation {
 
         // Track which bodies receive electrons from foil current this step
         let mut foil_current_recipients = vec![false; self.bodies.len()];
-        // Apply foil current sources/sinks with linking logic
-        let mut visited = vec![false; self.foils.len()];
-        for i in 0..self.foils.len() {
-            if visited[i] { continue; }
-            if let Some(link_id) = self.foils[i].link_id {
-                if let Some(j) = self.foils.iter().position(|f| f.id == link_id) {
-                    if !visited[j] {
-                        visited[i] = true;
-                        visited[j] = true;
-                        self.process_linked_pair(i, j, time, &mut foil_current_recipients);
-                        continue;
-                    }
-                }
-            }
-            visited[i] = true;
-            self.process_single_foil(i, time, &mut foil_current_recipients);
-        }
+        // Apply foil current sources/sinks with charge conservation
+        self.process_foils_with_charge_conservation(time, &mut foil_current_recipients);
         // Ensure all body charges are up-to-date after foil current changes
         self.bodies.par_iter_mut().for_each(|body| body.update_charge_from_electrons());
         // Rebuild the quadtree after charge/electron changes so field is correct for hopping
@@ -336,6 +321,121 @@ impl Simulation {
         current
     }
 
+    /// Process foils with charge conservation - electrons can only be added if another foil removes one
+    fn process_foils_with_charge_conservation(&mut self, time: f32, recipients: &mut [bool]) {
+        let dt = self.dt;
+        let mut rng = rand::rng();
+        
+        // Update all accumulators first
+        for i in 0..self.foils.len() {
+            let current = Self::effective_current(&self.foils[i], time);
+            self.foils[i].accum += current * dt;
+        }
+        
+        // Handle linked pairs first (they have priority and built-in charge conservation)
+        let mut visited = vec![false; self.foils.len()];
+        for i in 0..self.foils.len() {
+            if visited[i] { continue; }
+            if let Some(link_id) = self.foils[i].link_id {
+                if let Some(j) = self.foils.iter().position(|f| f.id == link_id) {
+                    if !visited[j] {
+                        visited[i] = true;
+                        visited[j] = true;
+                        self.process_linked_pair_conservative(i, j, &mut rng, recipients);
+                        continue;
+                    }
+                }
+            }
+        }
+        
+        // For unlinked foils, enforce global charge conservation
+        let mut add_ready: Vec<usize> = Vec::new();
+        let mut remove_ready: Vec<usize> = Vec::new();
+        
+        for i in 0..self.foils.len() {
+            if visited[i] { continue; }
+            
+            // Check if foil is ready to add electrons (positive accumulator)
+            if self.foils[i].accum >= 1.0 && self.foil_can_add(i) {
+                add_ready.push(i);
+            }
+            // Check if foil is ready to remove electrons (negative accumulator)
+            else if self.foils[i].accum <= -1.0 && self.foil_can_remove(i) {
+                remove_ready.push(i);
+            }
+        }
+        
+        // Shuffle to ensure random pairing
+        add_ready.shuffle(&mut rng);
+        remove_ready.shuffle(&mut rng);
+        
+        // Process charge-conserving pairs: one adds, one removes
+        let num_pairs = add_ready.len().min(remove_ready.len());
+        
+        for pair_idx in 0..num_pairs {
+            let add_foil_idx = add_ready[pair_idx];
+            let remove_foil_idx = remove_ready[pair_idx];
+            
+            // Attempt the charge-conserving pair operation
+            if self.try_add_electron(add_foil_idx, &mut rng, recipients) && 
+               self.try_remove_electron(remove_foil_idx, &mut rng, recipients) {
+                self.foils[add_foil_idx].accum -= 1.0;
+                self.foils[remove_foil_idx].accum += 1.0;
+            }
+        }
+    }
+
+    /// Process linked pair with charge conservation (similar to existing but renamed for clarity)
+    fn process_linked_pair_conservative(&mut self, a: usize, b: usize, rng: &mut rand::rngs::ThreadRng, recipients: &mut [bool]) {
+        let mode = self.foils[a].mode;
+        loop {
+            match mode {
+                LinkMode::Parallel => {
+                    if self.foils[a].accum >= 1.0 && self.foils[b].accum >= 1.0 {
+                        if self.foil_can_add(a) && self.foil_can_add(b) {
+                            if self.try_add_electron(a, rng, recipients) && self.try_add_electron(b, rng, recipients) {
+                                self.foils[a].accum -= 1.0;
+                                self.foils[b].accum -= 1.0;
+                                continue;
+                            }
+                        }
+                    }
+                    if self.foils[a].accum <= -1.0 && self.foils[b].accum <= -1.0 {
+                        if self.foil_can_remove(a) && self.foil_can_remove(b) {
+                            if self.try_remove_electron(a, rng, recipients) && self.try_remove_electron(b, rng, recipients) {
+                                self.foils[a].accum += 1.0;
+                                self.foils[b].accum += 1.0;
+                                continue;
+                            }
+                        }
+                    }
+                    break;
+                }
+                LinkMode::Opposite => {
+                    if self.foils[a].accum >= 1.0 && self.foils[b].accum <= -1.0 {
+                        if self.foil_can_add(a) && self.foil_can_remove(b) {
+                            if self.try_add_electron(a, rng, recipients) && self.try_remove_electron(b, rng, recipients) {
+                                self.foils[a].accum -= 1.0;
+                                self.foils[b].accum += 1.0;
+                                continue;
+                            }
+                        }
+                    }
+                    if self.foils[a].accum <= -1.0 && self.foils[b].accum >= 1.0 {
+                        if self.foil_can_remove(a) && self.foil_can_add(b) {
+                            if self.try_remove_electron(a, rng, recipients) && self.try_add_electron(b, rng, recipients) {
+                                self.foils[a].accum += 1.0;
+                                self.foils[b].accum -= 1.0;
+                                continue;
+                            }
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
     fn foil_can_add(&self, idx: usize) -> bool {
         let foil = &self.foils[idx];
         foil.body_ids.iter().any(|&id| {
@@ -376,77 +476,6 @@ impl Simulation {
             }
         }
         false
-    }
-
-    fn process_single_foil(&mut self, idx: usize, time: f32, recipients: &mut [bool]) {
-        let dt = self.dt;
-        let current = Self::effective_current(&self.foils[idx], time);
-        self.foils[idx].accum += current * dt;
-        let mut rng = rand::rng();
-        while self.foils[idx].accum >= 1.0 {
-            let _ = self.try_add_electron(idx, &mut rng, recipients);
-            self.foils[idx].accum -= 1.0;
-        }
-        while self.foils[idx].accum <= -1.0 {
-            let _ = self.try_remove_electron(idx, &mut rng, recipients);
-            self.foils[idx].accum += 1.0;
-        }
-    }
-
-    fn process_linked_pair(&mut self, a: usize, b: usize, time: f32, recipients: &mut [bool]) {
-        let dt = self.dt;
-        let mode = self.foils[a].mode;
-        let current_a = Self::effective_current(&self.foils[a], time);
-        let current_b = Self::effective_current(&self.foils[b], time);
-        self.foils[a].accum += current_a * dt;
-        self.foils[b].accum += current_b * dt;
-        let mut rng = rand::rng();
-        loop {
-            match mode {
-                LinkMode::Parallel => {
-                    if self.foils[a].accum >= 1.0 && self.foils[b].accum >= 1.0 {
-                        if self.foil_can_add(a) && self.foil_can_add(b) {
-                            if self.try_add_electron(a, &mut rng, recipients) && self.try_add_electron(b, &mut rng, recipients) {
-                                self.foils[a].accum -= 1.0;
-                                self.foils[b].accum -= 1.0;
-                                continue;
-                            }
-                        }
-                    }
-                    if self.foils[a].accum <= -1.0 && self.foils[b].accum <= -1.0 {
-                        if self.foil_can_remove(a) && self.foil_can_remove(b) {
-                            if self.try_remove_electron(a, &mut rng, recipients) && self.try_remove_electron(b, &mut rng, recipients) {
-                                self.foils[a].accum += 1.0;
-                                self.foils[b].accum += 1.0;
-                                continue;
-                            }
-                        }
-                    }
-                    break;
-                }
-                LinkMode::Opposite => {
-                    if self.foils[a].accum >= 1.0 && self.foils[b].accum <= -1.0 {
-                        if self.foil_can_add(a) && self.foil_can_remove(b) {
-                            if self.try_add_electron(a, &mut rng, recipients) && self.try_remove_electron(b, &mut rng, recipients) {
-                                self.foils[a].accum -= 1.0;
-                                self.foils[b].accum += 1.0;
-                                continue;
-                            }
-                        }
-                    }
-                    if self.foils[a].accum <= -1.0 && self.foils[b].accum >= 1.0 {
-                        if self.foil_can_remove(a) && self.foil_can_add(b) {
-                            if self.try_remove_electron(a, &mut rng, recipients) && self.try_add_electron(b, &mut rng, recipients) {
-                                self.foils[a].accum += 1.0;
-                                self.foils[b].accum -= 1.0;
-                                continue;
-                            }
-                        }
-                    }
-                    break;
-                }
-            }
-        }
     }
     
     /// Apply Maxwell-Boltzmann thermostat to maintain target temperature
@@ -493,5 +522,242 @@ impl Simulation {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod charge_conservation_tests {
+    use super::*;
+    use crate::body::foil::Foil;
+
+    fn create_test_simulation_with_foils() -> Simulation {
+        let mut sim = Simulation::new();
+        
+        // Create test foil bodies
+        let foil_body1 = Body::new(
+            Vec2::new(-10.0, 0.0), 
+            Vec2::zero(), 
+            1.0, 
+            1.0, 
+            0.0, 
+            Species::FoilMetal
+        );
+        let foil_body2 = Body::new(
+            Vec2::new(10.0, 0.0), 
+            Vec2::zero(), 
+            1.0, 
+            1.0, 
+            0.0, 
+            Species::FoilMetal
+        );
+        
+        sim.bodies.push(foil_body1);
+        sim.bodies.push(foil_body2);
+        
+        // Create foils with positive and negative currents
+        let mut foil1 = Foil::new(vec![sim.bodies[0].id], Vec2::zero(), 1.0, 1.0, 2.0, 0.0);
+        foil1.accum = 1.5; // Ready to add electrons
+        
+        let mut foil2 = Foil::new(vec![sim.bodies[1].id], Vec2::zero(), 1.0, 1.0, -2.0, 0.0);
+        foil2.accum = -1.5; // Ready to remove electrons
+        
+        sim.foils.push(foil1);
+        sim.foils.push(foil2);
+        
+        sim
+    }
+
+    #[test]
+    fn test_single_foil_with_positive_accum_does_nothing() {
+        let mut sim = Simulation::new();
+        
+        // Create a single foil body
+        let foil_body = Body::new(
+            Vec2::zero(), 
+            Vec2::zero(), 
+            1.0, 
+            1.0, 
+            0.0, 
+            Species::FoilMetal
+        );
+        sim.bodies.push(foil_body);
+        
+        // Create a single foil with positive current (wants to add electrons)
+        let mut foil = Foil::new(vec![sim.bodies[0].id], Vec2::zero(), 1.0, 1.0, 2.0, 0.0);
+        foil.accum = 1.5; // Ready to add electrons
+        sim.foils.push(foil);
+        
+        let initial_electron_count = sim.bodies[0].electrons.len();
+        let initial_accum = sim.foils[0].accum;
+        let dt = sim.dt;
+        let current = 2.0; // foil dc_current
+        
+        // Process foils - should do nothing since no partner to remove electrons
+        let mut recipients = vec![false; sim.bodies.len()];
+        sim.process_foils_with_charge_conservation(0.0, &mut recipients);
+        
+        // Verify no electrons were added but accumulator updated by current
+        assert_eq!(sim.bodies[0].electrons.len(), initial_electron_count, 
+                   "Single foil should not add electrons without a removal partner");
+        assert_eq!(sim.foils[0].accum, initial_accum + current * dt, 
+                   "Accumulator should be updated by current flow even when no operations occur");
+        assert!(!recipients[0], "Body should not be marked as recipient");
+    }
+
+    #[test]
+    fn test_single_foil_with_negative_accum_does_nothing() {
+        let mut sim = Simulation::new();
+        
+        // Create a single foil body with an electron to remove
+        let mut foil_body = Body::new(
+            Vec2::zero(), 
+            Vec2::zero(), 
+            1.0, 
+            1.0, 
+            0.0, 
+            Species::FoilMetal
+        );
+        foil_body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+        sim.bodies.push(foil_body);
+        
+        // Create a single foil with negative current (wants to remove electrons)
+        let mut foil = Foil::new(vec![sim.bodies[0].id], Vec2::zero(), 1.0, 1.0, -2.0, 0.0);
+        foil.accum = -1.5; // Ready to remove electrons
+        sim.foils.push(foil);
+        
+        let initial_electron_count = sim.bodies[0].electrons.len();
+        let initial_accum = sim.foils[0].accum;
+        let dt = sim.dt;
+        let current = -2.0; // foil dc_current
+        
+        // Process foils - should do nothing since no partner to add electrons
+        let mut recipients = vec![false; sim.bodies.len()];
+        sim.process_foils_with_charge_conservation(0.0, &mut recipients);
+        
+        // Verify no electrons were removed but accumulator updated by current
+        assert_eq!(sim.bodies[0].electrons.len(), initial_electron_count, 
+                   "Single foil should not remove electrons without an addition partner");
+        assert_eq!(sim.foils[0].accum, initial_accum + current * dt, 
+                   "Accumulator should be updated by current flow even when no operations occur");
+        assert!(!recipients[0], "Body should not be marked as recipient");
+    }
+
+    #[test]
+    fn test_paired_foils_execute_charge_conserving_operations() {
+        let mut sim = create_test_simulation_with_foils();
+        
+        let initial_electrons_foil1 = sim.bodies[0].electrons.len();
+        let initial_electrons_foil2 = sim.bodies[1].electrons.len();
+        let initial_accum1 = sim.foils[0].accum;
+        let initial_accum2 = sim.foils[1].accum;
+        let dt = sim.dt;
+        let current1 = 2.0;  // foil1 dc_current
+        let current2 = -2.0; // foil2 dc_current
+        
+        // Add an electron to foil2 so it can be removed
+        sim.bodies[1].electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+        
+        // Process foils - should execute charge-conserving pair
+        let mut recipients = vec![false; sim.bodies.len()];
+        sim.process_foils_with_charge_conservation(0.0, &mut recipients);
+        
+        // Verify charge-conserving operations occurred
+        assert_eq!(sim.bodies[0].electrons.len(), initial_electrons_foil1 + 1, 
+                   "Foil 1 should have gained an electron");
+        assert_eq!(sim.bodies[1].electrons.len(), initial_electrons_foil2, // Had 1, lost 1, still 0
+                   "Foil 2 should have lost an electron");
+        
+        // Verify accumulators: updated by current, then decremented/incremented by operations
+        let expected_accum1 = initial_accum1 + current1 * dt - 1.0;
+        let expected_accum2 = initial_accum2 + current2 * dt + 1.0;
+        assert_eq!(sim.foils[0].accum, expected_accum1, 
+                   "Foil 1 accumulator should be updated by current then decremented by operation");
+        assert_eq!(sim.foils[1].accum, expected_accum2, 
+                   "Foil 2 accumulator should be updated by current then incremented by operation");
+        
+        // Verify recipients were marked
+        assert!(recipients[0], "Foil 1 body should be marked as recipient");
+        assert!(recipients[1], "Foil 2 body should be marked as recipient");
+    }
+
+    #[test]
+    fn test_total_electron_count_conservation() {
+        let mut sim = create_test_simulation_with_foils();
+        
+        // Add some initial electrons
+        sim.bodies[0].electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+        sim.bodies[1].electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+        sim.bodies[1].electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+        
+        let initial_total_electrons: usize = sim.bodies.iter()
+            .map(|body| body.electrons.len())
+            .sum();
+        
+        // Process foils multiple times
+        for _ in 0..5 {
+            let mut recipients = vec![false; sim.bodies.len()];
+            sim.process_foils_with_charge_conservation(0.0, &mut recipients);
+            
+            // Check total electron count remains constant
+            let current_total_electrons: usize = sim.bodies.iter()
+                .map(|body| body.electrons.len())
+                .sum();
+            
+            assert_eq!(current_total_electrons, initial_total_electrons, 
+                       "Total electron count should be conserved throughout simulation");
+        }
+    }
+
+    #[test]
+    fn test_foils_at_capacity_limits() {
+        let mut sim = Simulation::new();
+        
+        // Create foil bodies at max capacity
+        let mut foil_body1 = Body::new(Vec2::new(-10.0, 0.0), Vec2::zero(), 1.0, 1.0, 0.0, Species::FoilMetal);
+        let foil_body2 = Body::new(Vec2::new(10.0, 0.0), Vec2::zero(), 1.0, 1.1, 0.0, Species::FoilMetal);
+        
+        // Fill foil1 to max capacity
+        for _ in 0..crate::config::FOIL_MAX_ELECTRONS {
+            foil_body1.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+        }
+        
+        sim.bodies.push(foil_body1);
+        sim.bodies.push(foil_body2);
+        
+        // Create foils ready to operate
+        let mut foil1 = Foil::new(vec![sim.bodies[0].id], Vec2::zero(), 1.0, 1.0, 2.0, 0.0);
+        foil1.accum = 1.5; // Wants to add but can't (at capacity)
+        
+        let mut foil2 = Foil::new(vec![sim.bodies[1].id], Vec2::zero(), 1.0, 1.0, -2.0, 0.0);
+        foil2.accum = -1.5; // Wants to remove but can't (empty)
+        
+        sim.foils.push(foil1);
+        sim.foils.push(foil2);
+        
+        let initial_electrons_1 = sim.bodies[0].electrons.len();
+        let initial_electrons_2 = sim.bodies[1].electrons.len();
+        let initial_accum1 = sim.foils[0].accum;
+        let initial_accum2 = sim.foils[1].accum;
+        let dt = sim.dt;
+        let current1 = 2.0;  // foil1 dc_current  
+        let current2 = -2.0; // foil2 dc_current
+        
+        // Process foils - should do nothing due to capacity constraints
+        let mut recipients = vec![false; sim.bodies.len()];
+        sim.process_foils_with_charge_conservation(0.0, &mut recipients);
+        
+        // Verify no operations occurred due to capacity limits
+        assert_eq!(sim.bodies[0].electrons.len(), initial_electrons_1, 
+                   "Foil at max capacity should not gain electrons");
+        assert_eq!(sim.bodies[1].electrons.len(), initial_electrons_2, 
+                   "Empty foil should not lose electrons");
+        
+        // Accumulators should still be updated by current flow
+        let expected_accum1 = initial_accum1 + current1 * dt;
+        let expected_accum2 = initial_accum2 + current2 * dt;
+        assert_eq!(sim.foils[0].accum, expected_accum1, 
+                   "Accumulator should be updated by current even when operation fails");
+        assert_eq!(sim.foils[1].accum, expected_accum2, 
+                   "Accumulator should be updated by current even when operation fails");
     }
 }
