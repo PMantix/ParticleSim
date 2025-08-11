@@ -198,7 +198,7 @@ impl super::super::Renderer {
             ui.label("🌀 Electron Polarization");
             if ui
                 .add(
-                    egui::Slider::new(&mut current_props.polar_offset, 0.0..=1.5)
+                    egui::Slider::new(&mut current_props.polar_offset, 0.0..=2.0)
                         .text("Drift Radius Factor"),
                 )
                 .changed()
