@@ -93,17 +93,31 @@ impl Quadtree {
 
             // Compute charge-weighted, mass-weighted, or geometric center for node position
             let range = self.nodes[node].bodies.clone();
-            let total_mass = bodies[range.clone()].iter().map(|b| b.mass).sum::<f32>();
-            //let total_charge = bodies[range.clone()].iter().map(|b| b.charge).sum::<f32>();
+            let range_len = range.len();
+            let slice = &bodies[range];
+
+            let mut total_mass = 0.0f32;
+            let mut total_abs_charge = 0.0f32;
+            let mut pos_mass = Vec2::zero();
+            let mut pos_abs_charge = Vec2::zero();
+            let mut pos_sum = Vec2::zero();
+
+            for body in slice {
+                total_mass += body.mass;
+                let abs_charge = body.charge.abs();
+                total_abs_charge += abs_charge;
+                pos_mass += body.pos * body.mass;
+                pos_abs_charge += body.pos * abs_charge;
+                pos_sum += body.pos;
+            }
 
             // Use absolute charge for weighting to avoid cancellation issues
-            let total_abs_charge = bodies[range.clone()].iter().map(|b| b.charge.abs()).sum::<f32>();
             let weighted_pos = if total_abs_charge > 1e-6 {
-                bodies[range.clone()].iter().fold(Vec2::zero(), |acc, b| acc + b.pos * b.charge.abs()) / total_abs_charge
+                pos_abs_charge / total_abs_charge
             } else if total_mass > 1e-6 {
-                bodies[range.clone()].iter().fold(Vec2::zero(), |acc, b| acc + b.pos * b.mass) / total_mass
-            } else if range.len() > 0 {
-                bodies[range.clone()].iter().fold(Vec2::zero(), |acc, b| acc + b.pos) / (range.len() as f32)
+                pos_mass / total_mass
+            } else if range_len > 0 {
+                pos_sum / (range_len as f32)
             } else {
                 Vec2::zero()
             };
