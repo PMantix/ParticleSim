@@ -4,8 +4,8 @@
 //! Used by the main simulation loop to update accelerations and fields.
 
 use crate::config;
-use crate::simulation::Simulation;
 use crate::profile_scope;
+use crate::simulation::Simulation;
 
 /// Coulomb's constant (scaled for simulation units). 8.988e3 * 0.5;
 pub const K_E: f32 = 8.988e3 * 0.5;
@@ -18,14 +18,14 @@ pub const K_E: f32 = 8.988e3 * 0.5;
 pub fn attract(sim: &mut Simulation) {
     profile_scope!("forces_attract");
     sim.quadtree.build(&mut sim.bodies);
-    sim.quadtree.field(&mut sim.bodies, sim.config.coulomb_constant);
+    sim.quadtree
+        .field(&mut sim.bodies, sim.config.coulomb_constant);
     for body in &mut sim.bodies {
         body.e_field += sim.background_e_field;
     }
     for body in &mut sim.bodies {
         // Convert force (qE) to acceleration by dividing by mass (a = F / m)
         body.acc = (body.charge * body.e_field) / body.mass;
-
     }
 }
 
@@ -106,14 +106,23 @@ pub fn apply_polar_forces(sim: &mut Simulation) {
     }
 }
 
-/// Apply Lennard-Jones (LJ) forces between metals.
+/// Iterate over neighbor pairs applying a callback when both bodies are enabled.
 ///
-/// - Only applies to pairs within the LJ cutoff distance.
-/// - Uses either the quadtree or a cell list depending on particle density.
-/// - Forces are clamped to avoid instability.
-pub fn apply_lj_forces(sim: &mut Simulation) {
-    profile_scope!("forces_lj");
-    let max_cutoff = crate::species::max_lj_cutoff();
+/// `max_cutoff` is used to build spatial acceleration structures.
+/// `cutoff_fn` returns the search radius for a given body and `enabled`
+/// indicates whether a body participates in the force. The callback receives
+/// mutable references to the bodies along with their separation vector and distance.
+fn for_each_neighbor_pair<F, C, E>(
+    sim: &mut Simulation,
+    max_cutoff: f32,
+    cutoff_fn: C,
+    enabled: E,
+    mut f: F,
+) where
+    F: FnMut(&mut crate::body::Body, &mut crate::body::Body, ultraviolet::Vec2, f32),
+    C: Fn(&crate::body::Body) -> f32,
+    E: Fn(&crate::body::Body) -> bool,
+{
     let use_cell = sim.use_cell_list();
     if use_cell {
         sim.cell_list.cell_size = max_cutoff;
@@ -123,26 +132,49 @@ pub fn apply_lj_forces(sim: &mut Simulation) {
     }
 
     for i in 0..sim.bodies.len() {
-        if !sim.bodies[i].species.lj_enabled() { continue; }
+        if !enabled(&sim.bodies[i]) {
+            continue;
+        }
+        let cutoff = cutoff_fn(&sim.bodies[i]);
         let neighbors = if use_cell {
-            sim.cell_list.find_neighbors_within(&sim.bodies, i, max_cutoff)
+            sim.cell_list.find_neighbors_within(&sim.bodies, i, cutoff)
         } else {
-            sim.quadtree.find_neighbors_within(&sim.bodies, i, max_cutoff)
+            sim.quadtree.find_neighbors_within(&sim.bodies, i, cutoff)
         };
         for &j in &neighbors {
-            if j <= i { continue; }
-            // Check if both particles have LJ enabled
-            if !sim.bodies[i].species.lj_enabled() || !sim.bodies[j].species.lj_enabled() { continue; }
+            if j <= i || !enabled(&sim.bodies[j]) {
+                continue;
+            }
             let (a, b) = {
                 let (left, right) = sim.bodies.split_at_mut(j);
                 (&mut left[i], &mut right[0])
             };
-            // Use per-species LJ parameters only
-            let sigma = (a.species.lj_sigma() + b.species.lj_sigma()) * 0.5;
-            let epsilon = (a.species.lj_epsilon() * b.species.lj_epsilon()).sqrt();
-            let cutoff = 0.5 * (a.species.lj_cutoff() * a.species.lj_sigma() + b.species.lj_cutoff() * b.species.lj_sigma());
             let r_vec = b.pos - a.pos;
             let r = r_vec.mag();
+            f(a, b, r_vec, r);
+        }
+    }
+}
+
+/// Apply Lennard-Jones (LJ) forces between metals.
+///
+/// - Only applies to pairs within the LJ cutoff distance.
+/// - Uses either the quadtree or a cell list depending on particle density.
+/// - Forces are clamped to avoid instability.
+pub fn apply_lj_forces(sim: &mut Simulation) {
+    profile_scope!("forces_lj");
+    let max_cutoff = crate::species::max_lj_cutoff();
+    for_each_neighbor_pair(
+        sim,
+        max_cutoff,
+        |_| max_cutoff,
+        |b| b.species.lj_enabled(),
+        |a, b, r_vec, r| {
+            let sigma = (a.species.lj_sigma() + b.species.lj_sigma()) * 0.5;
+            let epsilon = (a.species.lj_epsilon() * b.species.lj_epsilon()).sqrt();
+            let cutoff = 0.5
+                * (a.species.lj_cutoff() * a.species.lj_sigma()
+                    + b.species.lj_cutoff() * b.species.lj_sigma());
             if r < cutoff && r > 1e-6 {
                 let sr6 = (sigma / r).powi(6);
                 let max_lj_force = config::COLLISION_PASSES as f32 * config::LJ_FORCE_MAX;
@@ -153,12 +185,17 @@ pub fn apply_lj_forces(sim: &mut Simulation) {
                 a.acc -= force / a.mass;
                 b.acc += force / b.mass;
             }
-        }
-    }
+        },
+    );
 }
 
 /// Compute soft-core repulsive force between two bodies.
-pub fn compute_repulsive_force(p1: &crate::body::Body, p2: &crate::body::Body, r_vec: ultraviolet::Vec2, r: f32) -> ultraviolet::Vec2 {
+pub fn compute_repulsive_force(
+    p1: &crate::body::Body,
+    p2: &crate::body::Body,
+    r_vec: ultraviolet::Vec2,
+    r: f32,
+) -> ultraviolet::Vec2 {
     let r0 = 0.5 * (p1.species.repulsion_cutoff() + p2.species.repulsion_cutoff());
     if r >= r0 || r <= 0.0 {
         return ultraviolet::Vec2::zero();
@@ -172,37 +209,20 @@ pub fn compute_repulsive_force(p1: &crate::body::Body, p2: &crate::body::Body, r
 pub fn apply_repulsive_forces(sim: &mut Simulation) {
     profile_scope!("forces_repulsion");
     let max_cutoff = crate::species::max_repulsion_cutoff();
-    if max_cutoff <= 0.0 { return; }
-    let use_cell = sim.use_cell_list();
-    if use_cell {
-        sim.cell_list.cell_size = max_cutoff;
-        sim.cell_list.rebuild(&sim.bodies);
-    } else {
-        sim.quadtree.build(&mut sim.bodies);
+    if max_cutoff <= 0.0 {
+        return;
     }
-
-    for i in 0..sim.bodies.len() {
-        if !sim.bodies[i].species.repulsion_enabled() { continue; }
-        let cutoff = sim.bodies[i].species.repulsion_cutoff();
-        let neighbors = if use_cell {
-            sim.cell_list.find_neighbors_within(&sim.bodies, i, cutoff)
-        } else {
-            sim.quadtree.find_neighbors_within(&sim.bodies, i, cutoff)
-        };
-        for &j in &neighbors {
-            if j <= i { continue; }
-            if !sim.bodies[j].species.repulsion_enabled() { continue; }
-            let r_vec = sim.bodies[j].pos - sim.bodies[i].pos;
-            let r = r_vec.mag();
-            let f = compute_repulsive_force(&sim.bodies[i], &sim.bodies[j], r_vec, r);
+    for_each_neighbor_pair(
+        sim,
+        max_cutoff,
+        |b| b.species.repulsion_cutoff(),
+        |b| b.species.repulsion_enabled(),
+        |a, b, r_vec, r| {
+            let f = compute_repulsive_force(&a, &b, r_vec, r);
             if f != ultraviolet::Vec2::zero() {
-                let (a, b) = {
-                    let (left, right) = sim.bodies.split_at_mut(j);
-                    (&mut left[i], &mut right[0])
-                };
                 a.acc -= f / a.mass;
                 b.acc += f / b.mass;
             }
-        }
-    }
+        },
+    );
 }
