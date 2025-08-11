@@ -220,6 +220,7 @@ impl Simulation {
         let mut src_indices: Vec<usize> = (0..n).collect();
         let mut rng = rand::rng();
         src_indices.shuffle(&mut rng);
+        let mut neighbor_indices: Vec<usize> = Vec::new();
         for &src_idx in &src_indices {
             if donated_electron[src_idx] || exclude_donor[src_idx] { continue; }
             let src_body = &self.bodies[src_idx];
@@ -228,32 +229,19 @@ impl Simulation {
                 continue;
             }
             let hop_radius = self.config.hop_radius_factor * src_body.radius;
+            self.quadtree.find_neighbors_within_into(&self.bodies, src_idx, hop_radius, &mut neighbor_indices);
+            neighbor_indices.shuffle(&mut rng);
 
-            // Use quadtree for neighbor search!
-            let mut candidate_neighbors = self.quadtree
-                .find_neighbors_within(&self.bodies, src_idx, hop_radius)
-                .into_iter()
-                .filter(|&dst_idx| dst_idx != src_idx && !received_electron[dst_idx])
-                .filter(|&dst_idx| {
-                    let dst_body = &self.bodies[dst_idx];
-                    let dst_diff = dst_body.electrons.len() as i32 - dst_body.neutral_electron_count() as i32;
-                    // Allow hop if donor is more excess than recipient
-                    if src_diff >= dst_diff {
-                        match dst_body.species {
-                            Species::LithiumMetal | Species::FoilMetal | Species::LithiumIon => can_transfer_electron(src_body, dst_body),
-                            _ => false,
-                        }
-                    } else {
-                        false
-                    }
-                })
-                .collect::<Vec<_>>();
-
-            candidate_neighbors.shuffle(&mut rng);
-
-            // Only check until the first successful hop
-            if let Some(&dst_idx) = candidate_neighbors.iter().find(|&&dst_idx| {
+            for &dst_idx in &neighbor_indices {
+                if dst_idx == src_idx || received_electron[dst_idx] { continue; }
                 let dst_body = &self.bodies[dst_idx];
+                let dst_diff = dst_body.electrons.len() as i32 - dst_body.neutral_electron_count() as i32;
+                if src_diff < dst_diff { continue; }
+                let allowed = match dst_body.species {
+                    Species::LithiumMetal | Species::FoilMetal | Species::LithiumIon => can_transfer_electron(src_body, dst_body),
+                    _ => false,
+                };
+                if !allowed { continue; }
                 let d_phi = dst_body.charge - src_body.charge;
                 let hop_vec = dst_body.pos - src_body.pos;
                 let hop_dir = if hop_vec.mag() > 1e-6 { hop_vec.normalized() } else { Vec2::zero() };
@@ -262,7 +250,7 @@ impl Simulation {
                 let field_dir = if local_field.mag() > 1e-6 { local_field.normalized() } else { Vec2::zero() };
                 let mut alignment = (-hop_dir.dot(field_dir)).max(0.0);
                 if field_dir == Vec2::zero() { alignment = 1.0; }
-                if alignment < 1e-3 { return false; }
+                if alignment < 1e-3 { continue; }
 
                 let rate = if self.config.use_butler_volmer && src_body.species != dst_body.species {
                     // Butler-Volmer kinetics for inter-species electron transfer
@@ -273,17 +261,18 @@ impl Simulation {
                     let backward = (-(1.0 - alpha) * d_phi / scale).exp();
                     i0 * (forward - backward)
                 } else {
-                    if d_phi <= 0.0 { return false; }
+                    if d_phi <= 0.0 { continue; }
                     self.config.hop_rate_k0 * (self.config.hop_transfer_coeff * d_phi / self.config.hop_activation_energy).exp()
                 };
 
-                if rate <= 0.0 { return false; }
+                if rate <= 0.0 { continue; }
                 let p_hop = alignment * (1.0 - (-rate * self.dt).exp());
-                rand::random::<f32>() < p_hop
-            }) {
-                hops.push((src_idx, dst_idx));
-                received_electron[dst_idx] = true;
-                donated_electron[src_idx] = true;
+                if rand::random::<f32>() < p_hop {
+                    hops.push((src_idx, dst_idx));
+                    received_electron[dst_idx] = true;
+                    donated_electron[src_idx] = true;
+                    break;
+                }
             }
         }
         for (src_idx, dst_idx) in hops {
