@@ -81,6 +81,8 @@ pub const LITHIUM_METAL_MAX_ELECTRONS: usize = 3;     // Max electrons for lithi
 //pub const IONIZATION_NEIGHBOR_THRESHOLD: usize = 4;
 /// Minimum local electric-field magnitude required for ionization/reduction
 //pub const IONIZATION_FIELD_THRESHOLD: f32 = 1.0e3;
+/// Enable electron sea protection: metals surrounded by other metals resist oxidation
+pub const ENABLE_ELECTRON_SEA_PROTECTION: bool = true;
 /// Radius factor (times body radius) for determining metal surroundings
 pub const SURROUND_RADIUS_FACTOR: f32 = 3.5;
 /// Neighbor count threshold for considering a body "surrounded" by metal

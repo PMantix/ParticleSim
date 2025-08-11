@@ -5,6 +5,7 @@ use super::types::{Body, Species};
 use crate::config::{
     FOIL_NEUTRAL_ELECTRONS,
     LITHIUM_METAL_NEUTRAL_ELECTRONS,
+    ENABLE_ELECTRON_SEA_PROTECTION,
 };
 
 impl Body {
@@ -36,8 +37,18 @@ impl Body {
             }
             Species::LithiumMetal => {
                 if self.electrons.is_empty() {
-                    self.species = Species::LithiumIon;
-                    self.update_charge_from_electrons();
+                    // Check if this metal is surrounded by other metals (electron sea)
+                    // If surrounded, resist oxidation as electrons are delocalized
+                    let can_oxidize = if ENABLE_ELECTRON_SEA_PROTECTION {
+                        !self.surrounded_by_metal
+                    } else {
+                        true
+                    };
+                    
+                    if can_oxidize {
+                        self.species = Species::LithiumIon;
+                        self.update_charge_from_electrons();
+                    }
                 }
             }
             Species::FoilMetal => {
@@ -88,5 +99,38 @@ mod tests {
         
         assert_eq!(metal.species, Species::LithiumIon);
         assert_eq!(metal.radius, ion_radius);
+    }
+
+    #[test]
+    fn apply_redox_respects_electron_sea_protection() {
+        let ion_radius = Species::LithiumIon.radius();
+        let metal_radius = Species::LithiumMetal.radius();
+        
+        // Test that surrounded metal resists oxidation
+        let mut surrounded_metal = Body::new(Vec2::zero(), Vec2::zero(), 1.0, metal_radius, 0.0, Species::LithiumMetal);
+        surrounded_metal.surrounded_by_metal = true; // Simulate being in a metal cluster
+        assert_eq!(surrounded_metal.species, Species::LithiumMetal);
+        assert_eq!(surrounded_metal.electrons.len(), 0); // No electrons, would normally oxidize
+        
+        // Apply redox - should NOT convert to ion due to electron sea protection
+        surrounded_metal.apply_redox();
+        
+        if crate::config::ENABLE_ELECTRON_SEA_PROTECTION {
+            assert_eq!(surrounded_metal.species, Species::LithiumMetal, 
+                       "Surrounded metal should resist oxidation due to electron sea");
+            assert_eq!(surrounded_metal.radius, metal_radius);
+        }
+        
+        // Test that isolated metal still oxidizes normally
+        let mut isolated_metal = Body::new(Vec2::zero(), Vec2::zero(), 1.0, metal_radius, 0.0, Species::LithiumMetal);
+        isolated_metal.surrounded_by_metal = false; // Not surrounded
+        assert_eq!(isolated_metal.electrons.len(), 0); // No electrons
+        
+        // Apply redox - should convert to ion
+        isolated_metal.apply_redox();
+        
+        assert_eq!(isolated_metal.species, Species::LithiumIon, 
+                   "Isolated metal with no electrons should oxidize to ion");
+        assert_eq!(isolated_metal.radius, ion_radius);
     }
 }
