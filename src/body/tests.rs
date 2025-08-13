@@ -361,12 +361,14 @@ mod tests {
             use crate::body::foil::Foil;
             use ultraviolet::Vec2;
 
-            // Three foils in a row
+            // Four foils: three close neighbors (foil1, foil2, foil3) + one far away for charge conservation (foil4)
             let mut foil1 = Body::new(Vec2::new(0.0, 0.0), Vec2::zero(), 1.0, 1.0, 0.0, Species::FoilMetal);
             let mut foil2 = Body::new(Vec2::new(2.0, 0.0), Vec2::zero(), 1.0, 1.0, 0.0, Species::FoilMetal);
-            let mut foil3 = Body::new(Vec2::new(4.0, 0.0), Vec2::zero(), 1.0, 1.0, 0.0, Species::FoilMetal);
+            let mut foil3 = Body::new(Vec2::new(4.0, 0.0), Vec2::zero(), 1.0, 1.0, 0.0, Species::FoilMetal); // Third neighbor
+            let mut foil4 = Body::new(Vec2::new(100.0, 0.0), Vec2::zero(), 1.0, 1.0, 0.0, Species::FoilMetal); // Far away for charge conservation
+            
             // All start with neutral electron count
-            for foil in [&mut foil1, &mut foil2, &mut foil3] {
+            for foil in [&mut foil1, &mut foil2, &mut foil3, &mut foil4] {
                 for _ in 0..crate::config::FOIL_NEUTRAL_ELECTRONS {
                     foil.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
                 }
@@ -374,34 +376,47 @@ mod tests {
             }
 
             let foil2_id = foil2.id; // Save the ID before moving foil2
+            let foil4_id = foil4.id; // Save the ID for charge conservation
 
             let mut sim = Simulation {
                 dt: 0.1,
                 frame: 0,
-                bodies: vec![foil1, foil2, foil3],
+                bodies: vec![foil1, foil2, foil3, foil4],
                 quadtree: Quadtree::new(
                     config::QUADTREE_THETA,
                     config::QUADTREE_EPSILON,
                     config::QUADTREE_LEAF_CAPACITY,
                     config::QUADTREE_THREAD_CAPACITY,
                 ),
-                bounds: 10.0,
-                domain_width: 10.0,
-                domain_height: 10.0,
-                domain_depth: 10.0,
-                rewound_flags: vec![false; 3],
+                bounds: 100.0,
+                domain_width: 100.0,
+                domain_height: 100.0,
+                domain_depth: 100.0,
+                rewound_flags: vec![false; 4],
                 background_e_field: Vec2::zero(),
                 config: SimConfig { ..Default::default() },
-                foils: vec![Foil {
-                    id: 42, // Unique ID for the foil
-                    link_id: None,
-                    body_ids: vec![foil2_id], // Use the saved ID
-                    dc_current: 10.0,
-                    ac_current: 0.0,
-                    accum: 1.5,
-                    switch_hz: 0.0,
-                    mode: crate::body::foil::LinkMode::Parallel,
-                }],
+                foils: vec![
+                    Foil {
+                        id: 42, // Unique ID for the foil that gains electrons
+                        link_id: None,
+                        body_ids: vec![foil2_id], // Use the saved ID
+                        dc_current: 10.0,
+                        ac_current: 0.0,
+                        accum: 1.5, // Positive accumulation - wants to gain electron
+                        switch_hz: 0.0,
+                        mode: crate::body::foil::LinkMode::Parallel,
+                    },
+                    Foil {
+                        id: 43, // Charge conservation foil that loses electrons
+                        link_id: None,
+                        body_ids: vec![foil4_id], // Far away foil for charge conservation
+                        dc_current: 10.0,
+                        ac_current: 0.0,
+                        accum: -1.5, // Negative accumulation - wants to lose electron
+                        switch_hz: 0.0,
+                        mode: crate::body::foil::LinkMode::Parallel,
+                    }
+                ],
                 cell_list: CellList::new(10.0, 1.0),
                 body_to_foil: HashMap::new(),
                 last_thermostat_time: 0.0,
@@ -416,9 +431,11 @@ mod tests {
             let n1 = sim.bodies[0].electrons.len();
             let n2 = sim.bodies[1].electrons.len();
             let n3 = sim.bodies[2].electrons.len();
+            let n4 = sim.bodies[3].electrons.len();
             assert_eq!(n1, crate::config::FOIL_NEUTRAL_ELECTRONS, "Foil 1 should not lose or gain electrons");
             assert_eq!(n2, crate::config::FOIL_NEUTRAL_ELECTRONS + 1, "Foil 2 should gain exactly one electron");
             assert_eq!(n3, crate::config::FOIL_NEUTRAL_ELECTRONS, "Foil 3 should not lose or gain electrons");
+            assert_eq!(n4, crate::config::FOIL_NEUTRAL_ELECTRONS - 1, "Foil 4 should lose one electron for charge conservation");
         }
     }
 }

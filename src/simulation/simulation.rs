@@ -6,7 +6,7 @@ use rayon::prelude::*;
 use crate::renderer::state::{FIELD_MAGNITUDE, FIELD_DIRECTION, TIMESTEP, COLLISION_PASSES, SIM_TIME};
 use ultraviolet::Vec2;
 use super::forces;
-use super::{collision, out_of_plane};
+use super::collision;
 use crate::config;
 use crate::simulation::utils::can_transfer_electron;
 use rand::prelude::*; // Import all prelude traits for rand 0.9+
@@ -24,7 +24,7 @@ pub struct Simulation {
     pub bounds: f32, // Legacy field for backward compatibility
     pub domain_width: f32,  // Half-width of the domain (from center to edge)
     pub domain_height: f32, // Half-height of the domain (from center to edge)
-    pub domain_depth: f32,  // Half-depth for quasi-3D motion
+    pub domain_depth: f32,  // Half-depth of the domain (for z-direction)
     pub rewound_flags: Vec<bool>,
     pub background_e_field: Vec2,
     pub foils: Vec<crate::body::foil::Foil>,
@@ -57,7 +57,7 @@ impl Simulation {
             bounds,
             domain_width: bounds,   // Initialize with square domain, will be updated by SetDomainSize command
             domain_height: bounds,  // Initialize with square domain, will be updated by SetDomainSize command
-            domain_depth: config::DOMAIN_DEPTH,
+            domain_depth: bounds,   // Initialize with square domain depth
             rewound_flags,
             background_e_field: Vec2::zero(),
             foils: Vec::new(),
@@ -97,14 +97,21 @@ impl Simulation {
         
         self.bodies.par_iter_mut().for_each(|body| {
             body.acc = Vec2::zero();
-            body.az = 0.0;
+            body.az = 0.0; // Reset z-acceleration as well
         });
 
         forces::attract(self);
         forces::apply_polar_forces(self);
         forces::apply_lj_forces(self);
         forces::apply_repulsive_forces(self);
-        out_of_plane::apply_out_of_plane(self);
+        
+        // Apply out-of-plane forces if enabled
+        if self.config.enable_out_of_plane {
+            super::out_of_plane::apply_out_of_plane(self);
+        }
+        
+        // Apply Li+ mobility enhancement (pressure-dependent collision softening)
+        // super::li_mobility::apply_li_mobility_enhancement(self);
         self.iterate();
         let num_passes = *COLLISION_PASSES.lock();
         for _ in 1..num_passes {
@@ -163,14 +170,28 @@ impl Simulation {
         let domain_width = self.domain_width;
         let domain_height = self.domain_height;
         let domain_depth = self.domain_depth;
+        let enable_out_of_plane = self.config.enable_out_of_plane;
         self.bodies.par_iter_mut().for_each(|body| {
             body.vel += body.acc * dt;
-            body.vz += body.az * dt;
             let damping = base_damping * body.species.damping();
             body.vel *= damping;
-            body.vz *= damping;
             body.pos += body.vel * dt;
-            body.z += body.vz * dt;
+            
+            // Z-coordinate integration (if out-of-plane is enabled)
+            if enable_out_of_plane {
+                body.vz += body.az * dt;
+                body.vz *= damping; // Apply same damping to z-velocity
+                body.z += body.vz * dt;
+                
+                // Z-axis boundary enforcement
+                if body.z < -domain_depth {
+                    body.z = -domain_depth;
+                    body.vz = -body.vz;
+                } else if body.z > domain_depth {
+                    body.z = domain_depth;
+                    body.vz = -body.vz;
+                }
+            }
             
             // X-axis boundary enforcement
             if body.pos.x < -domain_width {
@@ -188,15 +209,6 @@ impl Simulation {
             } else if body.pos.y > domain_height {
                 body.pos.y = domain_height;
                 body.vel.y = -body.vel.y;
-            }
-
-            // Z-axis boundary enforcement
-            if body.z < -domain_depth {
-                body.z = -domain_depth;
-                body.vz = -body.vz;
-            } else if body.z > domain_depth {
-                body.z = domain_depth;
-                body.vz = -body.vz;
             }
         });
     }
@@ -512,7 +524,7 @@ impl Simulation {
         for body in &self.bodies {
             match body.species {
                 Species::EC | Species::DMC => {
-                    solvent_ke += 0.5 * body.mass * (body.vel.mag_sq() + body.vz * body.vz);
+                    solvent_ke += 0.5 * body.mass * body.vel.mag_sq();
                     solvent_count += 1;
                 }
                 _ => {} // Skip metals and ions
@@ -534,7 +546,6 @@ impl Simulation {
                 match body.species {
                     Species::EC | Species::DMC => {
                         body.vel *= scale;
-                        body.vz *= scale;
                     }
                     _ => {} // Don't modify metals or ions
                 }

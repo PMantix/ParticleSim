@@ -173,6 +173,32 @@ impl super::super::Renderer {
                 egui::Slider::new(&mut self.sim_config.z_frustration_strength, 0.0..=10.0)
                     .text("Frustration"),
             );
+            
+            ui.separator();
+            
+            // Z-Visualization Controls
+            ui.label("🎨 Z-Visualization");
+            let mut z_viz_enabled = crate::renderer::state::SHOW_Z_VISUALIZATION.load(std::sync::atomic::Ordering::Relaxed);
+            if ui.checkbox(&mut z_viz_enabled, "Show Z-depth").changed() {
+                crate::renderer::state::SHOW_Z_VISUALIZATION.store(z_viz_enabled, std::sync::atomic::Ordering::Relaxed);
+                if let Some(sender) = SIM_COMMAND_SENDER.lock().as_ref() {
+                    let _ = sender.send(SimCommand::ToggleZVisualization { enabled: z_viz_enabled });
+                }
+            }
+            
+            let mut z_viz_strength = *crate::renderer::state::Z_VISUALIZATION_STRENGTH.lock();
+            if ui.add(
+                egui::Slider::new(&mut z_viz_strength, 0.1..=5.0)
+                    .text("Z-viz Strength")
+                    .step_by(0.1)
+            ).changed() {
+                *crate::renderer::state::Z_VISUALIZATION_STRENGTH.lock() = z_viz_strength;
+                if let Some(sender) = SIM_COMMAND_SENDER.lock().as_ref() {
+                    let _ = sender.send(SimCommand::SetZVisualizationStrength { strength: z_viz_strength });
+                }
+            }
+            ui.small("Higher values = more dramatic Z-depth effect");
+            
             if ui.button("Apply Z Settings").clicked() {
                 if let Some(sender) = SIM_COMMAND_SENDER.lock().as_ref() {
                     let _ = sender.send(SimCommand::SetOutOfPlane {

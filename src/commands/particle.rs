@@ -290,30 +290,6 @@ pub fn handle_set_temperature(simulation: &mut Simulation, temperature: f32) {
     crate::config::LJ_CONFIG.lock().temperature = temperature;
 }
 
-pub fn handle_set_out_of_plane(
-    simulation: &mut Simulation,
-    enabled: bool,
-    z_stiffness: f32,
-    z_damping: f32,
-    max_z: f32,
-    z_frustration_strength: f32,
-) {
-    {
-        let mut cfg = crate::config::LJ_CONFIG.lock();
-        cfg.enable_out_of_plane = enabled;
-        cfg.z_stiffness = z_stiffness;
-        cfg.z_damping = z_damping;
-        cfg.max_z = max_z;
-        cfg.z_frustration_strength = z_frustration_strength;
-    }
-    simulation.config.enable_out_of_plane = enabled;
-    simulation.config.z_stiffness = z_stiffness;
-    simulation.config.z_damping = z_damping;
-    simulation.config.max_z = max_z;
-    simulation.config.z_frustration_strength = z_frustration_strength;
-    simulation.domain_depth = max_z;
-}
-
 pub fn overlaps_any(existing: &[crate::body::Body], pos: Vec2, radius: f32) -> Option<usize> {
     existing.iter().position(|b| (b.pos - pos).mag() < (b.radius + radius))
 }

@@ -30,3 +30,32 @@ pub fn handle_load_state(simulation: &mut Simulation, path: String) {
         Err(e) => eprintln!("Failed to load state: {}", e),
     }
 }
+
+/// Configure pseudo out-of-plane motion parameters at runtime.
+pub fn handle_set_out_of_plane(
+    simulation: &mut Simulation,
+    enabled: bool,
+    max_z: f32,
+    z_stiffness: f32,
+    z_damping: f32,
+    z_frustration_strength: f32,
+) {
+    let mut cfg = crate::config::LJ_CONFIG.lock();
+    cfg.enable_out_of_plane = enabled;
+    cfg.max_z = max_z;
+    cfg.z_stiffness = z_stiffness;
+    cfg.z_damping = z_damping;
+    cfg.z_frustration_strength = z_frustration_strength;
+    
+    // Update simulation domain depth
+    simulation.domain_depth = max_z;
+
+    if !enabled {
+        simulation.bodies.iter_mut().for_each(|b| b.reset_z());
+    } else {
+        simulation
+            .bodies
+            .iter_mut()
+            .for_each(|b| b.clamp_z(max_z));
+    }
+}

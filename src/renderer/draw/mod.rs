@@ -169,12 +169,45 @@ impl super::Renderer {
 
                     if SHOW_Z_VISUALIZATION.load(Ordering::Relaxed) {
                         let max_z = self.sim_config.max_z.max(1.0);
-                        let t = (body.z / max_z).clamp(-1.0, 1.0);
-                        draw_radius *= 1.0 + 0.5 * t;
-                        let shade = 1.0 - 0.3 * t;
-                        color[0] = (color[0] as f32 * shade).clamp(0.0, 255.0) as u8;
-                        color[1] = (color[1] as f32 * shade).clamp(0.0, 255.0) as u8;
-                        color[2] = (color[2] as f32 * shade).clamp(0.0, 255.0) as u8;
+                        let z_strength = *crate::renderer::state::Z_VISUALIZATION_STRENGTH.lock();
+                        
+                        // Normalize z-coordinate to -1.0 to 1.0 range
+                        let z_normalized = (body.z / max_z).clamp(-1.0, 1.0);
+                        
+                        // Apply elegant z-depth effects:
+                        // 1. Size scaling: particles closer to camera (positive z) appear larger
+                        let size_factor = 1.0 + (z_strength * 0.3 * z_normalized);
+                        draw_radius *= size_factor.max(0.3); // Don't let particles disappear
+                        
+                        // 2. Color brightness: particles further from camera are darker
+                        let brightness_factor = 1.0 - (z_strength * 0.4 * z_normalized.abs());
+                        let brightness = brightness_factor.clamp(0.3, 1.0); // Keep some visibility
+                        
+                        // 3. Optional color tinting based on depth
+                        if z_strength > 2.0 {
+                            if z_normalized > 0.0 {
+                                // Closer particles get warmer tint (more red/yellow)
+                                let warm_factor = z_normalized * (z_strength - 2.0) * 0.1;
+                                color[0] = (color[0] as f32 * (1.0 + warm_factor)).clamp(0.0, 255.0) as u8;
+                                color[1] = (color[1] as f32 * (1.0 + warm_factor * 0.5)).clamp(0.0, 255.0) as u8;
+                            } else {
+                                // Further particles get cooler tint (more blue)
+                                let cool_factor = (-z_normalized) * (z_strength - 2.0) * 0.1;
+                                color[2] = (color[2] as f32 * (1.0 + cool_factor)).clamp(0.0, 255.0) as u8;
+                                color[1] = (color[1] as f32 * (1.0 + cool_factor * 0.5)).clamp(0.0, 255.0) as u8;
+                            }
+                        }
+                        
+                        // Apply brightness scaling
+                        color[0] = (color[0] as f32 * brightness) as u8;
+                        color[1] = (color[1] as f32 * brightness) as u8;
+                        color[2] = (color[2] as f32 * brightness) as u8;
+                        
+                        // 4. Optional alpha transparency for depth
+                        if z_strength > 1.5 {
+                            let alpha_factor = 1.0 - (z_normalized.abs() * (z_strength - 1.5) * 0.2);
+                            color[3] = (color[3] as f32 * alpha_factor.clamp(0.5, 1.0)) as u8;
+                        }
                     }
                     
                     if body.species == Species::LithiumIon {

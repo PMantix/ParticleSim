@@ -36,12 +36,6 @@ pub fn process_command(cmd: SimCommand, simulation: &mut Simulation) {
         SimCommand::SetTemperature { temperature } => {
             particle::handle_set_temperature(simulation, temperature);
         }
-        SimCommand::SetOutOfPlane { enabled, z_stiffness, z_damping, max_z, z_frustration_strength } => {
-            particle::handle_set_out_of_plane(simulation, enabled, z_stiffness, z_damping, max_z, z_frustration_strength);
-        }
-        SimCommand::ToggleZVisualization { enabled } => {
-            crate::renderer::state::SHOW_Z_VISUALIZATION.store(enabled, std::sync::atomic::Ordering::Relaxed);
-        }
         SimCommand::AddFoil { width, height, x, y, particle_radius, current } => {
             foil::handle_add_foil(simulation, width, height, x, y, particle_radius, current);
         }
@@ -71,6 +65,15 @@ pub fn process_command(cmd: SimCommand, simulation: &mut Simulation) {
         }
         SimCommand::LoadState { path } => {
             state::handle_load_state(simulation, path);
+        }
+        SimCommand::SetOutOfPlane { enabled, max_z, z_stiffness, z_damping, z_frustration_strength } => {
+            state::handle_set_out_of_plane(simulation, enabled, max_z, z_stiffness, z_damping, z_frustration_strength);
+        }
+        SimCommand::ToggleZVisualization { enabled } => {
+            crate::renderer::state::SHOW_Z_VISUALIZATION.store(enabled, std::sync::atomic::Ordering::Relaxed);
+        }
+        SimCommand::SetZVisualizationStrength { strength } => {
+            *crate::renderer::state::Z_VISUALIZATION_STRENGTH.lock() = strength;
         }
     }
 }

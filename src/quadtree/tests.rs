@@ -11,11 +11,8 @@ mod tests {
         // Create a single charged body at the origin
         let body = Body {
             pos: Vec2::zero(),
-            z: 0.0,
             vel: Vec2::zero(),
-            vz: 0.0,
             acc: Vec2::zero(),
-            az: 0.0,
             mass: 1.0,
             radius: 1.0,
             charge: 1.0,
@@ -26,6 +23,9 @@ mod tests {
             last_surround_frame: 0,
             last_surround_pos: Vec2::zero(),
             surrounded_by_metal: false,
+            z: 0.0,
+            vz: 0.0,
+            az: 0.0,
         };
         let mut bodies = vec![body];
 
@@ -82,11 +82,8 @@ mod tests {
         let mut bodies = vec![
             Body {
                 pos: Vec2::zero(),
-                z: 0.0,
                 vel: Vec2::zero(),
-                vz: 0.0,
                 acc: Vec2::zero(),
-                az: 0.0,
                 mass: 1.0,
                 radius: 1.0,
                 charge: 1.0,
@@ -97,14 +94,14 @@ mod tests {
                 last_surround_frame: 0,
                 last_surround_pos: Vec2::zero(),
                 surrounded_by_metal: false,
+                z: 0.0,
+                vz: 0.0,
+                az: 0.0,
             },
             Body {
                 pos: Vec2::new(0.5, 0.0), // overlapping radii
-                z: 0.0,
                 vel: Vec2::zero(),
-                vz: 0.0,
                 acc: Vec2::zero(),
-                az: 0.0,
                 mass: 1.0,
                 radius: 1.0,
                 charge: -1.0,
@@ -115,6 +112,9 @@ mod tests {
                 last_surround_frame: 0,
                 last_surround_pos: Vec2::zero(),
                 surrounded_by_metal: false,
+                z: 0.0,
+                vz: 0.0,
+                az: 0.0,
             },
         ];
 

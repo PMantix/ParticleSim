@@ -1,5 +1,5 @@
 use crate::io::{load_state, save_state};
-use crate::renderer::state::{SimCommand, PAUSED, SHOW_Z_VISUALIZATION};
+use crate::renderer::state::{SimCommand, PAUSED};
 use crate::simulation::Simulation;
 use std::sync::atomic::Ordering;
 
@@ -242,25 +242,6 @@ pub fn handle_command(cmd: SimCommand, simulation: &mut Simulation) {
             // Just update the target temperature; thermostat will be applied periodically
             crate::config::LJ_CONFIG.lock().temperature = temperature;
         }
-        SimCommand::SetOutOfPlane { enabled, z_stiffness, z_damping, max_z, z_frustration_strength } => {
-            {
-                let mut cfg = crate::config::LJ_CONFIG.lock();
-                cfg.enable_out_of_plane = enabled;
-                cfg.z_stiffness = z_stiffness;
-                cfg.z_damping = z_damping;
-                cfg.max_z = max_z;
-                cfg.z_frustration_strength = z_frustration_strength;
-            }
-            simulation.config.enable_out_of_plane = enabled;
-            simulation.config.z_stiffness = z_stiffness;
-            simulation.config.z_damping = z_damping;
-            simulation.config.max_z = max_z;
-            simulation.config.z_frustration_strength = z_frustration_strength;
-            simulation.domain_depth = max_z;
-        }
-        SimCommand::ToggleZVisualization { enabled } => {
-            SHOW_Z_VISUALIZATION.store(enabled, Ordering::Relaxed);
-        }
         SimCommand::SetDomainSize { width, height } => {
             let half_width = width / 2.0;
             let half_height = height / 2.0;
@@ -275,6 +256,21 @@ pub fn handle_command(cmd: SimCommand, simulation: &mut Simulation) {
             simulation.domain_height = half_height;
             // Keep bounds for backward compatibility (use larger dimension)
             simulation.bounds = width.max(height) / 2.0;
+        }
+        SimCommand::SetOutOfPlane { enabled, max_z, z_stiffness, z_damping, z_frustration_strength } => {
+            let mut cfg = crate::config::LJ_CONFIG.lock();
+            cfg.enable_out_of_plane = enabled;
+            cfg.max_z = max_z;
+            cfg.z_stiffness = z_stiffness;
+            cfg.z_damping = z_damping;
+            cfg.z_frustration_strength = z_frustration_strength;
+            simulation.domain_depth = max_z;
+        }
+        SimCommand::ToggleZVisualization { enabled } => {
+            crate::renderer::state::SHOW_Z_VISUALIZATION.store(enabled, std::sync::atomic::Ordering::Relaxed);
+        }
+        SimCommand::SetZVisualizationStrength { strength } => {
+            *crate::renderer::state::Z_VISUALIZATION_STRENGTH.lock() = strength;
         }
     }
 }

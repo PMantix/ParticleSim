@@ -20,6 +20,7 @@ pub static SPAWN: Lazy<Mutex<Vec<Body>>> = Lazy::new(|| Mutex::new(Vec::new()));
 pub static COLLISION_PASSES: Lazy<Mutex<usize>> = Lazy::new(|| Mutex::new(14));
 pub static SIM_TIME: Lazy<Mutex<f32>> = Lazy::new(|| Mutex::new(0.0));
 pub static SHOW_Z_VISUALIZATION: Lazy<AtomicBool> = Lazy::new(|| AtomicBool::new(false));
+pub static Z_VISUALIZATION_STRENGTH: Lazy<Mutex<f32>> = Lazy::new(|| Mutex::new(1.0));
 
 //Simulation commands
 // These are used to send commands to the simulation thread from the GUI thread
@@ -87,12 +88,13 @@ pub enum SimCommand {
     SetTemperature { temperature: f32 },
     SetOutOfPlane {
         enabled: bool,
+        max_z: f32,
         z_stiffness: f32,
         z_damping: f32,
-        max_z: f32,
         z_frustration_strength: f32,
     },
     ToggleZVisualization { enabled: bool },
+    SetZVisualizationStrength { strength: f32 },
 }
 
 pub static SIM_COMMAND_SENDER: Lazy<Mutex<Option<Sender<SimCommand>>>> = Lazy::new(|| Mutex::new(None));
