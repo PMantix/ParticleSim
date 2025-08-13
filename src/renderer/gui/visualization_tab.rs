@@ -42,6 +42,10 @@ impl super::super::Renderer {
                 &mut self.sim_config.show_field_vectors,
                 "Show Field Vectors",
             );
+            ui.checkbox(
+                &mut self.sim_config.show_frustrated_motion,
+                "Show Frustrated Z-Motion (Debug)",
+            );
 
             egui::ComboBox::from_label("Isoline Field Mode")
                 .selected_text(format!("{:?}", self.sim_config.isoline_field_mode))
