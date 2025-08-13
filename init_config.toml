@@ -6,7 +6,7 @@
 # Domain size (full width/height of the simulation domain)
 domain_width = 400.0
 domain_height = 250.0
-initial_temperature = 1.0
+# initial_temperature = 5.0  # Optional override (defaults to 5.0 from code)
 # Optional pseudo out-of-plane behavior (default disabled)
 # enable_out_of_plane = false
 # max_z = 1.0

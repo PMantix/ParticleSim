@@ -136,7 +136,7 @@ pub const SHOW_FIELD_VECTORS: bool = false; // Show electric field vectors
 // Temperature
 // ====================
 /// Default simulation temperature in arbitrary units
-pub const DEFAULT_TEMPERATURE: f32 = 293.13; // 300 K in Kelvin scale
+pub const DEFAULT_TEMPERATURE: f32 = 5.0; // Reduced from 293.13 for better initial behavior
 
 use serde::{Serialize, Deserialize};
 
@@ -186,6 +186,12 @@ pub struct SimConfig {
     pub z_stiffness: f32,
     /// Damping applied to vertical motion
     pub z_damping: f32,
+    /// Enable pseudo out-of-plane for solvent species (EC, DMC)
+    pub enable_solvent_out_of_plane: bool,
+    /// Visualization: minimum fraction of blue channel adjustment for z (0..1)
+    pub z_vis_min_frac: f32,
+    /// Visualization: maximum fraction of blue channel adjustment for z (0..1)
+    pub z_vis_max_frac: f32,
 }
 
 impl Default for SimConfig {
@@ -213,10 +219,13 @@ impl Default for SimConfig {
             coulomb_constant: crate::simulation::forces::K_E,
             temperature: DEFAULT_TEMPERATURE,
             thermostat_frequency: 1.0, // Apply thermostat every 1.0 time units by default
-            enable_out_of_plane: false,
-            max_z: 1.0,
-            z_stiffness: 10.0,
-            z_damping: 0.5,
+            enable_out_of_plane: true,  // Enable by default for Li+ mobility testing
+            max_z: 2.0,         // Increased z-range for better mobility
+            z_stiffness: 5.0,   // Reduced stiffness for easier z-displacement
+            z_damping: 0.3,     // Reduced damping for more responsive motion
+            enable_solvent_out_of_plane: true,
+            z_vis_min_frac: 0.05,
+            z_vis_max_frac: 1.0,
         }
     }
 }

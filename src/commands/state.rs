@@ -38,12 +38,18 @@ pub fn handle_set_out_of_plane(
     max_z: f32,
     z_stiffness: f32,
     z_damping: f32,
+    enable_solvent: bool,
+    vis_min_frac: f32,
+    vis_max_frac: f32,
 ) {
     let mut cfg = crate::config::LJ_CONFIG.lock();
     cfg.enable_out_of_plane = enabled;
     cfg.max_z = max_z;
     cfg.z_stiffness = z_stiffness;
     cfg.z_damping = z_damping;
+    cfg.enable_solvent_out_of_plane = enable_solvent;
+    cfg.z_vis_min_frac = vis_min_frac.clamp(0.0, 1.0).min(vis_max_frac);
+    cfg.z_vis_max_frac = vis_max_frac.clamp(0.0, 1.0).max(cfg.z_vis_min_frac);
 
     if !enabled {
         simulation.bodies.iter_mut().for_each(|b| b.reset_z());

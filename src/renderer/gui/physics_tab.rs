@@ -152,12 +152,23 @@ impl super::super::Renderer {
             let mut z_damping = self.sim_config.z_damping;
 
             let mut changed = false;
+            let mut enable_solvent = self.sim_config.enable_solvent_out_of_plane;
+            let mut vis_min = self.sim_config.z_vis_min_frac;
+            let mut vis_max = self.sim_config.z_vis_max_frac;
 
             if ui.checkbox(&mut enabled, "Enable").changed() { changed = true; }
             ui.add_enabled_ui(enabled, |ui| {
                 if ui.add(egui::Slider::new(&mut max_z, 0.05..=5.0).text("Max |z|").step_by(0.01)).changed() { changed = true; }
                 if ui.add(egui::Slider::new(&mut z_stiffness, 0.1..=100.0).text("Spring k").logarithmic(true)).changed() { changed = true; }
                 if ui.add(egui::Slider::new(&mut z_damping, 0.01..=5.0).text("Damping γ").step_by(0.01)).changed() { changed = true; }
+                ui.separator();
+                if ui.checkbox(&mut enable_solvent, "Include Solvents (EC/DMC)").changed() { changed = true; }
+                ui.collapsing("Visualization", |ui| {
+                    ui.small("Adjust how strongly z displacement alters color/intensity.");
+                    if ui.add(egui::Slider::new(&mut vis_min, 0.0..=1.0).text("Vis Min").step_by(0.01)).changed() { changed = true; }
+                    if ui.add(egui::Slider::new(&mut vis_max, 0.0..=1.0).text("Vis Max").step_by(0.01)).changed() { changed = true; }
+                    if vis_max < vis_min { vis_max = vis_min; }
+                });
             });
 
             if changed {
@@ -165,6 +176,9 @@ impl super::super::Renderer {
                 self.sim_config.max_z = max_z;
                 self.sim_config.z_stiffness = z_stiffness;
                 self.sim_config.z_damping = z_damping;
+                self.sim_config.enable_solvent_out_of_plane = enable_solvent;
+                self.sim_config.z_vis_min_frac = vis_min;
+                self.sim_config.z_vis_max_frac = vis_max;
                 if let Some(sender) = SIM_COMMAND_SENDER.lock().as_ref() {
                     // Send command to simulation thread
                     sender.send(SimCommand::SetOutOfPlane { 
@@ -172,12 +186,15 @@ impl super::super::Renderer {
                         max_z,
                         z_stiffness,
                         z_damping,
+                        enable_solvent,
+                        vis_min_frac: vis_min,
+                        vis_max_frac: vis_max,
                     }).ok();
                 }
             }
 
-            ui.small("Applies a damped spring along an abstract Z axis for ions / anions.");
-            ui.small("Helps relieve in-plane crowding without full 3D simulation.");
+            ui.small("Physics-based pseudo-Z motion: lighter particles (Li⁺) naturally get more z-acceleration.");
+            ui.small("Helps Li⁺ escape crowded solvent shells to reach electrodes via mass-based dynamics.");
         });
     }
 }
