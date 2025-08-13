@@ -406,16 +406,16 @@ mod tests {
 
             // Build quadtree before step
             sim.quadtree.build(&mut sim.bodies);
-            // Step the simulation (should add 1 electron to foil2 only)
+            // Step the simulation (should NOT add an electron; needs partner for conservation)
             sim.step();
             // Check electron counts
 
             let n1 = sim.bodies[0].electrons.len();
             let n2 = sim.bodies[1].electrons.len();
             let n3 = sim.bodies[2].electrons.len();
-            assert_eq!(n1, crate::config::FOIL_NEUTRAL_ELECTRONS, "Foil 1 should not lose or gain electrons");
-            assert_eq!(n2, crate::config::FOIL_NEUTRAL_ELECTRONS + 1, "Foil 2 should gain exactly one electron");
-            assert_eq!(n3, crate::config::FOIL_NEUTRAL_ELECTRONS, "Foil 3 should not lose or gain electrons");
+            assert_eq!(n1, crate::config::FOIL_NEUTRAL_ELECTRONS, "Foil 1 should not change electrons");
+            assert_eq!(n2, crate::config::FOIL_NEUTRAL_ELECTRONS, "Foil 2 should not change without conservation partner");
+            assert_eq!(n3, crate::config::FOIL_NEUTRAL_ELECTRONS, "Foil 3 should not change electrons");
         }
     }
 }

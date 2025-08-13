@@ -139,5 +139,45 @@ impl super::super::Renderer {
             ui.small("How often to enforce temperature constraint");
             ui.small("Lower = more frequent, higher = more natural dynamics");
         });
+
+        ui.separator();
+
+        // Pseudo Out-of-Plane Controls
+        ui.group(|ui| {
+            ui.label("🧭 Pseudo Out-of-Plane (Z) Motion");
+
+            let mut enabled = self.sim_config.enable_out_of_plane;
+            let mut max_z = self.sim_config.max_z;
+            let mut z_stiffness = self.sim_config.z_stiffness;
+            let mut z_damping = self.sim_config.z_damping;
+
+            let mut changed = false;
+
+            if ui.checkbox(&mut enabled, "Enable").changed() { changed = true; }
+            ui.add_enabled_ui(enabled, |ui| {
+                if ui.add(egui::Slider::new(&mut max_z, 0.05..=5.0).text("Max |z|").step_by(0.01)).changed() { changed = true; }
+                if ui.add(egui::Slider::new(&mut z_stiffness, 0.1..=100.0).text("Spring k").logarithmic(true)).changed() { changed = true; }
+                if ui.add(egui::Slider::new(&mut z_damping, 0.01..=5.0).text("Damping γ").step_by(0.01)).changed() { changed = true; }
+            });
+
+            if changed {
+                self.sim_config.enable_out_of_plane = enabled;
+                self.sim_config.max_z = max_z;
+                self.sim_config.z_stiffness = z_stiffness;
+                self.sim_config.z_damping = z_damping;
+                if let Some(sender) = SIM_COMMAND_SENDER.lock().as_ref() {
+                    // Send command to simulation thread
+                    sender.send(SimCommand::SetOutOfPlane { 
+                        enabled,
+                        max_z,
+                        z_stiffness,
+                        z_damping,
+                    }).ok();
+                }
+            }
+
+            ui.small("Applies a damped spring along an abstract Z axis for ions / anions.");
+            ui.small("Helps relieve in-plane crowding without full 3D simulation.");
+        });
     }
 }

@@ -263,6 +263,15 @@ pub fn handle_command(cmd: SimCommand, simulation: &mut Simulation) {
             cfg.max_z = max_z;
             cfg.z_stiffness = z_stiffness;
             cfg.z_damping = z_damping;
+            drop(cfg); // release lock before mutating bodies
+
+            if !enabled {
+                // Fully reset any accumulated out-of-plane displacement so we return to a pure 2D state
+                simulation.bodies.iter_mut().for_each(|b| b.reset_z());
+            } else {
+                // Ensure all current z values (if any from prior runs / loaded state) are within the new limit
+                simulation.bodies.iter_mut().for_each(|b| b.clamp_z(max_z));
+            }
         }
     }
 }

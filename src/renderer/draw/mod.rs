@@ -165,6 +165,7 @@ impl super::Renderer {
                 for body in &self.bodies {
                     let mut color = body.species.color();
                     let mut draw_radius = body.radius;
+                    let mut draw_effective = None; // (effective_radius, z_fraction)
                     
                     if body.species == Species::LithiumIon {
                         if body.surrounded_by_metal {
@@ -186,7 +187,29 @@ impl super::Renderer {
                         }
                     }
 
-                    ctx.draw_circle(body.pos, draw_radius, color);
+                    // Out-of-plane visualization: show effective in-plane footprint shrinkage
+                    if self.sim_config.enable_out_of_plane && matches!(body.species, Species::LithiumIon | Species::ElectrolyteAnion | Species::EC | Species::DMC) {
+                        let z = body.z.abs();
+                        if z > 1e-3 && z < body.radius { // meaningful displacement
+                            let r2 = body.radius * body.radius;
+                            let z2 = z * z;
+                            let eff = if z2 >= r2 { 0.0 } else { (r2 - z2).sqrt() };
+                            let frac = z / self.sim_config.max_z.max(1e-6);
+                            draw_effective = Some((eff, frac.min(1.0)));
+                        }
+                    }
+
+                    if let Some((eff_r, frac)) = draw_effective {
+                        // Outer faint ring: original radius footprint
+                        let ghost_alpha = (64.0 + 128.0 * (1.0 - frac)) as u8; // more z -> dimmer outer ring
+                        ctx.draw_circle(body.pos, draw_radius, [color[0], color[1], color[2], ghost_alpha]);
+                        // Inner filled circle: effective in-plane collision radius (brighter as it shrinks)
+                        let inner_alpha = (200.0 + 55.0 * (1.0 - frac)) as u8;
+                        let hue_scale = (255.0f32 * frac) as u8; // encode z in blue channel for quick feedback
+                        ctx.draw_circle(body.pos, eff_r, [color[0], hue_scale, color[2], inner_alpha]);
+                    } else {
+                        ctx.draw_circle(body.pos, draw_radius, color);
+                    }
 
                     // Visualize electron count for FoilMetal
                     if self.show_foil_electron_deficiency && body.species == Species::FoilMetal {

@@ -29,10 +29,12 @@ This repository contains a modular, parallelized particle simulation for large-s
 - **Foil Electrodes**:
   - Configurable foil structures that can apply electric currents to drive electrochemical reactions.
   - Real-time current monitoring and analysis.
+  - Strict charge conservation: a single (unpaired) foil cannot change its net electron count; charge transfer occurs only through paired / linked foils or particle exchange.
 - **Polar Solvents**:
   - Ethylene carbonate (EC) and dimethyl carbonate (DMC) are modeled as neutral molecules with a bound electron.
   - A polarization force is applied between the displaced electron and the molecular center, enabling solvent shells around lithium ions without Lennard-Jones attraction.
 - **Optional 2.5D Out-of-Plane Flex**: Ions and anions can temporarily move in an abstract vertical direction to bypass 2D crowding near electrodes. The feature preserves bulk behavior and is disabled by default.
+  - When disabled at runtime, all particles are immediately flattened back to the plane (z, vz, az set to zero) to ensure deterministic return to 2D.
 - **State Management**:
   - Save and load simulation states for reproducible experiments.
   - Pre-configured scenarios for quick setup.
@@ -146,6 +148,13 @@ The simulation includes a comprehensive plotting system for real-time data analy
 - **Particle Selection**: Click particles to view detailed diagnostics in console
 - **State Management**: Save/load simulation states for reproducible experiments
 - **Configurable Physics**: Modify parameters in real-time through the GUI
+- **Foil Charge Conservation Semantics**:
+  - Net electron changes on electrodes require a conservation pair. Attempts to add/remove electrons from a solitary foil are ignored (no-op), preserving global charge accounting.
+  - Test suite enforces: (a) single foil current accumulation doesn't alter stored electron count; (b) paired foils allow reciprocal electron exchange.
+  - Electron hopping obeys activation energy barriers; extremely large ("infinite") activation energies suppress hops deterministically.
+- **Out-of-Plane Mode Behavior**:
+  - Enabled bodies (lithium ions, anions, and solvents) integrate a damped spring in pseudo-z to relieve local crowding; effective in-plane collision radius shrinks with |z|.
+  - Disabling the feature resets all z-displacements so diagnostics and replay remain consistent.
 - **Comprehensive Testing**: Run the test suite with `cargo test`
 - **Performance Profiling**: Enable with `cargo run --features profiling`
 

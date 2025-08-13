@@ -262,7 +262,12 @@ impl Simulation {
                     i0 * (forward - backward)
                 } else {
                     if d_phi <= 0.0 { return false; }
-                    self.config.hop_rate_k0 * (self.config.hop_transfer_coeff * d_phi / self.config.hop_activation_energy).exp()
+                    // Treat extremely large activation energy as effectively infinite (no hop)
+                    if self.config.hop_activation_energy > 1.0e12 { return false; }
+                    // Avoid division by very small activation energy causing overflow
+                    let act = self.config.hop_activation_energy.max(1.0e-12);
+                    let arg = (self.config.hop_transfer_coeff * d_phi / act).min(50.0); // clamp exponent
+                    self.config.hop_rate_k0 * arg.exp()
                 };
 
                 if rate <= 0.0 { return false; }
@@ -351,7 +356,7 @@ impl Simulation {
             }
         }
         
-        // For unlinked foils, enforce global charge conservation
+    // For unlinked foils, enforce global charge conservation
         let mut add_ready: Vec<usize> = Vec::new();
         let mut remove_ready: Vec<usize> = Vec::new();
         
@@ -372,7 +377,7 @@ impl Simulation {
         add_ready.shuffle(&mut rng);
         remove_ready.shuffle(&mut rng);
         
-        // Process charge-conserving pairs: one adds, one removes
+    // Process charge-conserving pairs: one adds, one removes
         let num_pairs = add_ready.len().min(remove_ready.len());
         
         for pair_idx in 0..num_pairs {
@@ -386,6 +391,7 @@ impl Simulation {
                 self.foils[remove_foil_idx].accum += 1.0;
             }
         }
+
     }
 
     /// Process linked pair with charge conservation (similar to existing but renamed for clarity)
