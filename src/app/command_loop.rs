@@ -257,5 +257,12 @@ pub fn handle_command(cmd: SimCommand, simulation: &mut Simulation) {
             // Keep bounds for backward compatibility (use larger dimension)
             simulation.bounds = width.max(height) / 2.0;
         }
+        SimCommand::SetOutOfPlane { enabled, max_z, z_stiffness, z_damping } => {
+            let mut cfg = crate::config::LJ_CONFIG.lock();
+            cfg.enable_out_of_plane = enabled;
+            cfg.max_z = max_z;
+            cfg.z_stiffness = z_stiffness;
+            cfg.z_damping = z_damping;
+        }
     }
 }

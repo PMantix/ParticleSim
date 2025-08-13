@@ -8,6 +8,17 @@ use broccoli_rayon::{build::RayonBuildPar, prelude::RayonQueryPar};
 use ultraviolet::Vec2;
 use crate::simulation::Simulation;
 use crate::profile_scope;
+use crate::body::Body;
+
+fn effective_radius(body: &Body) -> f32 {
+    let r2 = body.radius * body.radius;
+    let z2 = body.z * body.z;
+    if z2 >= r2 {
+        0.0
+    } else {
+        (r2 - z2).sqrt()
+    }
+}
 
 pub fn collide(sim: &mut Simulation) {
     profile_scope!("collision");
@@ -17,7 +28,7 @@ pub fn collide(sim: &mut Simulation) {
         .enumerate()
         .map(|(index, body)| {
             let pos = body.pos;
-            let radius = body.radius;
+            let radius = effective_radius(body);
             let min = pos - Vec2::one() * radius;
             let max = pos + Vec2::one() * radius;
             (Rect::new(min.x, max.x, min.y, max.y), index)
@@ -39,8 +50,8 @@ fn resolve(sim: &mut Simulation, i: usize, j: usize, num_passes: usize) {
     let b2 = &sim.bodies[j];
     let p1 = b1.pos;
     let p2 = b2.pos;
-    let r1 = b1.radius;
-    let r2 = b2.radius;
+    let r1 = effective_radius(b1);
+    let r2 = effective_radius(b2);
     let d = p2 - p1;
     let r = r1 + r2;
     if d.mag_sq() > r * r {

@@ -101,6 +101,9 @@ impl Simulation {
         forces::apply_polar_forces(self);
         forces::apply_lj_forces(self);
         forces::apply_repulsive_forces(self);
+        if self.config.enable_out_of_plane {
+            super::out_of_plane::apply_out_of_plane(self);
+        }
         self.iterate();
         let num_passes = *COLLISION_PASSES.lock();
         for _ in 1..num_passes {

@@ -178,6 +178,14 @@ pub struct SimConfig {
     pub temperature: f32,
     /// How frequently (in simulation time units) to apply the thermostat
     pub thermostat_frequency: f32,
+    /// Enable pseudo out-of-plane motion for ions and anions
+    pub enable_out_of_plane: bool,
+    /// Maximum abstract displacement along the Z axis
+    pub max_z: f32,
+    /// Spring constant pulling particles back toward the plane
+    pub z_stiffness: f32,
+    /// Damping applied to vertical motion
+    pub z_damping: f32,
 }
 
 impl Default for SimConfig {
@@ -205,6 +213,10 @@ impl Default for SimConfig {
             coulomb_constant: crate::simulation::forces::K_E,
             temperature: DEFAULT_TEMPERATURE,
             thermostat_frequency: 1.0, // Apply thermostat every 1.0 time units by default
+            enable_out_of_plane: false,
+            max_z: 1.0,
+            z_stiffness: 10.0,
+            z_damping: 0.5,
         }
     }
 }

@@ -20,6 +20,14 @@ pub struct SimulationConfig {
     pub domain_height: Option<f32>,
     /// Optional initial temperature for velocity initialization
     pub initial_temperature: Option<f32>,
+    /// Enable pseudo out-of-plane motion for ions and anions
+    pub enable_out_of_plane: Option<bool>,
+    /// Maximum abstract displacement along the Z axis
+    pub max_z: Option<f32>,
+    /// Spring constant pulling particles back toward the plane
+    pub z_stiffness: Option<f32>,
+    /// Damping applied to vertical motion
+    pub z_damping: Option<f32>,
 }
 
 impl SimulationConfig {
