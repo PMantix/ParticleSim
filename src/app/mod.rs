@@ -52,6 +52,18 @@ pub fn run() {
         if let Some(temp) = sim_cfg.initial_temperature {
             crate::config::LJ_CONFIG.lock().temperature = temp;
         }
+        if let Some(enable) = sim_cfg.enable_out_of_plane {
+            crate::config::LJ_CONFIG.lock().enable_out_of_plane = enable;
+        }
+        if let Some(max_z) = sim_cfg.max_z {
+            crate::config::LJ_CONFIG.lock().max_z = max_z;
+        }
+        if let Some(k) = sim_cfg.z_stiffness {
+            crate::config::LJ_CONFIG.lock().z_stiffness = k;
+        }
+        if let Some(d) = sim_cfg.z_damping {
+            crate::config::LJ_CONFIG.lock().z_damping = d;
+        }
     }
 
     let tx = SIM_COMMAND_SENDER.lock().as_ref().unwrap().clone();

@@ -257,5 +257,24 @@ pub fn handle_command(cmd: SimCommand, simulation: &mut Simulation) {
             // Keep bounds for backward compatibility (use larger dimension)
             simulation.bounds = width.max(height) / 2.0;
         }
+        SimCommand::SetOutOfPlane { enabled, max_z, z_stiffness, z_damping, enable_solvent, vis_min_frac, vis_max_frac } => {
+            let mut cfg = crate::config::LJ_CONFIG.lock();
+            cfg.enable_out_of_plane = enabled;
+            cfg.max_z = max_z;
+            cfg.z_stiffness = z_stiffness;
+            cfg.z_damping = z_damping;
+            cfg.enable_solvent_out_of_plane = enable_solvent;
+            cfg.z_vis_min_frac = vis_min_frac;
+            cfg.z_vis_max_frac = vis_max_frac;
+            drop(cfg); // release lock before mutating bodies
+
+            if !enabled {
+                // Fully reset any accumulated out-of-plane displacement so we return to a pure 2D state
+                simulation.bodies.iter_mut().for_each(|b| b.reset_z());
+            } else {
+                // Ensure all current z values (if any from prior runs / loaded state) are within the new limit
+                simulation.bodies.iter_mut().for_each(|b| b.clamp_z(max_z));
+            }
+        }
     }
 }

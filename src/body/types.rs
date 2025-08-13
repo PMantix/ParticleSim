@@ -24,6 +24,9 @@ pub struct Body {
     pub pos: Vec2,
     pub vel: Vec2,
     pub acc: Vec2,
+    pub z: f32,
+    pub vz: f32,
+    pub az: f32,
     pub mass: f32,
     pub radius: f32,
     pub charge: f32,
@@ -46,6 +49,9 @@ impl Body {
             pos,
             vel,
             acc: Vec2::zero(),
+            z: 0.0,
+            vz: 0.0,
+            az: 0.0,
             mass,
             radius,
             charge,
@@ -70,6 +76,28 @@ impl Body {
             charge,
             species
         )
+    }
+
+    /// Reset the out-of-plane displacement and velocity.
+    pub fn reset_z(&mut self) {
+        self.z = 0.0;
+        self.vz = 0.0;
+        self.az = 0.0;
+    }
+
+    /// Clamp the out-of-plane displacement within \`max\`.
+    pub fn clamp_z(&mut self, max: f32) {
+        if self.z > max {
+            self.z = max;
+            if self.vz > 0.0 {
+                self.vz = 0.0;
+            }
+        } else if self.z < -max {
+            self.z = -max;
+            if self.vz < 0.0 {
+                self.vz = 0.0;
+            }
+        }
     }
     pub fn update_species(&mut self) {
         if matches!(

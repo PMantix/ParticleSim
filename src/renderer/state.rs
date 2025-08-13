@@ -17,7 +17,7 @@ pub static BODIES: Lazy<Mutex<Vec<Body>>> = Lazy::new(|| Mutex::new(Vec::new()))
 pub static QUADTREE: Lazy<Mutex<Vec<Node>>> = Lazy::new(|| Mutex::new(Vec::new()));
 pub static FOILS: Lazy<Mutex<Vec<Foil>>> = Lazy::new(|| Mutex::new(Vec::new()));
 pub static SPAWN: Lazy<Mutex<Vec<Body>>> = Lazy::new(|| Mutex::new(Vec::new()));
-pub static COLLISION_PASSES: Lazy<Mutex<usize>> = Lazy::new(|| Mutex::new(14));
+pub static COLLISION_PASSES: Lazy<Mutex<usize>> = Lazy::new(|| Mutex::new(7));
 pub static SIM_TIME: Lazy<Mutex<f32>> = Lazy::new(|| Mutex::new(0.0));
 
 //Simulation commands
@@ -84,6 +84,15 @@ pub enum SimCommand {
     StepOnce,
     SetDomainSize { width: f32, height: f32 },
     SetTemperature { temperature: f32 },
+    SetOutOfPlane {
+        enabled: bool,
+        max_z: f32,
+        z_stiffness: f32,
+        z_damping: f32,
+        enable_solvent: bool,
+        vis_min_frac: f32,
+        vis_max_frac: f32,
+    },
 }
 
 pub static SIM_COMMAND_SENDER: Lazy<Mutex<Option<Sender<SimCommand>>>> = Lazy::new(|| Mutex::new(None));

@@ -77,16 +77,17 @@ impl super::Renderer {
                         if let Some(body) = self.bodies.iter().find(|b| b.id == anion_id) {
                             ctx.draw_circle(body.pos, body.radius * 2.0, [0, 50, 150, 80]);
                         }
-                        // Draw cation solvents
+                        // Draw cation solvents with lighter transparency to reduce dark center effect
                         for &solvent_id in cation_solvents {
                             if let Some(body) = self.bodies.iter().find(|b| b.id == solvent_id) {
-                                ctx.draw_circle(body.pos, body.radius * 1.5, [100, 150, 255, 60]);
+                                // Much lighter transparency and draw around particle instead of on top
+                                ctx.draw_circle(body.pos, body.radius * 1.4, [100, 150, 255, 25]);
                             }
                         }
-                        // Draw anion solvents
+                        // Draw anion solvents with lighter transparency
                         for &solvent_id in anion_solvents {
                             if let Some(body) = self.bodies.iter().find(|b| b.id == solvent_id) {
-                                ctx.draw_circle(body.pos, body.radius * 1.5, [50, 100, 200, 60]);
+                                ctx.draw_circle(body.pos, body.radius * 1.4, [50, 100, 200, 25]);
                             }
                         }
                     }
@@ -103,16 +104,16 @@ impl super::Renderer {
                         if let Some(body) = self.bodies.iter().find(|b| b.id == anion_id) {
                             ctx.draw_circle(body.pos, body.radius * 2.0, [220, 220, 0, 80]);
                         }
-                        // Draw cation solvents
+                        // Draw cation solvents with lighter transparency to reduce dark center effect
                         for &solvent_id in cation_solvents {
                             if let Some(body) = self.bodies.iter().find(|b| b.id == solvent_id) {
-                                ctx.draw_circle(body.pos, body.radius * 1.5, [255, 255, 120, 60]);
+                                ctx.draw_circle(body.pos, body.radius * 1.4, [255, 255, 120, 25]);
                             }
                         }
-                        // Draw anion solvents
+                        // Draw anion solvents with lighter transparency
                         for &solvent_id in anion_solvents {
                             if let Some(body) = self.bodies.iter().find(|b| b.id == solvent_id) {
-                                ctx.draw_circle(body.pos, body.radius * 1.5, [240, 240, 80, 60]);
+                                ctx.draw_circle(body.pos, body.radius * 1.4, [240, 240, 80, 25]);
                             }
                         }
                     }
@@ -129,16 +130,16 @@ impl super::Renderer {
                         if let Some(body) = self.bodies.iter().find(|b| b.id == anion_id) {
                             ctx.draw_circle(body.pos, body.radius * 2.0, [230, 80, 0, 80]);
                         }
-                        // Draw cation solvents
+                        // Draw cation solvents with lighter transparency to reduce dark center effect
                         for &solvent_id in cation_solvents {
                             if let Some(body) = self.bodies.iter().find(|b| b.id == solvent_id) {
-                                ctx.draw_circle(body.pos, body.radius * 1.5, [255, 150, 50, 60]);
+                                ctx.draw_circle(body.pos, body.radius * 1.4, [255, 150, 50, 25]);
                             }
                         }
-                        // Draw anion solvents
+                        // Draw anion solvents with lighter transparency
                         for &solvent_id in anion_solvents {
                             if let Some(body) = self.bodies.iter().find(|b| b.id == solvent_id) {
-                                ctx.draw_circle(body.pos, body.radius * 1.5, [240, 120, 30, 60]);
+                                ctx.draw_circle(body.pos, body.radius * 1.4, [240, 120, 30, 25]);
                             }
                         }
                     }
@@ -151,10 +152,10 @@ impl super::Renderer {
                         if let Some(body) = self.bodies.iter().find(|b| b.id == cation_id) {
                             ctx.draw_circle(body.pos, body.radius * 2.0, [255, 0, 0, 120]);
                         }
-                        // Draw cation solvents
+                        // Draw cation solvents with lighter transparency to reduce dark center effect
                         for &solvent_id in cation_solvents {
                             if let Some(body) = self.bodies.iter().find(|b| b.id == solvent_id) {
-                                ctx.draw_circle(body.pos, body.radius * 1.5, [255, 80, 80, 90]);
+                                ctx.draw_circle(body.pos, body.radius * 1.4, [255, 80, 80, 25]);
                             }
                         }
                     }
@@ -243,6 +244,29 @@ impl super::Renderer {
                 for body in &self.bodies {
                     let end = body.pos + body.vel * scale;
                     ctx.draw_line(body.pos, end, color);
+                }
+            }
+
+            // --- Frustrated Z-Motion Debug Overlay ---
+            if self.sim_config.show_frustrated_motion {
+                let frustrated_ids = crate::simulation::out_of_plane::get_frustrated_particle_ids();
+                for body in &self.bodies {
+                    if frustrated_ids.contains(&body.id) {
+                        // Draw a bright cyan outline for particles experiencing frustrated motion
+                        ctx.draw_circle(body.pos, body.radius * 1.3, [0, 255, 255, 180]);
+                        // Draw a small cross to indicate z-motion direction
+                        let cross_size = body.radius * 0.4;
+                        ctx.draw_line(
+                            body.pos - ultraviolet::Vec2::new(cross_size, 0.0),
+                            body.pos + ultraviolet::Vec2::new(cross_size, 0.0),
+                            [0, 255, 255, 255]
+                        );
+                        ctx.draw_line(
+                            body.pos - ultraviolet::Vec2::new(0.0, cross_size),
+                            body.pos + ultraviolet::Vec2::new(0.0, cross_size),
+                            [0, 255, 255, 255]
+                        );
+                    }
                 }
             }
 

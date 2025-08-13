@@ -139,5 +139,45 @@ impl super::super::Renderer {
             ui.small("How often to enforce temperature constraint");
             ui.small("Lower = more frequent, higher = more natural dynamics");
         });
+
+        ui.separator();
+
+        // Out-of-Plane Motion Controls
+        ui.group(|ui| {
+            ui.label("🌀 Out-of-Plane Motion (Z-Axis)");
+            
+            ui.checkbox(&mut self.sim_config.enable_out_of_plane, "Enable Z-Motion");
+            
+            if self.sim_config.enable_out_of_plane {
+                ui.add(
+                    egui::Slider::new(&mut self.sim_config.max_z, 0.1..=5.0)
+                        .text("Max Z Displacement")
+                        .step_by(0.1)
+                );
+                ui.small("Maximum distance particles can move out-of-plane");
+                
+                ui.add(
+                    egui::Slider::new(&mut self.sim_config.z_stiffness, 0.1..=20.0)
+                        .text("Z Spring Stiffness")
+                        .step_by(0.1)
+                );
+                ui.small("Restoring force pulling particles back to 2D plane");
+                
+                ui.add(
+                    egui::Slider::new(&mut self.sim_config.z_damping, 0.0..=2.0)
+                        .text("Z Damping")
+                        .step_by(0.01)
+                );
+                ui.small("Damping applied to z-motion (0 = no damping)");
+                
+                ui.add(
+                    egui::Slider::new(&mut self.sim_config.z_frustration_strength, 0.0..=1.0)
+                        .text("Frustration Strength")
+                        .step_by(0.01)
+                );
+                ui.small("Fraction of frustrated force redirected to z-axis");
+                ui.small("Higher values = more aggressive out-of-plane motion");
+            }
+        });
     }
 }

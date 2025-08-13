@@ -42,7 +42,7 @@ impl Renderer {
 
         let num_levels = 11;
         let mut sorted_samples = samples.clone();
-        sorted_samples.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        sorted_samples.sort_by(|a, b| a.total_cmp(b));
         let mut iso_values = Vec::with_capacity(num_levels);
         for i in 0..num_levels {
             let p = i as f32 / (num_levels - 1) as f32;

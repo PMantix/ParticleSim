@@ -190,20 +190,47 @@ pub fn handle_add_rectangle(
     height: f32,
 ) {
     let origin = Vec2::new(x, y);
-    let particle_radius = body.radius;
-    let particle_diameter = 2.0 * particle_radius;
-    let cols = (width / particle_diameter).floor() as usize;
-    let rows = (height / particle_diameter).floor() as usize;
+    let pr = body.radius;
+    let pd = 2.0 * pr;
+    let cols = (width / pd).floor() as usize;
+    let rows = (height / pd).floor() as usize;
+    if cols == 0 || rows == 0 { return; }
+
+    // Fast pre-pass: determine which existing bodies would overlap any new placement and remove them in bulk.
+    // This replaces the previous O(N*M) while-overlaps loop with an O(N + M) approach.
+    let mut to_remove: Vec<usize> = Vec::new();
+    let max_col = cols as isize - 1;
+    let max_row = rows as isize - 1;
+    let overlap_thresh = 2.0 * pr; // center distance threshold for overlap (same radius bodies)
+    let overlap_thresh_sq = overlap_thresh * overlap_thresh;
+    for (idx, existing) in simulation.bodies.iter().enumerate() {
+        // Translate to grid coordinate space
+        let rel = existing.pos - origin;
+        if rel.x < 0.0 || rel.y < 0.0 || rel.x >= width || rel.y >= height { continue; }
+        // Find nearest grid cell center
+        let col_f = (rel.x / pd).floor();
+        let row_f = (rel.y / pd).floor();
+        if col_f < 0.0 || row_f < 0.0 { continue; }
+        let col_i = col_f as isize;
+        let row_i = row_f as isize;
+        if col_i > max_col || row_i > max_row { continue; }
+        let center = origin + Vec2::new((col_i as f32 + 0.5) * pd, (row_i as f32 + 0.5) * pd);
+        if (existing.pos - center).mag_sq() < overlap_thresh_sq {
+            to_remove.push(idx);
+        }
+    }
+    // Remove in reverse order to keep indices valid
+    to_remove.sort_unstable();
+    to_remove.dedup();
+    for &idx in to_remove.iter().rev() {
+        remove_body_with_foils(simulation, idx);
+    }
+
+    // Reserve capacity ahead of insertion
+    simulation.bodies.reserve(cols * rows);
     for row in 0..rows {
         for col in 0..cols {
-            let pos = origin
-                + Vec2::new(
-                    (col as f32 + 0.5) * particle_diameter,
-                    (row as f32 + 0.5) * particle_diameter,
-                );
-            while let Some(idx) = overlaps_any(&simulation.bodies, pos, particle_radius) {
-                remove_body_with_foils(simulation, idx);
-            }
+            let pos = origin + Vec2::new((col as f32 + 0.5) * pd, (row as f32 + 0.5) * pd);
             let mut new_body = crate::body::Body::new(
                 pos,
                 Vec2::zero(),

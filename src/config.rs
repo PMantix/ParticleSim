@@ -131,12 +131,13 @@ pub const SHOW_FIELD_ISOLINES: bool = false;        /// Show electric field isol
 pub const SHOW_VELOCITY_VECTORS: bool = false;      /// Show velocity vectors
 pub const SHOW_CHARGE_DENSITY: bool = false;      /// Show charge-density heatmap
 pub const SHOW_FIELD_VECTORS: bool = false; // Show electric field vectors
+pub const SHOW_FRUSTRATED_MOTION: bool = false;   /// Show particles experiencing frustrated z-motion
 
 // ====================
 // Temperature
 // ====================
 /// Default simulation temperature in arbitrary units
-pub const DEFAULT_TEMPERATURE: f32 = 293.13; // 300 K in Kelvin scale
+pub const DEFAULT_TEMPERATURE: f32 = 5.0; // Reduced from 293.13 for better initial behavior
 
 use serde::{Serialize, Deserialize};
 
@@ -165,6 +166,7 @@ pub struct SimConfig {
     pub show_velocity_vectors: bool,
     pub show_charge_density: bool,
     pub show_field_vectors: bool, // NEW: show field vectors
+    pub show_frustrated_motion: bool, // Show particles experiencing frustrated z-motion
     pub isoline_field_mode: IsolineFieldMode,
     pub damping_base: f32, // Add base damping factor
     pub show_lj_vs_coulomb_ratio: bool, // Show LJ/Coulomb force ratio debug overlay
@@ -178,6 +180,22 @@ pub struct SimConfig {
     pub temperature: f32,
     /// How frequently (in simulation time units) to apply the thermostat
     pub thermostat_frequency: f32,
+    /// Enable pseudo out-of-plane motion for ions and anions
+    pub enable_out_of_plane: bool,
+    /// Maximum abstract displacement along the Z axis
+    pub max_z: f32,
+    /// Spring constant pulling particles back toward the plane
+    pub z_stiffness: f32,
+    /// Damping applied to vertical motion
+    pub z_damping: f32,
+    /// Fraction of frustrated force that gets redirected to z-axis (0.0 to 1.0)
+    pub z_frustration_strength: f32,
+    /// Enable pseudo out-of-plane for solvent species (EC, DMC)
+    pub enable_solvent_out_of_plane: bool,
+    /// Visualization: minimum fraction of blue channel adjustment for z (0..1)
+    pub z_vis_min_frac: f32,
+    /// Visualization: maximum fraction of blue channel adjustment for z (0..1)
+    pub z_vis_max_frac: f32,
 }
 
 impl Default for SimConfig {
@@ -195,6 +213,7 @@ impl Default for SimConfig {
             show_velocity_vectors: SHOW_VELOCITY_VECTORS,
             show_charge_density: SHOW_CHARGE_DENSITY,
             show_field_vectors: SHOW_FIELD_VECTORS, // NEW
+            show_frustrated_motion: SHOW_FRUSTRATED_MOTION, // Show frustrated z-motion debug
             isoline_field_mode: IsolineFieldMode::Total,
             damping_base: 1.00, // Default base damping
             show_lj_vs_coulomb_ratio: false, // Default off
@@ -205,6 +224,14 @@ impl Default for SimConfig {
             coulomb_constant: crate::simulation::forces::K_E,
             temperature: DEFAULT_TEMPERATURE,
             thermostat_frequency: 1.0, // Apply thermostat every 1.0 time units by default
+            enable_out_of_plane: true,  // Enable by default for Li+ mobility testing
+            max_z: 2.0,         // Increased z-range for better mobility
+            z_stiffness: 5.0,   // Reduced stiffness for easier z-displacement
+            z_damping: 0.3,     // Reduced damping for more responsive motion
+            z_frustration_strength: 0.3, // 30% of frustrated force goes to z-axis
+            enable_solvent_out_of_plane: true,
+            z_vis_min_frac: 0.05,
+            z_vis_max_frac: 1.0,
         }
     }
 }

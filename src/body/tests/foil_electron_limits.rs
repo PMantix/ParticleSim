@@ -9,36 +9,44 @@ mod foil_electron_limits {
 
     #[test]
     fn foil_does_not_drop_below_zero_electrons() {
+        // Under strict conservation a single foil cannot change electron count.
         let mut sim = Simulation::new();
         let mut body = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::FoilMetal);
+        // Start at neutral (1). Attempt large negative current should NOT remove without partner.
         body.electrons = smallvec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }; crate::config::FOIL_NEUTRAL_ELECTRONS];
-        let idx = sim.bodies.len();
         let id = body.id;
         sim.bodies.push(body);
         let mut foil = Foil::new(vec![id], Vec2::zero(), 1.0, 1.0, -10.0, 0.0);
-        foil.accum = -100.0;
+        foil.accum = -100.0; // would request many removals
         sim.foils.push(foil);
         sim.step();
-        assert_eq!(sim.bodies[idx].electrons.len(), 0, "Foil should be able to go down to 0 electrons");
+        assert_eq!(sim.bodies[0].electrons.len(), crate::config::FOIL_NEUTRAL_ELECTRONS, "Single foil cannot remove electrons without partner");
     }
 
     #[test]
     fn foil_current_adds_and_removes_electrons_within_limits() {
+        // Use two foils: one adding, one removing, to satisfy conservation.
         let mut sim = Simulation::new();
-        let mut body = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::FoilMetal);
-        body.electrons = smallvec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }; crate::config::FOIL_NEUTRAL_ELECTRONS];
-        let idx = sim.bodies.len();
-        let id = body.id;
-        sim.bodies.push(body);
-        let mut foil = Foil::new(vec![id], Vec2::zero(), 1.0, 1.0, 2.0, 0.0);
-        foil.accum = (crate::config::FOIL_MAX_ELECTRONS - crate::config::FOIL_NEUTRAL_ELECTRONS) as f32;
-        sim.foils.push(foil);
+        let mut body_add = Body::new(Vec2::new(-10.0, 0.0), Vec2::zero(), 1.0, 1.0, 0.0, Species::FoilMetal);
+        body_add.electrons = smallvec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }; crate::config::FOIL_NEUTRAL_ELECTRONS];
+        let mut body_remove = Body::new(Vec2::new(10.0, 0.0), Vec2::zero(), 1.0, 1.0, 0.0, Species::FoilMetal);
+        // Give remover foil extra electrons so it can donate.
+        body_remove.electrons = smallvec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }; crate::config::FOIL_MAX_ELECTRONS];
+        let id_add = body_add.id;
+        let id_remove = body_remove.id;
+        sim.bodies.push(body_add);
+        sim.bodies.push(body_remove);
+        let mut foil_add = Foil::new(vec![id_add], Vec2::new(-10.0,0.0), 1.0,1.0, 2.0, 0.0);
+        foil_add.accum = 1.5; // ready to add one
+        let mut foil_remove = Foil::new(vec![id_remove], Vec2::new(10.0,0.0), 1.0,1.0, -2.0, 0.0);
+        foil_remove.accum = -1.5; // ready to remove one
+        sim.foils.push(foil_add);
+        sim.foils.push(foil_remove);
+        let before_add = sim.bodies[0].electrons.len();
+        let before_remove = sim.bodies[1].electrons.len();
         sim.step();
-        assert_eq!(sim.bodies[idx].electrons.len(), crate::config::FOIL_MAX_ELECTRONS, "Electrons should be added up to FOIL_MAX_ELECTRONS");
-        sim.foils[0].dc_current = -2.0;
-        sim.foils[0].accum = -((crate::config::FOIL_MAX_ELECTRONS - crate::config::FOIL_NEUTRAL_ELECTRONS) as f32);
-        sim.step();
-        assert_eq!(sim.bodies[idx].electrons.len(), 1, "Electrons should be removed down to 1 (one electron removed from 2)");
+        assert_eq!(sim.bodies[0].electrons.len(), (before_add + 1).min(crate::config::FOIL_MAX_ELECTRONS), "Adder foil should gain exactly one electron");
+        assert_eq!(sim.bodies[1].electrons.len(), before_remove - 1, "Remover foil should lose exactly one electron");
     }
 
     #[test]
