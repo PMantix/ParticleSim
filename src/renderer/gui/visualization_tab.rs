@@ -1,4 +1,5 @@
 use super::*;
+use std::sync::atomic::Ordering;
 
 impl super::super::Renderer {
     pub fn show_visualization_tab(&mut self, ui: &mut egui::Ui) {
@@ -42,6 +43,14 @@ impl super::super::Renderer {
                 &mut self.sim_config.show_field_vectors,
                 "Show Field Vectors",
             );
+
+            let mut depth = SHOW_Z_VISUALIZATION.load(Ordering::Relaxed);
+            if ui.checkbox(&mut depth, "Show Depth Cue").changed() {
+                SHOW_Z_VISUALIZATION.store(depth, Ordering::Relaxed);
+                if let Some(sender) = SIM_COMMAND_SENDER.lock().as_ref() {
+                    let _ = sender.send(SimCommand::ToggleZVisualization { enabled: depth });
+                }
+            }
 
             egui::ComboBox::from_label("Isoline Field Mode")
                 .selected_text(format!("{:?}", self.sim_config.isoline_field_mode))

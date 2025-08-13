@@ -6,7 +6,7 @@ use rayon::prelude::*;
 use crate::renderer::state::{FIELD_MAGNITUDE, FIELD_DIRECTION, TIMESTEP, COLLISION_PASSES, SIM_TIME};
 use ultraviolet::Vec2;
 use super::forces;
-use super::collision;
+use super::{collision, out_of_plane};
 use crate::config;
 use crate::simulation::utils::can_transfer_electron;
 use rand::prelude::*; // Import all prelude traits for rand 0.9+
@@ -104,6 +104,7 @@ impl Simulation {
         forces::apply_polar_forces(self);
         forces::apply_lj_forces(self);
         forces::apply_repulsive_forces(self);
+        out_of_plane::apply_out_of_plane(self);
         self.iterate();
         let num_passes = *COLLISION_PASSES.lock();
         for _ in 1..num_passes {

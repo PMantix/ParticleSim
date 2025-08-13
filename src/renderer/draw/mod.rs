@@ -12,6 +12,7 @@ use ultraviolet::Vec2;
 use crate::quadtree::Quadtree;
 use crate::body::Species;
 use rayon::prelude::*;
+use std::sync::atomic::Ordering;
 
 impl super::Renderer {
     pub fn draw(&mut self, ctx: &mut quarkstrom::RenderContext, width: u16, height: u16) {
@@ -165,6 +166,16 @@ impl super::Renderer {
                 for body in &self.bodies {
                     let mut color = body.species.color();
                     let mut draw_radius = body.radius;
+
+                    if SHOW_Z_VISUALIZATION.load(Ordering::Relaxed) {
+                        let max_z = self.sim_config.max_z.max(1.0);
+                        let t = (body.z / max_z).clamp(-1.0, 1.0);
+                        draw_radius *= 1.0 + 0.5 * t;
+                        let shade = 1.0 - 0.3 * t;
+                        color[0] = (color[0] as f32 * shade).clamp(0.0, 255.0) as u8;
+                        color[1] = (color[1] as f32 * shade).clamp(0.0, 255.0) as u8;
+                        color[2] = (color[2] as f32 * shade).clamp(0.0, 255.0) as u8;
+                    }
                     
                     if body.species == Species::LithiumIon {
                         if body.surrounded_by_metal {

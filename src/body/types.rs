@@ -173,6 +173,24 @@ impl Body {
             self.last_surround_frame = frame;
         }
     }
+
+    /// Reset all out-of-plane state to zero, returning the body to the main plane
+    pub fn reset_z(&mut self) {
+        self.z = 0.0;
+        self.vz = 0.0;
+        self.az = 0.0;
+    }
+
+    /// Clamp the body's z-position within +/- `max_z`, zeroing velocity if clipped
+    pub fn clamp_z(&mut self, max_z: f32) {
+        if self.z > max_z {
+            self.z = max_z;
+            self.vz = 0.0;
+        } else if self.z < -max_z {
+            self.z = -max_z;
+            self.vz = 0.0;
+        }
+    }
 }
 
 impl Species {

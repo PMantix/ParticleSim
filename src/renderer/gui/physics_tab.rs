@@ -139,5 +139,51 @@ impl super::super::Renderer {
             ui.small("How often to enforce temperature constraint");
             ui.small("Lower = more frequent, higher = more natural dynamics");
         });
+
+        ui.separator();
+
+        ui.group(|ui| {
+            ui.label("🪐 Out-of-Plane");
+            let mut enabled = self.sim_config.enable_out_of_plane;
+            if ui.checkbox(&mut enabled, "Enable").changed() {
+                self.sim_config.enable_out_of_plane = enabled;
+                if let Some(sender) = SIM_COMMAND_SENDER.lock().as_ref() {
+                    let _ = sender.send(SimCommand::SetOutOfPlane {
+                        enabled,
+                        z_stiffness: self.sim_config.z_stiffness,
+                        z_damping: self.sim_config.z_damping,
+                        max_z: self.sim_config.max_z,
+                        z_frustration_strength: self.sim_config.z_frustration_strength,
+                    });
+                }
+            }
+            ui.add(
+                egui::Slider::new(&mut self.sim_config.z_stiffness, 0.0..=10.0)
+                    .text("Z Stiffness"),
+            );
+            ui.add(
+                egui::Slider::new(&mut self.sim_config.z_damping, 0.0..=10.0)
+                    .text("Z Damping"),
+            );
+            ui.add(
+                egui::Slider::new(&mut self.sim_config.max_z, 0.0..=50.0)
+                    .text("Max Z"),
+            );
+            ui.add(
+                egui::Slider::new(&mut self.sim_config.z_frustration_strength, 0.0..=10.0)
+                    .text("Frustration"),
+            );
+            if ui.button("Apply Z Settings").clicked() {
+                if let Some(sender) = SIM_COMMAND_SENDER.lock().as_ref() {
+                    let _ = sender.send(SimCommand::SetOutOfPlane {
+                        enabled: self.sim_config.enable_out_of_plane,
+                        z_stiffness: self.sim_config.z_stiffness,
+                        z_damping: self.sim_config.z_damping,
+                        max_z: self.sim_config.max_z,
+                        z_frustration_strength: self.sim_config.z_frustration_strength,
+                    });
+                }
+            }
+        });
     }
 }
