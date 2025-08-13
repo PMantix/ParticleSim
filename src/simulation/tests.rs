@@ -39,6 +39,7 @@ mod reactions {
             bounds: 1.0,
             domain_width: 1.0,
             domain_height: 1.0,
+            domain_depth: 1.0,
             rewound_flags: vec![false],
             background_e_field: Vec2::zero(),
             config: Default::default(),
@@ -79,6 +80,7 @@ mod reactions {
             bounds: 1.0,
             domain_width: 1.0,
             domain_height: 1.0,
+            domain_depth: 1.0,
             rewound_flags: vec![false],
             background_e_field: Vec2::zero(),
             config: Default::default(),
@@ -180,6 +182,7 @@ mod reactions {
             bounds: 10.0,
             domain_width: 10.0,
             domain_height: 10.0,
+            domain_depth: 10.0,
             rewound_flags: vec![false; 2],
             background_e_field: Vec2::zero(),
             config: Default::default(),
@@ -219,6 +222,7 @@ mod reactions {
             bounds: 10.0,
             domain_width: 10.0,
             domain_height: 10.0,
+            domain_depth: 10.0,
             rewound_flags: vec![false; 3],
             background_e_field: Vec2::zero(),
             config: Default::default(),
@@ -274,6 +278,7 @@ mod reactions {
                 bounds: 10.0,
                 domain_width: 10.0,
                 domain_height: 10.0,
+                domain_depth: 10.0,
                 rewound_flags: vec![false; 2],
                 background_e_field: Vec2::zero(),
                 config: SimConfig {
@@ -326,6 +331,7 @@ mod reactions {
                 bounds: 10.0,
                 domain_width: 10.0,
                 domain_height: 10.0,
+                domain_depth: 10.0,
                 rewound_flags: vec![false; 2],
                 background_e_field: Vec2::zero(),
                 config: SimConfig {
@@ -375,6 +381,7 @@ mod reactions {
                 bounds: 10.0,
                 domain_width: 10.0,
                 domain_height: 10.0,
+                domain_depth: 10.0,
                 rewound_flags: vec![false; 2],
                 background_e_field: Vec2::zero(),
                 config: SimConfig {
@@ -420,6 +427,7 @@ mod reactions {
                 bounds: 10.0,
                 domain_width: 10.0,
                 domain_height: 10.0,
+                domain_depth: 10.0,
                 rewound_flags: vec![false; 2],
                 background_e_field: Vec2::zero(),
                 config: SimConfig {
@@ -468,6 +476,7 @@ mod reactions {
                 bounds: 10.0,
                 domain_width: 10.0,
                 domain_height: 10.0,
+                domain_depth: 10.0,
                 rewound_flags: vec![false; 2],
                 background_e_field: Vec2::zero(),
                 config: SimConfig {
@@ -493,8 +502,11 @@ mod reactions {
         fn test_field_centered_and_symmetric_direct() {
             let body = Body {
                 pos: Vec2::zero(),
+                z: 0.0,
                 vel: Vec2::zero(),
+                vz: 0.0,
                 acc: Vec2::zero(),
+                az: 0.0,
                 mass: 1.0,
                 radius: 1.0,
                 charge: 1.0,
@@ -580,8 +592,11 @@ mod reactions {
 
             let body = Body {
                 pos: Vec2::zero(),
+                z: 0.0,
                 vel: Vec2::zero(),
+                vz: 0.0,
                 acc: Vec2::zero(),
+                az: 0.0,
                 mass: 1.0,
                 radius: 1.0,
                 charge: 1.0,
@@ -681,6 +696,7 @@ mod polarization_conservation {
             bounds: 10.0,
             domain_width: 10.0,
             domain_height: 10.0,
+            domain_depth: 10.0,
             rewound_flags: vec![false; 2],
             background_e_field: Vec2::zero(),
             config: Default::default(),

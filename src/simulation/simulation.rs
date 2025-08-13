@@ -24,6 +24,7 @@ pub struct Simulation {
     pub bounds: f32, // Legacy field for backward compatibility
     pub domain_width: f32,  // Half-width of the domain (from center to edge)
     pub domain_height: f32, // Half-height of the domain (from center to edge)
+    pub domain_depth: f32,  // Half-depth for quasi-3D motion
     pub rewound_flags: Vec<bool>,
     pub background_e_field: Vec2,
     pub foils: Vec<crate::body::foil::Foil>,
@@ -56,6 +57,7 @@ impl Simulation {
             bounds,
             domain_width: bounds,   // Initialize with square domain, will be updated by SetDomainSize command
             domain_height: bounds,  // Initialize with square domain, will be updated by SetDomainSize command
+            domain_depth: config::DOMAIN_DEPTH,
             rewound_flags,
             background_e_field: Vec2::zero(),
             foils: Vec::new(),
@@ -95,6 +97,7 @@ impl Simulation {
         
         self.bodies.par_iter_mut().for_each(|body| {
             body.acc = Vec2::zero();
+            body.az = 0.0;
         });
 
         forces::attract(self);
@@ -158,11 +161,15 @@ impl Simulation {
         let base_damping = self.config.damping_base.powf(dt / 0.01);
         let domain_width = self.domain_width;
         let domain_height = self.domain_height;
+        let domain_depth = self.domain_depth;
         self.bodies.par_iter_mut().for_each(|body| {
             body.vel += body.acc * dt;
+            body.vz += body.az * dt;
             let damping = base_damping * body.species.damping();
             body.vel *= damping;
+            body.vz *= damping;
             body.pos += body.vel * dt;
+            body.z += body.vz * dt;
             
             // X-axis boundary enforcement
             if body.pos.x < -domain_width {
@@ -180,6 +187,15 @@ impl Simulation {
             } else if body.pos.y > domain_height {
                 body.pos.y = domain_height;
                 body.vel.y = -body.vel.y;
+            }
+
+            // Z-axis boundary enforcement
+            if body.z < -domain_depth {
+                body.z = -domain_depth;
+                body.vz = -body.vz;
+            } else if body.z > domain_depth {
+                body.z = domain_depth;
+                body.vz = -body.vz;
             }
         });
     }
@@ -495,7 +511,7 @@ impl Simulation {
         for body in &self.bodies {
             match body.species {
                 Species::EC | Species::DMC => {
-                    solvent_ke += 0.5 * body.mass * body.vel.mag_sq();
+                    solvent_ke += 0.5 * body.mass * (body.vel.mag_sq() + body.vz * body.vz);
                     solvent_count += 1;
                 }
                 _ => {} // Skip metals and ions
@@ -517,6 +533,7 @@ impl Simulation {
                 match body.species {
                     Species::EC | Species::DMC => {
                         body.vel *= scale;
+                        body.vz *= scale;
                     }
                     _ => {} // Don't modify metals or ions
                 }

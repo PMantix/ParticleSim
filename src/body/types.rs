@@ -22,8 +22,11 @@ pub enum Species {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Body {
     pub pos: Vec2,
+    pub z: f32,
     pub vel: Vec2,
+    pub vz: f32,
     pub acc: Vec2,
+    pub az: f32,
     pub mass: f32,
     pub radius: f32,
     pub charge: f32,
@@ -44,8 +47,11 @@ impl Body {
         // Remove automatic fixed for FoilMetal
         Self {
             pos,
+            z: 0.0,
             vel,
+            vz: 0.0,
             acc: Vec2::zero(),
+            az: 0.0,
             mass,
             radius,
             charge,
