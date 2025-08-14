@@ -74,39 +74,30 @@ impl super::super::Renderer {
                 if linked {
                     ui.label("✅ These foils are currently linked");
                     if ui.button("🔓 Unlink Foils").clicked() {
-                        SIM_COMMAND_SENDER
-                            .lock()
-                            .as_ref()
-                            .unwrap()
-                            .send(SimCommand::UnlinkFoils { a, b })
-                            .unwrap();
+                        if let Some(sender) = SIM_COMMAND_SENDER.lock().as_ref() {
+                            let _ = sender.send(SimCommand::UnlinkFoils { a, b });
+                        }
                     }
                 } else {
                     ui.label("❌ These foils are not linked");
                     ui.horizontal(|ui| {
                         if ui.button("🔗 Link Parallel").clicked() {
-                            SIM_COMMAND_SENDER
-                                .lock()
-                                .as_ref()
-                                .unwrap()
-                                .send(SimCommand::LinkFoils {
+                            if let Some(sender) = SIM_COMMAND_SENDER.lock().as_ref() {
+                                let _ = sender.send(SimCommand::LinkFoils {
                                     a,
                                     b,
                                     mode: LinkMode::Parallel,
-                                })
-                                .unwrap();
+                                });
+                            }
                         }
                         if ui.button("🔗 Link Opposite").clicked() {
-                            SIM_COMMAND_SENDER
-                                .lock()
-                                .as_ref()
-                                .unwrap()
-                                .send(SimCommand::LinkFoils {
+                            if let Some(sender) = SIM_COMMAND_SENDER.lock().as_ref() {
+                                let _ = sender.send(SimCommand::LinkFoils {
                                     a,
                                     b,
                                     mode: LinkMode::Opposite,
-                                })
-                                .unwrap();
+                                });
+                            }
                         }
                     });
                     ui.label("Parallel: same current | Opposite: inverted current");
@@ -152,15 +143,12 @@ impl super::super::Renderer {
                         ui.add(egui::Slider::new(&mut dc_current, -500.0..=500.00).step_by(0.1));
                     });
                     if (dc_current - foil.dc_current).abs() > f32::EPSILON {
-                        SIM_COMMAND_SENDER
-                            .lock()
-                            .as_ref()
-                            .unwrap()
-                            .send(SimCommand::SetFoilDCCurrent {
+                        if let Some(sender) = SIM_COMMAND_SENDER.lock().as_ref() {
+                            let _ = sender.send(SimCommand::SetFoilDCCurrent {
                                 foil_id: foil.id,
                                 dc_current,
-                            })
-                            .unwrap();
+                            });
+                        }
                     }
 
                     // AC Current control
@@ -179,15 +167,12 @@ impl super::super::Renderer {
                         ui.add(egui::Slider::new(&mut ac_current, 0.0..=500.00).step_by(0.1));
                     });
                     if (ac_current - foil.ac_current).abs() > f32::EPSILON {
-                        SIM_COMMAND_SENDER
-                            .lock()
-                            .as_ref()
-                            .unwrap()
-                            .send(SimCommand::SetFoilACCurrent {
+                        if let Some(sender) = SIM_COMMAND_SENDER.lock().as_ref() {
+                            let _ = sender.send(SimCommand::SetFoilACCurrent {
                                 foil_id: foil.id,
                                 ac_current,
-                            })
-                            .unwrap();
+                            });
+                        }
                     }
 
                     let mut hz = foil.switch_hz;
@@ -196,15 +181,12 @@ impl super::super::Renderer {
                         ui.add(egui::DragValue::new(&mut hz).speed(0.1));
                     });
                     if (hz - foil.switch_hz).abs() > f32::EPSILON {
-                        SIM_COMMAND_SENDER
-                            .lock()
-                            .as_ref()
-                            .unwrap()
-                            .send(SimCommand::SetFoilFrequency {
+                        if let Some(sender) = SIM_COMMAND_SENDER.lock().as_ref() {
+                            let _ = sender.send(SimCommand::SetFoilFrequency {
                                 foil_id: foil.id,
                                 switch_hz: hz,
-                            })
-                            .unwrap();
+                            });
+                        }
                     }
                 });
 
@@ -378,37 +360,28 @@ impl super::super::Renderer {
 
                         // Apply changes
                         if (dc_current - foil.dc_current).abs() > f32::EPSILON {
-                            SIM_COMMAND_SENDER
-                                .lock()
-                                .as_ref()
-                                .unwrap()
-                                .send(SimCommand::SetFoilDCCurrent {
+                            if let Some(sender) = SIM_COMMAND_SENDER.lock().as_ref() {
+                                let _ = sender.send(SimCommand::SetFoilDCCurrent {
                                     foil_id: foil.id,
                                     dc_current,
-                                })
-                                .unwrap();
+                                });
+                            }
                         }
                         if (ac_current - foil.ac_current).abs() > f32::EPSILON {
-                            SIM_COMMAND_SENDER
-                                .lock()
-                                .as_ref()
-                                .unwrap()
-                                .send(SimCommand::SetFoilACCurrent {
+                            if let Some(sender) = SIM_COMMAND_SENDER.lock().as_ref() {
+                                let _ = sender.send(SimCommand::SetFoilACCurrent {
                                     foil_id: foil.id,
                                     ac_current,
-                                })
-                                .unwrap();
+                                });
+                            }
                         }
                         if (hz - foil.switch_hz).abs() > f32::EPSILON {
-                            SIM_COMMAND_SENDER
-                                .lock()
-                                .as_ref()
-                                .unwrap()
-                                .send(SimCommand::SetFoilFrequency {
+                            if let Some(sender) = SIM_COMMAND_SENDER.lock().as_ref() {
+                                let _ = sender.send(SimCommand::SetFoilFrequency {
                                     foil_id: foil.id,
                                     switch_hz: hz,
-                                })
-                                .unwrap();
+                                });
+                            }
                         }
                     });
                 }

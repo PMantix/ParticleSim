@@ -316,10 +316,33 @@ impl Simulation {
             if let Some(&dst_idx) = candidate_neighbors.iter().find(|&&dst_idx| {
                 let dst_body = &self.bodies[dst_idx];
                 let d_phi = dst_body.charge - src_body.charge;
-                let hop_vec = dst_body.pos - src_body.pos;
+
+                // Determine donor electron oriented toward the neighbor
+                let unshifted_vec = dst_body.pos - src_body.pos;
+                let unshifted_dir = if unshifted_vec.mag() > 1e-6 { unshifted_vec.normalized() } else { Vec2::zero() };
+                let donor_shift = src_body
+                    .electrons
+                    .iter()
+                    .max_by(|a, b| a.rel_pos.dot(unshifted_dir).partial_cmp(&b.rel_pos.dot(unshifted_dir)).unwrap_or(std::cmp::Ordering::Equal))
+                    .map(|e| e.rel_pos)
+                    .unwrap_or(Vec2::zero());
+
+                // Determine acceptor electron oriented toward the donor
+                let acceptor_shift = dst_body
+                    .electrons
+                    .iter()
+                    .max_by(|a, b| a.rel_pos.dot(-unshifted_dir).partial_cmp(&b.rel_pos.dot(-unshifted_dir)).unwrap_or(std::cmp::Ordering::Equal))
+                    .map(|e| e.rel_pos)
+                    .unwrap_or(Vec2::zero());
+
+                let shifted_src = src_body.pos + donor_shift;
+                let shifted_dst = dst_body.pos + acceptor_shift;
+                let hop_vec = shifted_dst - shifted_src;
+                if hop_vec.mag() > hop_radius { return false; }
                 let hop_dir = if hop_vec.mag() > 1e-6 { hop_vec.normalized() } else { Vec2::zero() };
+
                 let local_field = self.background_e_field
-                    + self.quadtree.field_at_point(&self.bodies, src_body.pos, self.config.coulomb_constant);
+                    + self.quadtree.field_at_point(&self.bodies, shifted_src, self.config.coulomb_constant);
                 let field_dir = if local_field.mag() > 1e-6 { local_field.normalized() } else { Vec2::zero() };
                 let mut alignment = (-hop_dir.dot(field_dir)).max(0.0);
                 if field_dir == Vec2::zero() { alignment = 1.0; }
@@ -339,7 +362,15 @@ impl Simulation {
                 };
 
                 if rate <= 0.0 { return false; }
-                let p_hop = alignment * (1.0 - (-rate * self.dt).exp());
+
+                // Weight hop probability by donor electron alignment with hop direction
+                let donor_align = if donor_shift.mag() > 1e-6 {
+                    donor_shift.normalized().dot(hop_dir).max(0.0)
+                } else {
+                    1.0
+                };
+
+                let p_hop = alignment * donor_align * (1.0 - (-rate * self.dt).exp());
                 rand::random::<f32>() < p_hop
             }) {
                 hops.push((src_idx, dst_idx));
