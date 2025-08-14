@@ -723,5 +723,79 @@ mod polarization_conservation {
                 / total_mass;
         assert!(com_vel.mag() < 1e-4, "Center-of-mass velocity = {:?}", com_vel);
     }
+
+    #[test]
+    fn hop_enhanced_when_donor_electron_faces_ion() {
+        let mut donor = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::LithiumMetal);
+        donor.electrons.push(Electron { rel_pos: Vec2::new(0.5, 0.0), vel: Vec2::zero() });
+        donor.update_charge_from_electrons();
+        let ion = Body::new(Vec2::new(1.5, 0.0), Vec2::zero(), 1.0, 1.0, 1.0, Species::LithiumIon);
+
+        let mut sim = Simulation {
+            dt: 1.0,
+            frame: 0,
+            bodies: vec![donor, ion],
+            quadtree: Quadtree::new(
+                config::QUADTREE_THETA,
+                config::QUADTREE_EPSILON,
+                config::QUADTREE_LEAF_CAPACITY,
+                config::QUADTREE_THREAD_CAPACITY,
+            ),
+            bounds: 10.0,
+            domain_width: 10.0,
+            domain_height: 10.0,
+            domain_depth: 10.0,
+            rewound_flags: vec![false; 2],
+            background_e_field: Vec2::zero(),
+            config: SimConfig { hop_rate_k0: 1e15_f32, ..Default::default() },
+            foils: Vec::new(),
+            cell_list: CellList::new(10.0, 1.0),
+            body_to_foil: HashMap::new(),
+            last_thermostat_time: 0.0,
+        };
+
+        sim.quadtree.build(&mut sim.bodies);
+        let exclude = vec![false; sim.bodies.len()];
+        sim.perform_electron_hopping_with_exclusions(&exclude);
+        assert_eq!(sim.bodies[0].electrons.len(), 0, "Donor should lose electron");
+        assert_eq!(sim.bodies[1].electrons.len(), 1, "Ion should gain electron");
+    }
+
+    #[test]
+    fn hop_suppressed_when_donor_electron_faces_away() {
+        let mut donor = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::LithiumMetal);
+        donor.electrons.push(Electron { rel_pos: Vec2::new(-0.5, 0.0), vel: Vec2::zero() });
+        donor.update_charge_from_electrons();
+        let ion = Body::new(Vec2::new(1.5, 0.0), Vec2::zero(), 1.0, 1.0, 1.0, Species::LithiumIon);
+
+        let mut sim = Simulation {
+            dt: 1.0,
+            frame: 0,
+            bodies: vec![donor, ion],
+            quadtree: Quadtree::new(
+                config::QUADTREE_THETA,
+                config::QUADTREE_EPSILON,
+                config::QUADTREE_LEAF_CAPACITY,
+                config::QUADTREE_THREAD_CAPACITY,
+            ),
+            bounds: 10.0,
+            domain_width: 10.0,
+            domain_height: 10.0,
+            domain_depth: 10.0,
+            rewound_flags: vec![false; 2],
+            background_e_field: Vec2::zero(),
+            config: SimConfig { hop_rate_k0: 1e15_f32, ..Default::default() },
+            foils: Vec::new(),
+            cell_list: CellList::new(10.0, 1.0),
+            body_to_foil: HashMap::new(),
+            last_thermostat_time: 0.0,
+        };
+
+        sim.quadtree.build(&mut sim.bodies);
+        let exclude = vec![false; sim.bodies.len()];
+        sim.perform_electron_hopping_with_exclusions(&exclude);
+        assert_eq!(sim.bodies[0].electrons.len(), 1, "Donor should retain electron");
+        assert_eq!(sim.bodies[1].electrons.len(), 0, "Ion should remain bare");
+    }
 }
 

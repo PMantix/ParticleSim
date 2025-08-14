@@ -36,19 +36,38 @@ impl Body {
                 }
             }
             Species::LithiumMetal => {
-                if self.electrons.is_empty() {
-                    // Check if this metal is surrounded by other metals (electron sea)
-                    // If surrounded, resist oxidation as electrons are delocalized
-                    let can_oxidize = if ENABLE_ELECTRON_SEA_PROTECTION {
-                        !self.surrounded_by_metal
-                    } else {
-                        true
-                    };
-                    
-                    if can_oxidize {
-                        self.species = Species::LithiumIon;
-                        self.update_charge_from_electrons();
-                    }
+                // Determine escape direction from local electric field
+                let escape_dir = if self.e_field.mag() > 1e-6 {
+                    Some(self.e_field.normalized())
+                } else {
+                    None
+                };
+
+                let can_oxidize = if ENABLE_ELECTRON_SEA_PROTECTION {
+                    !self.surrounded_by_metal
+                } else {
+                    true
+                };
+
+                let mut allow = false;
+
+                if let Some(dir) = escape_dir {
+                    // Allow oxidation if no electron aligns with escape direction
+                    let threshold = 0.5; // ~60 degrees
+                    let aligned = self.electrons.iter().any(|e| {
+                        let rel = e.rel_pos;
+                        rel.mag() > 1e-6 && rel.normalized().dot(dir) > threshold
+                    });
+                    if !aligned { allow = true; }
+                } else if self.electrons.is_empty() {
+                    // Fallback to original behavior when no escape direction
+                    allow = true;
+                }
+
+                if can_oxidize && allow {
+                    self.electrons.clear();
+                    self.species = Species::LithiumIon;
+                    self.update_charge_from_electrons();
                 }
             }
             Species::FoilMetal => {
