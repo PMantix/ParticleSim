@@ -8,6 +8,7 @@ use broccoli_rayon::{build::RayonBuildPar, prelude::RayonQueryPar};
 use ultraviolet::Vec2;
 use crate::simulation::Simulation;
 use crate::profile_scope;
+use std::f32::consts::TAU;
 
 pub fn collide(sim: &mut Simulation) {
     profile_scope!("collision");
@@ -97,34 +98,67 @@ pub fn collide(sim: &mut Simulation) {
 }
 
 fn resolve(sim: &mut Simulation, i: usize, j: usize, num_passes: usize) {
-    let b1 = &sim.bodies[i];
-    let b2 = &sim.bodies[j];
-    let p1 = b1.pos;
-    let p2 = b2.pos;
-    let z1 = b1.z;
-    let z2 = b2.z;
-    let r1 = b1.radius;
-    let r2 = b2.radius;
-    let d_xy = p2 - p1;
-    let dz = z2 - z1;
+    // Snapshot current state into locals (avoid holding immutable borrows)
+    let mut p1 = sim.bodies[i].pos;
+    let mut p2 = sim.bodies[j].pos;
+    let mut z1 = sim.bodies[i].z;
+    let mut z2 = sim.bodies[j].z;
+    let r1 = sim.bodies[i].radius;
+    let r2 = sim.bodies[j].radius;
+    let mut d_xy = p2 - p1;
+    let mut dz = z2 - z1;
     let r = r1 + r2;
-    let dist_sq = d_xy.mag_sq() + dz * dz;
+    let mut dist_sq = d_xy.mag_sq() + dz * dz;
+
+    // Check inputs (positions/velocities) and sanitize bodies if needed
+    let mut v1 = sim.bodies[i].vel;
+    let mut v2 = sim.bodies[j].vel;
+    let mut v1z = sim.bodies[i].vz;
+    let mut v2z = sim.bodies[j].vz;
+    let mut need_sanitize = false;
+    if !(p1.x.is_finite() && p1.y.is_finite() && z1.is_finite() && v1.x.is_finite() && v1.y.is_finite() && v1z.is_finite()) {
+        need_sanitize = true;
+    }
+    if !(p2.x.is_finite() && p2.y.is_finite() && z2.is_finite() && v2.x.is_finite() && v2.y.is_finite() && v2z.is_finite()) {
+        need_sanitize = true;
+    }
+    if need_sanitize || !dist_sq.is_finite() {
+        eprintln!("[DIAG][resolve] i={} j={} sanitizing invalid inputs", i, j);
+        for &k in &[i, j] {
+            let b = &mut sim.bodies[k];
+            if !b.pos.x.is_finite() { b.pos.x = 0.0; }
+            if !b.pos.y.is_finite() { b.pos.y = 0.0; }
+            if !b.vel.x.is_finite() { b.vel.x = 0.0; }
+            if !b.vel.y.is_finite() { b.vel.y = 0.0; }
+            if !b.z.is_finite() { b.z = 0.0; }
+            if !b.vz.is_finite() { b.vz = 0.0; }
+            if !b.az.is_finite() { b.az = 0.0; }
+        }
+        // Reload sanitized state
+        p1 = sim.bodies[i].pos;
+        p2 = sim.bodies[j].pos;
+        z1 = sim.bodies[i].z;
+        z2 = sim.bodies[j].z;
+        d_xy = p2 - p1;
+        dz = z2 - z1;
+        dist_sq = d_xy.mag_sq() + dz * dz;
+        v1 = sim.bodies[i].vel;
+        v2 = sim.bodies[j].vel;
+        v1z = sim.bodies[i].vz;
+        v2z = sim.bodies[j].vz;
+    }
     if dist_sq > r * r {
         return;
     }
-    let v1 = b1.vel;
-    let v2 = b2.vel;
-    let v1z = b1.vz;
-    let v2z = b2.vz;
     let v_xy = v2 - v1;
     let vz = v2z - v1z;
     let d_dot_v = d_xy.dot(v_xy) + dz * vz;
-    let m1 = b1.mass;
-    let m2 = b2.mass;
+    let m1 = sim.bodies[i].mass;
+    let m2 = sim.bodies[j].mass;
     let weight1 = m2 / (m1 + m2);
     let weight2 = m1 / (m1 + m2);
 
-    if d_dot_v >= 0.0 && dist_sq > 0.0 {
+    if d_dot_v >= 0.0 && dist_sq > 0.0 && dist_sq.is_finite() {
         let dist = dist_sq.sqrt();
         let corr = r / dist - 1.0;
         let tmpx = d_xy.x * corr;
@@ -140,6 +174,30 @@ fn resolve(sim: &mut Simulation, i: usize, j: usize, num_passes: usize) {
     }
     let v_sq = v_xy.mag_sq() + vz * vz;
     let d_sq = dist_sq;
+    // Fallback: if distances or velocities are degenerate/non-finite, perform deterministic separation and exit
+    if !d_sq.is_finite() || d_sq <= 1.0e-8 || !v_sq.is_finite() {
+        // Separate along a deterministic direction based on indices
+        let angle = ((i as u64) ^ ((j as u64).rotate_left(13))) as f32 * (TAU / 1024.0);
+        let (s, c) = angle.sin_cos();
+        let dir = Vec2::new(c, s);
+        let sep = r * 1.001;
+        let mid = (sim.bodies[i].pos + sim.bodies[j].pos) * 0.5;
+        sim.bodies[i].pos = mid - dir * (sep * weight1);
+        sim.bodies[j].pos = mid + dir * (sep * weight2);
+        // Keep z together and clamped in range
+        let depth = sim.domain_depth;
+        let midz = ((sim.bodies[i].z + sim.bodies[j].z) * 0.5).clamp(-depth, depth);
+        sim.bodies[i].z = midz;
+        sim.bodies[j].z = midz;
+        // Zero any non-finite velocities
+        for &k in &[i, j] {
+            let b = &mut sim.bodies[k];
+            if !b.vel.x.is_finite() { b.vel.x = 0.0; }
+            if !b.vel.y.is_finite() { b.vel.y = 0.0; }
+            if !b.vz.is_finite() { b.vz = 0.0; }
+        }
+        return;
+    }
     let r_sq = r * r;
     let correction_scale = 1.0 / num_passes as f32;
     // DIAGNOSTIC: compute components of t and log anomalies
@@ -158,6 +216,21 @@ fn resolve(sim: &mut Simulation, i: usize, j: usize, num_passes: usize) {
             "[DIAG][resolve] i={} j={} non-finite t: t={:.6e} (scale={:.6e}, numerator={:.6e}, v_sq={:.6e})",
             i, j, t, correction_scale, numerator, v_sq
         );
+        // Fallback to purely positional correction
+        let dist = d_sq.sqrt();
+        if dist.is_finite() && dist > 0.0 {
+            let corr = r / dist - 1.0;
+            let tmpx = d_xy.x * corr;
+            let tmpy = d_xy.y * corr;
+            let tmpz = dz * corr;
+            sim.bodies[i].pos.x -= weight1 * tmpx;
+            sim.bodies[i].pos.y -= weight1 * tmpy;
+            sim.bodies[i].z -= weight1 * tmpz;
+            sim.bodies[j].pos.x += weight2 * tmpx;
+            sim.bodies[j].pos.y += weight2 * tmpy;
+            sim.bodies[j].z += weight2 * tmpz;
+        }
+        return;
     }
     sim.bodies[i].pos -= v1 * t;
     sim.bodies[i].z -= v1z * t;
@@ -171,7 +244,7 @@ fn resolve(sim: &mut Simulation, i: usize, j: usize, num_passes: usize) {
     let dz = z2 - z1;
     let d_dot_v = d_xy.dot(v_xy) + dz * vz;
     let d_sq = d_xy.mag_sq() + dz * dz;
-    let scale = 1.5 * d_dot_v / d_sq;
+    let scale = if d_sq.is_finite() && d_sq > 0.0 { 1.5 * d_dot_v / d_sq } else { 0.0 };
     if !scale.is_finite() {
         eprintln!(
             "[DIAG][resolve] i={} j={} non-finite scale: scale={:.6e} d_dot_v={:.6e} d_sq={:.6e}",
