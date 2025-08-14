@@ -80,15 +80,22 @@ fn enforce_metal_z_boundaries(sim: &mut Simulation, max_z: f32) {
         eprintln!("[ERROR] Invalid max_z in boundary enforcement: {}", max_z);
         return;
     }
-    // Early out if no metals present
-    let any_metal = sim.bodies.iter().any(|b| matches!(b.species, Species::LithiumMetal | Species::FoilMetal));
-    if !any_metal { return; }
+    // Rebuild reusable index buffers
+    sim.metal_indices.clear();
+    sim.non_metal_indices.clear();
+    for (i, body) in sim.bodies.iter().enumerate() {
+        if matches!(body.species, Species::LithiumMetal | Species::FoilMetal) {
+            sim.metal_indices.push(i);
+        } else {
+            sim.non_metal_indices.push(i);
+        }
+    }
+    if sim.metal_indices.is_empty() { return; }
 
     // Choose neighbor structure based on density
     let use_cell = sim.use_cell_list();
-    // Pick a conservative cell size / ensure structures are up to date
+    let metal_max_r = Species::LithiumMetal.radius().max(Species::FoilMetal.radius());
     if use_cell {
-        let metal_max_r = Species::LithiumMetal.radius().max(Species::FoilMetal.radius());
         sim.cell_list.cell_size = 4.0 * metal_max_r;
         sim.cell_list.rebuild(&sim.bodies);
     } else {
@@ -96,32 +103,37 @@ fn enforce_metal_z_boundaries(sim: &mut Simulation, max_z: f32) {
         sim.quadtree.build(&mut sim.bodies);
     }
 
-    // Process non-metal particles
-    for i in 0..sim.bodies.len() {
-        if matches!(sim.bodies[i].species, Species::LithiumMetal | Species::FoilMetal) { continue; }
-        let body_pos = sim.bodies[i].pos;
-        let body_radius = sim.bodies[i].radius;
-        let metal_max_r = Species::LithiumMetal.radius().max(Species::FoilMetal.radius());
+    // Prepare shared data for parallel iteration
+    let cell_list = &sim.cell_list;
+    let quadtree = &sim.quadtree;
+    let bodies_ptr = sim.bodies.as_mut_ptr();
+    let bodies_len = sim.bodies.len();
+
+    sim.non_metal_indices.par_iter().for_each(|&i| {
+        let bodies = unsafe { std::slice::from_raw_parts(bodies_ptr, bodies_len) };
+        let body = unsafe { &mut *bodies_ptr.add(i) };
+        let body_pos = body.pos;
+        let body_radius = body.radius;
         let cutoff = 3.0 * body_radius + metal_max_r;
         let neighbors = if use_cell {
-            sim.cell_list.find_neighbors_within(&sim.bodies, i, cutoff)
+            cell_list.find_neighbors_within(bodies, i, cutoff)
         } else {
-            sim.quadtree.find_neighbors_within(&sim.bodies, i, cutoff)
+            quadtree.find_neighbors_within(bodies, i, cutoff)
         };
 
         let mut min_z_constraint = -max_z;
         let mut max_z_constraint = max_z;
         let mut constraints_applied = 0;
         for &j in &neighbors {
-            if !matches!(sim.bodies[j].species, Species::LithiumMetal | Species::FoilMetal) { continue; }
+            let neighbor = &bodies[j];
+            if !matches!(neighbor.species, Species::LithiumMetal | Species::FoilMetal) { continue; }
             if j == i { continue; }
 
-            // Limit constraint checks to prevent performance degradation
             constraints_applied += 1;
             if constraints_applied > 5 { break; }
 
-            let metal_pos = sim.bodies[j].pos;
-            let metal_radius = sim.bodies[j].radius;
+            let metal_pos = neighbor.pos;
+            let metal_radius = neighbor.radius;
             let dx = body_pos.x - metal_pos.x;
             let dy = body_pos.y - metal_pos.y;
             let distance_sq = dx * dx + dy * dy;
@@ -130,7 +142,7 @@ fn enforce_metal_z_boundaries(sim: &mut Simulation, max_z: f32) {
 
             let distance_2d = distance_sq.sqrt();
             if distance_2d < body_radius + metal_radius + 2.0 * body_radius {
-                let metal_z = sim.bodies[j].z; // typically 0 for metals
+                let metal_z = neighbor.z;
                 let metal_thickness = metal_radius;
                 let constraint_margin = 0.01;
                 let lower_bound = metal_z - metal_thickness - constraint_margin;
@@ -148,7 +160,6 @@ fn enforce_metal_z_boundaries(sim: &mut Simulation, max_z: f32) {
             max_z_constraint = safe_z + 0.1;
         }
 
-        let body = &mut sim.bodies[i];
         if body.z < min_z_constraint {
             body.z = min_z_constraint;
             if body.vz < 0.0 { body.vz = 0.0; }
@@ -158,5 +169,5 @@ fn enforce_metal_z_boundaries(sim: &mut Simulation, max_z: f32) {
             if body.vz > 0.0 { body.vz = 0.0; }
         }
         body.clamp_z(max_z);
-    }
+    });
 }

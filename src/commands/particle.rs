@@ -75,12 +75,14 @@ pub fn handle_add_body(simulation: &mut Simulation, body: &mut crate::body::Body
     body.update_charge_from_electrons();
     body.update_species();
     simulation.bodies.push(body.clone());
+    simulation.clear_index_buffers();
 }
 
 pub fn handle_delete_all(simulation: &mut Simulation) {
     simulation.bodies.clear();
     simulation.foils.clear();
     simulation.body_to_foil.clear();
+    simulation.clear_index_buffers();
 }
 
 pub fn handle_delete_species(simulation: &mut Simulation, species: Species) {
@@ -98,6 +100,7 @@ pub fn handle_delete_species(simulation: &mut Simulation, species: Species) {
             .retain(|foil| foil.body_ids.iter().any(|id| remaining.contains(id)));
         simulation.body_to_foil.retain(|id, _| remaining.contains(id));
     }
+    simulation.clear_index_buffers();
 }
 
 pub fn handle_add_circle(
@@ -143,6 +146,7 @@ pub fn handle_add_circle(
         }
         r += particle_diameter;
     }
+    simulation.clear_index_buffers();
 }
 
 pub fn handle_add_ring(
@@ -179,6 +183,7 @@ pub fn handle_add_ring(
         new_body.update_species();
         simulation.bodies.push(new_body);
     }
+    simulation.clear_index_buffers();
 }
 
 pub fn handle_add_rectangle(
@@ -221,6 +226,7 @@ pub fn handle_add_rectangle(
             simulation.bodies.push(new_body);
         }
     }
+    simulation.clear_index_buffers();
 }
 
 pub fn handle_add_random(
@@ -277,6 +283,7 @@ pub fn handle_set_domain_size(simulation: &mut Simulation, width: f32, height: f
     simulation.domain_height = half_height;
     // Keep bounds for backward compatibility (use larger dimension)
     simulation.bounds = width.max(height) / 2.0;
+    simulation.clear_index_buffers();
 }
 
 pub fn handle_set_temperature(simulation: &mut Simulation, temperature: f32) {
@@ -301,4 +308,5 @@ pub fn remove_body_with_foils(simulation: &mut Simulation, idx: usize) {
             foil.body_ids.retain(|&id| id != body.id);
         }
     }
+    simulation.clear_index_buffers();
 }
