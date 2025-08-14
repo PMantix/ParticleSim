@@ -179,11 +179,19 @@ impl super::Renderer {
                         let size_factor = 1.0 + (z_strength * 0.3 * z_normalized);
                         draw_radius *= size_factor.max(0.3); // Don't let particles disappear
                         
-                        // 2. Color brightness: particles further from camera are darker
-                        let brightness_factor = 1.0 - (z_strength * 0.4 * z_normalized.abs());
-                        let brightness = brightness_factor.clamp(0.3, 1.0); // Keep some visibility
+                        // 2. INVERTED Color brightness: particles at higher z are brighter, z=0 is darker for contrast
+                        let brightness_factor = 1.0 + (z_strength * 0.6 * z_normalized); // Positive z gets brighter
+                        let brightness = brightness_factor.clamp(0.2, 2.0); // Allow overbrightening, but keep minimum visibility
                         
-                        // 3. Optional color tinting based on depth
+                        // 3. Additional contrast: make z=0 depth darker
+                        let z_zero_darkening = if z_normalized.abs() < 0.1 { // Close to z=0
+                            1.0 - (z_strength * 0.3) // Darken z=0 particles
+                        } else {
+                            1.0
+                        };
+                        let final_brightness = brightness * z_zero_darkening.clamp(0.3, 1.0);
+                        
+                        // 4. Optional color tinting based on depth
                         if z_strength > 2.0 {
                             if z_normalized > 0.0 {
                                 // Closer particles get warmer tint (more red/yellow)
@@ -198,12 +206,12 @@ impl super::Renderer {
                             }
                         }
                         
-                        // Apply brightness scaling
-                        color[0] = (color[0] as f32 * brightness) as u8;
-                        color[1] = (color[1] as f32 * brightness) as u8;
-                        color[2] = (color[2] as f32 * brightness) as u8;
+                        // Apply brightness scaling (can now make particles brighter than original)
+                        color[0] = (color[0] as f32 * final_brightness).clamp(0.0, 255.0) as u8;
+                        color[1] = (color[1] as f32 * final_brightness).clamp(0.0, 255.0) as u8;
+                        color[2] = (color[2] as f32 * final_brightness).clamp(0.0, 255.0) as u8;
                         
-                        // 4. Optional alpha transparency for depth
+                        // 5. Optional alpha transparency for depth
                         if z_strength > 1.5 {
                             let alpha_factor = 1.0 - (z_normalized.abs() * (z_strength - 1.5) * 0.2);
                             color[3] = (color[3] as f32 * alpha_factor.clamp(0.5, 1.0)) as u8;

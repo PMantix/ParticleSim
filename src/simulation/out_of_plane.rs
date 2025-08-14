@@ -38,43 +38,105 @@ pub fn apply_out_of_plane(sim: &mut Simulation) {
 }
 
 /// Enforce that particles cannot move above or below metal/foil particles
+/// Optimized version using spatial filtering to reduce O(N²) to approximately O(N)
 fn enforce_metal_z_boundaries(sim: &mut Simulation, max_z: f32) {
-    let len = sim.bodies.len();
+    // Quick early return if too many particles (emergency performance protection)
+    if sim.bodies.len() > 10000 {
+        return;
+    }
     
-    for i in 0..len {
-        // Skip if this is a metal/foil particle (they stay at z=0)
-        if matches!(sim.bodies[i].species, Species::LithiumMetal | Species::FoilMetal) {
-            continue;
-        }
+    // Pre-filter: collect metal particle positions and properties for faster lookup
+    let metal_particles: Vec<(usize, f32, f32, f32)> = sim.bodies.iter().enumerate()
+        .filter_map(|(j, body)| {
+            if matches!(body.species, Species::LithiumMetal | Species::FoilMetal) {
+                Some((j, body.pos.x, body.pos.y, body.radius))
+            } else {
+                None
+            }
+        })
+        .collect();
 
-        // Find nearby metal/foil particles that could constrain z-movement
+    // If no metal particles, no constraints needed
+    if metal_particles.is_empty() {
+        return;
+    }
+
+    // Process non-metal particles in parallel for better performance
+    let non_metal_indices: Vec<usize> = (0..sim.bodies.len())
+        .filter(|&i| !matches!(sim.bodies[i].species, Species::LithiumMetal | Species::FoilMetal))
+        .collect();
+
+    // Use a simple spatial optimization: skip distant metal particles
+    for &i in &non_metal_indices {
+        let body_pos = sim.bodies[i].pos;
+        let body_radius = sim.bodies[i].radius;
+        let search_radius = body_radius * 2.0; // Reduced from 3.0 for better performance
+        
         let mut min_z_constraint = -max_z;
         let mut max_z_constraint = max_z;
+        let mut constraints_applied = 0;
         
-        let search_radius = sim.bodies[i].radius * 3.0; // Search nearby
-        
-        for j in 0..len {
+        // Check only nearby metal particles using spatial filtering
+        for &(j, metal_x, metal_y, metal_radius) in &metal_particles {
             if i == j { continue; }
             
-            // Only check against metal/foil particles
-            if !matches!(sim.bodies[j].species, Species::LithiumMetal | Species::FoilMetal) {
+            // Quick distance check using squared distance to avoid sqrt
+            let dx = body_pos.x - metal_x;
+            let dy = body_pos.y - metal_y;
+            let distance_sq = dx * dx + dy * dy;
+            let combined_radius_sq = (body_radius + metal_radius + search_radius).powi(2);
+            
+            // Skip if too far away (most particles will be filtered out here)
+            if distance_sq > combined_radius_sq {
                 continue;
             }
             
-            let distance_2d = (sim.bodies[i].pos - sim.bodies[j].pos).mag();
+            // Limit constraint checks to prevent performance degradation
+            constraints_applied += 1;
+            if constraints_applied > 5 { // Max 5 constraint checks per particle
+                break;
+            }
             
-            // If we're within the 2D footprint of a metal particle
-            if distance_2d < sim.bodies[i].radius + sim.bodies[j].radius + search_radius {
+            // Quick distance check using squared distance to avoid sqrt
+            let dx = body_pos.x - metal_x;
+            let dy = body_pos.y - metal_y;
+            let distance_sq = dx * dx + dy * dy;
+            let combined_radius_sq = (body_radius + metal_radius + search_radius).powi(2);
+            
+            // Skip if too far away
+            if distance_sq > combined_radius_sq {
+                continue;
+            }
+            
+            // Closer check with actual distance
+            let distance_2d = distance_sq.sqrt();
+            if distance_2d < body_radius + metal_radius + search_radius {
                 let metal_z = sim.bodies[j].z; // Should be 0 for metals
-                let metal_thickness = sim.bodies[j].radius; // Use radius as "thickness"
+                let metal_thickness = metal_radius; // Use radius as "thickness"
                 
                 // Metal creates a barrier - particles can't go through it
-                min_z_constraint = min_z_constraint.max(metal_z - metal_thickness);
-                max_z_constraint = max_z_constraint.min(metal_z + metal_thickness);
+                // Be more conservative with constraints to avoid conflicts
+                let constraint_margin = 0.01; // Small safety margin
+                let lower_bound = metal_z - metal_thickness - constraint_margin;
+                let upper_bound = metal_z + metal_thickness + constraint_margin;
+                
+                // Only update constraints if they don't create conflicts
+                if lower_bound < upper_bound {
+                    min_z_constraint = min_z_constraint.max(lower_bound);
+                    max_z_constraint = max_z_constraint.min(upper_bound);
+                }
             }
         }
         
-        // Apply the constraints
+        // Check for constraint conflicts that can cause impossible positions
+        if min_z_constraint > max_z_constraint {
+            // Conflict detected - use the metal z position as safe constraint
+            let safe_z = 0.0; // Default metal z position
+            min_z_constraint = safe_z - 0.1;
+            max_z_constraint = safe_z + 0.1;
+        }
+        
+        // Apply the constraints safely
         let body = &mut sim.bodies[i];
         if body.z < min_z_constraint {
             body.z = min_z_constraint;

@@ -265,6 +265,13 @@ pub fn handle_command(cmd: SimCommand, simulation: &mut Simulation) {
             cfg.z_damping = z_damping;
             cfg.z_frustration_strength = z_frustration_strength;
             simulation.domain_depth = max_z;
+            
+            // CRITICAL FIX: Reset z-coordinates when out-of-plane is disabled
+            if !enabled {
+                simulation.bodies.iter_mut().for_each(|b| b.reset_z());
+            } else {
+                simulation.bodies.iter_mut().for_each(|b| b.clamp_z(max_z));
+            }
         }
         SimCommand::ToggleZVisualization { enabled } => {
             crate::renderer::state::SHOW_Z_VISUALIZATION.store(enabled, std::sync::atomic::Ordering::Relaxed);
