@@ -46,6 +46,7 @@ pub fn handle_add_foil(simulation: &mut Simulation, width: f32, height: f32, x: 
         simulation.body_to_foil.insert(*id, foil.id);
     }
     simulation.foils.push(foil);
+    simulation.clear_index_buffers();
 }
 
 pub fn handle_set_foil_current(simulation: &mut Simulation, foil_id: u64, current: f32) {

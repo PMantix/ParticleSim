@@ -32,6 +32,8 @@ pub struct Simulation {
     pub config:config::SimConfig, //
     /// Track when thermostat was last applied (in simulation time)
     pub last_thermostat_time: f32,
+    pub metal_indices: Vec<usize>,
+    pub non_metal_indices: Vec<usize>,
 }
 
 impl Simulation {
@@ -64,6 +66,8 @@ impl Simulation {
             body_to_foil: HashMap::new(),
             config: config::SimConfig::default(),
             last_thermostat_time: 0.0,
+            metal_indices: Vec::new(),
+            non_metal_indices: Vec::new(),
         };
         // Example: scenario setup using SimCommand (pseudo-code, actual sending is done in main.rs or GUI)
         // let left_center = Vec2::new(-bounds * 0.6, 0.0);
@@ -264,6 +268,11 @@ impl Simulation {
         let area = (2.0 * self.domain_width) * (2.0 * self.domain_height);
         let density = self.bodies.len() as f32 / area;
         density > self.config.cell_list_density_threshold
+    }
+
+    pub fn clear_index_buffers(&mut self) {
+        self.metal_indices.clear();
+        self.non_metal_indices.clear();
     }
 
     /// Attempt electron hops between nearby bodies.

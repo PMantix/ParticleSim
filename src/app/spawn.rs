@@ -32,6 +32,7 @@ pub fn remove_body_with_foils(simulation: &mut Simulation, idx: usize) {
             foil.body_ids.retain(|&id| id != body.id);
         }
     }
+    simulation.clear_index_buffers();
 }
 
 pub fn add_circle(
@@ -85,6 +86,7 @@ pub fn add_circle(
         }
         r += particle_diameter;
     }
+    simulation.clear_index_buffers();
 }
 
 pub fn add_ring(simulation: &mut Simulation, body: crate::body::Body, x: f32, y: f32, radius: f32) {
@@ -117,6 +119,7 @@ pub fn add_ring(simulation: &mut Simulation, body: crate::body::Body, x: f32, y:
         new_body.update_species();
         simulation.bodies.push(new_body);
     }
+    simulation.clear_index_buffers();
 }
 
 pub fn add_rectangle(
@@ -166,6 +169,7 @@ pub fn add_rectangle(
             simulation.bodies.push(new_body);
         }
     }
+    simulation.clear_index_buffers();
 }
 
 pub fn add_random(
@@ -214,6 +218,7 @@ pub fn add_random(
     if failures > 0 {
         eprintln!("Failed to place {} random bodies out of {} after {} attempts each", failures, count, RANDOM_ATTEMPTS);
     }
+    simulation.clear_index_buffers();
 }
 
 pub fn add_foil(
@@ -256,6 +261,7 @@ pub fn add_foil(
             simulation.bodies.push(new_body);
         }
     }
+    simulation.clear_index_buffers();
     let foil = crate::body::foil::Foil::new(body_ids.clone(), origin, width, height, current, 0.0);
     for id in &body_ids {
         simulation.body_to_foil.insert(*id, foil.id);
