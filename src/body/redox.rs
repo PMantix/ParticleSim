@@ -36,16 +36,42 @@ impl Body {
                 }
             }
             Species::LithiumMetal => {
+                let can_oxidize = if ENABLE_ELECTRON_SEA_PROTECTION {
+                    !self.surrounded_by_metal
+                } else {
+                    true
+                };
+
+                // Preserve original behavior: metals with no electrons oxidize
                 if self.electrons.is_empty() {
-                    // Check if this metal is surrounded by other metals (electron sea)
-                    // If surrounded, resist oxidation as electrons are delocalized
-                    let can_oxidize = if ENABLE_ELECTRON_SEA_PROTECTION {
-                        !self.surrounded_by_metal
-                    } else {
-                        true
-                    };
-                    
                     if can_oxidize {
+                        self.species = Species::LithiumIon;
+                        self.update_charge_from_electrons();
+                    }
+                    // Early return so orientation logic only applies when electrons are present
+                    return;
+                }
+
+                if !can_oxidize {
+                    return; // Surrounded metals keep their electrons regardless of orientation
+                }
+
+                // Determine escape direction from local electric field
+                let escape_dir = if self.e_field.mag() > 1e-6 {
+                    Some(self.e_field.normalized())
+                } else {
+                    None
+                };
+
+                if let Some(dir) = escape_dir {
+                    // Allow oxidation only when no electron aligns with the escape direction
+                    let threshold = 0.5; // ~60 degrees
+                    let aligned = self.electrons.iter().any(|e| {
+                        let rel = e.rel_pos;
+                        rel.mag() > 1e-6 && rel.normalized().dot(dir) > threshold
+                    });
+                    if !aligned {
+                        self.electrons.clear();
                         self.species = Species::LithiumIon;
                         self.update_charge_from_electrons();
                     }

@@ -87,6 +87,40 @@ mod tests {
         }
     }
 
+    #[test]
+    fn metal_oxidizes_when_electron_shifted_away_from_field() {
+        let mut metal = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::LithiumMetal);
+        metal.e_field = Vec2::new(1.0, 0.0);
+        metal.electrons.push(Electron { rel_pos: Vec2::new(-0.5, 0.0), vel: Vec2::zero() });
+        metal.update_charge_from_electrons();
+        metal.apply_redox();
+        assert_eq!(metal.species, Species::LithiumIon);
+        assert_eq!(metal.electrons.len(), 0);
+        assert_eq!(metal.charge, 1.0);
+    }
+
+    #[test]
+    fn metal_retains_state_when_electron_faces_field() {
+        let mut metal = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::LithiumMetal);
+        metal.e_field = Vec2::new(1.0, 0.0);
+        metal.electrons.push(Electron { rel_pos: Vec2::new(0.5, 0.0), vel: Vec2::zero() });
+        metal.update_charge_from_electrons();
+        metal.apply_redox();
+        assert_eq!(metal.species, Species::LithiumMetal);
+        assert_eq!(metal.electrons.len(), 1);
+    }
+
+    #[test]
+    fn metal_with_electrons_and_no_field_remains_metal() {
+        let mut metal = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::LithiumMetal);
+        // No electric field; electron orientation shouldn't matter
+        metal.electrons.push(Electron { rel_pos: Vec2::new(0.5, 0.0), vel: Vec2::zero() });
+        metal.update_charge_from_electrons();
+        metal.apply_redox();
+        assert_eq!(metal.species, Species::LithiumMetal);
+        assert_eq!(metal.electrons.len(), 1);
+    }
+
     mod physics {
         use std::collections::HashMap;
 
