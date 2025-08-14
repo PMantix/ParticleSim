@@ -113,11 +113,11 @@ pub const CLUMP_RADIUS: f32 = 20.0;                     // Radius of each clump
 pub const DOMAIN_BOUNDS: f32 = 350.0;                   // Simulation domain boundary
 /// Half-depth of the simulation domain for quasi-3D motion
 pub const DOMAIN_DEPTH: f32 = 5.0;
-pub const OUT_OF_PLANE_ENABLED: bool = false;
+pub const OUT_OF_PLANE_ENABLED: bool = true;
 pub const Z_STIFFNESS: f32 = 1.0;
 pub const Z_DAMPING: f32 = 0.5;
 pub const MAX_Z: f32 = DOMAIN_DEPTH;
-pub const Z_FRUSTRATION_STRENGTH: f32 = 0.0;
+pub const Z_FRUSTRATION_STRENGTH: f32 = 0.1;
 
 // ====================
 // Threading/Parallelism

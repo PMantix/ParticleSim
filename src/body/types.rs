@@ -44,17 +44,29 @@ static NEXT_ID: AtomicU64 = AtomicU64::new(1);
 
 impl Body {
     pub fn new(pos: Vec2, vel: Vec2, mass: f32, radius: f32, charge: f32, species: Species) -> Self {
-        // Remove automatic fixed for FoilMetal
+        // Validate inputs to prevent NaN/infinite values
+        let safe_pos = Vec2::new(
+            if pos.x.is_finite() { pos.x } else { 0.0 },
+            if pos.y.is_finite() { pos.y } else { 0.0 }
+        );
+        let safe_vel = Vec2::new(
+            if vel.x.is_finite() { vel.x } else { 0.0 },
+            if vel.y.is_finite() { vel.y } else { 0.0 }
+        );
+        let safe_mass = if mass.is_finite() && mass > 0.0 { mass } else { 1.0 };
+        let safe_radius = if radius.is_finite() && radius > 0.0 { radius } else { 1.0 };
+        let safe_charge = if charge.is_finite() { charge } else { 0.0 };
+        
         Self {
-            pos,
+            pos: safe_pos,
             z: 0.0,
-            vel,
+            vel: safe_vel,
             vz: 0.0,
             acc: Vec2::zero(),
             az: 0.0,
-            mass,
-            radius,
-            charge,
+            mass: safe_mass,
+            radius: safe_radius,
+            charge: safe_charge,
             id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
             species,
             electrons: SmallVec::new(),

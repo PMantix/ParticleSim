@@ -42,7 +42,12 @@ impl Renderer {
 
         let num_levels = 11;
         let mut sorted_samples = samples.clone();
-        sorted_samples.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        // Filter out NaN and infinite values before sorting
+        sorted_samples.retain(|x| x.is_finite());
+        if sorted_samples.is_empty() {
+            return; // No valid samples
+        }
+        sorted_samples.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
         let mut iso_values = Vec::with_capacity(num_levels);
         for i in 0..num_levels {
             let p = i as f32 / (num_levels - 1) as f32;
@@ -170,9 +175,16 @@ pub fn compute_potential_at_point(
 
     if config.isoline_field_mode != crate::config::IsolineFieldMode::ExternalOnly {
         for body in bodies {
+            // Skip bodies with invalid positions or charges
+            if !body.pos.x.is_finite() || !body.pos.y.is_finite() || !body.charge.is_finite() {
+                continue;
+            }
             let r = pos - body.pos;
             let dist = r.mag().max(1e-4);
-            potential += config.coulomb_constant * body.charge / dist;
+            let contribution = config.coulomb_constant * body.charge / dist;
+            if contribution.is_finite() {
+                potential += contribution;
+            }
         }
     }
 
@@ -180,8 +192,16 @@ pub fn compute_potential_at_point(
         let mag = *FIELD_MAGNITUDE.lock();
         let theta = (*FIELD_DIRECTION.lock()).to_radians();
         let background = Vec2::new(theta.cos(), theta.sin()) * mag;
-        potential += -background.dot(pos);
+        let external_contribution = -background.dot(pos);
+        if external_contribution.is_finite() {
+            potential += external_contribution;
+        }
     }
 
-    potential
+    // Ensure we return a finite value
+    if potential.is_finite() {
+        potential
+    } else {
+        0.0
+    }
 }

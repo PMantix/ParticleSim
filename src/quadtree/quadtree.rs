@@ -2,7 +2,7 @@ use super::node::Node;
 use super::quad::Quad;
 use crate::body::Body;
 use ultraviolet::Vec2;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicUsize, Ordering, AtomicU8};
 use std::ops::Range;
 use rayon::prelude::*;
 use crate::partition::Partition;
@@ -57,18 +57,21 @@ impl Quadtree {
         split[1] = split[0] + bodies[split[0]..split[2]].partition(predicate);
         split[3] = split[2] + bodies[split[2]..split[4]].partition(predicate);
 
-        let len = self.atomic_len.fetch_add(1, Ordering::Relaxed);
-        let children = len * 4 + 1;
+        let prev_len = self.atomic_len.fetch_add(1, Ordering::Relaxed);
+        let children = prev_len * 4 + 1;
+    // Removed verbose diagnostics; keep function lightweight
 
-        // Ensure enough space for all children nodes and parents
-        if self.parents.len() <= len {
-            self.parents.resize(len + 1, 0);
+        // Ensure enough space for all children nodes and parents with proper bounds checking
+        while self.parents.len() <= prev_len {
+            let new_cap = (prev_len + 1) * 2;
+            self.parents.resize(new_cap, 0); // Double the size to prevent frequent resizing
         }
-        self.parents[len] = node;
+        self.parents[prev_len] = node;
         self.nodes[node].children = children;
 
-        if self.nodes.len() <= children + 3 {
-            self.nodes.resize(children + 4, Node::ZEROED);
+        while self.nodes.len() <= children + 3 {
+            let new_cap = (children + 4) * 2;
+            self.nodes.resize(new_cap, Node::ZEROED); // Double the size to prevent frequent resizing
         }
 
         let nexts = [
@@ -121,48 +124,68 @@ impl Quadtree {
     }
 
     pub fn build(&mut self, bodies: &mut [Body]) {
-        #[cfg(feature = "debug_quadtree")]
-        println!("Quadtree::build: start, bodies.len() = {}", bodies.len());
         profile_scope!("quadtree_build");
         if bodies.is_empty() {
-            #[cfg(feature = "debug_quadtree")]
-            println!("Quadtree::build: bodies is empty, clearing and returning");
             self.clear();
             return;
         }
 
         self.clear();
-        #[cfg(feature = "debug_quadtree")]
-        println!("Quadtree::build: after clear");
-
-        let new_len = 4 * bodies.len() + 1024;
+        
+    let new_len = 4 * bodies.len() + 1024;
         self.nodes.resize(new_len, Node::ZEROED);
         self.parents.resize(new_len / 4, 0);
-        #[cfg(feature = "debug_quadtree")]
-        println!("Quadtree::build: after resize, nodes.len() = {}", self.nodes.len());
 
         let quad = Quad::new_containing(bodies);
-        #[cfg(feature = "debug_quadtree")]
-        println!("Quadtree::build: quad = {:?}", quad);
         self.nodes[Self::ROOT] = Node::new(0, quad, 0..bodies.len());
 
         let (tx, rx) = crossbeam::channel::unbounded();
         tx.send(Self::ROOT).unwrap();
 
         let quadtree_ptr = self as *mut Quadtree as usize;
-        let bodies_ptr = bodies.as_ptr() as usize;
+    let bodies_ptr = bodies.as_ptr() as usize;
         let bodies_len = bodies.len();
 
+    // Per-node claim flags to prevent duplicate subdivision across workers.
+    // 0 = unclaimed, 1 = claimed (subdivision in progress or done)
+    let claims: Vec<AtomicU8> = (0..new_len).map(|_| AtomicU8::new(0)).collect();
+    let claims_ptr = claims.as_ptr() as usize;
+
         let counter = AtomicUsize::new(0);
+        let workers_started = AtomicUsize::new(0);
+        let workers_done = AtomicUsize::new(0);
+    let _expected_workers = rayon::current_num_threads();
+    let _t0 = std::time::Instant::now();
+        
         rayon::broadcast(|_| {
+            let _w_id = workers_started.fetch_add(1, Ordering::Relaxed);
             let mut stack = Vec::new();
             let quadtree = unsafe { &mut *(quadtree_ptr as *mut Quadtree) };
             let bodies =
                 unsafe { std::slice::from_raw_parts_mut(bodies_ptr as *mut Body, bodies_len) };
-            #[cfg(feature = "debug_quadtree")]
-            println!("Quadtree::build: inside rayon::broadcast, bodies_len = {}", bodies_len);
-            while counter.load(Ordering::Relaxed) != bodies.len() {
+            let claims = unsafe {
+                std::slice::from_raw_parts(claims_ptr as *const AtomicU8, new_len)
+            };
+            
+            let mut idle_iterations = 0;
+            const MAX_IDLE_ITERATIONS: usize = 1000; // Prevent infinite loops
+            let mut _processed_nodes: usize = 0;
+            
+            loop {
+                let current_counter = counter.load(Ordering::Relaxed);
+                
+                // Exit condition: all bodies processed OR timeout reached
+                if current_counter >= bodies.len() || idle_iterations > MAX_IDLE_ITERATIONS {
+                    break;
+                }
+                
+                let mut work_done = false;
+                
+                // Try to get work from channel
                 while let Ok(node) = rx.try_recv() {
+                    work_done = true;
+                    idle_iterations = 0; // Reset idle counter when work is found
+                    
                     #[cfg(feature = "debug_quadtree")]
                     println!("Quadtree::build: processing node {}", node);
                     let range = quadtree.nodes[node].bodies.clone();
@@ -171,17 +194,27 @@ impl Quadtree {
                     if range.len() >= quadtree.thread_capacity {
                         #[cfg(feature = "debug_quadtree")]
                         println!("Quadtree::build: subdividing node {}", node);
-                        let children = quadtree.subdivide(node, bodies, range.clone());
-                        if children != node {
-                            for i in 0..4 {
-                                if !self.nodes[children + i].bodies.is_empty() {
-                                    tx.send(children + i).unwrap();
+                        // Try to claim this node for subdivision to prevent duplicate work
+                        let claimed = claims[node]
+                            .compare_exchange(0, 1, Ordering::AcqRel, Ordering::Acquire)
+                            .is_ok();
+                        if claimed {
+                            let children = quadtree.subdivide(node, bodies, range.clone());
+                            if children != node {
+                                for i in 0..4 {
+                                    if !quadtree.nodes[children + i].bodies.is_empty() {
+                                        tx.send(children + i).unwrap();
+                                    }
                                 }
+                            } else {
+                                // Node is a leaf, increment counter
+                                counter.fetch_add(len, Ordering::Relaxed);
                             }
                         } else {
-                            // Node is a leaf, increment counter
-                            counter.fetch_add(len, Ordering::Relaxed);
+                            // Another worker is (or has) subdivided this node; skip duplicating
+                            // The winning worker will enqueue children.
                         }
+                        _processed_nodes += 1;
                         continue;
                     }
 
@@ -208,24 +241,49 @@ impl Quadtree {
                                 weighted_pos
                             };
                             quadtree.nodes[node].charge = total_charge;
+                            _processed_nodes += 1;
                             continue;
                         }
                         #[cfg(feature = "debug_quadtree")]
                         println!("Quadtree::build: subdividing node {} in stack", node);
-                        let children = quadtree.subdivide(node, bodies, range);
-                        for i in 0..4 {
-                            if !self.nodes[children + i].bodies.is_empty() {
-                                stack.push(children + i);
+                        // Claim before subdividing to prevent duplicate subdivision across workers
+                        let claimed = claims[node]
+                            .compare_exchange(0, 1, Ordering::AcqRel, Ordering::Acquire)
+                            .is_ok();
+                        if claimed {
+                            let children = quadtree.subdivide(node, bodies, range);
+                            for i in 0..4 {
+                                if !quadtree.nodes[children + i].bodies.is_empty() {
+                                    stack.push(children + i);
+                                }
+                            }
+                        } else {
+                            // Someone else subdivided or is subdividing; if already subdivided, we can follow children
+                            let children = quadtree.nodes[node].children;
+                            if children != 0 {
+                                for i in 0..4 {
+                                    if !quadtree.nodes[children + i].bodies.is_empty() {
+                                        stack.push(children + i);
+                                    }
+                                }
                             }
                         }
+                        _processed_nodes += 1;
+                        // (progress logging removed)
                     }
                 }
+                
+                // If no work was done this iteration, increment idle counter
+                if !work_done {
+                    idle_iterations += 1;
+                    // Small yield to prevent excessive CPU usage during idle periods
+                    std::thread::yield_now();
+                }
             }
+            let _done = workers_done.fetch_add(1, Ordering::Relaxed) + 1;
         });
 
         self.propagate(bodies);
-        #[cfg(feature = "debug_quadtree")]
-        println!("Quadtree::build: end");
     }
 
     pub fn acc_pos(&self, pos: Vec2, q: f32, radius: f32, bodies: &[Body], k_e: f32) -> Vec2 {

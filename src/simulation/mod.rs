@@ -13,3 +13,6 @@ pub mod out_of_plane;
 #[cfg(test)]
 mod tests;
 
+#[cfg(test)]
+mod out_of_plane_tests;
+

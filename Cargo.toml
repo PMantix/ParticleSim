@@ -3,6 +3,26 @@ name = "particle_sim"
 version = "0.1.5"
 edition = "2021"
 
+[[bin]]
+name = "particle_sim"
+path = "src/main.rs"
+
+[[bin]]
+name = "debug_out_of_plane"
+path = "debug_out_of_plane.rs"
+
+[[bin]]
+name = "verify_config"
+path = "verify_config.rs"
+
+[[bin]]
+name = "minimal_test"
+path = "minimal_test.rs"
+
+[[bin]]
+name = "debug_graphics"
+path = "debug_graphics.rs"
+
 [dependencies]
 quarkstrom = { git = "https://github.com/PMantix/quarkstrom", branch = "master"}
 

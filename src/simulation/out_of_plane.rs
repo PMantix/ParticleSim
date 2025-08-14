@@ -7,7 +7,10 @@ use super::simulation::Simulation;
 /// Enforces that particles cannot move above or below metal/foil particles,
 /// and applies z-direction spring and damping forces.
 pub fn apply_out_of_plane(sim: &mut Simulation) {
+    // debug log removed
+    
     if !sim.config.enable_out_of_plane {
+        // debug log removed
         // If disabled, reset all z-components to keep simulation strictly 2D
         sim.bodies.par_iter_mut().for_each(|b| b.reset_z());
         return;
@@ -17,14 +20,44 @@ pub fn apply_out_of_plane(sim: &mut Simulation) {
     let damping = sim.config.z_damping;
     let max_z = sim.config.max_z;
     let frustration = sim.config.z_frustration_strength;
+    
+    // debug log removed
+    
+    // Safety checks to prevent crashes
+    if !stiffness.is_finite() || !damping.is_finite() || !max_z.is_finite() || !frustration.is_finite() {
+        eprintln!("[ERROR] Invalid out-of-plane parameters detected! Disabling for safety.");
+        return;
+    }
+    
+    if max_z <= 0.0 {
+        eprintln!("[ERROR] max_z must be positive! Got: {}", max_z);
+        return;
+    }
 
+    // debug log removed
     // First pass: apply basic z-forces to all particles
     sim.bodies.par_iter_mut().for_each(|body| {
         // Only non-metal particles can move in z-direction
         if !matches!(body.species, Species::LithiumMetal | Species::FoilMetal) {
+            // Safety check for NaN/infinite values
+            if !body.z.is_finite() || !body.vz.is_finite() {
+                body.reset_z(); // Emergency reset
+                return;
+            }
+            
             // Frustration redirects in-plane acceleration into the z-axis
-            let frustration_force = body.acc.mag() * frustration;
-            body.az += -stiffness * body.z - damping * body.vz + frustration_force;
+            let acc_mag = body.acc.mag();
+            if acc_mag.is_finite() {
+                let frustration_force = acc_mag * frustration;
+                if frustration_force.is_finite() {
+                    body.az += -stiffness * body.z - damping * body.vz + frustration_force;
+                }
+            }
+            
+            // Additional safety check after force calculation
+            if !body.az.is_finite() {
+                body.az = 0.0;
+            }
         } else {
             // Metal/foil particles stay fixed at z=0
             body.z = 0.0;
@@ -33,15 +66,26 @@ pub fn apply_out_of_plane(sim: &mut Simulation) {
         }
     });
 
+    // debug log removed
     // Second pass: enforce z-constraints based on metal/foil boundaries
     enforce_metal_z_boundaries(sim, max_z);
+    // debug log removed
 }
 
 /// Enforce that particles cannot move above or below metal/foil particles
 /// Optimized version using spatial filtering to reduce O(N²) to approximately O(N)
 fn enforce_metal_z_boundaries(sim: &mut Simulation, max_z: f32) {
+    // debug log removed
+    
     // Quick early return if too many particles (emergency performance protection)
     if sim.bodies.len() > 10000 {
+        eprintln!("[WARNING] Too many particles ({}) for out-of-plane constraints. Skipping for performance.", sim.bodies.len());
+        return;
+    }
+    
+    // Safety check
+    if !max_z.is_finite() || max_z <= 0.0 {
+        eprintln!("[ERROR] Invalid max_z in boundary enforcement: {}", max_z);
         return;
     }
     
@@ -55,9 +99,11 @@ fn enforce_metal_z_boundaries(sim: &mut Simulation, max_z: f32) {
             }
         })
         .collect();
+    // debug log removed
 
     // If no metal particles, no constraints needed
     if metal_particles.is_empty() {
+        // debug log removed
         return;
     }
 
@@ -65,9 +111,11 @@ fn enforce_metal_z_boundaries(sim: &mut Simulation, max_z: f32) {
     let non_metal_indices: Vec<usize> = (0..sim.bodies.len())
         .filter(|&i| !matches!(sim.bodies[i].species, Species::LithiumMetal | Species::FoilMetal))
         .collect();
+    // debug log removed
 
     // Use a simple spatial optimization: skip distant metal particles
-    for &i in &non_metal_indices {
+    for (_particle_idx, &i) in non_metal_indices.iter().enumerate() {
+    // debug log removed
         let body_pos = sim.bodies[i].pos;
         let body_radius = sim.bodies[i].radius;
         let search_radius = body_radius * 2.0; // Reduced from 3.0 for better performance
@@ -150,4 +198,6 @@ fn enforce_metal_z_boundaries(sim: &mut Simulation, max_z: f32) {
         // Also apply global max_z constraint
         body.clamp_z(max_z);
     }
+    
+    // debug log removed
 }
