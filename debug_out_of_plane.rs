@@ -18,7 +18,7 @@ fn main() {
             0.0,    // charge
             body::Species::LithiumIon,
         );
-        body.z = (i as f32 - 2.0); // Start at different z levels
+        body.z = i as f32 - 2.0; // Start at different z levels
         sim.bodies.push(body);
     }
     

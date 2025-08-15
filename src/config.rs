@@ -9,8 +9,8 @@ pub const ELECTRON_SPRING_K_EC: f32 = ELECTRON_SPRING_K;    // EC-specific sprin
 pub const ELECTRON_SPRING_K_DMC: f32 = ELECTRON_SPRING_K;   // DMC-specific spring constant
 
 // Effective polarization charge (in units of e) for solvent molecules
-pub const POLAR_CHARGE_EC: f32 = 0.51;
-pub const POLAR_CHARGE_DMC: f32 = 0.10; //0.054;
+pub const POLAR_CHARGE_EC: f32 = 0.40;
+pub const POLAR_CHARGE_DMC: f32 = 0.1; //0.054;
 pub const POLAR_CHARGE_DEFAULT: f32 = 1.0;
 
 use crate::body::Species;
@@ -112,7 +112,7 @@ pub const QUADTREE_THREAD_CAPACITY: usize = 1024;       // Max bodies per thread
 pub const CLUMP_RADIUS: f32 = 20.0;                     // Radius of each clump
 pub const DOMAIN_BOUNDS: f32 = 350.0;                   // Simulation domain boundary
 /// Half-depth of the simulation domain for quasi-3D motion
-pub const DOMAIN_DEPTH: f32 = 5.0;
+pub const DOMAIN_DEPTH: f32 = 2.0;
 pub const OUT_OF_PLANE_ENABLED: bool = true;
 pub const Z_STIFFNESS: f32 = 1.0;
 pub const Z_DAMPING: f32 = 0.5;

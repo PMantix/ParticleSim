@@ -2,7 +2,6 @@
 use particle_sim::*;
 use std::panic;
 use std::process;
-use quarkstrom::Renderer;
 
 fn main() {
     println!("=== Graphics Debug Test ===");

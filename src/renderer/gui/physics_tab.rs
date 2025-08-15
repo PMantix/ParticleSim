@@ -166,7 +166,7 @@ impl super::super::Renderer {
                     .text("Z Damping"),
             );
             ui.add(
-                egui::Slider::new(&mut self.sim_config.max_z, 0.0..=50.0)
+                egui::Slider::new(&mut self.sim_config.max_z, 0.01..=50.0)
                     .text("Max Z"),
             );
             ui.add(

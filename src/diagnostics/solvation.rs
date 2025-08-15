@@ -4,6 +4,14 @@
 use crate::body::{Body, Species};
 use crate::simulation::compute_temperature;
 
+/// Calculate 3D distance between two bodies, accounting for z-coordinates
+fn distance_3d(body1: &Body, body2: &Body) -> f32 {
+    let dx = body1.pos.x - body2.pos.x;
+    let dy = body1.pos.y - body2.pos.y;
+    let dz = body1.z - body2.z;
+    (dx * dx + dy * dy + dz * dz).sqrt()
+}
+
 pub struct SolvationDiagnostic {
     pub temperature: f32,
     pub avg_li_coordination: f32,
@@ -84,7 +92,7 @@ impl SolvationDiagnostic {
                     li_count += 1;
                     let li_shell = body.radius * CATION_SHELL_FACTOR; // Use larger shell for small lithium
                     let li_solvent_ids: Vec<u64> = bodies.iter().enumerate()
-                        .filter(|(k, b)| *k != i && matches!(b.species, Species::EC | Species::DMC) && (b.pos - body.pos).mag() < li_shell)
+                        .filter(|(k, b)| *k != i && matches!(b.species, Species::EC | Species::DMC) && distance_3d(b, body) < li_shell)
                         .map(|(_, b)| b.id)
                         .collect();
                     let li_solvents = li_solvent_ids.len();
@@ -101,7 +109,7 @@ impl SolvationDiagnostic {
                         } else {
                             let an_shell = bodies[j].radius * ANION_SHELL_FACTOR; // Use smaller shell for larger anion
                             let an_solvent_ids: Vec<u64> = bodies.iter().enumerate()
-                                .filter(|(k, b)| *k != j && matches!(b.species, Species::EC | Species::DMC) && (b.pos - bodies[j].pos).mag() < an_shell)
+                                .filter(|(k, b)| *k != j && matches!(b.species, Species::EC | Species::DMC) && distance_3d(b, &bodies[j]) < an_shell)
                                 .map(|(_, b)| b.id)
                                 .collect();
                             let an_solvents = an_solvent_ids.len();
@@ -153,25 +161,25 @@ impl SolvationDiagnostic {
 }
 
 fn count_solvent_neighbors(bodies: &[Body], index: usize, radius: f32) -> usize {
-    let pos = bodies[index].pos;
+    let body_ref = &bodies[index];
     bodies
         .iter()
         .enumerate()
         .filter(|(i, b)| {
-            *i != index && matches!(b.species, Species::EC | Species::DMC) && (b.pos - pos).mag() < radius
+            *i != index && matches!(b.species, Species::EC | Species::DMC) && distance_3d(b, body_ref) < radius
         })
         .count()
 }
 
 fn nearest_body_with_species(bodies: &[Body], index: usize, species: Species) -> Option<(usize, f32)> {
-    let pos = bodies[index].pos;
+    let body_ref = &bodies[index];
     let mut best = None;
     let mut best_dist = f32::INFINITY;
     for (i, b) in bodies.iter().enumerate() {
         if i == index || b.species != species {
             continue;
         }
-        let dist = (b.pos - pos).mag();
+        let dist = distance_3d(b, body_ref);
         if dist < best_dist {
             best_dist = dist;
             best = Some(i);

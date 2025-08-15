@@ -40,6 +40,11 @@ impl Quadtree {
     pub fn subdivide(&mut self, node: usize, bodies: &mut [Body], range: Range<usize>) -> usize {
         let center = self.nodes[node].quad.center;
 
+        // Bounds check to prevent invalid range operations
+        if range.start >= bodies.len() || range.end > bodies.len() || range.start >= range.end {
+            return node; // Return as leaf if range is invalid
+        }
+
         // Prevent infinite subdivision: if all bodies are at (nearly) the same position, quad is too small, or only one body, treat as leaf
         let all_same_pos = bodies[range.clone()]
             .windows(2)
@@ -83,7 +88,13 @@ impl Quadtree {
         let quads = self.nodes[node].quad.subdivide();
         for i in 0..4 {
             let bodies_range = split[i]..split[i + 1];
-            self.nodes[children + i] = Node::new(nexts[i], quads[i], bodies_range);
+            // Ensure the range is valid before creating the node
+            if split[i] <= split[i + 1] && split[i + 1] <= bodies.len() {
+                self.nodes[children + i] = Node::new(nexts[i], quads[i], bodies_range);
+            } else {
+                // Create empty range if invalid
+                self.nodes[children + i] = Node::new(nexts[i], quads[i], split[i]..split[i]);
+            }
         }
 
         children
@@ -96,6 +107,10 @@ impl Quadtree {
 
             // Compute charge-weighted, mass-weighted, or geometric center for node position
             let range = self.nodes[node].bodies.clone();
+            // Bounds check to prevent slice index panic in propagate
+            if range.start >= bodies.len() || range.end > bodies.len() || range.start > range.end {
+                continue; // Skip invalid ranges
+            }
             let total_mass = bodies[range.clone()].iter().map(|b| b.mass).sum::<f32>();
             //let total_charge = bodies[range.clone()].iter().map(|b| b.charge).sum::<f32>();
 
@@ -228,10 +243,13 @@ impl Quadtree {
                             let mut weighted_pos = Vec2::zero();
                             let mut total_charge = 0.0;
 
-                            for body in &bodies[range.clone()] {
-                                total_mass += body.mass;
-                                weighted_pos += body.pos * body.charge; // charge-weighted
-                                total_charge += body.charge;
+                            // Bounds check to prevent slice index panic
+                            if range.start < bodies.len() && range.end <= bodies.len() && range.start <= range.end {
+                                for body in &bodies[range.clone()] {
+                                    total_mass += body.mass;
+                                    weighted_pos += body.pos * body.charge; // charge-weighted
+                                    total_charge += body.charge;
+                                }
                             }
 
                             quadtree.nodes[node].mass = total_mass;
