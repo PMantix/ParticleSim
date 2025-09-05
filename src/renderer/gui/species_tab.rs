@@ -214,6 +214,21 @@ impl super::super::Renderer {
             {
                 changed = true;
             }
+            
+            // Calculate and display effective dipole strength
+            let effective_dipole = current_props.polar_charge * current_props.polar_offset * current_props.radius;
+            ui.separator();
+            ui.horizontal(|ui| {
+                ui.label("📏 Effective Dipole:");
+                ui.label(egui::RichText::new(format!("{:.4}", effective_dipole))
+                    .color(egui::Color32::from_rgb(100, 200, 100))
+                    .monospace());
+                ui.label("sim units");
+            });
+            
+            // Add some context about the calculation
+            ui.small(format!("= {:.3} × {:.3} × {:.1} (charge × offset × radius)", 
+                current_props.polar_charge, current_props.polar_offset, current_props.radius));
         });
 
         // Update species properties if changed
