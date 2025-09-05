@@ -261,4 +261,67 @@ impl Species {
     pub fn repulsion_cutoff(&self) -> f32 {
         self.props().repulsion_cutoff
     }
+
+    /// Surface affinity - how strongly this species is attracted to electrode surfaces
+    pub fn surface_affinity(&self) -> f32 {
+        use Species::*;
+        match self {
+            LithiumIon => 2.0,        // Strong attraction to cathode
+            ElectrolyteAnion => 1.5,  // Moderate attraction to anode
+            EC | DMC => 0.5,          // Weak surface interaction (neutral solvents)
+            LithiumMetal => 0.0,      // Already on surface
+            FoilMetal => 0.0,         // Already on surface
+        }
+    }
+
+    /// Preferred z-separation between this species and another
+    pub fn preferred_z_separation(&self, other: &Species) -> f32 {
+        use Species::*;
+        match (self, other) {
+            // Ion-solvent solvation shells
+            (LithiumIon, EC) | (EC, LithiumIon) => 0.3,
+            (LithiumIon, DMC) | (DMC, LithiumIon) => 0.25,
+            (ElectrolyteAnion, EC) | (EC, ElectrolyteAnion) => 0.4,
+            (ElectrolyteAnion, DMC) | (DMC, ElectrolyteAnion) => 0.35,
+            
+            // Like-like interactions (layer separation)
+            (LithiumIon, LithiumIon) => 0.8,
+            (ElectrolyteAnion, ElectrolyteAnion) => 0.9,
+            (EC, EC) => 0.6,
+            (DMC, DMC) => 0.5,
+            
+            // Metal particles stay at surface
+            (_, LithiumMetal) | (LithiumMetal, _) => 0.0,
+            (_, FoilMetal) | (FoilMetal, _) => 0.0,
+            
+            // Default for other combinations
+            _ => 0.4,
+        }
+    }
+
+    /// Strength of solvation interactions
+    pub fn solvation_strength(&self, other: &Species) -> f32 {
+        use Species::*;
+        match (self, other) {
+            // Strong ion-solvent interactions
+            (LithiumIon, EC) | (EC, LithiumIon) => 1.5,
+            (LithiumIon, DMC) | (DMC, LithiumIon) => 1.2,
+            (ElectrolyteAnion, EC) | (EC, ElectrolyteAnion) => 1.0,
+            (ElectrolyteAnion, DMC) | (DMC, ElectrolyteAnion) => 0.8,
+            
+            // Weaker solvent-solvent interactions
+            (EC, DMC) | (DMC, EC) => 0.3,
+            (EC, EC) => 0.4,
+            (DMC, DMC) => 0.3,
+            
+            // Ion-ion repulsion in z (want separation)
+            (LithiumIon, ElectrolyteAnion) | (ElectrolyteAnion, LithiumIon) => 0.2,
+            (LithiumIon, LithiumIon) => 0.1,
+            (ElectrolyteAnion, ElectrolyteAnion) => 0.1,
+            
+            // Metals don't participate in solvation
+            (_, LithiumMetal) | (LithiumMetal, _) => 0.0,
+            (_, FoilMetal) | (FoilMetal, _) => 0.0,
+        }
+    }
 }

@@ -190,6 +190,8 @@ pub struct SimConfig {
     pub z_damping: f32,
     pub max_z: f32,
     pub z_frustration_strength: f32,
+    /// Enable expensive many-body z-forces (solvation, density effects)
+    pub enable_z_many_body_forces: bool,
 }
 
 impl Default for SimConfig {
@@ -222,6 +224,7 @@ impl Default for SimConfig {
             z_damping: Z_DAMPING,
             max_z: MAX_Z,
             z_frustration_strength: Z_FRUSTRATION_STRENGTH,
+            enable_z_many_body_forces: false, // Default to false for performance
         }
     }
 }
