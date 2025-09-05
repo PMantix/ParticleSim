@@ -24,7 +24,8 @@ impl super::Renderer {
     pub fn show_gui(&mut self, ctx: &quarkstrom::egui::Context) {
         let mut settings_open = self.settings_window_open;
         egui::Window::new("Particle Simulation Controls")
-            .default_width(320.0)
+            .default_width(500.0)
+            .default_height(650.0)
             .resizable(true)
             .open(&mut settings_open)
             .show(ctx, |ui| {
