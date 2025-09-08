@@ -189,7 +189,9 @@ impl super::Renderer {
                     let angle = d.y.atan2(d.x);
                     self.angle = Some(angle);
                 }
-                body.radius = body.mass.cbrt();
+                // Note: Radius is never overridden during mouse spawning
+                // Particles always use their species-defined radius from species.rs
+                // If radius customization is needed, it should be done explicitly via GUI controls
                 body.vel = mouse - body.pos;
             }
         // If the mouse is released, confirm the body
