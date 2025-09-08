@@ -28,7 +28,7 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
         LithiumIon,
         SpeciesProps {
             mass: 1.0,
-            radius: 0.6667,
+            radius: 0.6667/2.0,
             damping: 1.0,
             color: [255, 255, 0, 255],
             lj_enabled: false,

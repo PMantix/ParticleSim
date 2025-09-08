@@ -121,7 +121,8 @@ impl super::Renderer {
                     let mut closest = None;
                     let mut min_dist = f32::MAX;
                     for body in &self.bodies {
-                        let dist = (body.pos - mouse_pos).mag();
+                        let display_pos = self.get_display_position(body);
+                        let dist = (display_pos - mouse_pos).mag();
                         if dist < min_dist && dist < body.radius * 2.0 {
                             min_dist = dist;
                             closest = Some(body.id);
@@ -198,6 +199,18 @@ impl super::Renderer {
                     let _ = sender.send(SimCommand::AddBody { body });
                 }
             }
+        }
+    }
+
+    /// Transform body coordinates based on view mode
+    /// Returns Vec2 with the appropriate coordinates for display
+    pub fn get_display_position(&self, body: &crate::body::Body) -> ultraviolet::Vec2 {
+        if self.side_view_mode {
+            // Side view: X-Z coordinates (show X vs Z)
+            ultraviolet::Vec2::new(body.pos.x, body.z)
+        } else {
+            // Top-down view: X-Y coordinates (default)
+            body.pos
         }
     }
 }

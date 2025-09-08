@@ -72,22 +72,22 @@ impl super::Renderer {
                     for &(cation_id, anion_id, ref cation_solvents, ref anion_solvents) in &solvation_diag.cip_pairs {
                         // Draw cation
                         if let Some(body) = self.bodies.iter().find(|b| b.id == cation_id) {
-                            ctx.draw_circle(body.pos, body.radius * 2.0, [0, 100, 255, 80]);
+                            ctx.draw_circle(self.get_display_position(body), body.radius * 2.0, [0, 100, 255, 80]);
                         }
                         // Draw anion
                         if let Some(body) = self.bodies.iter().find(|b| b.id == anion_id) {
-                            ctx.draw_circle(body.pos, body.radius * 2.0, [0, 50, 150, 80]);
+                            ctx.draw_circle(self.get_display_position(body), body.radius * 2.0, [0, 50, 150, 80]);
                         }
                         // Draw cation solvents
                         for &solvent_id in cation_solvents {
                             if let Some(body) = self.bodies.iter().find(|b| b.id == solvent_id) {
-                                ctx.draw_circle(body.pos, body.radius * 1.5, [100, 150, 255, 60]);
+                                ctx.draw_circle(self.get_display_position(body), body.radius * 1.5, [100, 150, 255, 60]);
                             }
                         }
                         // Draw anion solvents
                         for &solvent_id in anion_solvents {
                             if let Some(body) = self.bodies.iter().find(|b| b.id == solvent_id) {
-                                ctx.draw_circle(body.pos, body.radius * 1.5, [50, 100, 200, 60]);
+                                ctx.draw_circle(self.get_display_position(body), body.radius * 1.5, [50, 100, 200, 60]);
                             }
                         }
                     }
@@ -98,22 +98,22 @@ impl super::Renderer {
                     for &(cation_id, anion_id, ref cation_solvents, ref anion_solvents) in &solvation_diag.sip_pairs {
                         // Draw cation
                         if let Some(body) = self.bodies.iter().find(|b| b.id == cation_id) {
-                            ctx.draw_circle(body.pos, body.radius * 2.0, [255, 255, 0, 80]);
+                            ctx.draw_circle(self.get_display_position(body), body.radius * 2.0, [255, 255, 0, 80]);
                         }
                         // Draw anion
                         if let Some(body) = self.bodies.iter().find(|b| b.id == anion_id) {
-                            ctx.draw_circle(body.pos, body.radius * 2.0, [220, 220, 0, 80]);
+                            ctx.draw_circle(self.get_display_position(body), body.radius * 2.0, [220, 220, 0, 80]);
                         }
                         // Draw cation solvents
                         for &solvent_id in cation_solvents {
                             if let Some(body) = self.bodies.iter().find(|b| b.id == solvent_id) {
-                                ctx.draw_circle(body.pos, body.radius * 1.5, [255, 255, 120, 60]);
+                                ctx.draw_circle(self.get_display_position(body), body.radius * 1.5, [255, 255, 120, 60]);
                             }
                         }
                         // Draw anion solvents
                         for &solvent_id in anion_solvents {
                             if let Some(body) = self.bodies.iter().find(|b| b.id == solvent_id) {
-                                ctx.draw_circle(body.pos, body.radius * 1.5, [240, 240, 80, 60]);
+                                ctx.draw_circle(self.get_display_position(body), body.radius * 1.5, [240, 240, 80, 60]);
                             }
                         }
                     }
@@ -124,22 +124,22 @@ impl super::Renderer {
                     for &(cation_id, anion_id, ref cation_solvents, ref anion_solvents) in &solvation_diag.s2ip_pairs {
                         // Draw cation
                         if let Some(body) = self.bodies.iter().find(|b| b.id == cation_id) {
-                            ctx.draw_circle(body.pos, body.radius * 2.0, [255, 100, 0, 80]);
+                            ctx.draw_circle(self.get_display_position(body), body.radius * 2.0, [255, 100, 0, 80]);
                         }
                         // Draw anion
                         if let Some(body) = self.bodies.iter().find(|b| b.id == anion_id) {
-                            ctx.draw_circle(body.pos, body.radius * 2.0, [230, 80, 0, 80]);
+                            ctx.draw_circle(self.get_display_position(body), body.radius * 2.0, [230, 80, 0, 80]);
                         }
                         // Draw cation solvents
                         for &solvent_id in cation_solvents {
                             if let Some(body) = self.bodies.iter().find(|b| b.id == solvent_id) {
-                                ctx.draw_circle(body.pos, body.radius * 1.5, [255, 150, 50, 60]);
+                                ctx.draw_circle(self.get_display_position(body), body.radius * 1.5, [255, 150, 50, 60]);
                             }
                         }
                         // Draw anion solvents
                         for &solvent_id in anion_solvents {
                             if let Some(body) = self.bodies.iter().find(|b| b.id == solvent_id) {
-                                ctx.draw_circle(body.pos, body.radius * 1.5, [240, 120, 30, 60]);
+                                ctx.draw_circle(self.get_display_position(body), body.radius * 1.5, [240, 120, 30, 60]);
                             }
                         }
                     }
@@ -150,12 +150,12 @@ impl super::Renderer {
                     for &(cation_id, ref cation_solvents) in &solvation_diag.fd_cations {
                         // Draw cation
                         if let Some(body) = self.bodies.iter().find(|b| b.id == cation_id) {
-                            ctx.draw_circle(body.pos, body.radius * 2.0, [255, 0, 0, 120]);
+                            ctx.draw_circle(self.get_display_position(body), body.radius * 2.0, [255, 0, 0, 120]);
                         }
                         // Draw cation solvents
                         for &solvent_id in cation_solvents {
                             if let Some(body) = self.bodies.iter().find(|b| b.id == solvent_id) {
-                                ctx.draw_circle(body.pos, body.radius * 1.5, [255, 80, 80, 90]);
+                                ctx.draw_circle(self.get_display_position(body), body.radius * 1.5, [255, 80, 80, 90]);
                             }
                         }
                     }
@@ -233,12 +233,12 @@ impl super::Renderer {
                     if body.species == Species::FoilMetal {
                         if let Some(foil) = self.foils.iter().find(|f| f.body_ids.contains(&body.id)) {
                             if self.selected_foil_ids.contains(&foil.id) {
-                                ctx.draw_circle(body.pos, body.radius * 1.1, [255, 255, 0, 32]);
+                                ctx.draw_circle(self.get_display_position(body), body.radius * 1.1, [255, 255, 0, 32]);
                             }
                         }
                     }
 
-                    ctx.draw_circle(body.pos, draw_radius, color);
+                    ctx.draw_circle(self.get_display_position(body), draw_radius, color);
 
                     // Visualize electron count for FoilMetal
                     if self.show_foil_electron_deficiency && body.species == Species::FoilMetal {
@@ -246,13 +246,13 @@ impl super::Renderer {
                         let electron_count = body.electrons.len();
                         if electron_count > neutral_electrons {
                             ctx.draw_circle(
-                                body.pos,
+                                self.get_display_position(body),
                                 body.radius * 0.5,
                                 [0, 255, 0, 255],
                             );
                         } else if electron_count < neutral_electrons {
                             ctx.draw_circle(
-                                body.pos,
+                                self.get_display_position(body),
                                 body.radius * 0.5,
                                 [255, 0, 0, 255],
                             );
@@ -299,24 +299,24 @@ impl super::Renderer {
             }
 
             if let Some(body) = &self.confirmed_bodies {
-                ctx.draw_circle(body.pos, body.radius, [0xff; 4]);
+                ctx.draw_circle(self.get_display_position(body), body.radius, [0xff; 4]);
                 ctx.draw_line(body.pos, body.pos + body.vel, [0xff; 4]);
             }
 
             if let Some(body) = &self.spawn_body {
-                ctx.draw_circle(body.pos, body.radius, [0xff; 4]);
+                ctx.draw_circle(self.get_display_position(body), body.radius, [0xff; 4]);
                 ctx.draw_line(body.pos, body.pos + body.vel, [0xff; 4]);
             }
 
             if let Some(id) = self.selected_particle_id {
                 if let Some(body) = self.bodies.iter().find(|b| b.id == id) {
-                    ctx.draw_circle(body.pos, body.radius * 1.5, [255, 255, 0, 32]);
+                    ctx.draw_circle(self.get_display_position(body), body.radius * 1.5, [255, 255, 0, 32]);
                 }
             }
 
             for id in &self.selected_particle_ids {
                 if let Some(body) = self.bodies.iter().find(|b| b.id == *id) {
-                    ctx.draw_circle(body.pos, body.radius * 3.0, [255, 255, 0, 128]);
+                    ctx.draw_circle(self.get_display_position(body), body.radius * 3.0, [255, 255, 0, 128]);
                 }
             }
         }

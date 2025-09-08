@@ -10,6 +10,10 @@ impl super::super::Renderer {
             ui.label("🖼️ Display Options");
             ui.checkbox(&mut self.show_bodies, "Show Bodies");
             ui.checkbox(&mut self.show_quadtree, "Show Quadtree");
+            if ui.checkbox(&mut self.side_view_mode, "📐 Side View (X-Z)")
+                .on_hover_text("Toggle between top-down view (X-Y) and side view (X-Z) to visualize particle motion in the Z dimension").clicked() {
+                // Optional: Add any side effects when toggling view mode
+            }
 
             if self.show_quadtree {
                 let range = &mut self.depth_range;

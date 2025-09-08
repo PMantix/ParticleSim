@@ -116,6 +116,9 @@ pub struct Renderer {
     pub show_s2ip_ions: bool,
     pub show_fd_ions: bool,
     
+    // View mode toggle
+    pub side_view_mode: bool,  // false = X-Y (top-down), true = X-Z (side view)
+    
     // Screen capture functionality
     pub screen_capture_enabled: bool,
     pub capture_interval: f32,  // seconds between captures
@@ -195,6 +198,9 @@ impl quarkstrom::Renderer for Renderer {
             show_sip_ions: false,
             show_s2ip_ions: false,
             show_fd_ions: false,
+            
+            // View mode - default to top-down (X-Y)
+            side_view_mode: false,
             
             // Screen capture defaults
             screen_capture_enabled: false,
