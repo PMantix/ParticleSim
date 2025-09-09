@@ -228,7 +228,7 @@ impl Default for SimConfig {
             lj_force_epsilon: LJ_FORCE_EPSILON,
             lj_force_sigma: LJ_FORCE_SIGMA,
             lj_force_cutoff: LJ_FORCE_CUTOFF,
-            coulomb_constant: crate::units::COULOMB_CONSTANT,
+            coulomb_constant: units::COULOMB_CONSTANT,
             temperature: DEFAULT_TEMPERATURE,
             thermostat_frequency: 1.0, // Apply thermostat every 1.0 fs by default
             enable_out_of_plane: OUT_OF_PLANE_ENABLED,

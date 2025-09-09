@@ -13,6 +13,7 @@ mod plotting;
 mod init_config;
 mod diagnostics;
 mod app;
+mod units;
 
 #[cfg(feature = "profiling")]
 use once_cell::sync::Lazy;
