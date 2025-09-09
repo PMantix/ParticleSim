@@ -36,7 +36,7 @@ pub struct Simulation {
 
 impl Simulation {
     pub fn new() -> Self {
-        let dt = config::DEFAULT_DT;
+        let dt = config::DEFAULT_DT_FS;
         let theta = config::QUADTREE_THETA;
         let epsilon = config::QUADTREE_EPSILON;
         let leaf_capacity = config::QUADTREE_LEAF_CAPACITY;

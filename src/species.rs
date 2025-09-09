@@ -6,7 +6,9 @@ use crate::body::Species;
 
 #[derive(Clone, Copy, Debug)]
 pub struct SpeciesProps {
+    /// Mass in atomic mass units (amu)
     pub mass: f32,
+    /// Radius in angstroms (Å)
     pub radius: f32,
     pub damping: f32,
     pub color: [u8; 4],
@@ -27,8 +29,8 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
     m.insert(
         LithiumIon,
         SpeciesProps {
-            mass: 1.0,
-            radius: 0.6667/2.0,
+            mass: 6.94, // amu
+            radius: 0.76, // Å
             damping: 1.0,
             color: [255, 255, 0, 255],
             lj_enabled: false,
@@ -45,8 +47,8 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
     m.insert(
         LithiumMetal,
         SpeciesProps {
-            mass: 10.0,
-            radius: 1.0,
+            mass: 6.94, // amu
+            radius: 1.52, // Å
             damping: 0.01,
             color: [192, 192, 192, 255],
             lj_enabled: true,
@@ -63,8 +65,8 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
     m.insert(
         FoilMetal,
         SpeciesProps {
-            mass: 1e6,
-            radius: 1.0,
+            mass: 1.0e6, // amu
+            radius: 1.52, // Å
             damping: 0.1,
             color: [128, 64, 0, 255],
             lj_enabled: true,
@@ -81,8 +83,8 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
     m.insert(
         ElectrolyteAnion,
         SpeciesProps {
-            mass: 20.88,
-            radius: 1.6667,
+            mass: 145.0, // amu
+            radius: 2.0, // Å
             damping: 1.0,
             color: [0, 128, 255, 255],
             lj_enabled: false,
@@ -99,8 +101,8 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
     m.insert(
         EC,
         SpeciesProps {
-            mass: 12.69,
-            radius: 1.5,
+            mass: 88.06, // amu
+            radius: 2.5, // Å
             damping: 1.0,
             color: [0, 200, 0, 100],
             lj_enabled: false,
@@ -117,8 +119,8 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
     m.insert(
         DMC,
         SpeciesProps {
-            mass: 12.98,
-            radius: 1.5,
+            mass: 90.08, // amu
+            radius: 2.5, // Å
             damping: 1.0,
             color: [0, 100, 50, 200],
             lj_enabled: false,

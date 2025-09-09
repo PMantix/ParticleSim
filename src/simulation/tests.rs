@@ -588,7 +588,7 @@ mod reactions {
         #[test]
         fn test_field_centered_and_symmetric_quadtree() {
             use crate::quadtree::Quadtree;
-            use crate::simulation::forces::K_E;
+            use crate::units::COULOMB_CONSTANT;
 
             let body = Body {
                 pos: Vec2::zero(),
@@ -633,7 +633,7 @@ mod reactions {
             let mut magnitudes = Vec::new();
 
             for pos in &positions {
-                let field = field_at(&quadtree, &bodies, *pos, K_E);
+                let field = field_at(&quadtree, &bodies, *pos, COULOMB_CONSTANT);
                 let expected_dir = (*pos).normalized();
                 let field_dir = field.normalized();
                 let dot = field_dir.dot(expected_dir);

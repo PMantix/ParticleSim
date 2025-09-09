@@ -40,6 +40,13 @@ This repository contains a modular, parallelized particle simulation for large-s
   - Adjustable Lennard-Jones parameters per species, electron hopping rates, and Butler-Volmer coefficients. Each species can enable or disable LJ forces to model either "metal-like" cohesion or "liquid-like" behavior.
   - Domain bounds, timestep settings, and force cutoffs can be modified at runtime.
 
+## Units
+
+Lengths are measured in angstroms (Å), time in femtoseconds (fs), charge in
+elementary charge (e) and mass in atomic mass units (amu). See
+[docs/physics.md](docs/physics.md) for the complete unit system and conversion
+guidelines.
+
 ---
 
 ## Getting Started

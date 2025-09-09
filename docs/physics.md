@@ -1,92 +1,45 @@
-# Particle Species Parameters
+# Physics
 
-The simulation relies on a `species_properties` map to store physical parameters for each particle species. Every entry specifies the default mass, radius and damping factor used when spawning new particles of that species.
+## Units
 
-```rust
-struct SpeciesProperties {
-    mass: f32,
-    radius: f32,
-    damping: f32,
-}
+The simulation operates in a physical unit system with the following base units:
 
-let mut species_properties: HashMap<Species, SpeciesProperties> = HashMap::new();
-```
+- **Length:** angstrom (Å) = `1.0e-10` meters
+- **Time:** femtosecond (fs) = `1.0e-15` seconds
+- **Charge:** elementary charge (e) = `1.602176634e-19` coulombs
+- **Mass:** atomic mass unit (amu) = `1.66053906660e-27` kilograms
 
-### Example values
+Derived quantities are computed from these bases. One simulation energy unit
+corresponds to `amu·Å²/fs² ≈ 1.66e-17 J ≈ 103.6 eV`. The Coulomb constant is
+`0.1389` in simulation units.
 
-- **Lithium Ion (Li⁺)**
-  - `mass`: `1.0`
-  - `radius`: `1.0`
-  - `damping`: `0.98`
-- **Electrolyte Anion**
-  - `mass`: `1.0`
-  - `radius`: `1.0`
-  - `damping`: `0.98`
-- **Foil Metal**
-  - `mass`: `1e6` (large mass keeps foil bodies effectively fixed)
-  - `radius`: defined by the spawning code
-  - `damping`: `0.98`
-- **EC / DMC (Solvent molecules)**
-  - `mass`: `~90.0`
-  - `radius`: `1.7`
-  - `damping`: `1.0`
-  - `lj_enabled`: `false` (no Lennard-Jones attraction)
+To convert back to SI units multiply simulation values by the factors above
+(e.g. multiply a length measured in Å by `1e-10` to obtain meters).
 
-### Adding a new species
+## Particle Species Parameters
 
-1. Add a new variant to the `Species` enum in `src/body/types.rs`.
-2. Insert default parameters into the `species_properties` map.
-3. Optionally extend spawning helpers and GUI controls to expose the new species.
+| Species           | Mass (amu) | Radius (Å) |
+|-------------------|-----------:|-----------:|
+| Lithium Ion (Li⁺) | 6.94       | 0.76       |
+| Lithium Metal     | 6.94       | 1.52       |
+| Foil Metal        | 1.0e6      | 1.52       |
+| Electrolyte Anion | 145.0      | 2.0        |
+| EC                | 88.06      | 2.5        |
+| DMC               | 90.08      | 2.5        |
 
-These properties determine the initial mass and size of each body as well as how quickly its velocity decays each frame. Adjusting the map allows rapid experimentation with different particle types and behaviors.
+These masses and radii are the defaults used when spawning particles of each
+species. Additional parameters such as damping and Lennard‑Jones coefficients
+are defined in `src/species.rs`.
 
 ## Lennard-Jones Interactions
 
-Each species also defines Lennard-Jones (LJ) parameters controlling short-range
-attraction and repulsion between like materials. The LJ force can be enabled or
-disabled per species to approximate different phases:
+Each species optionally enables Lennard‑Jones (LJ) forces that model short-range
+interactions. LJ parameters are specified in physical units:
 
-- **Metal-like**: LJ enabled to model cohesive metallic bonding.
-- **Liquid-like**: LJ disabled so only electrostatic forces act.
+- **ε (epsilon):** well depth in electronvolts (eV)
+- **σ (sigma):** distance at which the potential is zero in angstroms (Å)
+- **Cutoff:** interaction range in angstroms (Å)
 
-Example configuration snippet:
-
-```rust
-species_properties.insert(Species::FoilMetal, SpeciesProperties {
-    mass: 1e6,
-    radius: 1.0,
-    damping: 0.98,
-    lj_enabled: true,
-    lj_epsilon: 2000.0,
-    lj_sigma: 1.7,
-});
-
-// Electrolyte acts liquid-like (no LJ attraction)
-species_properties.insert(Species::ElectrolyteAnion, SpeciesProperties {
-    mass: 40.0,
-    radius: 1.5,
-    damping: 0.96,
-    lj_enabled: false,
-    lj_epsilon: 0.0,
-    lj_sigma: 1.7,
-});
-```
-
-With this setup the foil behaves as a solid metal while the electrolyte remains
-liquid. Adjust each species' `lj_enabled` flag and parameters to explore other
-scenarios.
-
-EC and DMC are modeled as neutral but polar molecules. Each carries a single
-bound electron that drifts within the molecule to form an electric dipole.
-During force calculation a polarization force is applied based on the
-difference between the electric field at the electron and at the molecular
-center. To reproduce realistic dipole moments the electron does not carry a full
-elementary charge. Instead the effective charge is scaled per species
-(0.49e for EC and 0.054e for DMC). This allows charged particles to interact
-with the induced dipole so solvent shells form naturally without any
-Lennard-Jones attraction.
-
-Polarization interactions now conserve momentum by applying equal and opposite
-forces to the neighboring charge that creates the field difference. A single ion
-and a single solvent molecule therefore maintain nearly zero center-of-mass
-velocity when isolated.
+These values are converted to simulation units via the definitions in
+`src/config.rs`. Disable LJ forces for species that should behave as a simple
+charged fluid (e.g. solvent molecules).

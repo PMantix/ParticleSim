@@ -7,6 +7,7 @@ pub mod renderer_utils;
 pub mod simulation;
 pub mod utils;
 pub mod config;
+pub mod units;
 pub mod profiler;
 pub mod io;
 pub mod species;

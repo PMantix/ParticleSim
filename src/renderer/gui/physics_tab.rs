@@ -134,7 +134,7 @@ impl super::super::Renderer {
                         .text("Period")
                         .step_by(0.1)
                 );
-                ui.label("time units");
+                ui.label("fs");
             });
             ui.small("How often to enforce temperature constraint");
             ui.small("Lower = more frequent, higher = more natural dynamics");

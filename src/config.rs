@@ -14,6 +14,7 @@ pub const POLAR_CHARGE_DMC: f32 = 0.11; //0.054;
 pub const POLAR_CHARGE_DEFAULT: f32 = 1.0;
 
 use crate::body::Species;
+use crate::units;
 
 /// Get the electron spring constant for a given species
 pub fn electron_spring_k(species: Species) -> f32 {
@@ -59,10 +60,20 @@ pub const BV_OVERPOTENTIAL_SCALE: f32 = 0.025;
 // ====================
 // LJ Force Parameters
 // ====================
-pub const LJ_FORCE_EPSILON: f32 = 5000.0;                  // Lennard-Jones epsilon parameter
-pub const LJ_FORCE_SIGMA: f32 = 1.80;                    // Lennard-Jones sigma parameter
-pub const LJ_FORCE_CUTOFF: f32 = 2.2;                  // Lennard-Jones cutoff distance
-pub const LJ_FORCE_MAX: f32 = 200.0;                   // Max Lennard-Jones force magnitude
+/// Lennard-Jones epsilon in electronvolts.
+pub const LJ_EPSILON_EV: f32 = 0.0103;
+/// Lennard-Jones sigma in angstroms.
+pub const LJ_SIGMA_A: f32 = 1.80;
+/// Lennard-Jones cutoff distance in angstroms.
+pub const LJ_CUTOFF_A: f32 = 2.2;
+/// Lennard-Jones epsilon converted to simulation energy units.
+pub const LJ_FORCE_EPSILON: f32 = (LJ_EPSILON_EV as f64 * units::EV_TO_SIM) as f32;
+/// Lennard-Jones sigma in simulation length units (angstroms).
+pub const LJ_FORCE_SIGMA: f32 = LJ_SIGMA_A;
+/// Lennard-Jones cutoff in simulation length units (angstroms).
+pub const LJ_FORCE_CUTOFF: f32 = LJ_CUTOFF_A;
+/// Max Lennard-Jones force magnitude (simulation units).
+pub const LJ_FORCE_MAX: f32 = 200.0;
 /// Density above which the cell list is used for LJ interactions
 pub const LJ_CELL_DENSITY_THRESHOLD: f32 = 0.001;
 
@@ -95,7 +106,8 @@ pub const SURROUND_CHECK_INTERVAL: usize = 10;
 // ====================
 // Simulation Parameters
 // ====================
-pub const DEFAULT_DT: f32 = 0.015;                     // Reduced minimum simulation timestep for better stability
+/// Default timestep in femtoseconds.
+pub const DEFAULT_DT_FS: f32 = 0.015;
 pub const COLLISION_PASSES: usize =9;                  // Number of collision resolution passes
 
 // ====================
@@ -183,7 +195,7 @@ pub struct SimConfig {
     pub coulomb_constant: f32,
     /// Current simulation temperature
     pub temperature: f32,
-    /// How frequently (in simulation time units) to apply the thermostat
+    /// How frequently (in femtoseconds) to apply the thermostat
     pub thermostat_frequency: f32,
     pub enable_out_of_plane: bool,
     pub z_stiffness: f32,
@@ -216,9 +228,9 @@ impl Default for SimConfig {
             lj_force_epsilon: LJ_FORCE_EPSILON,
             lj_force_sigma: LJ_FORCE_SIGMA,
             lj_force_cutoff: LJ_FORCE_CUTOFF,
-            coulomb_constant: crate::simulation::forces::K_E,
+            coulomb_constant: crate::units::COULOMB_CONSTANT,
             temperature: DEFAULT_TEMPERATURE,
-            thermostat_frequency: 1.0, // Apply thermostat every 1.0 time units by default
+            thermostat_frequency: 1.0, // Apply thermostat every 1.0 fs by default
             enable_out_of_plane: OUT_OF_PLANE_ENABLED,
             z_stiffness: Z_STIFFNESS,
             z_damping: Z_DAMPING,

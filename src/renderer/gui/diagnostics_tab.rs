@@ -18,24 +18,24 @@ impl super::super::Renderer {
                 });
                 ui.horizontal(|ui| {
                     ui.label("Li⁺ Drift Velocity:");
-                    ui.label(format!("{:.6} units/s", diagnostic.lithium_drift_velocity));
+                    ui.label(format!("{:.6} Å/fs", diagnostic.lithium_drift_velocity));
                 });
                 ui.horizontal(|ui| {
                     ui.label("Anion Drift Velocity:");
-                    ui.label(format!("{:.6} units/s", diagnostic.anion_drift_velocity));
+                    ui.label(format!("{:.6} Å/fs", diagnostic.anion_drift_velocity));
                 });
                 ui.separator();
                 ui.horizontal(|ui| {
                     ui.label("Li⁺ Current Contribution:");
-                    ui.label(format!("{:.6}", diagnostic.li_current_contribution));
+                    ui.label(format!("{:.6} e/fs", diagnostic.li_current_contribution));
                 });
                 ui.horizontal(|ui| {
                     ui.label("Anion Current Contribution:");
-                    ui.label(format!("{:.6}", diagnostic.anion_current_contribution));
+                    ui.label(format!("{:.6} e/fs", diagnostic.anion_current_contribution));
                 });
                 ui.horizontal(|ui| {
                     ui.label("Total Current:");
-                    ui.label(format!("{:.6}", diagnostic.total_current));
+                    ui.label(format!("{:.6} e/fs", diagnostic.total_current));
                 });
                 ui.separator();
                 ui.horizontal(|ui| {
@@ -71,7 +71,7 @@ impl super::super::Renderer {
                 let mut temp_quadtree = crate::quadtree::Quadtree::new(1.0, 2.0, 1, 1024);
                 temp_quadtree.nodes = self.quadtree.clone();
                 
-                // Only recalculate every 0.5 seconds to avoid performance issues
+                // Only recalculate every 0.5 fs to avoid performance issues
                 let current_time = *crate::renderer::state::SIM_TIME.lock();
                 diag.calculate_if_needed(&self.bodies, &self.foils, &temp_quadtree, current_time, 0.5);
                 

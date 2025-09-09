@@ -7,9 +7,6 @@ use crate::config;
 use crate::simulation::Simulation;
 use crate::profile_scope;
 
-/// Coulomb's constant (scaled for simulation units). 8.988e3 * 0.5;
-pub const K_E: f32 = 8.988e3 * 0.5;
-
 /// Compute electric field and force on all bodies using the quadtree.
 ///
 /// - Builds the quadtree for the current body positions.

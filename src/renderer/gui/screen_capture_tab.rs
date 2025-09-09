@@ -32,7 +32,7 @@ impl super::super::Renderer {
                         if let Err(e) = std::fs::create_dir_all(&self.capture_folder) {
                             println!("Warning: Could not create capture folder '{}': {}", self.capture_folder, e);
                         } else {
-                            println!("🔴 Screen capture recording started - will capture every {:.1}s to folder: {}", 
+                            println!("🔴 Screen capture recording started - will capture every {:.1} fs to folder: {}",
                                     self.capture_interval, self.capture_folder);
                         }
                     } else {
@@ -44,12 +44,12 @@ impl super::super::Renderer {
                     // Trigger immediate capture
                     self.should_capture_next_frame = true;
                     let current_time = *crate::renderer::state::SIM_TIME.lock();
-                    println!("📷 Manual capture triggered at simulation time {:.2}s", current_time);
+                    println!("📷 Manual capture triggered at simulation time {:.2} fs", current_time);
                 }
             });
             
             ui.horizontal(|ui| {
-                ui.label("Capture interval (seconds):");
+                ui.label("Capture interval (fs):");
                 ui.add(egui::DragValue::new(&mut self.capture_interval)
                     .clamp_range(0.1..=10.0)
                     .speed(0.1));
@@ -146,13 +146,13 @@ impl super::super::Renderer {
             
             ui.horizontal(|ui| {
                 ui.label("Last capture time:");
-                ui.label(format!("{:.2}s", self.last_capture_time));
+                ui.label(format!("{:.2} fs", self.last_capture_time));
             });
             
             ui.horizontal(|ui| {
                 ui.label("Current simulation time:");
                 let current_time = *crate::renderer::state::SIM_TIME.lock();
-                ui.label(format!("{:.2}s", current_time));
+                ui.label(format!("{:.2} fs", current_time));
             });
             
             if self.screen_capture_enabled {
@@ -161,7 +161,7 @@ impl super::super::Renderer {
                 if time_until_next > 0.0 {
                     ui.horizontal(|ui| {
                         ui.label("Next capture in:");
-                        ui.label(format!("{:.1}s", time_until_next));
+                        ui.label(format!("{:.1} fs", time_until_next));
                     });
                 }
             }

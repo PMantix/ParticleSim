@@ -223,7 +223,7 @@ impl super::super::Renderer {
                 ui.label(egui::RichText::new(format!("{:.4}", effective_dipole))
                     .color(egui::Color32::from_rgb(100, 200, 100))
                     .monospace());
-                ui.label("sim units");
+                ui.label("e·Å");
             });
             
             // Add some context about the calculation

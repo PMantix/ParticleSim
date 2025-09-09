@@ -1,6 +1,7 @@
 # ParticleSim Initial Configuration
 # This file defines the starting particles and their arrangements
 # Note: All positions (x, y) are CENTER coordinates, not corner coordinates
+# Units: length in Å, time in fs, charge in e, mass in amu
 
 [simulation]
 # Domain size (full width/height of the simulation domain)
