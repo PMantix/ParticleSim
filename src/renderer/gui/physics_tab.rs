@@ -100,11 +100,13 @@ impl super::super::Renderer {
         ui.group(|ui| {
             ui.label("🔌 Coulomb Constant");
             ui.add(
-                egui::Slider::new(&mut self.sim_config.coulomb_constant, 1000.0..=20000.0)
+                egui::Slider::new(&mut self.sim_config.coulomb_constant, 0.01..=1000.0)
                     .text("k_e")
-                    .step_by(1.0)
+                    .step_by(0.1)
                     .logarithmic(true),
             );
+            ui.label(format!("💡 Theoretical value: {:.3}", crate::units::COULOMB_CONSTANT));
+            ui.label("Scale up for stronger interactions");
         });
 
         ui.separator();

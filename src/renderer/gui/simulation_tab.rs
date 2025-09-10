@@ -31,10 +31,12 @@ impl super::super::Renderer {
         ui.group(|ui| {
             ui.label("⏱️ Simulation Parameters");
             ui.add(
-                egui::Slider::new(&mut *TIMESTEP.lock(), 0.0001..=0.1)
-                    .text("Timestep (dt)")
-                    .step_by(0.001),
+                egui::Slider::new(&mut *TIMESTEP.lock(), 0.1..=5.0)
+                    .text("Timestep (fs)")
+                    .step_by(0.05)
+                    .logarithmic(false),
             );
+            ui.label("💡 Typical MD timesteps: 0.5-2.0 fs");
             ui.add(
                 egui::Slider::new(&mut self.sim_config.damping_base, 0.95..=1.0)
                     .text("Damping Base")

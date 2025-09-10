@@ -21,6 +21,8 @@ pub const ENERGY_JOULE: f64 = AMU * ANGSTROM * ANGSTROM / (FEMTOSECOND * FEMTOSE
 pub const EV_TO_SIM: f64 = ELEMENTARY_CHARGE / ENERGY_JOULE;
 
 /// Coulomb's constant in simulation units.
+/// k = 8.987e9 N⋅m²/C² converted to [AMU⋅Å³/fs²⋅e²] 
+/// Dimensional analysis: kg⋅m³/(s²⋅C²) → AMU⋅Å³/(fs²⋅e²)
 pub const COULOMB_CONSTANT: f32 = (
     8.987_551_792_3e9 * ELEMENTARY_CHARGE * ELEMENTARY_CHARGE * FEMTOSECOND * FEMTOSECOND
         / (AMU * ANGSTROM * ANGSTROM * ANGSTROM)

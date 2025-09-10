@@ -107,7 +107,8 @@ pub const SURROUND_CHECK_INTERVAL: usize = 10;
 // Simulation Parameters
 // ====================
 /// Default timestep in femtoseconds.
-pub const DEFAULT_DT_FS: f32 = 0.015;
+/// Typical MD timesteps: 0.5-2.0 fs. Old value was 0.015 fs (too small).
+pub const DEFAULT_DT_FS: f32 = 1.0;
 pub const COLLISION_PASSES: usize =9;                  // Number of collision resolution passes
 
 // ====================

@@ -5,8 +5,8 @@
 
 [simulation]
 # Domain size (full width/height of the simulation domain)
-domain_width = 400.0
-domain_height = 250.0
+domain_width = 800.0
+domain_height = 500.0
 initial_temperature = 5.0
 # Out-of-plane behavior (3D motion) - temporarily disabled for testing
 enable_out_of_plane = false

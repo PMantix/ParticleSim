@@ -42,14 +42,10 @@ fn calculate_surface_binding_force(body: &crate::body::Body, max_z: f32) -> f32 
 }
 
 /// Electric field gradient forces (particles respond to field variations in z)
-fn calculate_electric_field_gradient_force(body: &crate::body::Body) -> f32 {
-    // Simplified: assume electric field varies linearly with z near surfaces
-    // This creates a bias toward one surface for charged particles
-    let field_gradient = 0.1; // field strength per unit z
-    
-    // Positive charges prefer negative z (toward cathode)
-    // Negative charges prefer positive z (toward anode)
-    -body.charge * field_gradient * body.z
+fn calculate_electric_field_gradient_force(_body: &crate::body::Body) -> f32 {
+    // Removed artificial field gradient force - was creating unphysical charge separation
+    // Real field gradients should be computed from actual electrode geometries and potentials
+    0.0
 }
 
 /// Apply out-of-plane forces to all bodies.

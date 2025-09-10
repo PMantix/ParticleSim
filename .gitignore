@@ -3,3 +3,8 @@
 # Ignore saved simulation states
 saved_state/
 captures/
+
+# Debug tools and temporary analysis files
+debug/*.exe
+debug/*.pdb
+debug/*.dll
