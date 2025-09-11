@@ -3,6 +3,7 @@
 
 use crate::body::{Body, Species};
 use crate::simulation::compute_temperature;
+use crate::profile_scope;
 
 /// Calculate 3D distance between two bodies, accounting for z-coordinates
 fn distance_3d(body1: &Body, body2: &Body) -> f32 {
@@ -57,6 +58,7 @@ impl SolvationDiagnostic {
     }
 
     pub fn calculate(&mut self, bodies: &[Body]) {
+        profile_scope!("solvation_calculation_internal");
         const CATION_SHELL_FACTOR: f32 = 4.5; // Larger shell for small lithium ions to capture solvents
         const ANION_SHELL_FACTOR: f32 = 2.5;  // Smaller shell for larger anions
         const CONTACT_BUFFER: f32 = 0.1;

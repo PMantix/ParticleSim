@@ -7,9 +7,11 @@ use ultraviolet::Vec2;
 use quarkstrom::winit_input_helper::WinitInputHelper;
 use super::state::{SIM_COMMAND_SENDER, SimCommand};
 use crate::body::Species;
+use crate::profile_scope;
 
 impl super::Renderer {
     pub fn handle_input(&mut self, input: &WinitInputHelper, width: u16, height: u16) {
+        profile_scope!("input_handling");
         // Check if window dimensions changed and verify capture region if needed
         if width != self.window_width || height != self.window_height {
             self.verify_capture_region_after_resize(width, height);

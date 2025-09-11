@@ -1,4 +1,5 @@
 use crate::simulation::Simulation;
+use crate::profile_scope;
 use crate::renderer::state::PAUSED;
 use crate::io::{save_state, load_state};
 
@@ -40,6 +41,7 @@ pub fn handle_set_out_of_plane(
     z_damping: f32,
     z_frustration_strength: f32,
 ) {
+    profile_scope!("config_update");
     let mut cfg = crate::config::LJ_CONFIG.lock();
     cfg.enable_out_of_plane = enabled;
     cfg.max_z = max_z;

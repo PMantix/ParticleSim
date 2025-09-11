@@ -3,6 +3,7 @@
 
 use ultraviolet::Vec2;
 use crate::config;
+use crate::profile_scope;
 use serde::{Serialize, Deserialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -23,6 +24,7 @@ impl Body {
         dt: f32,
         coulomb_constant: f32,
     ) {
+        profile_scope!("electron_updates");
         let k = config::electron_spring_k(self.species);
         for e in &mut self.electrons {
             let electron_pos = self.pos + e.rel_pos;

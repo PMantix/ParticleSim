@@ -4,6 +4,7 @@ use crate::body::Electron;
 use crate::body::Species;
 use crate::config::IsolineFieldMode;
 use crate::renderer::Body;
+use crate::profile_scope;
 use quarkstrom::egui;
 use ultraviolet::Vec2;
 
@@ -22,6 +23,7 @@ pub use scenario_tab::make_body_with_species;
 
 impl super::Renderer {
     pub fn show_gui(&mut self, ctx: &quarkstrom::egui::Context) {
+        profile_scope!("gui_update");
         // Sync domain size from shared state (updated by simulation)
         self.domain_width = *crate::renderer::state::DOMAIN_WIDTH.lock();
         self.domain_height = *crate::renderer::state::DOMAIN_HEIGHT.lock();

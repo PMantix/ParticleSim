@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet, VecDeque};
 
 use crate::body::{Body, Species, foil::Foil};
 use crate::quadtree::Quadtree;
+use crate::profile_scope;
 
 /// Diagnostic calculating the ratio of actual electrons to neutral electrons
 /// for each foil and connected metal cluster.
@@ -17,6 +18,7 @@ impl FoilElectronFractionDiagnostic {
 
     /// Recompute electron fractions for all foils using quadtree for efficient neighbor search.
     pub fn calculate(&mut self, bodies: &[Body], foils: &[Foil], quadtree: &Quadtree) {
+        profile_scope!("foil_electron_calculation_internal");
         self.fractions.clear();
         let id_to_index: HashMap<u64, usize> = bodies
             .iter()

@@ -1,6 +1,7 @@
 use crate::body::{Electron, Species};
 use crate::simulation::Simulation;
 use crate::units::BOLTZMANN_CONSTANT;
+use crate::profile_scope;
 use smallvec::smallvec;
 use ultraviolet::Vec2;
 
@@ -45,6 +46,7 @@ pub fn add_circle(
     y: f32,
     radius: f32,
 ) {
+    profile_scope!("particle_spawn");
     let temp = crate::config::LJ_CONFIG.lock().temperature;
     let center = Vec2::new(x, y);
     let particle_radius = body.radius;

@@ -2,6 +2,7 @@
 // Implementation of transient transference number diagnostic
 
 use crate::body::{Body, Species};
+use crate::profile_scope;
 use ultraviolet::Vec2;
 
 pub struct TransferenceNumberDiagnostic {
@@ -28,6 +29,7 @@ impl TransferenceNumberDiagnostic {
     }
 
     pub fn calculate(&mut self, bodies: &[Body]) {
+        profile_scope!("transference_calculation_internal");
         let mut lithium_velocities = Vec::new();
         let mut anion_velocities = Vec::new();
 

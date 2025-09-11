@@ -1,11 +1,13 @@
 use crate::io::{load_state, save_state};
 use crate::renderer::state::{SimCommand, PAUSED};
 use crate::simulation::Simulation;
+use crate::profile_scope;
 use std::sync::atomic::Ordering;
 
 use super::spawn;
 
 pub fn handle_command(cmd: SimCommand, simulation: &mut Simulation) {
+    profile_scope!("command_handling");
     match cmd {
         SimCommand::ChangeCharge { id, delta } => {
             if let Some(body) = simulation.bodies.iter_mut().find(|b| b.id == id) {

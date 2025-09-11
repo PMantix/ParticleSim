@@ -1,6 +1,7 @@
 use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
 use std::path::Path;
+use crate::profile_scope;
 
 use crate::simulation::Simulation;
 use crate::body::{Body, foil::Foil};
@@ -35,6 +36,7 @@ impl SimulationState {
 }
 
 pub fn save_state<P: AsRef<Path>>(path: P, sim: &Simulation) -> std::io::Result<()> {
+    profile_scope!("save_state");
     let path = path.as_ref();
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)?;
@@ -46,6 +48,7 @@ pub fn save_state<P: AsRef<Path>>(path: P, sim: &Simulation) -> std::io::Result<
 }
 
 pub fn load_state<P: AsRef<Path>>(path: P) -> std::io::Result<SimulationState> {
+    profile_scope!("load_state");
     let data = std::fs::read_to_string(path)?;
     let state: SimulationState = serde_json::from_str(&data).map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
     Ok(state)

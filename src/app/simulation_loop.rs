@@ -1,5 +1,6 @@
 use crate::renderer::state::{SimCommand, BODIES, FOILS, PAUSED, QUADTREE, SPAWN, UPDATE_LOCK};
 use crate::simulation::Simulation;
+use crate::profile_scope;
 use std::sync::atomic::Ordering;
 
 use super::command_loop;
@@ -86,7 +87,10 @@ pub fn run_simulation_loop(rx: std::sync::mpsc::Receiver<SimCommand>, mut simula
             }
             
             // debug log removed
-            simulation.step();
+            {
+                profile_scope!("simulation_loop");
+                simulation.step();
+            }
             // debug log removed
         }
         

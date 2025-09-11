@@ -3,6 +3,7 @@ use ultraviolet::Vec2;
 use std::fs;
 use std::path::Path;
 use chrono::Utc;
+use crate::profile_scope;
 
 impl Renderer {
     pub fn handle_screen_capture(&mut self, current_time: f32, width: u16, height: u16) {
@@ -30,6 +31,7 @@ impl Renderer {
     }
 
     pub fn capture_current_frame(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        profile_scope!("screen_capture");
         // Create capture directory if it doesn't exist
         fs::create_dir_all(&self.capture_folder)?;
         

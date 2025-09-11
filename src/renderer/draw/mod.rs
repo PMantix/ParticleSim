@@ -11,11 +11,13 @@ use palette::{Hsluv, IntoColor, Srgba};
 use ultraviolet::Vec2;
 use crate::quadtree::Quadtree;
 use crate::body::Species;
+use crate::profile_scope;
 use rayon::prelude::*;
 use std::sync::atomic::Ordering;
 
 impl super::Renderer {
     pub fn draw(&mut self, ctx: &mut quarkstrom::RenderContext, width: u16, height: u16) {
+        profile_scope!("draw_particles");
         // Prevent wgpu validation error: skip rendering if window is zero-sized
         if width == 0 || height == 0 {
             return;
@@ -36,9 +38,11 @@ impl super::Renderer {
 
                 // Update diagnostics
                 if let Some(ref mut diagnostic) = self.transference_number_diagnostic {
+                    profile_scope!("diagnostics_transference");
                     diagnostic.calculate(&self.bodies);
                 }
                 if let Some(ref mut diag) = self.foil_electron_fraction_diagnostic {
+                    profile_scope!("diagnostics_foil_electron");
                     // Create a temporary quadtree for diagnostic calculation
                     let mut temp_quadtree = crate::quadtree::Quadtree::new(1.0, 2.0, 1, 1024);
                     temp_quadtree.nodes = self.quadtree.clone();
@@ -48,7 +52,11 @@ impl super::Renderer {
                     diag.calculate_if_needed(&self.bodies, &self.foils, &temp_quadtree, current_time, 1.0);
                 }
                 if let Some(ref mut diag) = self.solvation_diagnostic {
-                    diag.calculate(&self.bodies);
+                    profile_scope!("diagnostics_solvation");
+                    // Only run solvation diagnostic every 10th frame to improve performance
+                    if self.frame % 10 == 0 {
+                        diag.calculate(&self.bodies);
+                    }
                 }
             }
             if let Some(body) = self.confirmed_bodies.take() {
