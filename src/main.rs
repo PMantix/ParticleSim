@@ -14,6 +14,7 @@ mod init_config;
 mod diagnostics;
 mod app;
 mod units;
+mod scenario;
 
 #[cfg(feature = "profiling")]
 use once_cell::sync::Lazy;

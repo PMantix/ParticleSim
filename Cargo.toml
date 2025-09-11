@@ -28,7 +28,7 @@ name = "toml_density_analysis"
 path = "debug/toml_density_analysis.rs"
 
 [dependencies]
-quarkstrom = { path = "../deps/quarkstrom" }
+quarkstrom = { path = "../quarkstrom/quarkstrom" }
 
 ultraviolet = { version = "0.9.2", features = ["serde"] }
 fastrand = "2.1.1"

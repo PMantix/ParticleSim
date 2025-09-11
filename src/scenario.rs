@@ -2,7 +2,6 @@
 // Handles loading and applying initial simulation scenarios from configuration files
 
 use crate::body::Species;
-use crate::body::Electron;
 use crate::init_config::InitConfig;
 use crate::renderer::state::{SIM_COMMAND_SENDER, SimCommand};
 use ultraviolet::Vec2;

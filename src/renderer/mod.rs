@@ -13,7 +13,6 @@ use crate::renderer::state::{SimCommand, SIM_COMMAND_SENDER};
 use ultraviolet::Vec2;
 use quarkstrom::winit_input_helper::WinitInputHelper;
 use std::collections::HashMap;
-use rand::Rng;
 use quarkstrom::egui::{self, Color32, Pos2, Vec2 as EVec2};
 use std::fs;
 
@@ -194,11 +193,11 @@ impl quarkstrom::Renderer for Renderer {
             chars
         };
         let splash_particles = {
-            let mut rng = rand::thread_rng();
+            let mut rng = fastrand::Rng::new();
             let mut particles = Vec::new();
             for _ in 0..20 {
-                let pos = Pos2::new(rng.gen_range(0.0..800.0), rng.gen_range(0.0..600.0));
-                let vel = EVec2::new(rng.gen_range(-2.0..2.0), rng.gen_range(-2.0..2.0));
+                let pos = Pos2::new(rng.f32() * 800.0, rng.f32() * 600.0);
+                let vel = EVec2::new(rng.f32() * 4.0 - 2.0, rng.f32() * 4.0 - 2.0);
                 particles.push(SplashParticle { pos, vel, radius: char_size / 2.0 });
             }
             particles
@@ -329,8 +328,8 @@ impl Renderer {
     }
 
     fn random_color() -> Color32 {
-        let mut rng = rand::thread_rng();
-        Color32::from_rgb(rng.gen(), rng.gen(), rng.gen())
+        let mut rng = fastrand::Rng::new();
+        Color32::from_rgb((rng.f32() * 255.0) as u8, (rng.f32() * 255.0) as u8, (rng.f32() * 255.0) as u8)
     }
 
     fn update_splash_particles(&mut self, width: f32, height: f32, rects: &[egui::Rect]) {

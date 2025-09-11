@@ -170,22 +170,33 @@ impl super::Renderer {
             for p in &self.splash_particles {
                 ui.painter().text(p.pos, Align2::CENTER_CENTER, "*", FontId::monospace(char_h), Color32::WHITE);
             }
-            let mut y = start_y + self.splash_art_height as f32 * char_h + 10.0;
+            let y = start_y + self.splash_art_height as f32 * char_h + 10.0;
             let center_x = rect.center().x;
-            ui.set_cursor_pos(Pos2::new(center_x - 100.0, y));
-            ui.label("paquino@honda-ri.com");
-            y += 30.0;
-            ui.set_cursor_pos(Pos2::new(center_x - 100.0, y));
-            egui::ComboBox::from_id_source("scenario_select")
-                .selected_text(&self.scenarios[self.selected_scenario])
-                .show_ui(ui, |ui| {
-                    for (i, s) in self.scenarios.iter().enumerate() {
-                        ui.selectable_value(&mut self.selected_scenario, i, s);
-                    }
-                });
-            y += 30.0;
-            ui.set_cursor_pos(Pos2::new(center_x - 120.0, y));
-            ui.label("Click any button to continue");
+            
+            // Use vertical spacing to position elements
+            ui.add_space(y - ui.cursor().top());
+            ui.horizontal(|ui| {
+                ui.add_space(center_x - 100.0 - ui.cursor().left());
+                ui.label("paquino@honda-ri.com");
+            });
+            
+            ui.add_space(30.0);
+            ui.horizontal(|ui| {
+                ui.add_space(center_x - 100.0 - ui.cursor().left());
+                egui::ComboBox::from_id_source("scenario_select")
+                    .selected_text(&self.scenarios[self.selected_scenario])
+                    .show_ui(ui, |ui| {
+                        for (i, s) in self.scenarios.iter().enumerate() {
+                            ui.selectable_value(&mut self.selected_scenario, i, s);
+                        }
+                    });
+            });
+            
+            ui.add_space(30.0);
+            ui.horizontal(|ui| {
+                ui.add_space(center_x - 120.0 - ui.cursor().left());
+                ui.label("Click any button to continue");
+            });
         });
     }
 
