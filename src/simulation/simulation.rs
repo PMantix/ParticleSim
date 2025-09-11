@@ -65,16 +65,6 @@ impl Simulation {
             config: config::SimConfig::default(),
             last_thermostat_time: 0.0,
         };
-        // Example: scenario setup using SimCommand (pseudo-code, actual sending is done in main.rs or GUI)
-        // let left_center = Vec2::new(-bounds * 0.6, 0.0);
-        // let right_center = Vec2::new(bounds * 0.6, 0.0);
-        // let center = Vec2::zero();
-        // let clump_radius = 10.0;
-        // let metal_body = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::LithiumMetal);
-        // let ion_body = Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 1.0, Species::LithiumIon);
-        // SimCommand::AddCircle { body: metal_body, x: left_center.x, y: left_center.y, radius: clump_radius }
-        // SimCommand::AddCircle { body: metal_body, x: right_center.x, y: right_center.y, radius: clump_radius }
-        // SimCommand::AddCircle { body: ion_body, x: center.x, y: center.y, radius: clump_radius }
         sim
     }
 
@@ -96,7 +86,7 @@ impl Simulation {
         // Check for NaN values at start of step
         let nan_count = self.bodies.iter().filter(|b| !b.pos.x.is_finite() || !b.pos.y.is_finite() || !b.charge.is_finite()).count();
         if nan_count > 0 {
-            // debug log removed
+            // NaN values detected at step start
         }
 
         // Propagate linked foil currents - removed since we now handle linking at the property level
@@ -114,7 +104,7 @@ impl Simulation {
         // Check for NaN values after force calculations
         let nan_count = self.bodies.iter().filter(|b| !b.acc.x.is_finite() || !b.acc.y.is_finite() || !b.az.is_finite()).count();
         if nan_count > 0 {
-            // debug log removed
+            // NaN values detected after force calculations
         }
         
         // Apply out-of-plane forces if enabled
@@ -125,54 +115,41 @@ impl Simulation {
         // Check for NaN values after out-of-plane physics
         let nan_count = self.bodies.iter().filter(|b| !b.pos.x.is_finite() || !b.pos.y.is_finite() || !b.charge.is_finite() || !b.z.is_finite()).count();
         if nan_count > 0 {
-            // debug log removed
+            // NaN values detected after out-of-plane physics
         }
         
-    // debug log removed
         // Apply Li+ mobility enhancement (pressure-dependent collision softening)
         // super::li_mobility::apply_li_mobility_enhancement(self);
         self.iterate();
-    // debug log removed
         
         // Check for NaN values after iterate
         let nan_count = self.bodies.iter().filter(|b| !b.pos.x.is_finite() || !b.pos.y.is_finite() || !b.charge.is_finite()).count();
         if nan_count > 0 {
-            // debug log removed
+            // NaN values detected after iterate
         }
         
         let num_passes = *COLLISION_PASSES.lock();
-    // debug log removed
-    for _ in 1..num_passes {
-            // debug log removed
+        for _ in 1..num_passes {
             collision::collide(self);
         }
-    // debug log removed
         self.update_surrounded_flags();
-    // debug log removed
 
         // Track which bodies receive electrons from foil current this step
         let mut foil_current_recipients = vec![false; self.bodies.len()];
         // Apply foil current sources/sinks with charge conservation
-    // debug log removed
         self.process_foils_with_charge_conservation(time, &mut foil_current_recipients);
-    // debug log removed
         // Ensure all body charges are up-to-date after foil current changes
-    // debug log removed
         self.bodies.par_iter_mut().for_each(|body| body.update_charge_from_electrons());
-    // debug log removed
         
         // Rebuild the quadtree after charge/electron changes so field is correct for hopping
-    // debug log removed
         self.quadtree.build(&mut self.bodies);
-    // debug log removed
 
         let quadtree = &self.quadtree;
         let len = self.bodies.len();
         let bodies_ptr = self.bodies.as_ptr();
-    // debug log removed
         for i in 0..len {
             if i % 1000 == 0 && i > 0 {
-                // debug log removed
+                // Processing electron updates in batches
             }
             let bodies_slice = unsafe { std::slice::from_raw_parts(bodies_ptr, len) };
             let body = &mut self.bodies[i];
@@ -185,11 +162,8 @@ impl Simulation {
             );
             body.update_charge_from_electrons();
         }
-    // debug log removed
         
-    // debug log removed
         self.perform_electron_hopping_with_exclusions(&foil_current_recipients);
-    // debug log removed
         
         // Apply periodic thermostat if enough time has passed
         if time - self.last_thermostat_time >= self.config.thermostat_frequency {
@@ -198,7 +172,6 @@ impl Simulation {
         }
         
         self.frame += 1;
-    // debug log removed
 
         #[cfg(test)]
         // After all updates, print debug info for anions
