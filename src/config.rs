@@ -108,7 +108,7 @@ pub const SURROUND_CHECK_INTERVAL: usize = 10;
 // ====================
 /// Default timestep in femtoseconds.
 /// Typical MD timesteps: 0.5-2.0 fs. Old value was 0.015 fs (too small).
-pub const DEFAULT_DT_FS: f32 = 1.0;
+pub const DEFAULT_DT_FS: f32 = 10.0;
 pub const COLLISION_PASSES: usize =9;                  // Number of collision resolution passes
 
 // ====================
@@ -156,7 +156,7 @@ pub const SHOW_FIELD_VECTORS: bool = false; // Show electric field vectors
 // Temperature
 // ====================
 /// Default simulation temperature for thermal motion (Kelvin)
-pub const DEFAULT_TEMPERATURE: f32 = 150.0; // Reduced from room temp for better solvation
+pub const DEFAULT_TEMPERATURE: f32 = 300.0; // Room temperature in Kelvin
 
 use serde::{Serialize, Deserialize};
 

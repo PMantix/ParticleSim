@@ -9,19 +9,23 @@ path = "src/main.rs"
 
 [[bin]]
 name = "debug_out_of_plane"
-path = "debug_out_of_plane.rs"
+path = "debug/debug_out_of_plane.rs"
 
 [[bin]]
 name = "verify_config"
-path = "verify_config.rs"
+path = "debug/verify_config.rs"
 
 [[bin]]
 name = "minimal_test"
-path = "minimal_test.rs"
+path = "debug/minimal_test.rs"
 
 [[bin]]
 name = "debug_graphics"
-path = "debug_graphics.rs"
+path = "debug/debug_graphics.rs"
+
+[[bin]]
+name = "toml_density_analysis"
+path = "debug/toml_density_analysis.rs"
 
 [dependencies]
 quarkstrom = { git = "https://github.com/PMantix/quarkstrom", branch = "master"}

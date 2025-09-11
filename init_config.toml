@@ -11,7 +11,7 @@
 # - Results in 25% liquid packing fraction and 8% of realistic density
 domain_width = 600.0
 domain_height = 400.0
-initial_temperature = 150.0  # Reduced temperature for better solvation shell formation
+initial_temperature = 300.0  # Room temperature in Kelvin
 # Out-of-plane behavior (3D motion) - temporarily disabled for testing
 enable_out_of_plane = false
 max_z = 5.0

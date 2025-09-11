@@ -112,8 +112,8 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
             polar_offset: crate::config::ELECTRON_DRIFT_RADIUS_FACTOR_EC,
             polar_charge: crate::config::POLAR_CHARGE_EC,
             enable_repulsion: true,
-            repulsion_strength: 100.0,
-            repulsion_cutoff: 11.0,
+            repulsion_strength: 5.0,  // Reduced from 100.0 - represents osmotic pressure
+            repulsion_cutoff: 6.0,    // Reduced from 11.0 - shorter range interaction
         },
     );
     m.insert(
@@ -130,8 +130,8 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
             polar_offset: crate::config::ELECTRON_DRIFT_RADIUS_FACTOR_DMC,
             polar_charge: crate::config::POLAR_CHARGE_DMC,
             enable_repulsion: true,
-            repulsion_strength: 100.0,
-            repulsion_cutoff: 11.0,
+            repulsion_strength: 5.0,  // Reduced from 100.0 - represents osmotic pressure  
+            repulsion_cutoff: 6.0,    // Reduced from 11.0 - shorter range interaction
         },
     );
     m

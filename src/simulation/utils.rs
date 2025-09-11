@@ -1,5 +1,6 @@
 ﻿use crate::body::Body;
 use crate::body::Species;
+use crate::units::BOLTZMANN_CONSTANT;
 
 /// Returns true if an electron should be allowed to hop from src to dst
 pub fn can_transfer_electron(src: &Body, dst: &Body) -> bool {
@@ -30,7 +31,7 @@ pub fn can_transfer_electron(src: &Body, dst: &Body) -> bool {
 }
 
 /// Compute the instantaneous temperature from particle velocities.
-/// Assumes 2D simulation and k_B = 1.
+/// Returns temperature in Kelvin for 2D simulation.
 pub fn compute_temperature(bodies: &[Body]) -> f32 {
     if bodies.is_empty() {
         return 0.0;
@@ -39,7 +40,11 @@ pub fn compute_temperature(bodies: &[Body]) -> f32 {
         .iter()
         .map(|b| 0.5 * b.mass * b.vel.mag_sq())
         .sum();
-    (2.0 * kinetic) / (2.0 * bodies.len() as f32)
+    
+    // For 2D: <E> = k_B * T, so T = <E> / k_B
+    // where <E> is average kinetic energy per particle
+    let avg_kinetic_energy = kinetic / bodies.len() as f32;
+    avg_kinetic_energy / BOLTZMANN_CONSTANT
 }
 
 #[cfg(test)]

@@ -31,7 +31,7 @@ impl super::super::Renderer {
         ui.group(|ui| {
             ui.label("⏱️ Simulation Parameters");
             ui.add(
-                egui::Slider::new(&mut *TIMESTEP.lock(), 0.1..=5.0)
+                egui::Slider::new(&mut *TIMESTEP.lock(), 0.1..=100.0)
                     .text("Timestep (fs)")
                     .step_by(0.05)
                     .logarithmic(false),
