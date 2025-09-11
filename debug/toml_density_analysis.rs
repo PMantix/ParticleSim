@@ -11,6 +11,7 @@ struct Config {
 }
 
 #[derive(Deserialize, Debug)]
+#[allow(dead_code)]
 struct Simulation {
     domain_width: f32,
     domain_height: f32,
@@ -25,6 +26,7 @@ struct Particles {
 }
 
 #[derive(Deserialize, Debug)]
+#[allow(dead_code)]
 struct MetalRectangle {
     x: f32,
     y: f32,
@@ -34,6 +36,7 @@ struct MetalRectangle {
 }
 
 #[derive(Deserialize, Debug)]
+#[allow(dead_code)]
 struct FoilRectangle {
     x: f32,
     y: f32,
