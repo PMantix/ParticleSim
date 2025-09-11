@@ -21,6 +21,8 @@ pub static COLLISION_PASSES: Lazy<Mutex<usize>> = Lazy::new(|| Mutex::new(14));
 pub static SIM_TIME: Lazy<Mutex<f32>> = Lazy::new(|| Mutex::new(0.0));
 pub static SHOW_Z_VISUALIZATION: Lazy<AtomicBool> = Lazy::new(|| AtomicBool::new(false));
 pub static Z_VISUALIZATION_STRENGTH: Lazy<Mutex<f32>> = Lazy::new(|| Mutex::new(1.0));
+pub static DOMAIN_WIDTH: Lazy<Mutex<f32>> = Lazy::new(|| Mutex::new(300.0)); // Default domain width
+pub static DOMAIN_HEIGHT: Lazy<Mutex<f32>> = Lazy::new(|| Mutex::new(300.0)); // Default domain height
 
 //Simulation commands
 // These are used to send commands to the simulation thread from the GUI thread

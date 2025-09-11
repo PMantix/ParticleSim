@@ -119,7 +119,7 @@ impl SolvationDiagnostic {
                             if dist < contact_cutoff {
                                 self.cip_ion_ids.push(body.id);
                                 self.cip_pairs.push((body.id, bodies[j].id, li_solvent_ids, an_solvent_ids));
-                            } else if li_solvents >= 4 && an_solvents >= 3 { // Relaxed S2IP criteria: at least 1 solvent each
+                            } else if li_solvents >= 3 && an_solvents >= 2 { // Relaxed S2IP criteria: at least 1 solvent each
                                 self.s2ip_ion_ids.push(body.id);
                                 self.s2ip_pairs.push((body.id, bodies[j].id, li_solvent_ids, an_solvent_ids));
                             } else {

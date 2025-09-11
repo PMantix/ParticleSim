@@ -276,6 +276,10 @@ pub fn handle_set_domain_size(simulation: &mut Simulation, width: f32, height: f
     simulation.domain_width = half_width;
     simulation.domain_height = half_height;
     simulation.cell_list.update_domain_size(half_width, half_height);
+    
+    // Update shared state for renderer
+    *crate::renderer::state::DOMAIN_WIDTH.lock() = width;
+    *crate::renderer::state::DOMAIN_HEIGHT.lock() = height;
 }
 
 pub fn handle_set_temperature(simulation: &mut Simulation, temperature: f32) {

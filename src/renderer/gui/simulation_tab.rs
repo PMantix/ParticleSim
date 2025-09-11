@@ -9,10 +9,10 @@ impl super::super::Renderer {
             ui.label("🔋 Electric Field");
             let mut mag = *FIELD_MAGNITUDE.lock();
             ui.add(
-                egui::Slider::new(&mut mag, 0.0..=200.0)
+                egui::Slider::new(&mut mag, 0.0..=1.0)
                     .text("Field |E|")
                     .clamp_to_range(true)
-                    .step_by(1.0),
+                    .step_by(0.0001),
             );
             *FIELD_MAGNITUDE.lock() = mag;
 

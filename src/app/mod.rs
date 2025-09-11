@@ -60,10 +60,20 @@ pub fn run() {
     let (global_width, global_height) = if let Some(ref sim_config) = init_config.simulation {
         let (width, height) = sim_config.domain_size();
         println!("Setting domain size to {}x{}", width, height);
+        
+        // Initialize shared state with correct domain size before renderer is created
+        *crate::renderer::state::DOMAIN_WIDTH.lock() = width;
+        *crate::renderer::state::DOMAIN_HEIGHT.lock() = height;
+        
         tx.send(SimCommand::SetDomainSize { width, height }).unwrap();
         (width, height)
     } else {
         let size = crate::config::DOMAIN_BOUNDS * 2.0;
+        
+        // Initialize shared state with default size
+        *crate::renderer::state::DOMAIN_WIDTH.lock() = size;
+        *crate::renderer::state::DOMAIN_HEIGHT.lock() = size;
+        
         (size, size)
     };
 

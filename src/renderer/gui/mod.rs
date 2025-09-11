@@ -22,6 +22,10 @@ pub use scenario_tab::make_body_with_species;
 
 impl super::Renderer {
     pub fn show_gui(&mut self, ctx: &quarkstrom::egui::Context) {
+        // Sync domain size from shared state (updated by simulation)
+        self.domain_width = *crate::renderer::state::DOMAIN_WIDTH.lock();
+        self.domain_height = *crate::renderer::state::DOMAIN_HEIGHT.lock();
+        
         let mut settings_open = self.settings_window_open;
         egui::Window::new("Particle Simulation Controls")
             .default_width(500.0)

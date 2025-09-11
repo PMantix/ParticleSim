@@ -119,6 +119,10 @@ pub struct Renderer {
     // View mode toggle
     pub side_view_mode: bool,  // false = X-Y (top-down), true = X-Z (side view)
     
+    // Electrolyte solution controls
+    pub electrolyte_molarity: f32,
+    pub electrolyte_total_particles: usize,
+    
     // Screen capture functionality
     pub screen_capture_enabled: bool,
     pub capture_interval: f32,  // seconds between captures
@@ -184,8 +188,8 @@ impl quarkstrom::Renderer for Renderer {
             new_plot_spatial_bins: 50,
             new_plot_time_window: 10.0,
             new_plot_update_frequency: 5.0,
-            domain_width: 300.0,  // Default domain size
-            domain_height: 300.0,
+            domain_width: *crate::renderer::state::DOMAIN_WIDTH.lock(),  // Initialize from shared state
+            domain_height: *crate::renderer::state::DOMAIN_HEIGHT.lock(), // Initialize from shared state
             selected_lj_species: Species::LithiumMetal, // Default to LithiumMetal for LJ editing
             selected_delete_option: DeleteOption::AllSpecies, // Default to All Species
             current_tab: GuiTab::default(), // Default to Simulation tab
@@ -201,6 +205,10 @@ impl quarkstrom::Renderer for Renderer {
             
             // View mode - default to top-down (X-Y)
             side_view_mode: false,
+            
+            // Electrolyte solution controls
+            electrolyte_molarity: 1.0,        // 1M default
+            electrolyte_total_particles: 1000, // 1000 particles default
             
             // Screen capture defaults
             screen_capture_enabled: false,
