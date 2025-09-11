@@ -1,5 +1,6 @@
 use crate::body::{Electron, Species};
 use crate::simulation::Simulation;
+use crate::units::BOLTZMANN_CONSTANT;
 use smallvec::smallvec;
 use ultraviolet::Vec2;
 
@@ -7,8 +8,11 @@ const RANDOM_ATTEMPTS: usize = super::RANDOM_ATTEMPTS;
 
 /// Sample a random velocity vector from a Maxwell-Boltzmann distribution.
 /// Uses Box-Muller transform with fastrand for normal distribution.
+/// Temperature should be in Kelvin.
 pub fn sample_velocity(mass: f32, temperature: f32) -> Vec2 {
-    let sigma = (temperature / mass).sqrt();
+    // For 2D Maxwell-Boltzmann: σ = sqrt(k_B * T / m)
+    // where k_B is in simulation energy units per Kelvin
+    let sigma = (BOLTZMANN_CONSTANT * temperature / mass).sqrt();
     
     // Box-Muller transform for normal distribution
     let u1 = fastrand::f32();

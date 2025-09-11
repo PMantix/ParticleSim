@@ -558,6 +558,7 @@ impl Simulation {
     /// Only applies to solvent particles (EC/DMC), excludes metals
     pub fn apply_thermostat(&mut self) {
         use crate::body::Species;
+        use crate::units::BOLTZMANN_CONSTANT;
         
         let target_temp = self.config.temperature;
         if target_temp <= 0.0 {
@@ -582,8 +583,9 @@ impl Simulation {
             return; // No solvent particles to thermostat
         }
         
-        // T = (2 * KE) / (DOF * k_B), where DOF = 2 for 2D, k_B = 1 in simulation units
-        let current_temp = solvent_ke / solvent_count as f32;
+        // For 2D: <E> = k_B * T, so T = <E> / k_B
+        let avg_kinetic_energy = solvent_ke / solvent_count as f32;
+        let current_temp = avg_kinetic_energy / BOLTZMANN_CONSTANT;
         
         if current_temp > 0.0 {
             let scale = (target_temp / current_temp).sqrt();

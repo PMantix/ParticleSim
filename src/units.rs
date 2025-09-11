@@ -27,3 +27,11 @@ pub const COULOMB_CONSTANT: f32 = (
     8.987_551_792_3e9 * ELEMENTARY_CHARGE * ELEMENTARY_CHARGE * FEMTOSECOND * FEMTOSECOND
         / (AMU * ANGSTROM * ANGSTROM * ANGSTROM)
 ) as f32;
+
+/// Boltzmann constant in joules per kelvin.
+pub const BOLTZMANN_JOULE_PER_KELVIN: f64 = 1.380_649e-23;
+
+/// Boltzmann constant in simulation energy units per kelvin.
+/// k_B = 1.38e-23 J/K converted to [AMU⋅Å²/fs²⋅K]
+/// Dimensional analysis: J/K → AMU⋅Å²/(fs²⋅K)
+pub const BOLTZMANN_CONSTANT: f32 = (BOLTZMANN_JOULE_PER_KELVIN / ENERGY_JOULE) as f32;

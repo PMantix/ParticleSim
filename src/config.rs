@@ -155,8 +155,8 @@ pub const SHOW_FIELD_VECTORS: bool = false; // Show electric field vectors
 // ====================
 // Temperature
 // ====================
-/// Default simulation temperature in arbitrary units
-pub const DEFAULT_TEMPERATURE: f32 = 293.13; // 300 K in Kelvin scale
+/// Default simulation temperature for thermal motion (Kelvin)
+pub const DEFAULT_TEMPERATURE: f32 = 150.0; // Reduced from room temp for better solvation
 
 use serde::{Serialize, Deserialize};
 
