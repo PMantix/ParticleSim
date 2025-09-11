@@ -34,10 +34,14 @@ fn apply_configuration(init_config: InitConfig) -> Result<(), Box<dyn std::error
     let (global_width, global_height) = if let Some(ref sim_config) = init_config.simulation {
         let (width, height) = sim_config.domain_size();
         println!("Setting domain size to {}x{}", width, height);
+        *crate::renderer::state::DOMAIN_WIDTH.lock() = width;
+        *crate::renderer::state::DOMAIN_HEIGHT.lock() = height;
         tx.send(SimCommand::SetDomainSize { width, height })?;
         (width, height)
     } else {
         let size = crate::config::DOMAIN_BOUNDS * 2.0;
+        *crate::renderer::state::DOMAIN_WIDTH.lock() = size;
+        *crate::renderer::state::DOMAIN_HEIGHT.lock() = size;
         (size, size)
     };
     
@@ -235,6 +239,11 @@ pub fn load_hardcoded_scenario() -> Result<(), Box<dyn std::error::Error>> {
     
     // Send SimCommands to populate the simulation
     let tx = SIM_COMMAND_SENDER.lock().as_ref().unwrap().clone();
+    let width = bounds * 2.0;
+    let height = bounds * 2.0;
+    *crate::renderer::state::DOMAIN_WIDTH.lock() = width;
+    *crate::renderer::state::DOMAIN_HEIGHT.lock() = height;
+    tx.send(SimCommand::SetDomainSize { width, height })?;
     tx.send(SimCommand::AddCircle { body: metal_body.clone(), x: left_center.x, y: left_center.y, radius: clump_radius })?;
     tx.send(SimCommand::AddCircle { body: metal_body.clone(), x: right_center.x, y: right_center.y, radius: clump_radius })?;
     tx.send(SimCommand::AddCircle { body: ion_body, x: center.x, y: center.y, radius: clump_radius })?;

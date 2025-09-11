@@ -2089,7 +2089,6 @@ dependencies = [
 [[package]]
 name = "quarkstrom"
 version = "0.1.0"
-source = "git+https://github.com/PMantix/quarkstrom?branch=master#810af2f5b520747fd6ac9e9f1899bddae7a0c6b2"
 dependencies = [
  "arc-swap",
  "bytemuck",

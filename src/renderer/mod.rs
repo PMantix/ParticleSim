@@ -9,9 +9,40 @@ use crate::config::SimConfig;
 use crate::quadtree::Node;
 use crate::plotting::{PlottingSystem, PlotType, Quantity, SamplingMode};
 use crate::diagnostics::{TransferenceNumberDiagnostic, FoilElectronFractionDiagnostic};
+use crate::renderer::state::{SimCommand, SIM_COMMAND_SENDER};
 use ultraviolet::Vec2;
 use quarkstrom::winit_input_helper::WinitInputHelper;
 use std::collections::HashMap;
+use rand::Rng;
+use quarkstrom::egui::{self, Color32, Pos2, Vec2 as EVec2};
+use std::fs;
+
+const SPLASH_ART: &[&str] = &[
+" ____   _    ____  _____ ___ ____ _     _____ ____  ",
+"|  _ \\ / \\  |  _ \\| ____|_ _/ ___| |   | ____|  _ \\ ",
+"| |_) / _ \\ | |_) |  _|  | | |   | |   |  _| | |_) |",
+"|  __/ ___ \\|  _ <| |___ | | |___| |___| |___|  _ < ",
+"|_| /_/   \\_\\_| \\_\\_____|___\\____|_____|_____|_| \\_\\",
+"",
+" ____  _____ __  __ ",
+"/ ___|| ____|  \\  |",
+"\\___ \\|  _| | |\\/| |",
+" ___) | |___| |  | |",
+"|____/|_____|_|  |_|"]; 
+
+#[derive(Clone)]
+struct SplashChar {
+    row: usize,
+    col: usize,
+    ch: char,
+    color: Color32,
+}
+
+struct SplashParticle {
+    pos: Pos2,
+    vel: EVec2,
+    radius: f32,
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum DeleteOption {
@@ -135,10 +166,43 @@ pub struct Renderer {
     pub is_selecting_region: bool,
     pub capture_counter: usize,
     pub should_capture_next_frame: bool,
+    // Splash screen state
+    show_splash: bool,
+    splash_chars: Vec<SplashChar>,
+    splash_particles: Vec<SplashParticle>,
+    scenarios: Vec<String>,
+    selected_scenario: usize,
+    splash_art_width: usize,
+    splash_art_height: usize,
+    char_size: f32,
 }
 
 impl quarkstrom::Renderer for Renderer {
     fn new() -> Self {
+        let char_size = 16.0;
+        let splash_art_width = SPLASH_ART.iter().map(|s| s.chars().count()).max().unwrap_or(0);
+        let splash_art_height = SPLASH_ART.len();
+        let splash_chars = {
+            let mut chars = Vec::new();
+            for (row, line) in SPLASH_ART.iter().enumerate() {
+                for (col, ch) in line.chars().enumerate() {
+                    if ch != ' ' {
+                        chars.push(SplashChar { row, col, ch, color: Color32::WHITE });
+                    }
+                }
+            }
+            chars
+        };
+        let splash_particles = {
+            let mut rng = rand::thread_rng();
+            let mut particles = Vec::new();
+            for _ in 0..20 {
+                let pos = Pos2::new(rng.gen_range(0.0..800.0), rng.gen_range(0.0..600.0));
+                let vel = EVec2::new(rng.gen_range(-2.0..2.0), rng.gen_range(-2.0..2.0));
+                particles.push(SplashParticle { pos, vel, radius: char_size / 2.0 });
+            }
+            particles
+        };
         Self {
             pos: Vec2::zero(),
             scale: 500.0,
@@ -165,7 +229,7 @@ impl quarkstrom::Renderer for Renderer {
             scenario_x: 0.0,
             scenario_y: 0.0,
             scenario_species: Species::LithiumIon,
-            scenario_width: 5.0,           
+            scenario_width: 5.0,
             scenario_height: 5.0,
             scenario_random_count: 1,
             //scenario_charge: 0,
@@ -196,20 +260,20 @@ impl quarkstrom::Renderer for Renderer {
             transference_number_diagnostic: Some(TransferenceNumberDiagnostic::new()),
             foil_electron_fraction_diagnostic: Some(FoilElectronFractionDiagnostic::new()),
             solvation_diagnostic: Some(crate::diagnostics::SolvationDiagnostic::new()),
-            
+
             // Solvation visualization flags - default to false
             show_cip_ions: false,
             show_sip_ions: false,
             show_s2ip_ions: false,
             show_fd_ions: false,
-            
+
             // View mode - default to top-down (X-Y)
             side_view_mode: false,
-            
+
             // Electrolyte solution controls
             electrolyte_molarity: 1.0,        // 1M default
             electrolyte_total_particles: 1000, // 1000 particles default
-            
+
             // Screen capture defaults
             screen_capture_enabled: false,
             capture_interval: 1.0,  // 1 second between captures
@@ -222,6 +286,14 @@ impl quarkstrom::Renderer for Renderer {
             is_selecting_region: false,
             capture_counter: 0,
             should_capture_next_frame: false,
+            show_splash: true,
+            splash_chars,
+            splash_particles,
+            scenarios: Self::available_scenarios(),
+            selected_scenario: 0,
+            splash_art_width,
+            splash_art_height,
+            char_size,
         }
     }
 
@@ -238,6 +310,86 @@ impl quarkstrom::Renderer for Renderer {
         self.show_gui(ctx);
         // After GUI update, write changes to global config
         *crate::config::LJ_CONFIG.lock() = self.sim_config.clone();
+    }
+}
+
+impl Renderer {
+    fn available_scenarios() -> Vec<String> {
+        let mut list = vec!["Default".to_string()];
+        if let Ok(entries) = fs::read_dir("saved_state") {
+            for entry in entries.flatten() {
+                if let Some(name) = entry.file_name().to_str() {
+                    if name.ends_with(".json") {
+                        list.push(name.trim_end_matches(".json").to_string());
+                    }
+                }
+            }
+        }
+        list
+    }
+
+    fn random_color() -> Color32 {
+        let mut rng = rand::thread_rng();
+        Color32::from_rgb(rng.gen(), rng.gen(), rng.gen())
+    }
+
+    fn update_splash_particles(&mut self, width: f32, height: f32, rects: &[egui::Rect]) {
+        for p in &mut self.splash_particles {
+            p.pos += p.vel;
+            if p.pos.x - p.radius < 0.0 || p.pos.x + p.radius > width {
+                p.vel.x = -p.vel.x;
+                p.pos.x = p.pos.x.clamp(p.radius, width - p.radius);
+            }
+            if p.pos.y - p.radius < 0.0 || p.pos.y + p.radius > height {
+                p.vel.y = -p.vel.y;
+                p.pos.y = p.pos.y.clamp(p.radius, height - p.radius);
+            }
+            for (i, rect) in rects.iter().enumerate() {
+                if p.pos.x + p.radius > rect.left()
+                    && p.pos.x - p.radius < rect.right()
+                    && p.pos.y + p.radius > rect.top()
+                    && p.pos.y - p.radius < rect.bottom()
+                {
+                    let center = rect.center();
+                    let dx = p.pos.x - center.x;
+                    let dy = p.pos.y - center.y;
+                    if dx.abs() > dy.abs() {
+                        p.vel.x = -p.vel.x;
+                    } else {
+                        p.vel.y = -p.vel.y;
+                    }
+                    self.splash_chars[i].color = Self::random_color();
+                }
+            }
+        }
+        let len = self.splash_particles.len();
+        for i in 0..len {
+            for j in i + 1..len {
+                let delta = self.splash_particles[i].pos - self.splash_particles[j].pos;
+                if delta.length_sq()
+                    < (self.splash_particles[i].radius + self.splash_particles[j].radius).powi(2)
+                {
+                    let tmp = self.splash_particles[i].vel;
+                    self.splash_particles[i].vel = self.splash_particles[j].vel;
+                    self.splash_particles[j].vel = tmp;
+                }
+            }
+        }
+    }
+
+    fn start_selected_scenario(&mut self) {
+        if self.selected_scenario == 0 {
+            if crate::scenario::load_and_apply_scenario().is_err() {
+                let _ = crate::scenario::load_hardcoded_scenario();
+            }
+        } else {
+            let name = &self.scenarios[self.selected_scenario];
+            let path = format!("saved_state/{}.json", name);
+            if let Some(tx) = SIM_COMMAND_SENDER.lock().as_ref() {
+                let _ = tx.send(SimCommand::LoadState { path });
+            }
+        }
+        self.show_splash = false;
     }
 }
 

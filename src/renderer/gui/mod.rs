@@ -24,6 +24,10 @@ pub use scenario_tab::make_body_with_species;
 impl super::Renderer {
     pub fn show_gui(&mut self, ctx: &quarkstrom::egui::Context) {
         profile_scope!("gui_update");
+        if self.show_splash {
+            self.show_splash_screen(ctx);
+            return;
+        }
         // Sync domain size from shared state (updated by simulation)
         self.domain_width = *crate::renderer::state::DOMAIN_WIDTH.lock();
         self.domain_height = *crate::renderer::state::DOMAIN_HEIGHT.lock();
@@ -142,6 +146,47 @@ impl super::Renderer {
 
         // Show individual plot windows
         crate::plotting::gui::show_plot_windows(ctx, &mut self.plotting_system);
+    }
+
+    fn show_splash_screen(&mut self, ctx: &egui::Context) {
+        use egui::{Align2, FontId, Pos2, vec2, Color32};
+        egui::CentralPanel::default().show(ctx, |ui| {
+            let rect = ui.max_rect();
+            let width = rect.width();
+            let height = rect.height();
+            let char_w = self.char_size;
+            let char_h = self.char_size;
+            let start_x = rect.center().x - self.splash_art_width as f32 * char_w / 2.0;
+            let start_y = rect.center().y - self.splash_art_height as f32 * char_h / 2.0 - 40.0;
+            let mut rects = Vec::with_capacity(self.splash_chars.len());
+            for ch in &self.splash_chars {
+                let x = start_x + ch.col as f32 * char_w;
+                let y = start_y + ch.row as f32 * char_h;
+                let r = egui::Rect::from_min_size(Pos2::new(x, y), vec2(char_w, char_h));
+                rects.push(r);
+                ui.painter().text(Pos2::new(x, y), Align2::LEFT_TOP, ch.ch, FontId::monospace(char_h), ch.color);
+            }
+            self.update_splash_particles(width, height, &rects);
+            for p in &self.splash_particles {
+                ui.painter().text(p.pos, Align2::CENTER_CENTER, "*", FontId::monospace(char_h), Color32::WHITE);
+            }
+            let mut y = start_y + self.splash_art_height as f32 * char_h + 10.0;
+            let center_x = rect.center().x;
+            ui.set_cursor_pos(Pos2::new(center_x - 100.0, y));
+            ui.label("paquino@honda-ri.com");
+            y += 30.0;
+            ui.set_cursor_pos(Pos2::new(center_x - 100.0, y));
+            egui::ComboBox::from_id_source("scenario_select")
+                .selected_text(&self.scenarios[self.selected_scenario])
+                .show_ui(ui, |ui| {
+                    for (i, s) in self.scenarios.iter().enumerate() {
+                        ui.selectable_value(&mut self.selected_scenario, i, s);
+                    }
+                });
+            y += 30.0;
+            ui.set_cursor_pos(Pos2::new(center_x - 120.0, y));
+            ui.label("Click any button to continue");
+        });
     }
 
     fn show_status_header(&mut self, ui: &mut egui::Ui) {

@@ -22,6 +22,12 @@ impl super::Renderer {
         if width == 0 || height == 0 {
             return;
         }
+        if self.show_splash {
+            ctx.clear_circles();
+            ctx.clear_lines();
+            ctx.clear_rects();
+            return;
+        }
 
         {
             let mut lock = UPDATE_LOCK.lock();

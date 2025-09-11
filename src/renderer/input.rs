@@ -12,6 +12,17 @@ use crate::profile_scope;
 impl super::Renderer {
     pub fn handle_input(&mut self, input: &WinitInputHelper, width: u16, height: u16) {
         profile_scope!("input_handling");
+        if self.show_splash {
+            if input.mouse_pressed(0)
+                || input.mouse_pressed(1)
+                || input.key_pressed(VirtualKeyCode::Return)
+                || input.key_pressed(VirtualKeyCode::Space)
+                || input.key_pressed(VirtualKeyCode::Escape)
+            {
+                self.start_selected_scenario();
+            }
+            return;
+        }
         // Check if window dimensions changed and verify capture region if needed
         if width != self.window_width || height != self.window_height {
             self.verify_capture_region_after_resize(width, height);
