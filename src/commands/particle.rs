@@ -299,6 +299,7 @@ pub fn remove_body_with_foils(simulation: &mut Simulation, idx: usize) {
     if let Some(foil_id) = simulation.body_to_foil.remove(&body.id) {
         if let Some(foil) = simulation.foils.iter_mut().find(|f| f.id == foil_id) {
             foil.body_ids.retain(|&id| id != body.id);
+            foil.lithium_body_ids.retain(|&id| id != body.id);
         }
     }
 }

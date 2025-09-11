@@ -12,6 +12,7 @@ mod tests {
         r.foils.push(Foil {
             id: 1,
             body_ids: vec![],
+            lithium_body_ids: vec![],
             dc_current: 1.0,
             ac_current: 0.0,
             accum: 0.0,

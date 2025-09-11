@@ -133,6 +133,7 @@ impl Simulation {
             collision::collide(self);
         }
         self.update_surrounded_flags();
+        self.update_foil_attachments();
 
         // Track which bodies receive electrons from foil current this step
         let mut foil_current_recipients = vec![false; self.bodies.len()];
@@ -354,6 +355,46 @@ impl Simulation {
         let bodies_snapshot: Vec<_> = self.bodies.iter().map(|b| b.clone()).collect();
         for (i, body) in self.bodies.iter_mut().enumerate() {
             body.maybe_update_surrounded(i, &bodies_snapshot, quadtree, cell_list, use_cell, frame);
+        }
+    }
+
+    /// Refresh lists of lithium metal particles attached to each foil.
+    pub fn update_foil_attachments(&mut self) {
+        let id_to_index: HashMap<u64, usize> =
+            self.bodies.iter().enumerate().map(|(i, b)| (b.id, i)).collect();
+
+        for foil in &mut self.foils {
+            foil.lithium_body_ids.clear();
+        }
+
+        for i in 0..self.bodies.len() {
+            if self.bodies[i].species == Species::LithiumMetal {
+                let body_id = self.bodies[i].id;
+                let body_pos = self.bodies[i].pos;
+                let body_radius = self.bodies[i].radius;
+                for foil in &mut self.foils {
+                    let attached = foil.body_ids.iter().any(|fid| {
+                        id_to_index.get(fid).map_or(false, |&idx| {
+                            let fbody = &self.bodies[idx];
+                            (fbody.pos - body_pos).mag() <= fbody.radius + body_radius
+                        })
+                    });
+                    if attached {
+                        foil.lithium_body_ids.push(body_id);
+                        break;
+                    }
+                }
+            }
+        }
+
+        self.body_to_foil.clear();
+        for foil in &self.foils {
+            for &id in &foil.body_ids {
+                self.body_to_foil.insert(id, foil.id);
+            }
+            for &id in &foil.lithium_body_ids {
+                self.body_to_foil.insert(id, foil.id);
+            }
         }
     }
 

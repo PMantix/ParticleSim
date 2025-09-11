@@ -135,11 +135,16 @@ impl super::super::Renderer {
                         "Configuring Foil {} (selected in simulation)",
                         foil.id
                     ));
+                    ui.label(format!(
+                        "Foil bodies: {} | Attached Li: {}",
+                        foil.body_ids.len(),
+                        foil.lithium_count()
+                    ));
 
                     // DC Current control
                     let mut dc_current = foil.dc_current;
                     ui.horizontal(|ui| {
-                        ui.label("DC Current:");
+                        ui.label("DC Current (e/fs):");
                         if ui.button("-").clicked() {
                             dc_current -= 1.0;
                         }
@@ -166,7 +171,7 @@ impl super::super::Renderer {
                     // AC Current control
                     let mut ac_current = foil.ac_current;
                     ui.horizontal(|ui| {
-                        ui.label("AC Amplitude:");
+                        ui.label("AC Amplitude (e/fs):");
                         if ui.button("-").clicked() {
                             ac_current -= 1.0;
                         }
@@ -206,6 +211,17 @@ impl super::super::Renderer {
                             })
                             .unwrap();
                     }
+
+                    // C-rate display
+                    let total_electrons = foil.total_electrons() as f32;
+                    let required_current =
+                        total_electrons / (3600.0 * 1e15_f32);
+                    let c_rate = if required_current > 0.0 {
+                        foil.dc_current / required_current
+                    } else {
+                        0.0
+                    };
+                    ui.label(format!("C-rate: {:.3}", c_rate));
                 });
 
                 ui.separator();
@@ -354,7 +370,7 @@ impl super::super::Renderer {
                         }
                         ui.add(
                             egui::DragValue::new(&mut dc_current)
-                                .prefix("DC: ")
+                                .prefix("DC (e/fs): ")
                                 .speed(0.1),
                         );
 
@@ -362,7 +378,7 @@ impl super::super::Renderer {
                         let mut ac_current = foil.ac_current;
                         ui.add(
                             egui::DragValue::new(&mut ac_current)
-                                .prefix("AC: ")
+                                .prefix("AC (e/fs): ")
                                 .speed(0.1)
                                 .clamp_range(0.0..=500.0),
                         );

@@ -400,6 +400,7 @@ mod tests {
                         id: 42, // Unique ID for the foil that gains electrons
                         link_id: None,
                         body_ids: vec![foil2_id], // Use the saved ID
+                        lithium_body_ids: vec![],
                         dc_current: 10.0,
                         ac_current: 0.0,
                         accum: 1.5, // Positive accumulation - wants to gain electron
@@ -410,6 +411,7 @@ mod tests {
                         id: 43, // Charge conservation foil that loses electrons
                         link_id: None,
                         body_ids: vec![foil4_id], // Far away foil for charge conservation
+                        lithium_body_ids: vec![],
                         dc_current: 10.0,
                         ac_current: 0.0,
                         accum: -1.5, // Negative accumulation - wants to lose electron

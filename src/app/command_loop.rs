@@ -91,6 +91,25 @@ pub fn handle_command(cmd: SimCommand, simulation: &mut Simulation) {
                 simulation
                     .body_to_foil
                     .retain(|body_id, _| remaining_foil_body_ids.contains(body_id));
+            } else if species == crate::body::Species::LithiumMetal {
+                let remaining_li_ids: std::collections::HashSet<u64> = simulation
+                    .bodies
+                    .iter()
+                    .filter(|body| body.species == crate::body::Species::LithiumMetal)
+                    .map(|body| body.id)
+                    .collect();
+                let foil_body_ids: std::collections::HashSet<u64> = simulation
+                    .foils
+                    .iter()
+                    .flat_map(|f| f.body_ids.iter().copied())
+                    .collect();
+                for foil in &mut simulation.foils {
+                    foil.lithium_body_ids
+                        .retain(|id| remaining_li_ids.contains(id));
+                }
+                simulation
+                    .body_to_foil
+                    .retain(|body_id, _| remaining_li_ids.contains(body_id) || foil_body_ids.contains(body_id));
             }
         }
         SimCommand::AddCircle { body, x, y, radius } => {

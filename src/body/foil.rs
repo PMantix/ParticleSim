@@ -2,6 +2,8 @@ use ultraviolet::Vec2;
 use std::sync::atomic::{AtomicU64, Ordering};
 use serde::{Serialize, Deserialize};
 
+use crate::config::{FOIL_NEUTRAL_ELECTRONS, LITHIUM_METAL_NEUTRAL_ELECTRONS};
+
 //static NEXT_FOIL_ID: AtomicU64 = AtomicU64::new(1);
 
 /// Mode describing how currents are linked between foils.
@@ -20,6 +22,8 @@ pub struct Foil {
     pub id: u64,
     /// Unique IDs of bodies that belong to this foil within `Simulation::bodies`.
     pub body_ids: Vec<u64>,
+    /// IDs of lithium metal particles attached to this foil.
+    pub lithium_body_ids: Vec<u64>,
     /// DC component of current (constant base current).
     pub dc_current: f32,
     /// AC component of current (amplitude of oscillating current).
@@ -47,6 +51,7 @@ impl Foil {
         Self {
             id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
             body_ids,
+            lithium_body_ids: Vec::new(),
             dc_current: current, // Initialize DC current to the provided current
             ac_current: 0.0,     // No AC component by default
             accum: 0.0,
@@ -54,5 +59,16 @@ impl Foil {
             link_id: None,
             mode: LinkMode::Parallel,
         }
+    }
+
+    /// Number of lithium metal particles attached to this foil.
+    pub fn lithium_count(&self) -> usize {
+        self.lithium_body_ids.len()
+    }
+
+    /// Total electron inventory for the foil and its attached lithium metals.
+    pub fn total_electrons(&self) -> usize {
+        self.body_ids.len() * FOIL_NEUTRAL_ELECTRONS
+            + self.lithium_body_ids.len() * LITHIUM_METAL_NEUTRAL_ELECTRONS
     }
 }
