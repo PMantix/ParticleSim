@@ -61,7 +61,10 @@ impl super::Renderer {
                     profile_scope!("diagnostics_solvation");
                     // Only run solvation diagnostic every 10th frame to improve performance
                     if self.frame % 10 == 0 {
-                        diag.calculate(&self.bodies);
+                        // Use optimized quadtree-based calculation for much better performance
+                        let mut temp_quadtree = crate::quadtree::Quadtree::new(1.0, 2.0, 1, 1024);
+                        temp_quadtree.nodes = self.quadtree.clone();
+                        diag.calculate(&self.bodies, &temp_quadtree);
                     }
                 }
             }

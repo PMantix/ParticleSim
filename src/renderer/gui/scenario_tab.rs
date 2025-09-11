@@ -590,7 +590,7 @@ pub fn make_body_with_species(
         }
         Species::LithiumIon => {
             // Ions: one less electron than neutral metal, positive charge
-            if LITHIUM_METAL_NEUTRAL_ELECTRONS > 0 {
+            if LITHIUM_METAL_NEUTRAL_ELECTRONS > 1 {
                 for _ in 0..(LITHIUM_METAL_NEUTRAL_ELECTRONS - 1) {
                     body.electrons.push(Electron {
                         rel_pos: Vec2::zero(),
@@ -598,6 +598,7 @@ pub fn make_body_with_species(
                     });
                 }
             }
+            // If LITHIUM_METAL_NEUTRAL_ELECTRONS is 1, then Li+ has 0 electrons (which is correct)
         }
         Species::ElectrolyteAnion => {
             // Anions: one more electron than neutral metal, negative charge
