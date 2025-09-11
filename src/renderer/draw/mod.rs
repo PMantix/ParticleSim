@@ -32,7 +32,7 @@ impl super::Renderer {
 
                 // Update plotting system with new data
                 let current_time = *crate::renderer::state::SIM_TIME.lock();
-                self.plotting_system.update_plots(&self.bodies, &self.foils, current_time);
+                self.plotting_system.update_plots(&self.bodies, &self.foils, current_time, self.domain_width, self.domain_height);
 
                 // Update diagnostics
                 if let Some(ref mut diagnostic) = self.transference_number_diagnostic {

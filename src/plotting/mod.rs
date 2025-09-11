@@ -68,15 +68,13 @@ pub struct PlotWindow {
 pub struct PlottingSystem {
     pub windows: HashMap<String, PlotWindow>,
     pub next_window_id: usize,
-    pub bounds: f32,
 }
 
 impl PlottingSystem {
-    pub fn new(bounds: f32) -> Self {
+    pub fn new() -> Self {
         Self {
             windows: HashMap::new(),
             next_window_id: 0,
-            bounds,
         }
     }
 
@@ -102,7 +100,7 @@ impl PlottingSystem {
         window_id
     }
 
-    pub fn update_plots(&mut self, bodies: &[Body], foils: &[Foil], current_time: f32) {
+    pub fn update_plots(&mut self, bodies: &[Body], foils: &[Foil], current_time: f32, domain_width: f32, domain_height: f32) {
         let window_ids: Vec<String> = self.windows.keys().cloned().collect();
         
         for window_id in window_ids {
@@ -128,10 +126,10 @@ impl PlottingSystem {
                     // Update data based on plot type
                     match window.config.plot_type {
                         PlotType::SpatialProfileX => {
-                            Self::update_spatial_profile_static(window, bodies, current_time, true, self.bounds);
+                            Self::update_spatial_profile_static(window, bodies, current_time, true, domain_width, domain_height);
                         }
                         PlotType::SpatialProfileY => {
-                            Self::update_spatial_profile_static(window, bodies, current_time, false, self.bounds);
+                            Self::update_spatial_profile_static(window, bodies, current_time, false, domain_width, domain_height);
                         }
                         PlotType::TimeSeries => {
                             Self::update_time_series_static(window, bodies, foils, current_time);
@@ -143,24 +141,25 @@ impl PlottingSystem {
         }
     }
 
-    fn update_spatial_profile_static(window: &mut PlotWindow, bodies: &[Body], current_time: f32, is_x_axis: bool, bounds: f32) {
+    fn update_spatial_profile_static(window: &mut PlotWindow, bodies: &[Body], current_time: f32, is_x_axis: bool, domain_width: f32, domain_height: f32) {
         // Use analysis functions for better modularity
         match window.config.quantity {
             Quantity::Charge => {
-                let charges = analysis::calculate_charge_distribution(bodies, is_x_axis, bounds, window.config.spatial_bins);
+                let charges = analysis::calculate_charge_distribution(bodies, is_x_axis, domain_width, domain_height, window.config.spatial_bins);
                 window.data.x_data.clear();
                 window.data.y_data.clear();
                 
-                let bin_size = (2.0 * bounds) / window.config.spatial_bins as f32;
+                let domain_size = if is_x_axis { domain_width } else { domain_height };
+                let bin_size = (2.0 * domain_size) / window.config.spatial_bins as f32;
                 
                 for (i, &charge) in charges.iter().enumerate() {
-                    let x_pos = -bounds + (i as f32 + 0.5) * bin_size;
+                    let x_pos = -domain_size + (i as f32 + 0.5) * bin_size;
                     window.data.x_data.push(x_pos as f64);
                     window.data.y_data.push(charge as f64);
                 }
             }
             Quantity::Velocity => {
-                let (positions, velocities) = analysis::calculate_velocity_profile(bodies, is_x_axis, bounds, window.config.spatial_bins);
+                let (positions, velocities) = analysis::calculate_velocity_profile(bodies, is_x_axis, domain_width, domain_height, window.config.spatial_bins);
                 window.data.x_data.clear();
                 window.data.y_data.clear();
                 
@@ -171,14 +170,15 @@ impl PlottingSystem {
             }
             Quantity::LocalFieldStrength => {
                 // Calculate field strength distribution
-                let field_strengths = analysis::calculate_field_strength_distribution(bodies, is_x_axis, bounds, window.config.spatial_bins);
+                let field_strengths = analysis::calculate_field_strength_distribution(bodies, is_x_axis, domain_width, domain_height, window.config.spatial_bins);
                 window.data.x_data.clear();
                 window.data.y_data.clear();
                 
-                let bin_size = (2.0 * bounds) / window.config.spatial_bins as f32;
+                let domain_size = if is_x_axis { domain_width } else { domain_height };
+                let bin_size = (2.0 * domain_size) / window.config.spatial_bins as f32;
                 
                 for (i, &field_strength) in field_strengths.iter().enumerate() {
-                    let x_pos = -bounds + (i as f32 + 0.5) * bin_size;
+                    let x_pos = -domain_size + (i as f32 + 0.5) * bin_size;
                     window.data.x_data.push(x_pos as f64);
                     window.data.y_data.push(field_strength as f64);
                 }
@@ -188,12 +188,13 @@ impl PlottingSystem {
                 let bins = window.config.spatial_bins;
                 let mut bin_values = vec![0.0; bins];
                 let mut bin_counts = vec![0; bins];
-                let bin_size = (2.0 * bounds) / bins as f32;
+                let domain_size = if is_x_axis { domain_width } else { domain_height };
+                let bin_size = (2.0 * domain_size) / bins as f32;
 
                 for body in bodies {
                     let position = if is_x_axis { body.pos.x } else { body.pos.y };
                     // Fix binning calculation with proper bounds checking
-                    let normalized_pos = (position + bounds) / (2.0 * bounds);
+                    let normalized_pos = (position + domain_size) / (2.0 * domain_size);
                     let bin_idx_f = normalized_pos * bins as f32;
                     
                     // Clamp to valid range and convert to usize
@@ -219,7 +220,7 @@ impl PlottingSystem {
                 window.data.y_data.clear();
                 
                 for i in 0..bins {
-                    let x_pos = -bounds + (i as f32 + 0.5) * bin_size;
+                    let x_pos = -domain_size + (i as f32 + 0.5) * bin_size;
                     let y_val = match window.config.quantity {
                         Quantity::TotalSpeciesCount(_) => {
                             // For species count, show total count in each bin

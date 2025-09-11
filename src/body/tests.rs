@@ -263,7 +263,6 @@ mod tests {
                     config::QUADTREE_LEAF_CAPACITY,
                     config::QUADTREE_THREAD_CAPACITY,
                 ),
-                bounds: 10.0,
                 domain_width: 10.0,
                 domain_height: 10.0,
                 domain_depth: 10.0,
@@ -271,7 +270,7 @@ mod tests {
                 background_e_field: Vec2::zero(),
                 config: SimConfig { ..Default::default() },
                 foils: Vec::new(),
-                cell_list: CellList::new(10.0, 1.0),
+                cell_list: CellList::new(10.0, 10.0, 1.0),
                 body_to_foil: HashMap::new(),
                 last_thermostat_time: 0.0,
             };
@@ -327,7 +326,6 @@ mod tests {
                     config::QUADTREE_LEAF_CAPACITY,
                     config::QUADTREE_THREAD_CAPACITY,
                 ),
-                bounds: 10.0,
                 domain_width: 10.0,
                 domain_height: 10.0,
                 domain_depth: 10.0,
@@ -335,7 +333,7 @@ mod tests {
                 background_e_field: Vec2::zero(),
                 config: SimConfig { ..Default::default() },
                 foils: Vec::new(),
-                cell_list: CellList::new(10.0, 1.0),
+                cell_list: CellList::new(10.0, 10.0, 1.0),
                 body_to_foil: HashMap::new(),
                 last_thermostat_time: 0.0,
             };
@@ -388,7 +386,6 @@ mod tests {
                     config::QUADTREE_LEAF_CAPACITY,
                     config::QUADTREE_THREAD_CAPACITY,
                 ),
-                bounds: 100.0,
                 domain_width: 100.0,
                 domain_height: 100.0,
                 domain_depth: 100.0,
@@ -417,7 +414,7 @@ mod tests {
                         mode: crate::body::foil::LinkMode::Parallel,
                     }
                 ],
-                cell_list: CellList::new(10.0, 1.0),
+                cell_list: CellList::new(10.0, 10.0, 1.0),
                 body_to_foil: HashMap::new(),
                 last_thermostat_time: 0.0,
             };

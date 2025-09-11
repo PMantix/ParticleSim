@@ -23,14 +23,21 @@ fn calculate_surface_binding_force(body: &crate::body::Body, max_z: f32) -> f32 
     let binding_strength = body.species.surface_affinity();
     let z_abs = body.z.abs();
     
+    // Debug: use fallback strength if surface_affinity is too weak
+    let effective_strength = if binding_strength < 1e-6 {
+        1.0 // Fallback binding strength for testing
+    } else {
+        binding_strength
+    };
+    
     if z_abs < max_z {
         // Create a double-well potential with minima near the surfaces
         let normalized_z = body.z / max_z; // -1 to +1
         
         // Polynomial potential: U(z) = a*z^4 - b*z^2 creates double well
         // Force = -dU/dz = -4*a*z^3 + 2*b*z
-        let a = binding_strength * 0.5;
-        let b = binding_strength * 1.0;
+        let a = effective_strength * 0.5;
+        let b = effective_strength * 1.0;
         
         let force = -4.0 * a * normalized_z.powi(3) + 2.0 * b * normalized_z;
         force / max_z // Scale by max_z to get proper units

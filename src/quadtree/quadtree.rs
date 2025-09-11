@@ -387,11 +387,33 @@ impl Quadtree {
     pub fn find_neighbors_within(&self, bodies: &[Body], i: usize, cutoff: f32) -> Vec<usize> {
         profile_scope!("quadtree_neighbors");
         let mut neighbors = Vec::new();
+        
+        // Early return if no nodes in quadtree
+        if self.nodes.is_empty() {
+            return neighbors;
+        }
+        
+        // Validate input parameters
+        if i >= bodies.len() || !cutoff.is_finite() || cutoff <= 0.0 {
+            return neighbors;
+        }
+        
         let pos = bodies[i].pos;
+        
+        // Validate position is finite
+        if !pos.x.is_finite() || !pos.y.is_finite() {
+            return neighbors;
+        }
+        
         let cutoff_sq = cutoff * cutoff;
 
         let mut stack = vec![Self::ROOT];
         while let Some(node_idx) = stack.pop() {
+            // Bounds check for node index
+            if node_idx >= self.nodes.len() {
+                continue;
+            }
+            
             let node = &self.nodes[node_idx];
             // Compute min squared distance from pos to node's quad
             let quad = &node.quad;
@@ -411,13 +433,21 @@ impl Quadtree {
             }
             if node.is_leaf() {
                 for idx in node.bodies.clone() {
-                    if idx != i && (bodies[idx].pos - pos).mag_sq() < cutoff_sq {
-                        neighbors.push(idx);
+                    if idx < bodies.len() && idx != i {
+                        let other_pos = bodies[idx].pos;
+                        if other_pos.x.is_finite() && other_pos.y.is_finite() {
+                            if (other_pos - pos).mag_sq() < cutoff_sq {
+                                neighbors.push(idx);
+                            }
+                        }
                     }
                 }
             } else {
                 for c in 0..4 {
-                    stack.push(node.children + c);
+                    let child_idx = node.children + c;
+                    if child_idx < self.nodes.len() {
+                        stack.push(child_idx);
+                    }
                 }
             }
         }

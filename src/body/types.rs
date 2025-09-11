@@ -134,7 +134,7 @@ impl Body {
         radius: f32,
         density_threshold: f32,
     ) -> usize {
-        let area = (2.0 * cell_list.bounds) * (2.0 * cell_list.bounds);
+        let area = (2.0 * cell_list.domain_width) * (2.0 * cell_list.domain_height);
         let density = bodies.len() as f32 / area;
         let use_cell = density > density_threshold;
 

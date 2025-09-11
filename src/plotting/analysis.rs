@@ -18,13 +18,14 @@ pub fn calculate_species_populations(bodies: &[Body]) -> HashMap<Species, usize>
 }
 
 /// Calculate charge distribution along an axis
-pub fn calculate_charge_distribution(bodies: &[Body], axis_is_x: bool, bounds: f32, bins: usize) -> Vec<f32> {
+pub fn calculate_charge_distribution(bodies: &[Body], axis_is_x: bool, domain_width: f32, domain_height: f32, bins: usize) -> Vec<f32> {
     let mut bin_charges = vec![0.0; bins];
+    let domain_size = if axis_is_x { domain_width } else { domain_height };
     
     for body in bodies {
         let position = if axis_is_x { body.pos.x } else { body.pos.y };
         // Fix binning calculation with proper bounds checking
-        let normalized_pos = (position + bounds) / (2.0 * bounds);
+        let normalized_pos = (position + domain_size) / (2.0 * domain_size);
         let bin_idx_f = normalized_pos * bins as f32;
         
         // Clamp to valid range and convert to usize
@@ -40,16 +41,17 @@ pub fn calculate_charge_distribution(bodies: &[Body], axis_is_x: bool, bounds: f
 }
 
 /// Calculate mean velocity along spatial bins
-pub fn calculate_velocity_profile(bodies: &[Body], axis_is_x: bool, bounds: f32, bins: usize) -> (Vec<f32>, Vec<f32>) {
+pub fn calculate_velocity_profile(bodies: &[Body], axis_is_x: bool, domain_width: f32, domain_height: f32, bins: usize) -> (Vec<f32>, Vec<f32>) {
     let mut bin_velocities = vec![0.0; bins];
     let mut bin_counts = vec![0; bins];
-    let bin_size = (2.0 * bounds) / bins as f32;
+    let domain_size = if axis_is_x { domain_width } else { domain_height };
+    let bin_size = (2.0 * domain_size) / bins as f32;
     
     for body in bodies {
         let position = if axis_is_x { body.pos.x } else { body.pos.y };
         let velocity = if axis_is_x { body.vel.x } else { body.vel.y };
         // Fix binning calculation with proper bounds checking
-        let normalized_pos = (position + bounds) / (2.0 * bounds);
+        let normalized_pos = (position + domain_size) / (2.0 * domain_size);
         let bin_idx_f = normalized_pos * bins as f32;
         
         // Clamp to valid range and convert to usize
@@ -67,7 +69,7 @@ pub fn calculate_velocity_profile(bodies: &[Body], axis_is_x: bool, bounds: f32,
     let mut bin_positions = vec![0.0; bins];
     
     for i in 0..bins {
-        bin_positions[i] = -bounds + (i as f32 + 0.5) * bin_size;
+        bin_positions[i] = -domain_size + (i as f32 + 0.5) * bin_size;
         mean_velocities[i] = if bin_counts[i] > 0 {
             bin_velocities[i] / bin_counts[i] as f32
         } else {
@@ -105,19 +107,21 @@ pub fn calculate_local_field_strength(pos: Vec2, bodies: &[Body]) -> f32 {
 }
 
 /// Calculate field strength distribution along an axis
-pub fn calculate_field_strength_distribution(bodies: &[Body], axis_is_x: bool, bounds: f32, bins: usize) -> Vec<f32> {
+pub fn calculate_field_strength_distribution(bodies: &[Body], axis_is_x: bool, domain_width: f32, domain_height: f32, bins: usize) -> Vec<f32> {
     let mut field_strengths = vec![0.0; bins];
-    let bin_size = (2.0 * bounds) / bins as f32;
+    let domain_size = if axis_is_x { domain_width } else { domain_height };
+    let perp_domain_size = if axis_is_x { domain_height } else { domain_width };
+    let bin_size = (2.0 * domain_size) / bins as f32;
     
     for i in 0..bins {
-        let pos_along_axis = -bounds + (i as f32 + 0.5) * bin_size;
+        let pos_along_axis = -domain_size + (i as f32 + 0.5) * bin_size;
         
         // Sample field strength at several points along the perpendicular axis
         let mut avg_field = 0.0;
         let sample_points = 5;
         
         for j in 0..sample_points {
-            let pos_perp = -bounds + (j as f32 / (sample_points - 1) as f32) * (2.0 * bounds);
+            let pos_perp = -perp_domain_size + (j as f32 / (sample_points - 1) as f32) * (2.0 * perp_domain_size);
             
             let sample_pos = if axis_is_x {
                 Vec2::new(pos_along_axis, pos_perp)

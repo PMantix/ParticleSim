@@ -21,7 +21,6 @@ pub struct Simulation {
     pub bodies: Vec<Body>,
     pub quadtree: Quadtree,
     pub cell_list: CellList,
-    pub bounds: f32, // Legacy field for backward compatibility
     pub domain_width: f32,  // Half-width of the domain (from center to edge)
     pub domain_height: f32, // Half-height of the domain (from center to edge)
     pub domain_depth: f32,  // Half-depth of the domain (for z-direction)
@@ -46,7 +45,7 @@ impl Simulation {
         let bodies = Vec::new();
         let quadtree = Quadtree::new(theta, epsilon, leaf_capacity, thread_capacity);
         let cell_size = crate::species::max_lj_cutoff();
-        let cell_list = CellList::new(bounds, cell_size);
+        let cell_list = CellList::new(bounds, bounds, cell_size);
         let rewound_flags = vec![];
         let sim = Self {
             dt,
@@ -54,7 +53,6 @@ impl Simulation {
             bodies,
             quadtree,
             cell_list,
-            bounds,
             domain_width: bounds,   // Initialize with square domain, will be updated by SetDomainSize command
             domain_height: bounds,  // Initialize with square domain, will be updated by SetDomainSize command
             domain_depth: bounds,   // Initialize with square domain depth

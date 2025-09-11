@@ -5,7 +5,7 @@ pub mod draw;
 pub mod screen_capture;
 
 use crate::body::{Body, Species, foil::Foil};
-use crate::config::{SimConfig, DOMAIN_BOUNDS};
+use crate::config::SimConfig;
 use crate::quadtree::Node;
 use crate::plotting::{PlottingSystem, PlotType, Quantity, SamplingMode};
 use crate::diagnostics::{TransferenceNumberDiagnostic, FoilElectronFractionDiagnostic};
@@ -174,7 +174,7 @@ impl quarkstrom::Renderer for Renderer {
             save_state_name: String::new(),
             load_state_selected: None,
             // Initialize plotting system with simulation bounds using domain bounds
-            plotting_system: PlottingSystem::new(DOMAIN_BOUNDS),
+            plotting_system: PlottingSystem::new(),
             // Plotting UI defaults
             show_plotting_window: false,
             new_plot_type: PlotType::TimeSeries,

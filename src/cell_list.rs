@@ -2,41 +2,54 @@ use crate::body::Body;
 use ultraviolet::Vec2;
 
 pub struct CellList {
-    pub bounds: f32,
+    pub domain_width: f32,  // Half-width of domain
+    pub domain_height: f32, // Half-height of domain
     pub cell_size: f32,
-    grid_size: usize,
+    grid_size_x: usize,
+    grid_size_y: usize,
     cells: Vec<Vec<usize>>, // indices of bodies per cell
 }
 
 impl CellList {
-    pub fn new(bounds: f32, cell_size: f32) -> Self {
-        let grid_size = ((2.0 * bounds) / cell_size).ceil() as usize + 1;
+    pub fn new(domain_width: f32, domain_height: f32, cell_size: f32) -> Self {
+        let grid_size_x = ((2.0 * domain_width) / cell_size).ceil() as usize + 1;
+        let grid_size_y = ((2.0 * domain_height) / cell_size).ceil() as usize + 1;
         Self {
-            bounds,
+            domain_width,
+            domain_height,
             cell_size,
-            grid_size,
+            grid_size_x,
+            grid_size_y,
             cells: Vec::new(),
         }
     }
 
     pub fn rebuild(&mut self, bodies: &[Body]) {
-        self.grid_size = ((2.0 * self.bounds) / self.cell_size).ceil() as usize + 1;
+        self.grid_size_x = ((2.0 * self.domain_width) / self.cell_size).ceil() as usize + 1;
+        self.grid_size_y = ((2.0 * self.domain_height) / self.cell_size).ceil() as usize + 1;
         self.cells.clear();
-        self.cells.resize(self.grid_size * self.grid_size, Vec::new());
+        self.cells.resize(self.grid_size_x * self.grid_size_y, Vec::new());
         for (i, b) in bodies.iter().enumerate() {
             let (cx, cy) = self.coord(b.pos);
-            if cx < self.grid_size && cy < self.grid_size {
-                self.cells[cx + cy * self.grid_size].push(i);
+            if cx < self.grid_size_x && cy < self.grid_size_y {
+                self.cells[cx + cy * self.grid_size_x].push(i);
             }
         }
     }
 
+    pub fn update_domain_size(&mut self, domain_width: f32, domain_height: f32) {
+        self.domain_width = domain_width;
+        self.domain_height = domain_height;
+        // Grid size will be recalculated on next rebuild
+    }
+
     fn coord(&self, pos: Vec2) -> (usize, usize) {
-        let min = -self.bounds;
-        let x = ((pos.x - min) / self.cell_size).floor() as isize;
-        let y = ((pos.y - min) / self.cell_size).floor() as isize;
-        let x = x.clamp(0, self.grid_size as isize - 1) as usize;
-        let y = y.clamp(0, self.grid_size as isize - 1) as usize;
+        let min_x = -self.domain_width;
+        let min_y = -self.domain_height;
+        let x = ((pos.x - min_x) / self.cell_size).floor() as isize;
+        let y = ((pos.y - min_y) / self.cell_size).floor() as isize;
+        let x = x.clamp(0, self.grid_size_x as isize - 1) as usize;
+        let y = y.clamp(0, self.grid_size_y as isize - 1) as usize;
         (x, y)
     }
 
@@ -49,10 +62,10 @@ impl CellList {
             for dx in -range..=range {
                 let x = cx as isize + dx;
                 let y = cy as isize + dy;
-                if x < 0 || y < 0 || x >= self.grid_size as isize || y >= self.grid_size as isize {
+                if x < 0 || y < 0 || x >= self.grid_size_x as isize || y >= self.grid_size_y as isize {
                     continue;
                 }
-                let cell_idx = x as usize + y as usize * self.grid_size;
+                let cell_idx = x as usize + y as usize * self.grid_size_x;
                 for &idx in &self.cells[cell_idx] {
                     if idx != i {
                         let r2 = (bodies[idx].pos - bodies[i].pos).mag_sq();
@@ -81,10 +94,10 @@ impl CellList {
             for dx in -range..=range {
                 let x = cx as isize + dx;
                 let y = cy as isize + dy;
-                if x < 0 || y < 0 || x >= self.grid_size as isize || y >= self.grid_size as isize {
+                if x < 0 || y < 0 || x >= self.grid_size_x as isize || y >= self.grid_size_y as isize {
                     continue;
                 }
-                let cell_idx = x as usize + y as usize * self.grid_size;
+                let cell_idx = x as usize + y as usize * self.grid_size_x;
                 for &idx in &self.cells[cell_idx] {
                     if idx == i { continue; }
                     let r2 = (bodies[idx].pos - bodies[i].pos).mag_sq();

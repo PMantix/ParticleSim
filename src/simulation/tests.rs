@@ -36,7 +36,6 @@ mod reactions {
                 config::QUADTREE_LEAF_CAPACITY,
                 config::QUADTREE_THREAD_CAPACITY,
             ),
-            bounds: 1.0,
             domain_width: 1.0,
             domain_height: 1.0,
             domain_depth: 1.0,
@@ -44,7 +43,7 @@ mod reactions {
             background_e_field: Vec2::zero(),
             config: Default::default(),
             foils: Vec::new(),
-            cell_list: CellList::new(10.0, 1.0),
+            cell_list: CellList::new(10.0, 10.0, 1.0),
             body_to_foil: HashMap::new(),
             last_thermostat_time: 0.0,
         };
@@ -77,7 +76,6 @@ mod reactions {
                 config::QUADTREE_LEAF_CAPACITY,
                 config::QUADTREE_THREAD_CAPACITY,
             ),
-            bounds: 1.0,
             domain_width: 1.0,
             domain_height: 1.0,
             domain_depth: 1.0,
@@ -85,7 +83,7 @@ mod reactions {
             background_e_field: Vec2::zero(),
             config: Default::default(),
             foils: Vec::new(),
-            cell_list: CellList::new(10.0, 1.0),
+            cell_list: CellList::new(10.0, 10.0, 1.0),
             body_to_foil: HashMap::new(),
             last_thermostat_time: 0.0,
         };
@@ -179,7 +177,6 @@ mod reactions {
                 config::QUADTREE_LEAF_CAPACITY,
                 config::QUADTREE_THREAD_CAPACITY,
             ),
-            bounds: 10.0,
             domain_width: 10.0,
             domain_height: 10.0,
             domain_depth: 10.0,
@@ -187,7 +184,7 @@ mod reactions {
             background_e_field: Vec2::zero(),
             config: Default::default(),
             foils: Vec::new(),
-            cell_list: CellList::new(10.0, 1.0),
+            cell_list: CellList::new(10.0, 10.0, 1.0),
             body_to_foil: HashMap::new(),
             last_thermostat_time: 0.0,
         };
@@ -219,7 +216,6 @@ mod reactions {
                 config::QUADTREE_LEAF_CAPACITY,
                 config::QUADTREE_THREAD_CAPACITY,
             ),
-            bounds: 10.0,
             domain_width: 10.0,
             domain_height: 10.0,
             domain_depth: 10.0,
@@ -227,7 +223,7 @@ mod reactions {
             background_e_field: Vec2::zero(),
             config: Default::default(),
             foils: Vec::new(),
-            cell_list: CellList::new(10.0, 1.0),
+            cell_list: CellList::new(10.0, 10.0, 1.0),
             body_to_foil: HashMap::new(),
             last_thermostat_time: 0.0,
         };
@@ -275,7 +271,6 @@ mod reactions {
                     config::QUADTREE_LEAF_CAPACITY,
                     config::QUADTREE_THREAD_CAPACITY,
                 ),
-                bounds: 10.0,
                 domain_width: 10.0,
                 domain_height: 10.0,
                 domain_depth: 10.0,
@@ -286,7 +281,7 @@ mod reactions {
                     ..Default::default()
                 },
                 foils: Vec::new(),
-                cell_list: CellList::new(10.0, 1.0),
+                cell_list: CellList::new(10.0, 10.0, 1.0),
                 body_to_foil: HashMap::new(),
             last_thermostat_time: 0.0,
         };
@@ -328,7 +323,6 @@ mod reactions {
                     config::QUADTREE_LEAF_CAPACITY,
                     config::QUADTREE_THREAD_CAPACITY,
                 ),
-                bounds: 10.0,
                 domain_width: 10.0,
                 domain_height: 10.0,
                 domain_depth: 10.0,
@@ -339,7 +333,7 @@ mod reactions {
                     ..Default::default()
                 },
                 foils: Vec::new(),
-                cell_list: CellList::new(10.0, 1.0),
+                cell_list: CellList::new(10.0, 10.0, 1.0),
                 body_to_foil: HashMap::new(),
             last_thermostat_time: 0.0,
         };
@@ -378,7 +372,6 @@ mod reactions {
                     config::QUADTREE_LEAF_CAPACITY,
                     config::QUADTREE_THREAD_CAPACITY,
                 ),
-                bounds: 10.0,
                 domain_width: 10.0,
                 domain_height: 10.0,
                 domain_depth: 10.0,
@@ -389,7 +382,7 @@ mod reactions {
                     ..Default::default()
                 },
                 foils: Vec::new(),
-                cell_list: CellList::new(10.0, 1.0),
+                cell_list: CellList::new(10.0, 10.0, 1.0),
                 body_to_foil: HashMap::new(),
             last_thermostat_time: 0.0,
         };
@@ -424,7 +417,6 @@ mod reactions {
                     config::QUADTREE_LEAF_CAPACITY,
                     config::QUADTREE_THREAD_CAPACITY,
                 ),
-                bounds: 10.0,
                 domain_width: 10.0,
                 domain_height: 10.0,
                 domain_depth: 10.0,
@@ -435,7 +427,7 @@ mod reactions {
                     ..Default::default()
                 },
                 foils: Vec::new(),
-                cell_list: CellList::new(10.0, 1.0),
+                cell_list: CellList::new(10.0, 10.0, 1.0),
                 body_to_foil: HashMap::new(),
             last_thermostat_time: 0.0,
         };
@@ -473,7 +465,6 @@ mod reactions {
                     config::QUADTREE_LEAF_CAPACITY,
                     config::QUADTREE_THREAD_CAPACITY,
                 ),
-                bounds: 10.0,
                 domain_width: 10.0,
                 domain_height: 10.0,
                 domain_depth: 10.0,
@@ -486,7 +477,7 @@ mod reactions {
                     ..Default::default()
                 },
                 foils: Vec::new(),
-                cell_list: CellList::new(10.0, 1.0),
+                cell_list: CellList::new(10.0, 10.0, 1.0),
                 body_to_foil: HashMap::new(),
             last_thermostat_time: 0.0,
         };
@@ -693,7 +684,6 @@ mod polarization_conservation {
                 config::QUADTREE_LEAF_CAPACITY,
                 config::QUADTREE_THREAD_CAPACITY,
             ),
-            bounds: 10.0,
             domain_width: 10.0,
             domain_height: 10.0,
             domain_depth: 10.0,
@@ -701,7 +691,7 @@ mod polarization_conservation {
             background_e_field: Vec2::zero(),
             config: Default::default(),
             foils: Vec::new(),
-            cell_list: CellList::new(10.0, 1.0),
+            cell_list: CellList::new(10.0, 10.0, 1.0),
             body_to_foil: HashMap::new(),
             last_thermostat_time: 0.0,
         };

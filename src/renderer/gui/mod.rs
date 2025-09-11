@@ -141,7 +141,7 @@ impl super::Renderer {
     fn show_status_header(&mut self, ui: &mut egui::Ui) {
         // Use actual simulation time, not renderer time
         let sim_time = *SIM_TIME.lock();
-        ui.label(format!("Time: {:.2} s", sim_time));
+        ui.label(format!("Time: {:.2} fs", sim_time));
 
         // Show pause status
         let is_paused = PAUSED.load(std::sync::atomic::Ordering::Relaxed);
