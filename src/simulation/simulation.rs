@@ -140,7 +140,8 @@ impl Simulation {
         self.bodies.par_iter_mut().for_each(|body| body.update_charge_from_electrons());
         
         // Rebuild the quadtree after charge/electron changes so field is correct for hopping
-        self.quadtree.build(&mut self.bodies);
+        // Use domain-aware build to respect the configured domain boundaries
+        self.quadtree.build_with_domain(&mut self.bodies, self.domain_width, self.domain_height);
 
         let quadtree = &self.quadtree;
         let len = self.bodies.len();
@@ -343,7 +344,7 @@ impl Simulation {
             self.cell_list.cell_size = neighbor_radius;
             self.cell_list.rebuild(&self.bodies);
         } else {
-            self.quadtree.build(&mut self.bodies);
+            self.quadtree.build_with_domain(&mut self.bodies, self.domain_width, self.domain_height);
         }
         let quadtree = &self.quadtree;
         let cell_list = &self.cell_list;

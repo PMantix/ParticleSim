@@ -154,6 +154,31 @@ impl Quadtree {
         let quad = Quad::new_containing(bodies);
         self.nodes[Self::ROOT] = Node::new(0, quad, 0..bodies.len());
 
+        self.build_internal(bodies, new_len);
+    }
+
+    /// Build quadtree with specific domain boundaries instead of auto-sizing
+    pub fn build_with_domain(&mut self, bodies: &mut [Body], domain_width: f32, domain_height: f32) {
+        profile_scope!("quadtree_build_domain");
+        if bodies.is_empty() {
+            self.clear();
+            return;
+        }
+
+        self.clear();
+        
+        let new_len = 4 * bodies.len() + 1024;
+        self.nodes.resize(new_len, Node::ZEROED);
+        self.parents.resize(new_len / 4, 0);
+
+        let quad = Quad::new_for_domain(domain_width, domain_height);
+        self.nodes[Self::ROOT] = Node::new(0, quad, 0..bodies.len());
+
+        self.build_internal(bodies, new_len);
+    }
+
+    fn build_internal(&mut self, bodies: &mut [Body], new_len: usize) {
+
         let (tx, rx) = crossbeam::channel::unbounded();
         tx.send(Self::ROOT).unwrap();
 

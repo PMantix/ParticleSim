@@ -32,6 +32,14 @@ impl Quad {
         Self { center, size }
     }
 
+    /// Create a quad that fits the specified domain bounds instead of auto-sizing
+    pub fn new_for_domain(domain_width: f32, domain_height: f32) -> Self {
+        let center = Vec2::zero(); // Domain is centered at origin
+        // Use the larger dimension to ensure the quad covers the entire domain
+        let size = (2.0 * domain_width).max(2.0 * domain_height);
+        Self { center, size }
+    }
+
     pub fn into_quadrant(mut self, quadrant: usize) -> Self {
         self.size *= 0.5;
         self.center.x += ((quadrant & 1) as f32 - 0.5) * self.size;
