@@ -13,6 +13,18 @@ pub struct SimulationState {
     pub foils: Vec<Foil>,
     pub body_to_foil: HashMap<u64, u64>,
     pub config: SimConfig,
+    #[serde(default = "default_domain_width")]
+    pub domain_width: f32,
+    #[serde(default = "default_domain_height")]
+    pub domain_height: f32,
+}
+
+fn default_domain_width() -> f32 {
+    600.0 // Default domain width
+}
+
+fn default_domain_height() -> f32 {
+    400.0 // Default domain height
 }
 
 impl SimulationState {
@@ -22,6 +34,8 @@ impl SimulationState {
             foils: sim.foils.clone(),
             body_to_foil: sim.body_to_foil.clone(),
             config: sim.config.clone(),
+            domain_width: sim.domain_width,
+            domain_height: sim.domain_height,
         }
     }
 
@@ -30,6 +44,13 @@ impl SimulationState {
         sim.foils = self.foils;
         sim.body_to_foil = self.body_to_foil;
         sim.config = self.config;
+        sim.domain_width = self.domain_width;
+        sim.domain_height = self.domain_height;
+        
+        // Update the shared state for the GUI (convert half-width/height to full width/height)
+        *crate::renderer::state::DOMAIN_WIDTH.lock() = self.domain_width * 2.0;
+        *crate::renderer::state::DOMAIN_HEIGHT.lock() = self.domain_height * 2.0;
+        
         sim.quadtree.build(&mut sim.bodies);
         sim.cell_list.rebuild(&sim.bodies);
     }

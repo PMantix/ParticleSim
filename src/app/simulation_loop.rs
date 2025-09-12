@@ -44,6 +44,10 @@ pub fn render(simulation: &mut Simulation) {
 }
 
 pub fn run_simulation_loop(rx: std::sync::mpsc::Receiver<SimCommand>, mut simulation: Simulation) {
+    // Initialize shared state domain size from simulation
+    *crate::renderer::state::DOMAIN_WIDTH.lock() = simulation.domain_width * 2.0;  // Convert half-width to full width for GUI
+    *crate::renderer::state::DOMAIN_HEIGHT.lock() = simulation.domain_height * 2.0; // Convert half-height to full height for GUI
+    
     // debug log removed
     loop {
         // debug log removed

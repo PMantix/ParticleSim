@@ -141,14 +141,13 @@ impl super::super::Renderer {
             ui.horizontal(|ui| {
                 ui.label("Width:");
                 let mut domain_width = self.domain_width;
-                if ui
-                    .add(
-                        egui::DragValue::new(&mut domain_width)
-                            .speed(10.0)
-                            .clamp_range(100.0..=5000.0),
-                    )
-                    .changed()
-                {
+                let drag_value = ui.add(
+                    egui::DragValue::new(&mut domain_width)
+                        .speed(10.0)
+                        .clamp_range(100.0..=5000.0)
+                );
+                
+                if drag_value.changed() {
                     self.domain_width = domain_width;
                     SIM_COMMAND_SENDER
                         .lock()
@@ -162,14 +161,13 @@ impl super::super::Renderer {
                 }
                 ui.label("Height:");
                 let mut domain_height = self.domain_height;
-                if ui
-                    .add(
-                        egui::DragValue::new(&mut domain_height)
-                            .speed(10.0)
-                            .clamp_range(100.0..=5000.0),
-                    )
-                    .changed()
-                {
+                let drag_value = ui.add(
+                    egui::DragValue::new(&mut domain_height)
+                        .speed(10.0)
+                        .clamp_range(100.0..=5000.0)
+                );
+                
+                if drag_value.changed() {
                     self.domain_height = domain_height;
                     SIM_COMMAND_SENDER
                         .lock()
