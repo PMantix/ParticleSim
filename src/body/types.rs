@@ -169,7 +169,14 @@ impl Body {
     ) {
         let moved = (self.pos - self.last_surround_pos).mag()
             > config::SURROUND_MOVE_THRESHOLD * self.radius;
-        if moved || frame - self.last_surround_frame >= config::SURROUND_CHECK_INTERVAL {
+        // Handle frame counter wraparound/reset by checking if frame has gone backwards
+        let frame_diff = if frame >= self.last_surround_frame {
+            frame - self.last_surround_frame
+        } else {
+            // Frame counter has reset, treat as if enough frames have passed
+            config::SURROUND_CHECK_INTERVAL
+        };
+        if moved || frame_diff >= config::SURROUND_CHECK_INTERVAL {
             let radius = self.radius * config::SURROUND_RADIUS_FACTOR;
             let count = if use_cell {
                 cell_list.metal_neighbor_count(bodies, index, radius)

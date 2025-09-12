@@ -13,8 +13,7 @@ impl super::Renderer {
     pub fn handle_input(&mut self, input: &WinitInputHelper, width: u16, height: u16) {
         profile_scope!("input_handling");
         if self.show_splash {
-            if input.mouse_pressed(0)
-                || input.mouse_pressed(1)
+            if input.mouse_pressed(1)  // Only right mouse button
                 || input.key_pressed(VirtualKeyCode::Return)
                 || input.key_pressed(VirtualKeyCode::Space)
                 || input.key_pressed(VirtualKeyCode::Escape)

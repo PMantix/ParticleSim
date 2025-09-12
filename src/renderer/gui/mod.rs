@@ -5,7 +5,7 @@ use crate::body::Species;
 use crate::config::IsolineFieldMode;
 use crate::renderer::Body;
 use crate::profile_scope;
-use quarkstrom::egui;
+use quarkstrom::egui::{self, Vec2 as EVec2};
 use ultraviolet::Vec2;
 
 pub mod analysis_tab;
@@ -166,23 +166,79 @@ impl super::Renderer {
                 rects.push(r);
                 ui.painter().text(Pos2::new(x, y), Align2::LEFT_TOP, ch.ch, FontId::monospace(char_h), ch.color);
             }
-            self.update_splash_particles(width, height, &rects);
+            
+            // Get mouse position for particle interaction
+            let mouse_pos = ui.input(|i| {
+                if let Some(pos) = i.pointer.hover_pos() {
+                    Some(EVec2::new(pos.x, pos.y))
+                } else {
+                    None
+                }
+            });
+            
+            self.update_splash_particles(width, height, &rects, mouse_pos);
+            
+            // Draw simple asterisk particles in muted grey
             for p in &self.splash_particles {
-                ui.painter().text(p.pos, Align2::CENTER_CENTER, "*", FontId::monospace(char_h), Color32::WHITE);
+                ui.painter().text(
+                    p.pos, 
+                    Align2::CENTER_CENTER, 
+                    "*", 
+                    FontId::monospace(char_h), 
+                    Color32::from_gray(120) // Muted grey color
+                );
+            }
+            
+            // Draw pop effects
+            for effect in &self.pop_effects {
+                let alpha = (effect.life * 255.0) as u8;
+                let color = Color32::from_rgba_unmultiplied(200, 200, 200, alpha);
+                ui.painter().text(
+                    effect.pos,
+                    Align2::CENTER_CENTER,
+                    effect.char.to_string(),
+                    FontId::monospace(char_h * 0.8),
+                    color
+                );
             }
             let y = start_y + self.splash_art_height as f32 * char_h + 10.0;
             let center_x = rect.center().x;
             
-            // Use vertical spacing to position elements
-            ui.add_space(y - ui.cursor().top());
-            ui.horizontal(|ui| {
-                ui.add_space(center_x - 100.0 - ui.cursor().left());
-                ui.label("paquino@honda-ri.com");
+            // Add contact info in lower right corner
+            ui.allocate_ui_at_rect(rect, |ui| {
+                ui.with_layout(egui::Layout::bottom_up(egui::Align::Max), |ui| {
+                    ui.add_space(10.0);
+                    // GitHub link - right aligned
+                    ui.horizontal(|ui| {
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            if ui.link("https://github.com/PMantix/ParticleSim").clicked() {
+                                if let Err(_) = std::process::Command::new("cmd")
+                                    .args(&["/c", "start", "https://github.com/PMantix/ParticleSim"])
+                                    .spawn() {
+                                    // Fallback for other systems
+                                    let _ = std::process::Command::new("xdg-open")
+                                        .arg("https://github.com/PMantix/ParticleSim")
+                                        .spawn();
+                                }
+                            }
+                        });
+                    });
+                    // Email - right aligned
+                    ui.horizontal(|ui| {
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            ui.label("paquino@honda-ri.com");
+                        });
+                    });
+                });
             });
             
+            // Use vertical spacing to position center elements
+            ui.add_space(y - ui.cursor().top());
             ui.add_space(30.0);
             ui.horizontal(|ui| {
-                ui.add_space(center_x - 100.0 - ui.cursor().left());
+                ui.add_space(center_x - 150.0 - ui.cursor().left()); // Adjusted for wider content
+                ui.label("Scenario Selection:");
+                ui.add_space(10.0);
                 egui::ComboBox::from_id_source("scenario_select")
                     .selected_text(&self.scenarios[self.selected_scenario])
                     .show_ui(ui, |ui| {
@@ -194,9 +250,15 @@ impl super::Renderer {
             
             ui.add_space(30.0);
             ui.horizontal(|ui| {
-                ui.add_space(center_x - 120.0 - ui.cursor().left());
-                ui.label("Click any button to continue");
+                ui.add_space(center_x - 140.0 - ui.cursor().left());
+                ui.label("Right-click or press any key to continue");
             });
+            
+            // Check for RIGHT mouse clicks to exit splash screen
+            // Left clicks are reserved for UI interaction
+            if ui.input(|i| i.pointer.secondary_clicked()) {
+                self.start_selected_scenario();
+            }
         });
     }
 
