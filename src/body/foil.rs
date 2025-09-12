@@ -13,6 +13,34 @@ pub enum LinkMode {
     Opposite,
 }
 
+/// Charging control mode for foils.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ChargingMode {
+    /// Direct current control - specify electrons/second
+    Current,
+    /// Overpotential control - specify target electron ratio, auto-adjust current
+    Overpotential,
+}
+
+/// Overpotential controller parameters for voltage-controlled charging.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct OverpotentialController {
+    /// Target electron ratio (1.0 = neutral, >1.0 = cathodic, <1.0 = anodic)
+    pub target_ratio: f32,
+    /// Proportional gain for PID controller
+    pub kp: f32,
+    /// Integral gain for PID controller  
+    pub ki: f32,
+    /// Derivative gain for PID controller
+    pub kd: f32,
+    /// Integral error accumulator
+    pub integral_error: f32,
+    /// Previous error for derivative calculation
+    pub previous_error: f32,
+    /// Maximum allowed current magnitude to prevent instability
+    pub max_current: f32,
+}
+
 /// Collection of fixed lithium metal particles representing a foil.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Foil {
@@ -32,6 +60,10 @@ pub struct Foil {
     pub link_id: Option<u64>,
     /// Link mode describing how the currents are related.
     pub mode: LinkMode,
+    /// Charging control mode (current vs overpotential)
+    pub charging_mode: ChargingMode,
+    /// Overpotential controller (only used when charging_mode = Overpotential)
+    pub overpotential_controller: Option<OverpotentialController>,
 }
 
 impl Foil {
@@ -53,6 +85,50 @@ impl Foil {
             switch_hz: 0.0,
             link_id: None,
             mode: LinkMode::Parallel,
+            charging_mode: ChargingMode::Current, // Default to current control
+            overpotential_controller: None,       // No overpotential controller by default
+        }
+    }
+
+    /// Enable overpotential control mode with specified target electron ratio
+    pub fn enable_overpotential_mode(&mut self, target_ratio: f32) {
+        self.charging_mode = ChargingMode::Overpotential;
+        self.overpotential_controller = Some(OverpotentialController {
+            target_ratio,
+            kp: 10.0,           // Proportional gain - tunable
+            ki: 0.1,            // Integral gain - tunable  
+            kd: 0.5,            // Derivative gain - tunable
+            integral_error: 0.0,
+            previous_error: 0.0,
+            max_current: 100.0, // Maximum current limit - tunable
+        });
+    }
+
+    /// Disable overpotential mode and return to current control
+    pub fn disable_overpotential_mode(&mut self) {
+        self.charging_mode = ChargingMode::Current;
+        self.overpotential_controller = None;
+    }
+
+    /// Update overpotential controller and return computed current
+    pub fn compute_overpotential_current(&mut self, actual_ratio: f32, dt: f32) -> f32 {
+        if let Some(controller) = &mut self.overpotential_controller {
+            let error = controller.target_ratio - actual_ratio;
+            
+            // PID calculation
+            controller.integral_error += error * dt;
+            let derivative_error = (error - controller.previous_error) / dt;
+            
+            let pid_output = controller.kp * error 
+                           + controller.ki * controller.integral_error
+                           + controller.kd * derivative_error;
+            
+            controller.previous_error = error;
+            
+            // Clamp to maximum current
+            pid_output.clamp(-controller.max_current, controller.max_current)
+        } else {
+            0.0 // No controller available
         }
     }
 }

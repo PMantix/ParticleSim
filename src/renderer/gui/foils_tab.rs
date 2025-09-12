@@ -119,6 +119,55 @@ impl super::super::Renderer {
 
         ui.separator();
 
+        // All Foils Electron Ratio Overview 
+        ui.group(|ui| {
+            ui.label("🔋 All Foils Electron Ratios");
+            
+            if let Some(diag) = &mut self.foil_electron_fraction_diagnostic {
+                // Reconstruct quadtree from current node data for diagnostic calculation
+                let mut temp_quadtree = crate::quadtree::Quadtree::new(1.0, 2.0, 1, 1024);
+                temp_quadtree.nodes = self.quadtree.clone();
+                
+                // Recalculate every 0.5 fs to avoid performance issues
+                let current_time = *SIM_TIME.lock();
+                diag.calculate_if_needed(&self.bodies, &self.foils, &temp_quadtree, current_time, 0.5);
+                
+                let foils = FOILS.lock();
+                for foil in foils.iter() {
+                    ui.horizontal(|ui| {
+                        ui.label(format!("Foil {}:", foil.id));
+                        if let Some(ratio) = diag.fractions.get(&foil.id) {
+                            let ratio_color = if *ratio > 1.05 {
+                                egui::Color32::LIGHT_BLUE  // Cathodic (electron-rich)
+                            } else if *ratio < 0.95 {
+                                egui::Color32::LIGHT_RED   // Anodic (electron-poor)
+                            } else {
+                                egui::Color32::WHITE       // Near neutral
+                            };
+                            ui.colored_label(ratio_color, format!("{:.3}", ratio));
+                            
+                            // Show charging mode
+                            let mode_text = match foil.charging_mode {
+                                crate::body::foil::ChargingMode::Current => "Current",
+                                crate::body::foil::ChargingMode::Overpotential => "Overpotential",
+                            };
+                            ui.label(format!("({})", mode_text));
+                        } else {
+                            ui.label("N/A");
+                        }
+                    });
+                }
+                
+                if foils.is_empty() {
+                    ui.label("No foils available");
+                }
+            } else {
+                ui.label("❌ Diagnostic not available");
+            }
+        });
+
+        ui.separator();
+
         // Foil Current Controls for Selected Foil
         if let Some(selected_id) = self.selected_particle_id {
             let maybe_foil = {
@@ -205,6 +254,49 @@ impl super::super::Renderer {
                                 switch_hz: hz,
                             })
                             .unwrap();
+                    }
+                });
+
+                ui.separator();
+
+                // Foil Electron Ratio Display
+                ui.group(|ui| {
+                    ui.label("🔋 Foil Electron Ratio");
+                    
+                    // Update diagnostic periodically for real-time monitoring
+                    if let Some(diag) = &mut self.foil_electron_fraction_diagnostic {
+                        // Reconstruct quadtree from current node data for diagnostic calculation
+                        let mut temp_quadtree = crate::quadtree::Quadtree::new(1.0, 2.0, 1, 1024);
+                        temp_quadtree.nodes = self.quadtree.clone();
+                        
+                        // Recalculate every 0.5 fs to avoid performance issues
+                        let current_time = *SIM_TIME.lock();
+                        diag.calculate_if_needed(&self.bodies, &self.foils, &temp_quadtree, current_time, 0.5);
+                        
+                        if let Some(ratio) = diag.fractions.get(&foil.id) {
+                            ui.horizontal(|ui| {
+                                ui.label("Current ratio:");
+                                let ratio_color = if *ratio > 1.05 {
+                                    egui::Color32::LIGHT_BLUE  // Cathodic (electron-rich)
+                                } else if *ratio < 0.95 {
+                                    egui::Color32::LIGHT_RED   // Anodic (electron-poor)
+                                } else {
+                                    egui::Color32::WHITE       // Near neutral
+                                };
+                                ui.colored_label(ratio_color, format!("{:.3}", ratio));
+                                ui.label(if *ratio > 1.05 {
+                                    "(cathodic)"
+                                } else if *ratio < 0.95 {
+                                    "(anodic)"
+                                } else {
+                                    "(neutral)"
+                                });
+                            });
+                        } else {
+                            ui.label("❌ Ratio data not available");
+                        }
+                    } else {
+                        ui.label("❌ No diagnostic available");
                     }
                 });
 
