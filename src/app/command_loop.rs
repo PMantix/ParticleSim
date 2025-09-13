@@ -207,6 +207,111 @@ pub fn handle_command(cmd: SimCommand, simulation: &mut Simulation) {
                 }
             }
         }
+        SimCommand::SetFoilChargingMode { foil_id, mode } => {
+            if let Some(foil) = simulation.foils.iter_mut().find(|f| f.id == foil_id) {
+                foil.charging_mode = mode;
+            }
+        }
+        SimCommand::EnableOverpotentialMode { foil_id, target_ratio } => {
+            // Get link info before mutable borrow
+            let link_info = simulation
+                .foils
+                .iter()
+                .find(|f| f.id == foil_id)
+                .and_then(|foil| foil.link_id.map(|link_id| (link_id, foil.mode)));
+
+            // Enable overpotential mode on the primary foil
+            if let Some(foil) = simulation.foils.iter_mut().find(|f| f.id == foil_id) {
+                foil.enable_overpotential_mode(target_ratio);
+            }
+
+            // Apply to linked foil if it exists
+            if let Some((link_id, mode)) = link_info {
+                if let Some(linked_foil) = simulation.foils.iter_mut().find(|f| f.id == link_id) {
+                    let linked_target = match mode {
+                        crate::body::foil::LinkMode::Parallel => target_ratio,
+                        crate::body::foil::LinkMode::Opposite => 2.0 - target_ratio,
+                    };
+                    linked_foil.enable_overpotential_mode(linked_target);
+                }
+            }
+        }
+        SimCommand::DisableOverpotentialMode { foil_id } => {
+            // Get link info before mutable borrow
+            let link_info = simulation
+                .foils
+                .iter()
+                .find(|f| f.id == foil_id)
+                .and_then(|foil| foil.link_id.map(|link_id| link_id));
+
+            // Disable overpotential mode on the primary foil
+            if let Some(foil) = simulation.foils.iter_mut().find(|f| f.id == foil_id) {
+                foil.disable_overpotential_mode();
+            }
+
+            // Also disable on linked foil if it exists
+            if let Some(link_id) = link_info {
+                if let Some(linked_foil) = simulation.foils.iter_mut().find(|f| f.id == link_id) {
+                    linked_foil.disable_overpotential_mode();
+                }
+            }
+        }
+        SimCommand::SetFoilOverpotentialTarget { foil_id, target_ratio } => {
+            // Get link info before mutable borrow
+            let link_info = simulation
+                .foils
+                .iter()
+                .find(|f| f.id == foil_id)
+                .and_then(|foil| foil.link_id.map(|link_id| (link_id, foil.mode)));
+
+            // Set target on primary foil
+            if let Some(foil) = simulation.foils.iter_mut().find(|f| f.id == foil_id) {
+                if let Some(ref mut controller) = foil.overpotential_controller {
+                    controller.target_ratio = target_ratio;
+                }
+            }
+
+            // Apply to linked foil if it exists
+            if let Some((link_id, mode)) = link_info {
+                if let Some(linked_foil) = simulation.foils.iter_mut().find(|f| f.id == link_id) {
+                    if let Some(ref mut controller) = linked_foil.overpotential_controller {
+                        let linked_target = match mode {
+                            crate::body::foil::LinkMode::Parallel => target_ratio,
+                            crate::body::foil::LinkMode::Opposite => 2.0 - target_ratio,
+                        };
+                        controller.target_ratio = linked_target;
+                    }
+                }
+            }
+        }
+        SimCommand::SetFoilPIDGains { foil_id, kp, ki, kd } => {
+            // Get link info before mutable borrow
+            let link_info = simulation
+                .foils
+                .iter()
+                .find(|f| f.id == foil_id)
+                .and_then(|foil| foil.link_id.map(|link_id| link_id));
+
+            // Set PID gains on primary foil
+            if let Some(foil) = simulation.foils.iter_mut().find(|f| f.id == foil_id) {
+                if let Some(ref mut controller) = foil.overpotential_controller {
+                    controller.kp = kp;
+                    controller.ki = ki;
+                    controller.kd = kd;
+                }
+            }
+
+            // Apply to linked foil if it exists (same PID gains for both)
+            if let Some(link_id) = link_info {
+                if let Some(linked_foil) = simulation.foils.iter_mut().find(|f| f.id == link_id) {
+                    if let Some(ref mut controller) = linked_foil.overpotential_controller {
+                        controller.kp = kp;
+                        controller.ki = ki;
+                        controller.kd = kd;
+                    }
+                }
+            }
+        }
         SimCommand::LinkFoils { a, b, mode } => {
             let a_idx = simulation.foils.iter().position(|f| f.id == a);
             let b_idx = simulation.foils.iter().position(|f| f.id == b);
@@ -279,6 +384,18 @@ pub fn handle_command(cmd: SimCommand, simulation: &mut Simulation) {
         }
         SimCommand::SetZVisualizationStrength { strength } => {
             *crate::renderer::state::Z_VISUALIZATION_STRENGTH.lock() = strength;
+        }
+        SimCommand::SetPIDHistorySize { foil_id, history_size } => {
+            // Set history size on the foil
+            if let Some(foil) = simulation.foils.iter_mut().find(|f| f.id == foil_id) {
+                if let Some(ref mut controller) = foil.overpotential_controller {
+                    controller.max_history_size = history_size;
+                    // Trim existing history if it's larger than the new size
+                    while controller.history.len() > controller.max_history_size {
+                        controller.history.pop_front();
+                    }
+                }
+            }
         }
     }
 }

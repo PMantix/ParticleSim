@@ -1,6 +1,27 @@
 use ultraviolet::Vec2;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::collections::VecDeque;
 use serde::{Serialize, Deserialize};
+
+#[allow(dead_code)] // Allow unused methods for potential future use
+
+/// History point for PID controller debugging and analysis
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct PidHistoryPoint {
+    pub timestamp: f64,
+    pub step: u64,
+    pub target_ratio: f32,
+    pub actual_ratio: f32,
+    pub setpoint: f32,  // Same as target_ratio for compatibility
+    pub actual: f32,    // Same as actual_ratio for compatibility
+    pub error: f32,
+    pub output_current: f32,
+    pub output: f32,    // Same as output_current for compatibility
+    pub integral_error: f32,
+    pub p_term: f32,
+    pub i_term: f32,
+    pub d_term: f32,
+}
 
 //static NEXT_FOIL_ID: AtomicU64 = AtomicU64::new(1);
 
@@ -39,6 +60,14 @@ pub struct OverpotentialController {
     pub previous_error: f32,
     /// Maximum allowed current magnitude to prevent instability
     pub max_current: f32,
+    /// Last computed output current for display
+    pub last_output_current: f32,
+    /// History of PID controller performance for plotting
+    pub history: VecDeque<PidHistoryPoint>,
+    /// Maximum number of history points to keep
+    pub max_history_size: usize,
+    /// Master foil ID for slave controllers (None for master)
+    pub master_foil_id: Option<u64>,
 }
 
 /// Collection of fixed lithium metal particles representing a foil.
@@ -64,6 +93,8 @@ pub struct Foil {
     pub charging_mode: ChargingMode,
     /// Overpotential controller (only used when charging_mode = Overpotential)
     pub overpotential_controller: Option<OverpotentialController>,
+    /// Slave overpotential current for linked foils
+    pub slave_overpotential_current: f32,
 }
 
 impl Foil {
@@ -87,6 +118,7 @@ impl Foil {
             mode: LinkMode::Parallel,
             charging_mode: ChargingMode::Current, // Default to current control
             overpotential_controller: None,       // No overpotential controller by default
+            slave_overpotential_current: 0.0,    // Initialize slave current to zero
         }
     }
 
@@ -101,6 +133,10 @@ impl Foil {
             integral_error: 0.0,
             previous_error: 0.0,
             max_current: 100.0, // Maximum current limit - tunable
+            last_output_current: 0.0,
+            history: VecDeque::new(),
+            max_history_size: 1000,
+            master_foil_id: None,
         });
     }
 
@@ -126,9 +162,18 @@ impl Foil {
             controller.previous_error = error;
             
             // Clamp to maximum current
-            pid_output.clamp(-controller.max_current, controller.max_current)
+            let output = pid_output.clamp(-controller.max_current, controller.max_current);
+            controller.last_output_current = output;
+            output
         } else {
             0.0 // No controller available
         }
+    }
+
+    /// Enable slave mode for overpotential control (linked to master foil)
+    pub fn enable_overpotential_slave_mode(&mut self, _master_id: u64) {
+        self.charging_mode = ChargingMode::Overpotential;
+        self.overpotential_controller = None; // Slaves don't have their own controller
+        self.slave_overpotential_current = 0.0;
     }
 }

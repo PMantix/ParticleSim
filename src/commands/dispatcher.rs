@@ -51,6 +51,24 @@ pub fn process_command(cmd: SimCommand, simulation: &mut Simulation) {
         SimCommand::SetFoilFrequency { foil_id, switch_hz } => {
             foil::handle_set_foil_frequency(simulation, foil_id, switch_hz);
         }
+        SimCommand::SetFoilChargingMode { foil_id, mode } => {
+            foil::handle_set_foil_charging_mode(simulation, foil_id, mode);
+        }
+        SimCommand::EnableOverpotentialMode { foil_id, target_ratio } => {
+            foil::handle_enable_overpotential_mode(simulation, foil_id, target_ratio);
+        }
+        SimCommand::DisableOverpotentialMode { foil_id } => {
+            foil::handle_disable_overpotential_mode(simulation, foil_id);
+        }
+        SimCommand::SetFoilOverpotentialTarget { foil_id, target_ratio } => {
+            foil::handle_set_overpotential_target(simulation, foil_id, target_ratio);
+        }
+        SimCommand::SetFoilPIDGains { foil_id, kp, ki, kd } => {
+            foil::handle_set_pid_gains(simulation, foil_id, kp, ki, kd);
+        }
+        SimCommand::SetPIDHistorySize { foil_id, history_size } => {
+            foil::handle_set_pid_history_size(simulation, foil_id, history_size);
+        }
         SimCommand::LinkFoils { a, b, mode } => {
             foil::handle_link_foils(simulation, a, b, mode);
         }

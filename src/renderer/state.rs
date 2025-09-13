@@ -24,6 +24,10 @@ pub static Z_VISUALIZATION_STRENGTH: Lazy<Mutex<f32>> = Lazy::new(|| Mutex::new(
 pub static DOMAIN_WIDTH: Lazy<Mutex<f32>> = Lazy::new(|| Mutex::new(300.0)); // Default domain width
 pub static DOMAIN_HEIGHT: Lazy<Mutex<f32>> = Lazy::new(|| Mutex::new(300.0)); // Default domain height
 
+// PID Graph state
+pub static SHOW_PID_GRAPH: Lazy<AtomicBool> = Lazy::new(|| AtomicBool::new(false));
+pub static PID_GRAPH_HISTORY_SIZE: Lazy<Mutex<usize>> = Lazy::new(|| Mutex::new(1000));
+
 //Simulation commands
 // These are used to send commands to the simulation thread from the GUI thread
 #[allow(dead_code)]
@@ -82,6 +86,31 @@ pub enum SimCommand {
     SetFoilFrequency {
         foil_id: u64,
         switch_hz: f32,
+    },
+    SetFoilChargingMode {
+        foil_id: u64,
+        mode: crate::body::foil::ChargingMode,
+    },
+    SetFoilOverpotentialTarget {
+        foil_id: u64,
+        target_ratio: f32,
+    },
+    SetFoilPIDGains {
+        foil_id: u64,
+        kp: f32,
+        ki: f32,
+        kd: f32,
+    },
+    SetPIDHistorySize {
+        foil_id: u64,
+        history_size: usize,
+    },
+    EnableOverpotentialMode {
+        foil_id: u64,
+        target_ratio: f32,
+    },
+    DisableOverpotentialMode {
+        foil_id: u64,
     },
     SaveState { path: String },
     LoadState { path: String },

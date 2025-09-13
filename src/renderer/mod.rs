@@ -107,6 +107,7 @@ pub struct Renderer {
     //foils: Vec<crate::body::foil::Foil>,
     selected_foil_ids: Vec<u64>,
     selected_particle_ids: Vec<u64>,
+    selected_pid_foil_id: Option<u64>, // For PID graph foil selection
     sim_config: SimConfig,
     /// Local copy of the simulation frame for time-based visualizations
     frame: usize,
@@ -237,6 +238,7 @@ impl quarkstrom::Renderer for Renderer {
             //foils: Vec::new(),
             selected_foil_ids: Vec::new(),
             selected_particle_ids: Vec::new(),
+            selected_pid_foil_id: None, // Initialize PID graph foil selection to None
             sim_config: crate::config::LJ_CONFIG.lock().clone(),
             frame: 0,
             foil_wave_history: HashMap::new(),

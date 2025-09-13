@@ -402,6 +402,9 @@ mod tests {
                         accum: 1.5, // Positive accumulation - wants to gain electron
                         switch_hz: 0.0,
                         mode: crate::body::foil::LinkMode::Parallel,
+                        charging_mode: crate::body::foil::ChargingMode::Current,
+                        overpotential_controller: None,
+                        slave_overpotential_current: 0.0,
                     },
                     Foil {
                         id: 43, // Charge conservation foil that loses electrons
@@ -412,6 +415,9 @@ mod tests {
                         accum: -1.5, // Negative accumulation - wants to lose electron
                         switch_hz: 0.0,
                         mode: crate::body::foil::LinkMode::Parallel,
+                        charging_mode: crate::body::foil::ChargingMode::Current,
+                        overpotential_controller: None,
+                        slave_overpotential_current: 0.0,
                     }
                 ],
                 cell_list: CellList::new(10.0, 10.0, 1.0),

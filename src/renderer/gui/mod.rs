@@ -146,6 +146,9 @@ impl super::Renderer {
 
         // Show individual plot windows
         crate::plotting::gui::show_plot_windows(ctx, &mut self.plotting_system);
+        
+        // Show PID graph window if enabled
+        self.show_pid_graph(ctx);
     }
 
     fn show_splash_screen(&mut self, ctx: &egui::Context) {

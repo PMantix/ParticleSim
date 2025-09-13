@@ -238,6 +238,90 @@ impl Simulation {
         density > self.config.cell_list_density_threshold
     }
 
+    /// Calculate the proper foil electron ratio (same as diagnostic)
+    /// This is the ratio of actual electrons to neutral electron count in the foil network
+    /// OPTIMIZED: Uses spatial data structures for efficient neighbor finding instead of O(N²) nested loops
+    fn calculate_foil_electron_ratio(&self, foil: &crate::body::foil::Foil) -> f32 {
+        let mut total_electrons = 0;
+        let mut total_neutral = 0;
+        
+        // Use BFS with spatial queries for optimization
+        let mut visited = std::collections::HashSet::new();
+        let mut queue = std::collections::VecDeque::new();
+        
+        // Start from all foil bodies
+        for &body_id in &foil.body_ids {
+            if let Some(body) = self.bodies.iter().find(|b| b.id == body_id) {
+                if !visited.contains(&body.id) {
+                    queue.push_back(body);
+                    visited.insert(body.id);
+                }
+            }
+        }
+        
+        let use_cell = self.use_cell_list();
+        
+        // BFS to find all connected metal bodies using spatial data structures
+        while let Some(body) = queue.pop_front() {
+            // Count electrons in this body
+            total_electrons += body.electrons.len();
+            total_neutral += body.neutral_electron_count();
+            
+            // Find body index for spatial query
+            let body_index = if let Some(idx) = self.bodies.iter().position(|b| b.id == body.id) {
+                idx
+            } else {
+                continue; // Skip if body not found
+            };
+            
+            // Find connected neighbors using spatial data structures (O(log N) instead of O(N))
+            let connection_radius = body.radius * 2.2; // Search radius for connected bodies
+            let nearby_indices = if use_cell {
+                self.cell_list.find_neighbors_within(&self.bodies, body_index, connection_radius)
+            } else {
+                self.quadtree.find_neighbors_within(&self.bodies, body_index, connection_radius)
+            };
+            
+            // Check each nearby body for connection
+            for &other_idx in &nearby_indices {
+                if other_idx >= self.bodies.len() {
+                    continue; // Skip invalid indices
+                }
+                let other_body = &self.bodies[other_idx];
+                
+                if visited.contains(&other_body.id) {
+                    continue;
+                }
+                
+                // Only consider metal bodies
+                if !matches!(other_body.species, crate::body::Species::LithiumMetal | crate::body::Species::FoilMetal) {
+                    continue;
+                }
+                
+                // Check if actually connected (precise distance check)
+                let threshold = (body.radius + other_body.radius) * 1.1;
+                if (body.pos - other_body.pos).mag() <= threshold {
+                    visited.insert(other_body.id);
+                    queue.push_back(other_body);
+                }
+            }
+        }
+        
+        if total_neutral > 0 {
+            let ratio = total_electrons as f32 / total_neutral as f32;
+            
+            // Debug output occasionally
+            if rand::random::<f32>() < 0.001 { // 0.1% chance
+                println!("Foil {} electron ratio: {:.3} (electrons: {}, neutral: {})", 
+                    foil.id, ratio, total_electrons, total_neutral);
+            }
+            
+            ratio
+        } else {
+            1.0 // Neutral if no reference
+        }
+    }
+
     /// Attempt electron hops between nearby bodies.
     ///
     /// `exclude_donor` marks bodies that should not donate electrons this step
@@ -356,17 +440,58 @@ impl Simulation {
         }
     }
 
-    fn effective_current(foil: &crate::body::foil::Foil, time: f32) -> f32 {
-        let mut current = foil.dc_current;
-        if foil.switch_hz > 0.0 {
-            let ac_component = if (time * foil.switch_hz) % 1.0 < 0.5 {
-                foil.ac_current
-            } else {
-                -foil.ac_current
-            };
-            current += ac_component;
+    fn effective_current(foil: &mut crate::body::foil::Foil, time: f32, actual_ratio: Option<f32>, dt: f32, _step: u64) -> f32 {
+        match foil.charging_mode {
+            crate::body::foil::ChargingMode::Current => {
+                // Traditional current control mode
+                let mut current = foil.dc_current;
+                if foil.switch_hz > 0.0 {
+                    let ac_component = if (time * foil.switch_hz) % 1.0 < 0.5 {
+                        foil.ac_current
+                    } else {
+                        -foil.ac_current
+                    };
+                    current += ac_component;
+                }
+                current
+            }
+            crate::body::foil::ChargingMode::Overpotential => {
+                // Check if this is a master foil (has PID controller) or slave foil (no controller)
+                if let Some(_controller) = &foil.overpotential_controller {
+                    // Master foil - use PID controller
+                    if let Some(ratio) = actual_ratio {
+                        let pid_current = foil.compute_overpotential_current(ratio, dt);
+                        
+                        // Still support AC component on top of PID-controlled DC current
+                        let mut current = pid_current;
+                        if foil.switch_hz > 0.0 {
+                            let ac_component = if (time * foil.switch_hz) % 1.0 < 0.5 {
+                                foil.ac_current
+                            } else {
+                                -foil.ac_current
+                            };
+                            current += ac_component;
+                        }
+                        current
+                    } else {
+                        // Fallback to DC current if no ratio available
+                        foil.dc_current
+                    }
+                } else {
+                    // Slave foil - use stored slave current (set by master)
+                    let mut current = foil.slave_overpotential_current;
+                    if foil.switch_hz > 0.0 {
+                        let ac_component = if (time * foil.switch_hz) % 1.0 < 0.5 {
+                            foil.ac_current
+                        } else {
+                            -foil.ac_current
+                        };
+                        current += ac_component;
+                    }
+                    current
+                }
+            }
         }
-        current
     }
 
     /// Process foils with charge conservation - electrons can only be added if another foil removes one
@@ -374,61 +499,92 @@ impl Simulation {
         let dt = self.dt;
         let mut rng = rand::rng();
         
-        // Update all accumulators first
-        for i in 0..self.foils.len() {
-            let current = Self::effective_current(&self.foils[i], time);
-            self.foils[i].accum += current * dt;
+        // Calculate proper foil electron ratios for overpotential charging foils
+        let mut electron_ratios = std::collections::HashMap::new();
+        for foil in &self.foils {
+            if matches!(foil.charging_mode, crate::body::foil::ChargingMode::Overpotential) {
+                let ratio = self.calculate_foil_electron_ratio(foil);
+                electron_ratios.insert(foil.id, ratio);
+            }
         }
-        
-        // Handle linked pairs first (they have priority and built-in charge conservation)
-        let mut visited = vec![false; self.foils.len()];
+
+        // Handle overpotential master-slave relationships
+        // First pass: compute PID outputs for master foils ONLY
+        let mut master_outputs = std::collections::HashMap::new();
         for i in 0..self.foils.len() {
-            if visited[i] { continue; }
-            if let Some(link_id) = self.foils[i].link_id {
-                if let Some(j) = self.foils.iter().position(|f| f.id == link_id) {
-                    if !visited[j] {
-                        visited[i] = true;
-                        visited[j] = true;
-                        self.process_linked_pair_conservative(i, j, &mut rng, recipients);
-                        continue;
+            if matches!(self.foils[i].charging_mode, crate::body::foil::ChargingMode::Overpotential) 
+                && self.foils[i].overpotential_controller.is_some() { // Only master foils have controllers
+                let foil_id = self.foils[i].id;
+                if let Some(actual_ratio) = electron_ratios.get(&foil_id).copied() {
+                    let master_current = self.foils[i].compute_overpotential_current(actual_ratio, dt);
+                    master_outputs.insert(foil_id, master_current);
+                }
+            }
+        }
+
+        // Second pass: set slave currents based on master currents
+        for i in 0..self.foils.len() {
+            if matches!(self.foils[i].charging_mode, crate::body::foil::ChargingMode::Overpotential) {
+                // Check if this is a slave foil (no controller but has a linked master)
+                if self.foils[i].overpotential_controller.is_none() && self.foils[i].link_id.is_some() {
+                    let master_id = self.foils[i].link_id.unwrap(); // Slave's master is its linked foil
+                    if let Some(&master_current) = master_outputs.get(&master_id) {
+                        // Determine current sign based on link mode
+                        let slave_current = match self.foils[i].mode {
+                            crate::body::foil::LinkMode::Parallel => master_current,
+                            crate::body::foil::LinkMode::Opposite => -master_current,
+                        };
+                        
+                        self.foils[i].slave_overpotential_current = slave_current;
                     }
                 }
             }
         }
+
+        // DIRECT ELECTRON MANIPULATION for overpotential mode (bypasses current-based system)
+        self.process_overpotential_direct_electron_control(dt, &electron_ratios, &mut rng, recipients);
         
-        // For unlinked foils, enforce global charge conservation
-        let mut add_ready: Vec<usize> = Vec::new();
-        let mut remove_ready: Vec<usize> = Vec::new();
-        
+        // Traditional current-based processing for non-overpotential foils
+        self.process_current_based_foils(time, dt, &electron_ratios, recipients);
+
+        // Handle linked foils for current mode (ensure equal/opposite currents)
+        // Process linked foils that are not in overpotential mode or are not slaves
+        let mut processed_links = std::collections::HashSet::new();
         for i in 0..self.foils.len() {
-            if visited[i] { continue; }
-            
-            // Check if foil is ready to add electrons (positive accumulator)
-            if self.foils[i].accum >= 1.0 && self.foil_can_add(i) {
-                add_ready.push(i);
-            }
-            // Check if foil is ready to remove electrons (negative accumulator)
-            else if self.foils[i].accum <= -1.0 && self.foil_can_remove(i) {
-                remove_ready.push(i);
-            }
-        }
-        
-        // Shuffle to ensure random pairing
-        add_ready.shuffle(&mut rng);
-        remove_ready.shuffle(&mut rng);
-        
-        // Process charge-conserving pairs: one adds, one removes
-        let num_pairs = add_ready.len().min(remove_ready.len());
-        
-        for pair_idx in 0..num_pairs {
-            let add_foil_idx = add_ready[pair_idx];
-            let remove_foil_idx = remove_ready[pair_idx];
-            
-            // Attempt the charge-conserving pair operation
-            if self.try_add_electron(add_foil_idx, &mut rng, recipients) && 
-               self.try_remove_electron(remove_foil_idx, &mut rng, recipients) {
-                self.foils[add_foil_idx].accum -= 1.0;
-                self.foils[remove_foil_idx].accum += 1.0;
+            if let Some(link_id) = self.foils[i].link_id {
+                // Create a unique pair identifier to avoid processing the same link twice
+                let pair_key = if self.foils[i].id < link_id {
+                    (self.foils[i].id, link_id)
+                } else {
+                    (link_id, self.foils[i].id)
+                };
+                
+                if processed_links.contains(&pair_key) {
+                    continue; // Already processed this link pair
+                }
+                processed_links.insert(pair_key);
+                
+                if let Some(linked_foil_idx) = self.foils.iter().position(|f| f.id == link_id) {
+                    // For current mode linked foils, synchronize their currents
+                    if matches!(self.foils[i].charging_mode, crate::body::foil::ChargingMode::Current) &&
+                       matches!(self.foils[linked_foil_idx].charging_mode, crate::body::foil::ChargingMode::Current) {
+                        
+                        // Use the current from the first foil as the reference
+                        let reference_current = self.foils[i].dc_current;
+                        
+                        match self.foils[i].mode {
+                            crate::body::foil::LinkMode::Parallel => {
+                                // Same current for parallel mode
+                                self.foils[linked_foil_idx].dc_current = reference_current;
+                            }
+                            crate::body::foil::LinkMode::Opposite => {
+                                // Opposite current for opposite mode
+                                self.foils[linked_foil_idx].dc_current = -reference_current;
+                            }
+                        }
+                    }
+                    // Note: Overpotential mode linked foils are handled by the master-slave system above
+                }
             }
         }
     }
@@ -524,6 +680,215 @@ impl Simulation {
             }
         }
         false
+    }
+
+    /// Direct electron manipulation for overpotential mode - bypasses current-based accumulator system
+    fn process_overpotential_direct_electron_control(
+        &mut self, 
+        dt: f32, 
+        electron_ratios: &std::collections::HashMap<u64, f32>,
+        rng: &mut rand::rngs::ThreadRng,
+        recipients: &mut [bool]
+    ) {
+        // Process each overpotential foil individually for direct electron control
+        for i in 0..self.foils.len() {
+            if !matches!(self.foils[i].charging_mode, crate::body::foil::ChargingMode::Overpotential) {
+                continue;
+            }
+            
+            // Get the effective current for this foil (master PID output or slave assigned current)
+            let foil_id = self.foils[i].id;
+            let _actual_ratio = electron_ratios.get(&foil_id).copied(); // Keep for potential future use
+            let effective_current = if let Some(controller) = &self.foils[i].overpotential_controller {
+                // Master foil - use PID output
+                controller.last_output_current
+            } else {
+                // Slave foil - use assigned current
+                self.foils[i].slave_overpotential_current
+            };
+            
+            // Convert current to electron transfer rate
+            // Positive current = add electrons, negative current = remove electrons
+            let electron_transfer_rate = effective_current * dt;
+            
+            // Direct electron manipulation - no accumulator, no charge conservation constraints
+            if electron_transfer_rate > 0.0 {
+                // Add electrons directly
+                let num_electrons_to_add = electron_transfer_rate.floor() as i32;
+                let fractional_part = electron_transfer_rate.fract();
+                
+                // Add whole electrons
+                for _ in 0..num_electrons_to_add {
+                    if self.foil_can_add(i) {
+                        self.try_add_electron(i, rng, recipients);
+                    }
+                }
+                
+                // Handle fractional electron with probability
+                if rand::random::<f32>() < fractional_part {
+                    if self.foil_can_add(i) {
+                        self.try_add_electron(i, rng, recipients);
+                    }
+                }
+            } else if electron_transfer_rate < 0.0 {
+                // Remove electrons directly
+                let num_electrons_to_remove = (-electron_transfer_rate).floor() as i32;
+                let fractional_part = (-electron_transfer_rate).fract();
+                
+                // Remove whole electrons
+                for _ in 0..num_electrons_to_remove {
+                    if self.foil_can_remove(i) {
+                        self.try_remove_electron(i, rng, recipients);
+                    }
+                }
+                
+                // Handle fractional electron with probability
+                if rand::random::<f32>() < fractional_part {
+                    if self.foil_can_remove(i) {
+                        self.try_remove_electron(i, rng, recipients);
+                    }
+                }
+            }
+        }
+    }
+
+    /// Process traditional current-based foils (non-overpotential mode)
+    fn process_current_based_foils(
+        &mut self,
+        time: f32,
+        dt: f32,
+        electron_ratios: &std::collections::HashMap<u64, f32>,
+        recipients: &mut [bool]
+    ) {
+        let mut rng = rand::rng();
+        
+        // Handle linked foils for current mode (ensure equal/opposite currents)
+        // Process linked foils that are not in overpotential mode or are not slaves
+        let mut processed_links = std::collections::HashSet::new();
+        for i in 0..self.foils.len() {
+            // Skip overpotential foils - they are handled by direct electron control
+            if matches!(self.foils[i].charging_mode, crate::body::foil::ChargingMode::Overpotential) {
+                continue;
+            }
+            
+            if let Some(link_id) = self.foils[i].link_id {
+                // Create a unique pair identifier to avoid processing the same link twice
+                let pair_key = if self.foils[i].id < link_id {
+                    (self.foils[i].id, link_id)
+                } else {
+                    (link_id, self.foils[i].id)
+                };
+                
+                if processed_links.contains(&pair_key) {
+                    continue; // Already processed this link pair
+                }
+                processed_links.insert(pair_key);
+                
+                if let Some(linked_foil_idx) = self.foils.iter().position(|f| f.id == link_id) {
+                    // For current mode linked foils, synchronize their currents
+                    if matches!(self.foils[i].charging_mode, crate::body::foil::ChargingMode::Current) &&
+                       matches!(self.foils[linked_foil_idx].charging_mode, crate::body::foil::ChargingMode::Current) {
+                        
+                        // Use the current from the first foil as the reference
+                        let reference_current = self.foils[i].dc_current;
+                        
+                        match self.foils[i].mode {
+                            crate::body::foil::LinkMode::Parallel => {
+                                // Same current for parallel mode
+                                self.foils[linked_foil_idx].dc_current = reference_current;
+                            }
+                            crate::body::foil::LinkMode::Opposite => {
+                                // Opposite current for opposite mode
+                                self.foils[linked_foil_idx].dc_current = -reference_current;
+                            }
+                        }
+                    }
+                    // Note: Overpotential mode linked foils are handled by the master-slave system above
+                }
+            }
+        }
+        
+        // Update all accumulators for current-mode foils
+        for i in 0..self.foils.len() {
+            // Skip overpotential foils
+            if matches!(self.foils[i].charging_mode, crate::body::foil::ChargingMode::Overpotential) {
+                continue;
+            }
+            
+            let foil_id = self.foils[i].id;
+            let actual_ratio = electron_ratios.get(&foil_id).copied();
+            let current = Self::effective_current(&mut self.foils[i], time, actual_ratio, dt, self.frame as u64);
+            self.foils[i].accum += current * dt;
+        }
+        
+        // Handle linked pairs first (they have priority and built-in charge conservation)
+        let mut visited = vec![false; self.foils.len()];
+        for i in 0..self.foils.len() {
+            // Skip overpotential foils
+            if matches!(self.foils[i].charging_mode, crate::body::foil::ChargingMode::Overpotential) {
+                visited[i] = true; // Mark as visited to skip
+                continue;
+            }
+            
+            if visited[i] { continue; }
+            if let Some(link_id) = self.foils[i].link_id {
+                if let Some(j) = self.foils.iter().position(|f| f.id == link_id) {
+                    // Also skip if linked foil is overpotential mode
+                    if matches!(self.foils[j].charging_mode, crate::body::foil::ChargingMode::Overpotential) {
+                        visited[j] = true;
+                        continue;
+                    }
+                    
+                    if !visited[j] {
+                        visited[i] = true;
+                        visited[j] = true;
+                        self.process_linked_pair_conservative(i, j, &mut rng, recipients);
+                        continue;
+                    }
+                }
+            }
+        }
+        
+        // For unlinked current-mode foils, enforce global charge conservation
+        let mut add_ready: Vec<usize> = Vec::new();
+        let mut remove_ready: Vec<usize> = Vec::new();
+        
+        for i in 0..self.foils.len() {
+            if visited[i] { continue; }
+            
+            // Skip overpotential foils
+            if matches!(self.foils[i].charging_mode, crate::body::foil::ChargingMode::Overpotential) {
+                continue;
+            }
+            
+            // Check if foil is ready to add electrons (positive accumulator)
+            if self.foils[i].accum >= 1.0 && self.foil_can_add(i) {
+                add_ready.push(i);
+            }
+            // Check if foil is ready to remove electrons (negative accumulator)
+            else if self.foils[i].accum <= -1.0 && self.foil_can_remove(i) {
+                remove_ready.push(i);
+            }
+        }
+        
+        // Shuffle to ensure random pairing
+        add_ready.shuffle(&mut rng);
+        remove_ready.shuffle(&mut rng);
+        
+        // Process charge-conserving pairs: one adds, one removes
+        let num_pairs = add_ready.len().min(remove_ready.len());
+        
+        for pair_idx in 0..num_pairs {
+            let add_foil_idx = add_ready[pair_idx];
+            let remove_foil_idx = remove_ready[pair_idx];
+            
+            // Attempt the charge-conserving pair operation
+            if self.try_add_electron(add_foil_idx, &mut rng, recipients) && 
+               self.try_remove_electron(remove_foil_idx, &mut rng, recipients) {
+                self.foils[add_foil_idx].accum -= 1.0;
+                self.foils[remove_foil_idx].accum += 1.0;
+            }
+        }
     }
     
     /// Apply Maxwell-Boltzmann thermostat to maintain target temperature

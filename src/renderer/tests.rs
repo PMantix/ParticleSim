@@ -18,6 +18,9 @@ mod tests {
             switch_hz: 0.0,
             link_id: None,
             mode: crate::body::foil::LinkMode::Parallel,
+            charging_mode: crate::body::foil::ChargingMode::Current,
+            overpotential_controller: None,
+            slave_overpotential_current: 0.0,
         });
         r.selected_foil_ids.push(1);
 
