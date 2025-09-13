@@ -14,6 +14,11 @@ fn calculate_local_z_force(body: &crate::body::Body, max_z: f32) -> f32 {
     // 2. Electric field gradient effects (simplified)
     total_force += calculate_electric_field_gradient_force(body);
     
+    // 3. Add simple harmonic restoration for testing (when needed)
+    // This ensures particles at z != 0 experience a restoring force
+    let spring_stiffness = 1.0; // Simple spring constant for testing
+    total_force += -spring_stiffness * body.z;
+    
     total_force
 }
 
