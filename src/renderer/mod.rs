@@ -80,6 +80,7 @@ pub enum GuiTab {
     Debug,
     Diagnostics,
     ScreenCapture,
+    SoftDynamics,
 }
 
 impl Default for GuiTab {

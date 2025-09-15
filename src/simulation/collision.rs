@@ -1,12 +1,12 @@
 // simulation/collision.rs
 // Contains collision detection and resolution functions
 
-// Removed unused import: Body
 use crate::renderer::state::COLLISION_PASSES;
 use broccoli::aabb::Rect;
 use broccoli_rayon::{build::RayonBuildPar, prelude::RayonQueryPar};
 use ultraviolet::Vec2;
 use crate::simulation::Simulation;
+use crate::simulation::frustration::apply_frustration_softening;
 use crate::profile_scope;
 use std::f32::consts::TAU;
 
@@ -164,11 +164,21 @@ fn resolve(sim: &mut Simulation, i: usize, j: usize, num_passes: usize) {
         let tmpx = d_xy.x * corr;
         let tmpy = d_xy.y * corr;
         let tmpz = dz * corr;
-        sim.bodies[i].pos.x -= weight1 * tmpx;
-        sim.bodies[i].pos.y -= weight1 * tmpy;
-        sim.bodies[i].z -= weight1 * tmpz;
-        sim.bodies[j].pos.x += weight2 * tmpx;
-        sim.bodies[j].pos.y += weight2 * tmpy;
+        
+        // Apply frustration-based soft repulsion
+        let separation_force = Vec2::new(tmpx, tmpy);
+        let softened_force = apply_frustration_softening(
+            &sim.frustration_tracker, 
+            i, 
+            j, 
+            separation_force
+        );
+        
+        sim.bodies[i].pos.x -= weight1 * softened_force.x;
+        sim.bodies[i].pos.y -= weight1 * softened_force.y;
+        sim.bodies[i].z -= weight1 * tmpz; // Z-direction not affected by frustration (2D problem)
+        sim.bodies[j].pos.x += weight2 * softened_force.x;
+        sim.bodies[j].pos.y += weight2 * softened_force.y;
         sim.bodies[j].z += weight2 * tmpz;
         return;
     }
@@ -254,11 +264,21 @@ fn resolve(sim: &mut Simulation, i: usize, j: usize, num_passes: usize) {
     let tmpx = d_xy.x * scale;
     let tmpy = d_xy.y * scale;
     let tmpz = dz * scale;
-    let v1x = v1.x + tmpx * weight1;
-    let v1y = v1.y + tmpy * weight1;
+    
+    // Apply frustration-based soft repulsion to velocity corrections
+    let velocity_correction = Vec2::new(tmpx, tmpy);
+    let softened_correction = apply_frustration_softening(
+        &sim.frustration_tracker,
+        i,
+        j,
+        velocity_correction
+    );
+    
+    let v1x = v1.x + softened_correction.x * weight1;
+    let v1y = v1.y + softened_correction.y * weight1;
     let v1z_new = v1z + tmpz * weight1;
-    let v2x = v2.x - tmpx * weight2;
-    let v2y = v2.y - tmpy * weight2;
+    let v2x = v2.x - softened_correction.x * weight2;
+    let v2y = v2.y - softened_correction.y * weight2;
     let v2z_new = v2z - tmpz * weight2;
     sim.bodies[i].vel = Vec2::new(v1x, v1y);
     sim.bodies[i].vz = v1z_new;
