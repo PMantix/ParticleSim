@@ -171,6 +171,7 @@ impl Foil {
     }
 
     /// Enable slave mode for overpotential control (linked to master foil)
+    #[allow(dead_code)]
     pub fn enable_overpotential_slave_mode(&mut self, _master_id: u64) {
         self.charging_mode = ChargingMode::Overpotential;
         self.overpotential_controller = None; // Slaves don't have their own controller

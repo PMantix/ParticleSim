@@ -60,6 +60,7 @@ impl FrustrationTracker {
         }
     }
 
+    #[allow(dead_code)]
     pub fn new_with_config(config: FrustrationConfig) -> Self {
         Self {
             frustrated_particles: HashMap::new(),
@@ -95,6 +96,7 @@ impl FrustrationTracker {
     }
 
     /// Get frustration statistics for debugging
+    #[allow(dead_code)]
     pub fn get_frustration_stats(&self) -> (usize, f32) {
         let frustrated_count = self.frustrated_particles.len();
         let avg_duration = if frustrated_count > 0 {

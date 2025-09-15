@@ -108,8 +108,8 @@ pub const SURROUND_CHECK_INTERVAL: usize = 10;
 // ====================
 /// Default timestep in femtoseconds.
 /// Typical MD timesteps: 0.5-2.0 fs. Old value was 0.015 fs (too small).
-pub const DEFAULT_DT_FS: f32 = 10.0;
-pub const COLLISION_PASSES: usize =9;                  // Number of collision resolution passes
+pub const DEFAULT_DT_FS: f32 = 5.0;
+pub const COLLISION_PASSES: usize =5;                  // Number of collision resolution passes
 
 // ====================
 // Quadtree Parameters
