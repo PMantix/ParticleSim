@@ -408,11 +408,74 @@ impl Quadtree {
         });
     }
 
+    /// Compute the electrostatic potential (per unit positive charge) at an arbitrary point.
+    pub fn potential_at_point(&self, bodies: &[Body], pos: Vec2, k_e: f32) -> f32 {
+        if self.nodes.is_empty() {
+            return 0.0;
+        }
+
+        let mut potential = 0.0_f32;
+        let mut node = Self::ROOT;
+
+        loop {
+            if node >= self.nodes.len() {
+                break;
+            }
+
+            let n = self.nodes[node].clone();
+            let displacement = pos - n.pos;
+            let distance = displacement.mag();
+            let node_radius = n.quad.size * 0.5;
+
+            if n.quad.size * n.quad.size < distance * distance * self.t_sq {
+                if n.charge.abs() > 0.0 {
+                    let min_sep = node_radius;
+                    let r_eff = distance.max(min_sep);
+                    let denom = (r_eff * r_eff + self.e_sq).sqrt();
+                    potential += k_e * n.charge / denom;
+                }
+
+                if n.next == 0 {
+                    break;
+                }
+                node = n.next;
+            } else if n.is_leaf() {
+                for i in n.bodies {
+                    if i >= bodies.len() {
+                        continue;
+                    }
+
+                    let body = &bodies[i];
+                    let disp = pos - body.pos;
+                    let dist = disp.mag();
+
+                    if dist < 1e-6 {
+                        continue;
+                    }
+
+                    let min_sep = body.radius;
+                    let r_eff = dist.max(min_sep);
+                    let denom = (r_eff * r_eff + self.e_sq).sqrt();
+                    potential += k_e * body.charge / denom;
+                }
+
+                if n.next == 0 {
+                    break;
+                }
+                node = n.next;
+            } else {
+                node = n.children;
+            }
+        }
+
+        potential
+    }
+
     /// Find indices of bodies within `cutoff` distance of body at index `i` (excluding `i` itself)
     pub fn find_neighbors_within(&self, bodies: &[Body], i: usize, cutoff: f32) -> Vec<usize> {
         profile_scope!("quadtree_neighbors");
         let mut neighbors = Vec::new();
-        
+
         // Early return if no nodes in quadtree
         if self.nodes.is_empty() {
             return neighbors;

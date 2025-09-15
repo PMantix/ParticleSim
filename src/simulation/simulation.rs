@@ -346,6 +346,8 @@ impl Simulation {
         let mut src_indices: Vec<usize> = (0..n).collect();
         let mut rng = rand::rng();
         src_indices.shuffle(&mut rng);
+        let coulomb_constant = self.config.coulomb_constant;
+        let thermal_energy = (crate::units::BOLTZMANN_CONSTANT * self.config.temperature).max(1e-6);
         for &src_idx in &src_indices {
             if donated_electron[src_idx] || exclude_donor[src_idx] { continue; }
             let src_body = &self.bodies[src_idx];
@@ -354,6 +356,11 @@ impl Simulation {
                 continue;
             }
             let hop_radius = self.config.hop_radius_factor * src_body.radius;
+            let src_affinity = src_body.species.electron_affinity_energy();
+            let src_potential = -self
+                .quadtree
+                .potential_at_point(&self.bodies, src_body.pos, coulomb_constant);
+            let src_site_energy = src_affinity + src_potential;
 
             // Use quadtree for neighbor search!
             let mut candidate_neighbors = self.quadtree
@@ -380,17 +387,28 @@ impl Simulation {
             // Only check until the first successful hop
             if let Some(&dst_idx) = candidate_neighbors.iter().find(|&&dst_idx| {
                 let dst_body = &self.bodies[dst_idx];
+                let dst_affinity = dst_body.species.electron_affinity_energy();
+                let dst_potential = -self
+                    .quadtree
+                    .potential_at_point(&self.bodies, dst_body.pos, coulomb_constant);
+                let dst_site_energy = dst_affinity + dst_potential;
+                let delta_e = dst_site_energy - src_site_energy;
+                if delta_e >= 0.0 {
+                    return false;
+                }
+                let scaled_drop = (-delta_e / thermal_energy).min(50.0);
+                let energy_weight = scaled_drop.exp();
                 let d_phi = dst_body.charge - src_body.charge;
                 let hop_vec = dst_body.pos - src_body.pos;
                 let hop_dir = if hop_vec.mag() > 1e-6 { hop_vec.normalized() } else { Vec2::zero() };
                 let local_field = self.background_e_field
-                    + self.quadtree.field_at_point(&self.bodies, src_body.pos, self.config.coulomb_constant);
+                    + self.quadtree.field_at_point(&self.bodies, src_body.pos, coulomb_constant);
                 let field_dir = if local_field.mag() > 1e-6 { local_field.normalized() } else { Vec2::zero() };
                 let mut alignment = (-hop_dir.dot(field_dir)).max(0.0);
                 if field_dir == Vec2::zero() { alignment = 1.0; }
                 if alignment < 1e-3 { return false; }
 
-                let rate = if self.config.use_butler_volmer && src_body.species != dst_body.species {
+                let mut rate = if self.config.use_butler_volmer && src_body.species != dst_body.species {
                     // Butler-Volmer kinetics for inter-species electron transfer
                     let alpha = self.config.bv_transfer_coeff;
                     let scale = self.config.bv_overpotential_scale;
@@ -402,6 +420,7 @@ impl Simulation {
                     if d_phi <= 0.0 { return false; }
                     self.config.hop_rate_k0 * (self.config.hop_transfer_coeff * d_phi / self.config.hop_activation_energy).exp()
                 };
+                rate *= energy_weight;
 
                 if rate <= 0.0 { return false; }
                 let p_hop = alignment * (1.0 - (-rate * self.dt).exp());

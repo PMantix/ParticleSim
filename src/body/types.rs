@@ -269,6 +269,15 @@ impl Species {
         self.props().repulsion_cutoff
     }
 
+    pub fn electron_affinity_eV(&self) -> f32 {
+        self.props().electron_affinity_eV
+    }
+
+    /// Electron affinity converted to simulation energy units.
+    pub fn electron_affinity_energy(&self) -> f32 {
+        self.electron_affinity_eV() * crate::units::EV_TO_SIM as f32
+    }
+
     /// Surface affinity - how strongly this species is attracted to electrode surfaces
     pub fn surface_affinity(&self) -> f32 {
         use Species::*;

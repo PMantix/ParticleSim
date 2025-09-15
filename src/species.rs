@@ -18,6 +18,8 @@ pub struct SpeciesProps {
     pub lj_cutoff: f32,
     pub polar_offset: f32,
     pub polar_charge: f32,
+    /// Electron affinity or site energy in electronvolts (eV)
+    pub electron_affinity_eV: f32,
     pub enable_repulsion: bool,
     pub repulsion_strength: f32,
     pub repulsion_cutoff: f32,
@@ -39,6 +41,7 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
             lj_cutoff: crate::config::LJ_FORCE_CUTOFF,
             polar_offset: 0.0,
             polar_charge: crate::config::POLAR_CHARGE_DEFAULT,
+            electron_affinity_eV: 5.391, // Approximate Li+ electron affinity
             enable_repulsion: false,
             repulsion_strength: 5.0,
             repulsion_cutoff: 2.0,
@@ -57,6 +60,7 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
             lj_cutoff: crate::config::LJ_FORCE_CUTOFF,
             polar_offset: crate::config::ELECTRON_DRIFT_RADIUS_FACTOR_METAL,
             polar_charge: crate::config::POLAR_CHARGE_DEFAULT,
+            electron_affinity_eV: 2.93, // Lithium metal work function (approx.)
             enable_repulsion: false,
             repulsion_strength: 5.0,
             repulsion_cutoff: 2.0,
@@ -75,6 +79,7 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
             lj_cutoff: crate::config::LJ_FORCE_CUTOFF,
             polar_offset: crate::config::ELECTRON_DRIFT_RADIUS_FACTOR_METAL,
             polar_charge: crate::config::POLAR_CHARGE_DEFAULT,
+            electron_affinity_eV: 2.93,
             enable_repulsion: false,
             repulsion_strength: 5.0,
             repulsion_cutoff: 2.0,
@@ -93,6 +98,7 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
             lj_cutoff: crate::config::LJ_FORCE_CUTOFF,
             polar_offset: 0.3,
             polar_charge: crate::config::POLAR_CHARGE_DEFAULT,
+            electron_affinity_eV: 0.0,
             enable_repulsion: false,
             repulsion_strength: 5.0,
             repulsion_cutoff: 2.0,
@@ -111,6 +117,7 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
             lj_cutoff: crate::config::LJ_FORCE_CUTOFF,
             polar_offset: crate::config::ELECTRON_DRIFT_RADIUS_FACTOR_EC,
             polar_charge: crate::config::POLAR_CHARGE_EC,
+            electron_affinity_eV: 0.0,
             enable_repulsion: true,
             repulsion_strength: 5.0,  // Reduced from 100.0 - represents osmotic pressure
             repulsion_cutoff: 6.0,    // Reduced from 11.0 - shorter range interaction
@@ -129,8 +136,9 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
             lj_cutoff: crate::config::LJ_FORCE_CUTOFF,
             polar_offset: crate::config::ELECTRON_DRIFT_RADIUS_FACTOR_DMC,
             polar_charge: crate::config::POLAR_CHARGE_DMC,
+            electron_affinity_eV: 0.0,
             enable_repulsion: true,
-            repulsion_strength: 5.0,  // Reduced from 100.0 - represents osmotic pressure  
+            repulsion_strength: 5.0,  // Reduced from 100.0 - represents osmotic pressure
             repulsion_cutoff: 6.0,    // Reduced from 11.0 - shorter range interaction
         },
     );
@@ -190,6 +198,7 @@ pub fn get_species_props(species: Species) -> SpeciesProps {
             lj_cutoff: crate::config::LJ_FORCE_CUTOFF,
             polar_offset: 0.0,
             polar_charge: crate::config::POLAR_CHARGE_DEFAULT,
+            electron_affinity_eV: 0.0,
             enable_repulsion: false,
             repulsion_strength: 5.0,
             repulsion_cutoff: 2.0,
