@@ -445,33 +445,45 @@ impl Renderer {
     }
 
     pub fn verify_capture_region_after_resize(&mut self, new_width: u16, new_height: u16) {
+        if new_width == 0 || new_height == 0 {
+            return;
+        }
+
         // If we have a capture region and window dimensions changed significantly
         if let Some((ratio_start, ratio_end)) = self.capture_region_ratio {
             let old_width = self.window_width;
             let old_height = self.window_height;
-            
+
             // Check if aspect ratio changed significantly (more than 5%)
             let old_aspect = old_width as f32 / old_height as f32;
             let new_aspect = new_width as f32 / new_height as f32;
             let aspect_change = (new_aspect - old_aspect).abs() / old_aspect;
-            
+
             if aspect_change > 0.05 {
-                println!("Window aspect ratio changed significantly ({:.3} -> {:.3}, change: {:.1}%), capture region may need adjustment", 
+                println!("Window aspect ratio changed significantly ({:.3} -> {:.3}, change: {:.1}%), capture region may need adjustment",
                         old_aspect, new_aspect, aspect_change * 100.0);
-                
+
                 let screen_start = Vec2::new(ratio_start.x * new_width as f32, ratio_start.y * new_height as f32);
                 let screen_end = Vec2::new(ratio_end.x * new_width as f32, ratio_end.y * new_height as f32);
 
                 println!("Capture region screen coordinates updated: ({:.1}, {:.1}) to ({:.1}, {:.1}) for new window size {}x{}",
                         screen_start.x, screen_start.y, screen_end.x, screen_end.y, new_width, new_height);
             }
-            let start_world = self.screen_to_world(Vec2::new(ratio_start.x * new_width as f32, ratio_start.y * new_height as f32), new_width, new_height);
-            let end_world = self.screen_to_world(Vec2::new(ratio_end.x * new_width as f32, ratio_end.y * new_height as f32), new_width, new_height);
+            let start_world = self.screen_to_world(
+                Vec2::new(ratio_start.x * new_width as f32, ratio_start.y * new_height as f32),
+                new_width,
+                new_height,
+            );
+            let end_world = self.screen_to_world(
+                Vec2::new(ratio_end.x * new_width as f32, ratio_end.y * new_height as f32),
+                new_width,
+                new_height,
+            );
             self.capture_region = Some((start_world, end_world));
-
-            self.window_width = new_width;
-            self.window_height = new_height;
         }
+
+        self.window_width = new_width;
+        self.window_height = new_height;
     }
 
     #[cfg(test)]

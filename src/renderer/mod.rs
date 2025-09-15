@@ -318,12 +318,16 @@ impl quarkstrom::Renderer for Renderer {
     }
 
     fn input(&mut self, input: &WinitInputHelper, width: u16, height: u16) {
-        self.window_width = width;
-        self.window_height = height;
+        if width == 0 || height == 0 {
+            return;
+        }
         self.scale_factor = input.scale_factor().unwrap_or(1.0) as f32;
         self.handle_input(input, width, height);
     }
     fn render(&mut self, ctx: &mut quarkstrom::RenderContext) {
+        if self.window_width == 0 || self.window_height == 0 {
+            return;
+        }
         self.draw(ctx, self.window_width, self.window_height);
     }
     fn gui(&mut self, ctx: &quarkstrom::egui::Context) {
