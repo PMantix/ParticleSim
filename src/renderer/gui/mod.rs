@@ -16,6 +16,7 @@ pub mod physics_tab;
 pub mod scenario_tab;
 pub mod screen_capture_tab;
 pub mod simulation_tab;
+pub mod soft_dynamics_tab;
 pub mod species_tab;
 pub mod visualization_tab;
 
@@ -104,6 +105,11 @@ impl super::Renderer {
                             super::GuiTab::ScreenCapture,
                             "📷 Screen Capture",
                         );
+                        ui.selectable_value(
+                            &mut self.current_tab,
+                            super::GuiTab::SoftDynamics,
+                            "🔧 Soft Dynamics",
+                        );
                     });
                 });
 
@@ -123,6 +129,7 @@ impl super::Renderer {
                     super::GuiTab::Debug => self.show_debug_tab(ui),
                     super::GuiTab::Diagnostics => self.show_diagnostics_tab(ui),
                     super::GuiTab::ScreenCapture => self.show_screen_capture_tab(ui),
+                    super::GuiTab::SoftDynamics => self.show_soft_dynamics_tab(ui),
                 });
             });
 

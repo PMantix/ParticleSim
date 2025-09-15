@@ -133,6 +133,24 @@ pub const MAX_Z: f32 = DOMAIN_DEPTH;
 pub const Z_FRUSTRATION_STRENGTH: f32 = 0.1;
 
 // ====================
+// Frustration-based Soft Dynamics Parameters
+// ====================
+/// Enable frustrated motion soft repulsion by default
+pub const FRUSTRATION_ENABLED: bool = true;
+/// Minimum force magnitude to consider for frustration detection
+pub const FRUSTRATION_MIN_FORCE_THRESHOLD: f32 = 0.5;
+/// Maximum movement while still considered "stuck"
+pub const FRUSTRATION_STUCK_MOVEMENT_THRESHOLD: f32 = 0.1;
+/// Number of timesteps needed to confirm frustration
+pub const FRUSTRATION_CONFIRMATION_STEPS: u32 = 8;
+/// Fraction of normal collision force when frustrated (0.3 = 30% force, 70% reduction)
+pub const FRUSTRATION_SOFT_REPULSION_FACTOR: f32 = 0.3;
+/// Maximum time a particle can remain frustrated
+pub const FRUSTRATION_MAX_DURATION: u32 = 50;
+/// Size of position history buffer for movement analysis
+pub const FRUSTRATION_POSITION_HISTORY_SIZE: usize = 5;
+
+// ====================
 // Threading/Parallelism
 // ====================
 pub const MIN_THREADS: usize = 3;                       // Minimum number of threads to use
@@ -205,6 +223,15 @@ pub struct SimConfig {
     pub z_frustration_strength: f32,
     /// Enable expensive many-body z-forces (solvation, density effects)
     pub enable_z_many_body_forces: bool,
+    
+    // Frustration-based soft dynamics parameters
+    pub frustration_enabled: bool,
+    pub frustration_min_force_threshold: f32,
+    pub frustration_stuck_movement_threshold: f32,
+    pub frustration_confirmation_steps: u32,
+    pub frustration_soft_repulsion_factor: f32,
+    pub frustration_max_duration: u32,
+    pub frustration_position_history_size: usize,
 }
 
 impl Default for SimConfig {
@@ -238,6 +265,15 @@ impl Default for SimConfig {
             max_z: MAX_Z,
             z_frustration_strength: Z_FRUSTRATION_STRENGTH,
             enable_z_many_body_forces: false, // Default to false for performance
+            
+            // Frustration-based soft dynamics parameters
+            frustration_enabled: FRUSTRATION_ENABLED,
+            frustration_min_force_threshold: FRUSTRATION_MIN_FORCE_THRESHOLD,
+            frustration_stuck_movement_threshold: FRUSTRATION_STUCK_MOVEMENT_THRESHOLD,
+            frustration_confirmation_steps: FRUSTRATION_CONFIRMATION_STEPS,
+            frustration_soft_repulsion_factor: FRUSTRATION_SOFT_REPULSION_FACTOR,
+            frustration_max_duration: FRUSTRATION_MAX_DURATION,
+            frustration_position_history_size: FRUSTRATION_POSITION_HISTORY_SIZE,
         }
     }
 }

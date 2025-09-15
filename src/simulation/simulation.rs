@@ -9,6 +9,7 @@ use super::forces;
 use super::collision;
 use crate::config;
 use crate::simulation::utils::can_transfer_electron;
+use crate::simulation::frustration::FrustrationTracker;
 use rand::prelude::*; // Import all prelude traits for rand 0.9+
 use crate::profile_scope;
 use std::collections::HashMap;
@@ -31,6 +32,8 @@ pub struct Simulation {
     pub config:config::SimConfig, //
     /// Track when thermostat was last applied (in simulation time)
     pub last_thermostat_time: f32,
+    /// Track particles experiencing frustrated motion for soft repulsion
+    pub frustration_tracker: FrustrationTracker,
 }
 
 impl Simulation {
@@ -62,6 +65,7 @@ impl Simulation {
             body_to_foil: HashMap::new(),
             config: config::SimConfig::default(),
             last_thermostat_time: 0.0,
+            frustration_tracker: FrustrationTracker::new(),
         };
         sim
     }
@@ -118,6 +122,11 @@ impl Simulation {
         
         // Apply Li+ mobility enhancement (pressure-dependent collision softening)
         // super::li_mobility::apply_li_mobility_enhancement(self);
+        
+        // Update frustration tracking for particles that may be stuck
+        // Split borrow to avoid borrow checker issues
+        self.frustration_tracker.update(&self.bodies);
+        
         self.iterate();
         
         // Check for NaN values after iterate

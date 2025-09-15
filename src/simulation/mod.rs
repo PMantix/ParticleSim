@@ -9,6 +9,7 @@ pub use simulation::*;
 pub mod utils;
 pub use utils::compute_temperature;
 pub mod out_of_plane;
+pub mod frustration;
 
 #[cfg(test)]
 mod tests;
