@@ -7,6 +7,9 @@ use crate::profile_scope;
 
 impl Renderer {
     pub fn handle_screen_capture(&mut self, current_time: f32, width: u16, height: u16) {
+        if width == 0 || height == 0 {
+            return;
+        }
         // Update our stored dimensions to ensure they're current
         self.window_width = width;
         self.window_height = height;
