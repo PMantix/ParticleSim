@@ -26,6 +26,10 @@ pub struct SpeciesProps {
 pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(|| {
     use Species::*;
     let mut m = HashMap::new();
+    // WCA-style Lennard-Jones parameters tuned for liquid EC/DMC solvents.
+    const SOLVENT_LJ_SIGMA: f32 = 4.0;
+    const SOLVENT_LJ_EPSILON: f32 = 8.0e-5;
+    const SOLVENT_WCA_CUTOFF: f32 = 1.122_462;
     m.insert(
         LithiumIon,
         SpeciesProps {
@@ -105,15 +109,15 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
             radius: 2.5, // Å
             damping: 1.0,
             color: [0, 200, 0, 100],
-            lj_enabled: false,
-            lj_epsilon: 0.0,
-            lj_sigma: crate::config::LJ_FORCE_SIGMA,
-            lj_cutoff: crate::config::LJ_FORCE_CUTOFF,
+            lj_enabled: true,
+            lj_epsilon: SOLVENT_LJ_EPSILON,
+            lj_sigma: SOLVENT_LJ_SIGMA,
+            lj_cutoff: SOLVENT_WCA_CUTOFF,
             polar_offset: crate::config::ELECTRON_DRIFT_RADIUS_FACTOR_EC,
             polar_charge: crate::config::POLAR_CHARGE_EC,
-            enable_repulsion: true,
-            repulsion_strength: 5.0,  // Reduced from 100.0 - represents osmotic pressure
-            repulsion_cutoff: 6.0,    // Reduced from 11.0 - shorter range interaction
+            enable_repulsion: false,
+            repulsion_strength: 0.0,
+            repulsion_cutoff: 0.0,
         },
     );
     m.insert(
@@ -123,15 +127,15 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
             radius: 2.5, // Å
             damping: 1.0,
             color: [0, 100, 50, 200],
-            lj_enabled: false,
-            lj_epsilon: 0.0,
-            lj_sigma: crate::config::LJ_FORCE_SIGMA,
-            lj_cutoff: crate::config::LJ_FORCE_CUTOFF,
+            lj_enabled: true,
+            lj_epsilon: SOLVENT_LJ_EPSILON,
+            lj_sigma: SOLVENT_LJ_SIGMA,
+            lj_cutoff: SOLVENT_WCA_CUTOFF,
             polar_offset: crate::config::ELECTRON_DRIFT_RADIUS_FACTOR_DMC,
             polar_charge: crate::config::POLAR_CHARGE_DMC,
-            enable_repulsion: true,
-            repulsion_strength: 5.0,  // Reduced from 100.0 - represents osmotic pressure  
-            repulsion_cutoff: 6.0,    // Reduced from 11.0 - shorter range interaction
+            enable_repulsion: false,
+            repulsion_strength: 0.0,
+            repulsion_cutoff: 0.0,
         },
     );
     m
