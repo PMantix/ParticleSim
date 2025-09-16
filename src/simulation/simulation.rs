@@ -338,7 +338,9 @@ impl Simulation {
     /// in the configuration, hops between different species use the
     /// Butler-Volmer rate expression.
     pub fn perform_electron_hopping_with_exclusions(&mut self, exclude_donor: &[bool]) {
-        if self.bodies.is_empty() { return; }
+        if self.bodies.is_empty() {
+            return;
+        }
         let n = self.bodies.len();
         let mut hops: Vec<(usize, usize)> = vec![];
         let mut received_electron = vec![false; n];
@@ -389,6 +391,18 @@ impl Simulation {
                 bodies_potential - self.background_e_field.dot(src_body.pos)
             };
 
+            let local_field = self.background_e_field
+                + self
+                    .quadtree
+                    .field_at_point(&self.bodies, src_body.pos, self.config.coulomb_constant);
+            let local_field_mag = local_field.mag();
+            let zero_field = local_field_mag <= 1e-6;
+            let field_dir = if zero_field {
+                Vec2::zero()
+            } else {
+                local_field / local_field_mag
+            };
+
             // Only check until the first successful hop
             if let Some(&dst_idx) = candidate_neighbors.iter().find(|&&dst_idx| {
                 let dst_body = &self.bodies[dst_idx];
@@ -406,13 +420,18 @@ impl Simulation {
                 let d_phi_env = phi_dst_env - phi_src_env;
 
                 let hop_vec = dst_body.pos - src_body.pos;
-                let hop_dir = if hop_vec.mag() > 1e-6 { hop_vec.normalized() } else { Vec2::zero() };
-                let local_field = self.background_e_field
-                    + self.quadtree.field_at_point(&self.bodies, src_body.pos, self.config.coulomb_constant);
-                let field_dir = if local_field.mag() > 1e-6 { local_field.normalized() } else { Vec2::zero() };
+                let hop_dir = if hop_vec.mag() > 1e-6 {
+                    hop_vec.normalized()
+                } else {
+                    Vec2::zero()
+                };
                 let mut alignment = (-hop_dir.dot(field_dir)).max(0.0);
-                if field_dir == Vec2::zero() { alignment = 1.0; }
-                if alignment < 1e-3 { return false; }
+                if zero_field {
+                    alignment = 1.0;
+                }
+                if alignment < 1e-3 {
+                    return false;
+                }
 
                 let rate = if self.config.use_butler_volmer && src_body.species != dst_body.species {
                     // Butler-Volmer kinetics for inter-species electron transfer
@@ -423,12 +442,18 @@ impl Simulation {
                     let backward = (-(1.0 - alpha) * d_phi_env / scale).exp();
                     i0 * (forward - backward)
                 } else {
-                    if d_phi_env <= 0.0 { return false; }
+                    if d_phi_env <= 0.0 {
+                        return false;
+                    }
                     self.config.hop_rate_k0
-                        * (self.config.hop_transfer_coeff * d_phi_env / self.config.hop_activation_energy).exp()
+                        * (self.config.hop_transfer_coeff * d_phi_env
+                            / self.config.hop_activation_energy)
+                            .exp()
                 };
 
-                if rate <= 0.0 { return false; }
+                if rate <= 0.0 {
+                    return false;
+                }
                 let p_hop = alignment * (1.0 - (-rate * self.dt).exp());
                 rand::random::<f32>() < p_hop
             }) {

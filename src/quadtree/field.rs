@@ -1,5 +1,6 @@
 use super::Quadtree;
 use crate::body::Body;
+use smallvec::SmallVec;
 use std::ops::Range;
 use ultraviolet::Vec2;
 
@@ -10,9 +11,23 @@ pub struct FieldSample {
     pub field: Vec2,
 }
 
-/// Check whether a value lies inside a range while handling potentially invalid ranges.
-fn range_contains(range: &Range<usize>, value: usize) -> bool {
-    range.start < range.end && value >= range.start && value < range.end
+/// Determine whether a range contains any excluded bodies when the list is sorted.
+fn range_intersects_sorted(range: &Range<usize>, excluded: &[usize]) -> bool {
+    if range.start >= range.end || excluded.is_empty() {
+        return false;
+    }
+
+    let start_idx = excluded.partition_point(|&idx| idx < range.start);
+    start_idx < excluded.len() && excluded[start_idx] < range.end
+}
+
+/// Check whether a particular index is part of the exclusion set.
+#[inline]
+fn is_excluded(value: usize, excluded: &[usize]) -> bool {
+    if excluded.is_empty() {
+        return false;
+    }
+    excluded.binary_search(&value).is_ok()
 }
 
 /// Evaluate the electric potential and field at `pos`, excluding bodies listed in `excluded`.
@@ -34,7 +49,19 @@ pub fn evaluate_field_at_point_excluding(
 
     let mut potential = 0.0f32;
     let mut field = Vec2::zero();
-    let mut stack = vec![Quadtree::ROOT];
+    let mut stack: SmallVec<[usize; 32]> = SmallVec::new();
+    stack.push(Quadtree::ROOT);
+
+    let mut excluded_sorted: SmallVec<[usize; 8]> = excluded
+        .iter()
+        .copied()
+        .filter(|&idx| idx < bodies.len())
+        .collect();
+    if excluded_sorted.len() > 1 {
+        excluded_sorted.sort_unstable();
+        excluded_sorted.dedup();
+    }
+    let excluded_slice = excluded_sorted.as_slice();
 
     while let Some(node_idx) = stack.pop() {
         if node_idx >= quadtree.nodes.len() {
@@ -47,10 +74,8 @@ pub fn evaluate_field_at_point_excluding(
             continue;
         }
 
-        let contains_excluded = excluded
-            .iter()
-            .copied()
-            .any(|idx| range_contains(&node.bodies, idx));
+        let contains_excluded = !excluded_slice.is_empty()
+            && range_intersects_sorted(&node.bodies, excluded_slice);
 
         let d = pos - node.pos;
         let dist = d.mag();
@@ -80,7 +105,7 @@ pub fn evaluate_field_at_point_excluding(
                 if body_idx >= bodies.len() {
                     continue;
                 }
-                if excluded.contains(&body_idx) {
+                if is_excluded(body_idx, excluded_slice) {
                     continue;
                 }
 
