@@ -33,6 +33,10 @@ This repository contains a modular, parallelized particle simulation for large-s
   - Ethylene carbonate (EC) and dimethyl carbonate (DMC) are modeled as neutral molecules with a bound electron.
   - A polarization force is applied between the displaced electron and the molecular center, enabling solvent shells around lithium ions without Lennard-Jones attraction.
 - **Optional 2.5D Out-of-Plane Flex**: Ions and anions can temporarily move in an abstract vertical direction to bypass 2D crowding near electrodes. The feature preserves bulk behavior and is disabled by default.
+- **Lithium-Ion Overlap Relaxation**:
+  - Li⁺–anything collisions can permit controlled overlap when electric forces are high enough.
+  - Four GUI sliders define the force threshold, overlap at the threshold, force for maximum overlap, and the maximum separation reduction.
+  - Non-lithium species continue to use rigid hard-contact collisions.
 - **State Management**:
   - Save and load simulation states for reproducible experiments.
   - Pre-configured scenarios for quick setup.

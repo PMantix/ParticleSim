@@ -60,7 +60,7 @@ impl super::super::Renderer {
         ui.group(|ui| {
             ui.label(RichText::new("🎛️ Parameter Tuning").strong());
             ui.separator();
-            
+
             let mut config_changed = false;
 
             // Force detection parameters
@@ -142,6 +142,103 @@ impl super::super::Renderer {
             });
 
             if config_changed {
+                self.update_frustration_config();
+            }
+        });
+
+        ui.separator();
+
+        // Lithium-ion overlap relaxation controls
+        ui.group(|ui| {
+            ui.label(RichText::new("🧲 Li⁺ Overlap Relaxation").strong());
+            ui.separator();
+            ui.small("Allow lithium ions to overlap slightly under strong electric forces.");
+
+            let mut overlap_changed = false;
+
+            ui.horizontal(|ui| {
+                ui.label("Force Threshold:");
+                if ui
+                    .add(
+                        egui::Slider::new(
+                            &mut self.sim_config.li_overlap_force_threshold,
+                            0.0..=1000.0,
+                        )
+                        .suffix(" force units"),
+                    )
+                    .changed()
+                {
+                    overlap_changed = true;
+                }
+            });
+            ui.small("Electric force magnitude required before any Li⁺ overlap is permitted.");
+
+            ui.horizontal(|ui| {
+                ui.label("Overlap at Threshold:");
+                if ui
+                    .add(
+                        egui::Slider::new(
+                            &mut self.sim_config.li_overlap_at_threshold,
+                            0.0..=2.0,
+                        )
+                        .step_by(0.01)
+                        .suffix(" distance units"),
+                    )
+                    .changed()
+                {
+                    overlap_changed = true;
+                }
+            });
+            ui.small("Allowed Li⁺ overlap when the electric force equals the threshold.");
+
+            ui.horizontal(|ui| {
+                ui.label("Force for Max Overlap:");
+                if ui
+                    .add(
+                        egui::Slider::new(
+                            &mut self.sim_config.li_overlap_force_max,
+                            0.0..=1500.0,
+                        )
+                        .suffix(" force units"),
+                    )
+                    .changed()
+                {
+                    overlap_changed = true;
+                }
+            });
+            ui.small("Electric force magnitude that grants the maximum Li⁺ overlap allowance.");
+
+            ui.horizontal(|ui| {
+                ui.label("Maximum Overlap:");
+                if ui
+                    .add(
+                        egui::Slider::new(&mut self.sim_config.li_overlap_max, 0.0..=2.0)
+                            .step_by(0.01)
+                            .suffix(" distance units"),
+                    )
+                    .changed()
+                {
+                    overlap_changed = true;
+                }
+            });
+            ui.small("Largest Li⁺ overlap permitted once forces exceed the max threshold.");
+
+            if self.sim_config.li_overlap_force_max
+                < self.sim_config.li_overlap_force_threshold
+            {
+                ui.colored_label(
+                    Color32::YELLOW,
+                    "Max overlap force should be ≥ the force threshold.",
+                );
+            }
+            if self.sim_config.li_overlap_max < self.sim_config.li_overlap_at_threshold {
+                ui.colored_label(
+                    Color32::YELLOW,
+                    "Maximum overlap should be ≥ the threshold overlap.",
+                );
+            }
+
+            if overlap_changed {
                 self.update_frustration_config();
             }
         });
@@ -236,10 +333,28 @@ impl super::super::Renderer {
 
     /// Update the simulation's frustration tracker configuration from GUI settings
     fn update_frustration_config(&mut self) {
-        // For now, just ensure that the config is synced with the LJ_CONFIG 
+        // Sanitize Li⁺ overlap parameters before syncing them
+        if self.sim_config.li_overlap_force_threshold < 0.0 {
+            self.sim_config.li_overlap_force_threshold = 0.0;
+        }
+        if self.sim_config.li_overlap_force_max < self.sim_config.li_overlap_force_threshold {
+            self.sim_config.li_overlap_force_max = self.sim_config.li_overlap_force_threshold;
+        }
+        if (self.sim_config.li_overlap_force_max - self.sim_config.li_overlap_force_threshold).abs() < 1.0e-6 {
+            self.sim_config.li_overlap_force_max =
+                self.sim_config.li_overlap_force_threshold + 1.0e-6;
+        }
+        if self.sim_config.li_overlap_at_threshold < 0.0 {
+            self.sim_config.li_overlap_at_threshold = 0.0;
+        }
+        if self.sim_config.li_overlap_max < self.sim_config.li_overlap_at_threshold {
+            self.sim_config.li_overlap_max = self.sim_config.li_overlap_at_threshold;
+        }
+
+        // For now, just ensure that the config is synced with the LJ_CONFIG
         // The actual updating will be done through the existing config sync mechanism
         // in simulation.rs where self.config = crate::config::LJ_CONFIG.lock().clone()
-        
+
         // Update the global config so it gets picked up by the simulation
         let mut global_config = crate::config::LJ_CONFIG.lock();
         global_config.frustration_enabled = self.sim_config.frustration_enabled;
@@ -249,6 +364,10 @@ impl super::super::Renderer {
         global_config.frustration_soft_repulsion_factor = self.sim_config.frustration_soft_repulsion_factor;
         global_config.frustration_max_duration = self.sim_config.frustration_max_duration;
         global_config.frustration_position_history_size = self.sim_config.frustration_position_history_size;
+        global_config.li_overlap_force_threshold = self.sim_config.li_overlap_force_threshold;
+        global_config.li_overlap_at_threshold = self.sim_config.li_overlap_at_threshold;
+        global_config.li_overlap_force_max = self.sim_config.li_overlap_force_max;
+        global_config.li_overlap_max = self.sim_config.li_overlap_max;
         drop(global_config);
     }
 }

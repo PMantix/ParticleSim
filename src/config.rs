@@ -151,6 +151,18 @@ pub const FRUSTRATION_MAX_DURATION: u32 = 50;
 pub const FRUSTRATION_POSITION_HISTORY_SIZE: usize = 5;
 
 // ====================
+// Lithium-ion Electric Overlap Parameters
+// ====================
+/// Minimum electric force magnitude required before Li⁺ overlap is relaxed
+pub const LI_OVERLAP_FORCE_THRESHOLD: f32 = 50.0;
+/// Allowed Li⁺ overlap (in length units) exactly at the force threshold
+pub const LI_OVERLAP_AT_THRESHOLD: f32 = 0.0;
+/// Electric force magnitude that yields the maximum Li⁺ overlap allowance
+pub const LI_OVERLAP_FORCE_MAX: f32 = 200.0;
+/// Maximum Li⁺ overlap permitted when the electric force exceeds the max threshold
+pub const LI_OVERLAP_MAX: f32 = 0.0;
+
+// ====================
 // Threading/Parallelism
 // ====================
 pub const MIN_THREADS: usize = 3;                       // Minimum number of threads to use
@@ -186,6 +198,7 @@ pub enum IsolineFieldMode {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(default)]
 pub struct SimConfig {
     pub hop_rate_k0: f32,
     pub hop_transfer_coeff: f32,
@@ -232,6 +245,12 @@ pub struct SimConfig {
     pub frustration_soft_repulsion_factor: f32,
     pub frustration_max_duration: u32,
     pub frustration_position_history_size: usize,
+
+    // Lithium-ion electric-overlap relaxation
+    pub li_overlap_force_threshold: f32,
+    pub li_overlap_at_threshold: f32,
+    pub li_overlap_force_max: f32,
+    pub li_overlap_max: f32,
 }
 
 impl Default for SimConfig {
@@ -274,6 +293,11 @@ impl Default for SimConfig {
             frustration_soft_repulsion_factor: FRUSTRATION_SOFT_REPULSION_FACTOR,
             frustration_max_duration: FRUSTRATION_MAX_DURATION,
             frustration_position_history_size: FRUSTRATION_POSITION_HISTORY_SIZE,
+
+            li_overlap_force_threshold: LI_OVERLAP_FORCE_THRESHOLD,
+            li_overlap_at_threshold: LI_OVERLAP_AT_THRESHOLD,
+            li_overlap_force_max: LI_OVERLAP_FORCE_MAX,
+            li_overlap_max: LI_OVERLAP_MAX,
         }
     }
 }

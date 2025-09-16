@@ -9,6 +9,7 @@ use crate::simulation::Simulation;
 use crate::simulation::frustration::apply_frustration_softening;
 use crate::profile_scope;
 use std::f32::consts::TAU;
+use crate::body::Species;
 
 pub fn collide(sim: &mut Simulation) {
     profile_scope!("collision");
@@ -105,10 +106,45 @@ fn resolve(sim: &mut Simulation, i: usize, j: usize, num_passes: usize) {
     let mut z2 = sim.bodies[j].z;
     let r1 = sim.bodies[i].radius;
     let r2 = sim.bodies[j].radius;
+    let species1 = sim.bodies[i].species;
+    let species2 = sim.bodies[j].species;
+    let charge1 = sim.bodies[i].charge;
+    let charge2 = sim.bodies[j].charge;
+    let e_field1 = sim.bodies[i].e_field;
+    let e_field2 = sim.bodies[j].e_field;
+    let overlap_force_threshold = sim.config.li_overlap_force_threshold;
+    let overlap_at_threshold = sim.config.li_overlap_at_threshold;
+    let overlap_force_max = sim.config.li_overlap_force_max;
+    let overlap_max = sim.config.li_overlap_max;
+    let overlap1 = compute_li_overlap(
+        species1,
+        charge1,
+        e_field1,
+        overlap_force_threshold,
+        overlap_at_threshold,
+        overlap_force_max,
+        overlap_max,
+    );
+    let overlap2 = compute_li_overlap(
+        species2,
+        charge2,
+        e_field2,
+        overlap_force_threshold,
+        overlap_at_threshold,
+        overlap_force_max,
+        overlap_max,
+    );
+    let combined_radius = r1 + r2;
+    let max_allowed_overlap = (combined_radius - 1.0e-5).max(0.0);
+    let mut allowed_overlap = overlap1.max(overlap2).clamp(0.0, max_allowed_overlap);
+    if !allowed_overlap.is_finite() {
+        allowed_overlap = 0.0;
+    }
+    let mut desired_distance = (combined_radius - allowed_overlap).max(0.0);
     let mut d_xy = p2 - p1;
     let mut dz = z2 - z1;
-    let r = r1 + r2;
     let mut dist_sq = d_xy.mag_sq() + dz * dz;
+    let desired_sq = desired_distance * desired_distance;
 
     // Check inputs (positions/velocities) and sanitize bodies if needed
     let mut v1 = sim.bodies[i].vel;
@@ -147,7 +183,11 @@ fn resolve(sim: &mut Simulation, i: usize, j: usize, num_passes: usize) {
         v1z = sim.bodies[i].vz;
         v2z = sim.bodies[j].vz;
     }
-    if dist_sq > r * r {
+    if desired_sq > 0.0 && dist_sq > desired_sq {
+        return;
+    }
+    if desired_sq == 0.0 {
+        // Nothing to resolve if full overlap is permitted
         return;
     }
     let v_xy = v2 - v1;
@@ -160,7 +200,7 @@ fn resolve(sim: &mut Simulation, i: usize, j: usize, num_passes: usize) {
 
     if d_dot_v >= 0.0 && dist_sq > 0.0 && dist_sq.is_finite() {
         let dist = dist_sq.sqrt();
-        let corr = r / dist - 1.0;
+        let corr = desired_distance / dist - 1.0;
         let tmpx = d_xy.x * corr;
         let tmpy = d_xy.y * corr;
         let tmpz = dz * corr;
@@ -190,7 +230,7 @@ fn resolve(sim: &mut Simulation, i: usize, j: usize, num_passes: usize) {
         let angle = ((i as u64) ^ ((j as u64).rotate_left(13))) as f32 * (TAU / 1024.0);
         let (s, c) = angle.sin_cos();
         let dir = Vec2::new(c, s);
-        let sep = r * 1.001;
+        let sep = desired_distance * 1.001;
         let mid = (sim.bodies[i].pos + sim.bodies[j].pos) * 0.5;
         sim.bodies[i].pos = mid - dir * (sep * weight1);
         sim.bodies[j].pos = mid + dir * (sep * weight2);
@@ -208,7 +248,7 @@ fn resolve(sim: &mut Simulation, i: usize, j: usize, num_passes: usize) {
         }
         return;
     }
-    let r_sq = r * r;
+    let r_sq = desired_sq;
     let correction_scale = 1.0 / num_passes as f32;
     // DIAGNOSTIC: compute components of t and log anomalies
     let disc_term = (d_dot_v * d_dot_v - v_sq * (d_sq - r_sq)).max(0.0);
@@ -229,7 +269,7 @@ fn resolve(sim: &mut Simulation, i: usize, j: usize, num_passes: usize) {
         // Fallback to purely positional correction
         let dist = d_sq.sqrt();
         if dist.is_finite() && dist > 0.0 {
-            let corr = r / dist - 1.0;
+            let corr = desired_distance / dist - 1.0;
             let tmpx = d_xy.x * corr;
             let tmpy = d_xy.y * corr;
             let tmpz = dz * corr;
@@ -304,4 +344,40 @@ fn resolve(sim: &mut Simulation, i: usize, j: usize, num_passes: usize) {
             j, bj.pos.x, bj.pos.y, bj.z, bj.vel.x, bj.vel.y, bj.vz
         );
     }
+}
+
+fn compute_li_overlap(
+    species: Species,
+    charge: f32,
+    e_field: Vec2,
+    force_threshold: f32,
+    overlap_at_threshold: f32,
+    force_max: f32,
+    overlap_max: f32,
+) -> f32 {
+    if !matches!(species, Species::LithiumIon) {
+        return 0.0;
+    }
+
+    let mut force_mag = (e_field * charge).mag();
+    if !force_mag.is_finite() {
+        force_mag = 0.0;
+    }
+
+    let threshold = force_threshold.max(0.0);
+    let min_overlap = overlap_at_threshold.max(0.0);
+    let max_overlap = overlap_max.max(min_overlap);
+    let max_force = force_max.max(threshold);
+
+    if force_mag < threshold {
+        return 0.0;
+    }
+
+    if max_force <= threshold {
+        return max_overlap;
+    }
+
+    let limited_force = force_mag.min(max_force);
+    let t = (limited_force - threshold) / (max_force - threshold);
+    min_overlap + t * (max_overlap - min_overlap)
 }
