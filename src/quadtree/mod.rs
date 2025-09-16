@@ -1,5 +1,6 @@
 pub mod node;
 pub mod quad;
+pub mod field;
 pub use node::Node;
 //pub use quad::Quad;
 

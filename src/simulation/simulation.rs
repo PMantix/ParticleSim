@@ -377,10 +377,34 @@ impl Simulation {
 
             candidate_neighbors.shuffle(&mut rng);
 
+            let phi_src_env = {
+                let bodies_potential = crate::quadtree::field::potential_at_point_excluding(
+                    &self.quadtree,
+                    &self.bodies,
+                    src_body.pos,
+                    src_body.radius,
+                    self.config.coulomb_constant,
+                    &[src_idx],
+                );
+                bodies_potential - self.background_e_field.dot(src_body.pos)
+            };
+
             // Only check until the first successful hop
             if let Some(&dst_idx) = candidate_neighbors.iter().find(|&&dst_idx| {
                 let dst_body = &self.bodies[dst_idx];
-                let d_phi = dst_body.charge - src_body.charge;
+                let phi_dst_env = {
+                    let bodies_potential = crate::quadtree::field::potential_at_point_excluding(
+                        &self.quadtree,
+                        &self.bodies,
+                        dst_body.pos,
+                        dst_body.radius,
+                        self.config.coulomb_constant,
+                        &[dst_idx],
+                    );
+                    bodies_potential - self.background_e_field.dot(dst_body.pos)
+                };
+                let d_phi_env = phi_dst_env - phi_src_env;
+
                 let hop_vec = dst_body.pos - src_body.pos;
                 let hop_dir = if hop_vec.mag() > 1e-6 { hop_vec.normalized() } else { Vec2::zero() };
                 let local_field = self.background_e_field
@@ -395,12 +419,13 @@ impl Simulation {
                     let alpha = self.config.bv_transfer_coeff;
                     let scale = self.config.bv_overpotential_scale;
                     let i0 = self.config.bv_exchange_current;
-                    let forward = (alpha * d_phi / scale).exp();
-                    let backward = (-(1.0 - alpha) * d_phi / scale).exp();
+                    let forward = (alpha * d_phi_env / scale).exp();
+                    let backward = (-(1.0 - alpha) * d_phi_env / scale).exp();
                     i0 * (forward - backward)
                 } else {
-                    if d_phi <= 0.0 { return false; }
-                    self.config.hop_rate_k0 * (self.config.hop_transfer_coeff * d_phi / self.config.hop_activation_energy).exp()
+                    if d_phi_env <= 0.0 { return false; }
+                    self.config.hop_rate_k0
+                        * (self.config.hop_transfer_coeff * d_phi_env / self.config.hop_activation_energy).exp()
                 };
 
                 if rate <= 0.0 { return false; }
