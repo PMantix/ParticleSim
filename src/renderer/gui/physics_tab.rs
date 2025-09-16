@@ -155,7 +155,6 @@ impl super::super::Renderer {
                         z_stiffness: self.sim_config.z_stiffness,
                         z_damping: self.sim_config.z_damping,
                         max_z: self.sim_config.max_z,
-                        z_frustration_strength: self.sim_config.z_frustration_strength,
                     });
                 }
             }
@@ -170,10 +169,6 @@ impl super::super::Renderer {
             ui.add(
                 egui::Slider::new(&mut self.sim_config.max_z, 0.01..=50.0)
                     .text("Max Z"),
-            );
-            ui.add(
-                egui::Slider::new(&mut self.sim_config.z_frustration_strength, 0.0..=10.0)
-                    .text("Frustration"),
             );
             
             ui.separator();
@@ -208,7 +203,6 @@ impl super::super::Renderer {
                         z_stiffness: self.sim_config.z_stiffness,
                         z_damping: self.sim_config.z_damping,
                         max_z: self.sim_config.max_z,
-                        z_frustration_strength: self.sim_config.z_frustration_strength,
                     });
                 }
             }

@@ -39,7 +39,6 @@ pub fn handle_set_out_of_plane(
     max_z: f32,
     z_stiffness: f32,
     z_damping: f32,
-    z_frustration_strength: f32,
 ) {
     profile_scope!("config_update");
     let mut cfg = crate::config::LJ_CONFIG.lock();
@@ -47,7 +46,6 @@ pub fn handle_set_out_of_plane(
     cfg.max_z = max_z;
     cfg.z_stiffness = z_stiffness;
     cfg.z_damping = z_damping;
-    cfg.z_frustration_strength = z_frustration_strength;
     
     // Update simulation domain depth
     simulation.domain_depth = max_z;

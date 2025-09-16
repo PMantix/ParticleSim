@@ -130,25 +130,23 @@ pub const OUT_OF_PLANE_ENABLED: bool = false;
 pub const Z_STIFFNESS: f32 = 1.0;
 pub const Z_DAMPING: f32 = 0.5;
 pub const MAX_Z: f32 = DOMAIN_DEPTH;
-pub const Z_FRUSTRATION_STRENGTH: f32 = 0.1;
+// Z-axis constraint parameters removed (simplified approach)
 
 // ====================
-// Frustration-based Soft Dynamics Parameters
+// Simple Li+ Soft Collision Parameters
 // ====================
-/// Enable frustrated motion soft repulsion by default
-pub const FRUSTRATION_ENABLED: bool = true;
-/// Minimum force magnitude to consider for frustration detection
-pub const FRUSTRATION_MIN_FORCE_THRESHOLD: f32 = 0.5;
-/// Maximum movement while still considered "stuck"
-pub const FRUSTRATION_STUCK_MOVEMENT_THRESHOLD: f32 = 0.1;
-/// Number of timesteps needed to confirm frustration
-pub const FRUSTRATION_CONFIRMATION_STEPS: u32 = 8;
-/// Fraction of normal collision force when frustrated (0.3 = 30% force, 70% reduction)
-pub const FRUSTRATION_SOFT_REPULSION_FACTOR: f32 = 0.3;
-/// Maximum time a particle can remain frustrated
-pub const FRUSTRATION_MAX_DURATION: u32 = 50;
+/// Enable Li+ soft collisions based on electric force magnitude
+pub const LI_SOFT_COLLISIONS_ENABLED: bool = true;
+/// How much electric force affects collision softening (higher = more softening)
+pub const LI_SOFT_COLLISION_SCALE: f32 = 0.5;
+/// Minimum collision softening factor (0.1 = at most 90% force reduction)
+pub const LI_MIN_COLLISION_FACTOR: f32 = 0.1;
+/// Maximum collision softening factor (1.0 = no softening)
+pub const LI_MAX_COLLISION_FACTOR: f32 = 1.0;
+/// Visual highlighting for Li+ ions with soft collisions
+pub const LI_SOFT_COLLISION_HIGHLIGHT: bool = false;
 /// Size of position history buffer for movement analysis
-pub const FRUSTRATION_POSITION_HISTORY_SIZE: usize = 5;
+// Position history removed (simplified approach)
 
 // ====================
 // Threading/Parallelism
@@ -220,18 +218,14 @@ pub struct SimConfig {
     pub z_stiffness: f32,
     pub z_damping: f32,
     pub max_z: f32,
-    pub z_frustration_strength: f32,
     /// Enable expensive many-body z-forces (solvation, density effects)
     pub enable_z_many_body_forces: bool,
     
-    // Frustration-based soft dynamics parameters
-    pub frustration_enabled: bool,
-    pub frustration_min_force_threshold: f32,
-    pub frustration_stuck_movement_threshold: f32,
-    pub frustration_confirmation_steps: u32,
-    pub frustration_soft_repulsion_factor: f32,
-    pub frustration_max_duration: u32,
-    pub frustration_position_history_size: usize,
+    // Li+ soft collision parameters (simple force-based approach)
+    pub li_soft_collisions_enabled: bool,
+    pub li_soft_collision_scale: f32,
+    pub li_min_collision_factor: f32,
+    pub li_max_collision_factor: f32,
 }
 
 impl Default for SimConfig {
@@ -263,17 +257,13 @@ impl Default for SimConfig {
             z_stiffness: Z_STIFFNESS,
             z_damping: Z_DAMPING,
             max_z: MAX_Z,
-            z_frustration_strength: Z_FRUSTRATION_STRENGTH,
             enable_z_many_body_forces: false, // Default to false for performance
             
-            // Frustration-based soft dynamics parameters
-            frustration_enabled: FRUSTRATION_ENABLED,
-            frustration_min_force_threshold: FRUSTRATION_MIN_FORCE_THRESHOLD,
-            frustration_stuck_movement_threshold: FRUSTRATION_STUCK_MOVEMENT_THRESHOLD,
-            frustration_confirmation_steps: FRUSTRATION_CONFIRMATION_STEPS,
-            frustration_soft_repulsion_factor: FRUSTRATION_SOFT_REPULSION_FACTOR,
-            frustration_max_duration: FRUSTRATION_MAX_DURATION,
-            frustration_position_history_size: FRUSTRATION_POSITION_HISTORY_SIZE,
+            // Li+ soft collision parameters (simple force-based approach)
+            li_soft_collisions_enabled: LI_SOFT_COLLISIONS_ENABLED,
+            li_soft_collision_scale: LI_SOFT_COLLISION_SCALE,
+            li_min_collision_factor: LI_MIN_COLLISION_FACTOR,
+            li_max_collision_factor: LI_MAX_COLLISION_FACTOR,
         }
     }
 }

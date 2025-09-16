@@ -122,7 +122,6 @@ pub enum SimCommand {
         max_z: f32,
         z_stiffness: f32,
         z_damping: f32,
-        z_frustration_strength: f32,
     },
     ToggleZVisualization { enabled: bool },
     SetZVisualizationStrength { strength: f32 },

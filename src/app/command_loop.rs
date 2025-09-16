@@ -363,13 +363,12 @@ pub fn handle_command(cmd: SimCommand, simulation: &mut Simulation) {
             simulation.domain_height = half_height;
             simulation.cell_list.update_domain_size(half_width, half_height);
         }
-        SimCommand::SetOutOfPlane { enabled, max_z, z_stiffness, z_damping, z_frustration_strength } => {
+        SimCommand::SetOutOfPlane { enabled, max_z, z_stiffness, z_damping } => {
             let mut cfg = crate::config::LJ_CONFIG.lock();
             cfg.enable_out_of_plane = enabled;
             cfg.max_z = max_z;
             cfg.z_stiffness = z_stiffness;
             cfg.z_damping = z_damping;
-            cfg.z_frustration_strength = z_frustration_strength;
             simulation.domain_depth = max_z;
             
             // CRITICAL FIX: Reset z-coordinates when out-of-plane is disabled

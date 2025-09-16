@@ -76,12 +76,11 @@ pub fn apply_out_of_plane(sim: &mut Simulation) {
     let stiffness = sim.config.z_stiffness;
     let damping = sim.config.z_damping;
     let max_z = sim.config.max_z;
-    let frustration = sim.config.z_frustration_strength;
     
     // debug log removed
     
     // Safety checks to prevent crashes
-    if !stiffness.is_finite() || !damping.is_finite() || !max_z.is_finite() || !frustration.is_finite() {
+    if !stiffness.is_finite() || !damping.is_finite() || !max_z.is_finite() {
         eprintln!("[ERROR] Invalid out-of-plane parameters detected! Disabling for safety.");
         return;
     }
@@ -106,14 +105,8 @@ pub fn apply_out_of_plane(sim: &mut Simulation) {
             // Note: We need to avoid borrowing issues, so we'll compute forces differently
             let z_force = calculate_local_z_force(body, max_z);
             
-            // Frustration redirects in-plane acceleration into the z-axis (keep this mechanism)
-            let acc_mag = body.acc.mag();
-            if acc_mag.is_finite() {
-                let frustration_force = acc_mag * frustration;
-                if frustration_force.is_finite() {
-                    body.az += z_force - damping * body.vz + frustration_force;
-                }
-            }
+            // Simple z-axis force without frustration
+            body.az += z_force - damping * body.vz;
             
             // Additional safety check after force calculation
             if !body.az.is_finite() {

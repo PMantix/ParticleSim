@@ -6,9 +6,53 @@ use broccoli::aabb::Rect;
 use broccoli_rayon::{build::RayonBuildPar, prelude::RayonQueryPar};
 use ultraviolet::Vec2;
 use crate::simulation::Simulation;
-use crate::simulation::frustration::apply_frustration_softening;
 use crate::profile_scope;
+use crate::body::Species;
 use std::f32::consts::TAU;
+
+/// Apply Li+ soft collision scaling based on electric force magnitude
+fn apply_li_soft_collision_scaling(
+    sim: &Simulation,
+    body_i_idx: usize,
+    body_j_idx: usize,
+    force: Vec2
+) -> Vec2 {
+    if !sim.config.li_soft_collisions_enabled {
+        return force;
+    }
+    
+    let body_i = &sim.bodies[body_i_idx];
+    let body_j = &sim.bodies[body_j_idx];
+    
+    // Only apply to Li+ ions
+    let i_is_li = matches!(body_i.species, Species::LithiumIon);
+    let j_is_li = matches!(body_j.species, Species::LithiumIon);
+    
+    if !i_is_li && !j_is_li {
+        return force; // Neither is Li+, no softening
+    }
+    
+    // Calculate electric force magnitude for Li+ ions
+    let mut electric_force_mag = 0.0f32;
+    
+    if i_is_li {
+        electric_force_mag = electric_force_mag.max(body_i.acc.mag());
+    }
+    if j_is_li {
+        electric_force_mag = electric_force_mag.max(body_j.acc.mag());
+    }
+    
+    // Scale the collision force based on electric force magnitude
+    let scale = sim.config.li_soft_collision_scale;
+    let min_factor = sim.config.li_min_collision_factor;
+    let max_factor = sim.config.li_max_collision_factor;
+    
+    // Calculate collision softening factor: higher electric force = more softening
+    let softening_factor = (electric_force_mag * scale).clamp(min_factor, max_factor);
+    
+    // Apply softening (lower factor = softer collision)
+    force / softening_factor
+}
 
 pub fn collide(sim: &mut Simulation) {
     profile_scope!("collision");
@@ -165,10 +209,10 @@ fn resolve(sim: &mut Simulation, i: usize, j: usize, num_passes: usize) {
         let tmpy = d_xy.y * corr;
         let tmpz = dz * corr;
         
-        // Apply frustration-based soft repulsion
+        // Apply Li+ soft collision scaling based on electric force
         let separation_force = Vec2::new(tmpx, tmpy);
-        let softened_force = apply_frustration_softening(
-            &sim.frustration_tracker, 
+        let softened_force = apply_li_soft_collision_scaling(
+            sim, 
             i, 
             j, 
             separation_force
@@ -265,10 +309,10 @@ fn resolve(sim: &mut Simulation, i: usize, j: usize, num_passes: usize) {
     let tmpy = d_xy.y * scale;
     let tmpz = dz * scale;
     
-    // Apply frustration-based soft repulsion to velocity corrections
+    // Apply Li+ soft collision scaling to velocity corrections
     let velocity_correction = Vec2::new(tmpx, tmpy);
-    let softened_correction = apply_frustration_softening(
-        &sim.frustration_tracker,
+    let softened_correction = apply_li_soft_collision_scaling(
+        sim,
         i,
         j,
         velocity_correction

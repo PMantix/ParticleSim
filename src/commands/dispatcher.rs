@@ -84,8 +84,8 @@ pub fn process_command(cmd: SimCommand, simulation: &mut Simulation) {
         SimCommand::LoadState { path } => {
             state::handle_load_state(simulation, path);
         }
-        SimCommand::SetOutOfPlane { enabled, max_z, z_stiffness, z_damping, z_frustration_strength } => {
-            state::handle_set_out_of_plane(simulation, enabled, max_z, z_stiffness, z_damping, z_frustration_strength);
+        SimCommand::SetOutOfPlane { enabled, max_z, z_stiffness, z_damping } => {
+            state::handle_set_out_of_plane(simulation, enabled, max_z, z_stiffness, z_damping);
         }
         SimCommand::ToggleZVisualization { enabled } => {
             crate::renderer::state::SHOW_Z_VISUALIZATION.store(enabled, std::sync::atomic::Ordering::Relaxed);
