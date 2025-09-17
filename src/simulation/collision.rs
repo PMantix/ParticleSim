@@ -10,48 +10,25 @@ use crate::profile_scope;
 use crate::body::Species;
 use std::f32::consts::TAU;
 
-/// Apply Li+ soft collision scaling based on electric force magnitude
-fn apply_li_soft_collision_scaling(
+/// Apply Li+ collision softness (simple multiplicative scaling).
+/// Returns the adjusted 2D component of a correction/impulse vector.
+fn apply_li_collision_softness(
     sim: &Simulation,
     body_i_idx: usize,
     body_j_idx: usize,
-    force: Vec2
+    vec_xy: Vec2,
 ) -> Vec2 {
-    if !sim.config.li_soft_collisions_enabled {
-        return force;
-    }
-    
     let body_i = &sim.bodies[body_i_idx];
     let body_j = &sim.bodies[body_j_idx];
-    
     // Only apply to Li+ ions
     let i_is_li = matches!(body_i.species, Species::LithiumIon);
     let j_is_li = matches!(body_j.species, Species::LithiumIon);
-    
     if !i_is_li && !j_is_li {
-        return force; // Neither is Li+, no softening
+        return vec_xy; // Neither is Li+, no change
     }
-    
-    // Calculate electric force magnitude for Li+ ions
-    let mut electric_force_mag = 0.0f32;
-    
-    if i_is_li {
-        electric_force_mag = electric_force_mag.max(body_i.acc.mag());
-    }
-    if j_is_li {
-        electric_force_mag = electric_force_mag.max(body_j.acc.mag());
-    }
-    
-    // Scale the collision force based on electric force magnitude
-    let scale = sim.config.li_soft_collision_scale;
-    let min_factor = sim.config.li_min_collision_factor;
-    let max_factor = sim.config.li_max_collision_factor;
-    
-    // Calculate collision softening factor: higher electric force = more softening
-    let softening_factor = (electric_force_mag * scale).clamp(min_factor, max_factor);
-    
-    // Apply softening (lower factor = softer collision)
-    force / softening_factor
+    let s = sim.config.li_collision_softness.clamp(0.0, 1.0);
+    // Scale down correction: 0 => unchanged; 1 => fully suppressed (not recommended)
+    vec_xy * (1.0 - s)
 }
 
 pub fn collide(sim: &mut Simulation) {
@@ -209,20 +186,15 @@ fn resolve(sim: &mut Simulation, i: usize, j: usize, num_passes: usize) {
         let tmpy = d_xy.y * corr;
         let tmpz = dz * corr;
         
-        // Apply Li+ soft collision scaling based on electric force
-        let separation_force = Vec2::new(tmpx, tmpy);
-        let softened_force = apply_li_soft_collision_scaling(
-            sim, 
-            i, 
-            j, 
-            separation_force
-        );
+        // Apply Li+ collision softness (2D components only)
+        let sep_xy = Vec2::new(tmpx, tmpy);
+        let softened_xy = apply_li_collision_softness(sim, i, j, sep_xy);
         
-        sim.bodies[i].pos.x -= weight1 * softened_force.x;
-        sim.bodies[i].pos.y -= weight1 * softened_force.y;
+        sim.bodies[i].pos.x -= weight1 * softened_xy.x;
+        sim.bodies[i].pos.y -= weight1 * softened_xy.y;
         sim.bodies[i].z -= weight1 * tmpz; // Z-direction not affected by frustration (2D problem)
-        sim.bodies[j].pos.x += weight2 * softened_force.x;
-        sim.bodies[j].pos.y += weight2 * softened_force.y;
+        sim.bodies[j].pos.x += weight2 * softened_xy.x;
+        sim.bodies[j].pos.y += weight2 * softened_xy.y;
         sim.bodies[j].z += weight2 * tmpz;
         return;
     }
@@ -309,20 +281,15 @@ fn resolve(sim: &mut Simulation, i: usize, j: usize, num_passes: usize) {
     let tmpy = d_xy.y * scale;
     let tmpz = dz * scale;
     
-    // Apply Li+ soft collision scaling to velocity corrections
-    let velocity_correction = Vec2::new(tmpx, tmpy);
-    let softened_correction = apply_li_soft_collision_scaling(
-        sim,
-        i,
-        j,
-        velocity_correction
-    );
+    // Apply Li+ collision softness to velocity corrections (2D only)
+    let vel_corr_xy = Vec2::new(tmpx, tmpy);
+    let softened_xy = apply_li_collision_softness(sim, i, j, vel_corr_xy);
     
-    let v1x = v1.x + softened_correction.x * weight1;
-    let v1y = v1.y + softened_correction.y * weight1;
+    let v1x = v1.x + softened_xy.x * weight1;
+    let v1y = v1.y + softened_xy.y * weight1;
     let v1z_new = v1z + tmpz * weight1;
-    let v2x = v2.x - softened_correction.x * weight2;
-    let v2y = v2.y - softened_correction.y * weight2;
+    let v2x = v2.x - softened_xy.x * weight2;
+    let v2y = v2.y - softened_xy.y * weight2;
     let v2z_new = v2z - tmpz * weight2;
     sim.bodies[i].vel = Vec2::new(v1x, v1y);
     sim.bodies[i].vz = v1z_new;

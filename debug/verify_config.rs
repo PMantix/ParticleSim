@@ -11,7 +11,7 @@ fn main() {
     println!("  max_z: {}", sim.config.max_z);
     println!("  z_stiffness: {}", sim.config.z_stiffness);
     println!("  z_damping: {}", sim.config.z_damping);
-    println!("  z_frustration_strength: {}", sim.config.z_frustration_strength);
+    println!("  li_collision_softness: {}", sim.config.li_collision_softness);
     println!("  domain_depth: {}", sim.domain_depth);
     
     // Check if it matches what we expect
@@ -21,10 +21,10 @@ fn main() {
         println!("❌ Z-axis (out-of-plane) is DISABLED");
     }
     
-    if (sim.config.z_frustration_strength - 0.1).abs() < f32::EPSILON {
-        println!("✅ Frustration is set to 0.1");
+    if sim.config.li_collision_softness == 0.0 {
+        println!("✅ Li+ collision softness is default: {}", sim.config.li_collision_softness);
     } else {
-        println!("❌ Frustration is {}, expected 0.1", sim.config.z_frustration_strength);
+        println!("ℹ Li+ collision softness is: {}", sim.config.li_collision_softness);
     }
     
     println!("\n=== Configuration check completed ===");

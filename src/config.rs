@@ -133,18 +133,11 @@ pub const MAX_Z: f32 = DOMAIN_DEPTH;
 // Z-axis constraint parameters removed (simplified approach)
 
 // ====================
-// Simple Li+ Soft Collision Parameters
+// Li+ Collision Softness (Simple)
 // ====================
-/// Enable Li+ soft collisions based on electric force magnitude
-pub const LI_SOFT_COLLISIONS_ENABLED: bool = true;
-/// How much electric force affects collision softening (higher = more softening)
-pub const LI_SOFT_COLLISION_SCALE: f32 = 0.5;
-/// Minimum collision softening factor (0.1 = at most 90% force reduction)
-pub const LI_MIN_COLLISION_FACTOR: f32 = 0.1;
-/// Maximum collision softening factor (1.0 = no softening)
-pub const LI_MAX_COLLISION_FACTOR: f32 = 1.0;
-/// Visual highlighting for Li+ ions with soft collisions
-pub const LI_SOFT_COLLISION_HIGHLIGHT: bool = false;
+/// Single knob controlling how soft Li+ collisions are.
+/// 0.0 = hard collisions (baseline); 1.0 = very soft (max reduction).
+pub const LI_COLLISION_SOFTNESS: f32 = 0.0;
 /// Size of position history buffer for movement analysis
 // Position history removed (simplified approach)
 
@@ -221,11 +214,8 @@ pub struct SimConfig {
     /// Enable expensive many-body z-forces (solvation, density effects)
     pub enable_z_many_body_forces: bool,
     
-    // Li+ soft collision parameters (simple force-based approach)
-    pub li_soft_collisions_enabled: bool,
-    pub li_soft_collision_scale: f32,
-    pub li_min_collision_factor: f32,
-    pub li_max_collision_factor: f32,
+    // Li+ collision softness (simple, force-independent)
+    pub li_collision_softness: f32,
 }
 
 impl Default for SimConfig {
@@ -259,11 +249,8 @@ impl Default for SimConfig {
             max_z: MAX_Z,
             enable_z_many_body_forces: false, // Default to false for performance
             
-            // Li+ soft collision parameters (simple force-based approach)
-            li_soft_collisions_enabled: LI_SOFT_COLLISIONS_ENABLED,
-            li_soft_collision_scale: LI_SOFT_COLLISION_SCALE,
-            li_min_collision_factor: LI_MIN_COLLISION_FACTOR,
-            li_max_collision_factor: LI_MAX_COLLISION_FACTOR,
+            // Li+ collision softness (simple)
+            li_collision_softness: LI_COLLISION_SOFTNESS,
         }
     }
 }

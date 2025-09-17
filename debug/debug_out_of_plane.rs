@@ -57,7 +57,7 @@ fn main() {
     sim.config.max_z = 5.0;
     sim.config.z_stiffness = 1.0;
     sim.config.z_damping = 0.1;
-    sim.config.z_frustration_strength = 0.1;
+    // z_frustration_strength removed in favor of simple Li+ collision softness
     
     // Set some particles at non-zero z
     sim.bodies[0].z = 2.0;

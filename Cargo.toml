@@ -20,10 +20,6 @@ name = "debug_out_of_plane"
 path = "debug/debug_out_of_plane.rs"
 
 [[bin]]
-name = "test_frustration"
-path = "debug/test_frustration.rs"
-
-[[bin]]
 name = "verify_config"
 path = "debug/verify_config.rs"
 

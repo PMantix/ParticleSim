@@ -15,7 +15,7 @@ mod out_of_plane_tests {
         sim.config.max_z = 5.0;
         sim.config.z_stiffness = 1.0;
         sim.config.z_damping = 0.1;
-        sim.config.z_frustration_strength = 0.1;
+        // z_frustration_strength removed in favor of simple Li+ collision softness
         sim.domain_depth = 5.0;
         
         // Add a test particle
