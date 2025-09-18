@@ -12,6 +12,7 @@ use crate::config::SimConfig;
 /// Configuration for change detection thresholds
 /// Optimized based on simulation physics and precision requirements
 #[derive(Clone, Debug)]
+#[allow(dead_code)] // Will be used in GUI integration
 pub struct ChangeThresholds {
     /// Minimum position change to record (in Angstroms)
     /// Based on thermal motion scale: ~0.01 Å is typical atomic vibration amplitude
@@ -63,6 +64,7 @@ impl Default for ChangeThresholds {
     }
 }
 
+#[allow(dead_code)] // Will be used in GUI integration
 impl ChangeThresholds {
     /// Create thresholds optimized for high-precision simulations
     /// Useful for detailed analysis or validation runs
@@ -120,6 +122,7 @@ impl ChangeThresholds {
 
 /// Types of simulations with different precision requirements
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[allow(dead_code)] // Will be used in GUI integration
 pub enum SimulationType {
     /// Initial equilibration phase - can use loose thresholds
     Equilibration,
@@ -287,6 +290,7 @@ pub struct DeltaSnapshot {
 }
 
 /// Change detection for bodies
+#[allow(dead_code)] // Will be used by CompressedHistorySystem
 impl LightBody {
     pub fn create_delta(&self, previous: &LightBody, thresholds: &ChangeThresholds) -> Option<BodyDelta> {
         let mut delta = BodyDelta { id: self.id, ..Default::default() };
@@ -345,6 +349,7 @@ impl LightBody {
 }
 
 /// Change detection for foils
+#[allow(dead_code)] // Will be used by CompressedHistorySystem
 impl LightFoil {
     pub fn create_delta(&self, previous: &LightFoil) -> Option<FoilDelta> {
         let mut delta = FoilDelta { id: self.id, ..Default::default() };
@@ -412,6 +417,7 @@ impl LightFoil {
 
 /// Configuration for the compressed history system
 #[derive(Clone, Debug)]
+#[allow(dead_code)] // Will be used in GUI integration
 pub struct CompressionConfig {
     /// How often to create keyframes (every N frames)
     pub keyframe_interval: usize,
@@ -434,6 +440,7 @@ impl Default for CompressionConfig {
     }
 }
 
+#[allow(dead_code)] // Will be used in GUI integration
 impl CompressionConfig {
     /// Create configuration optimized for memory efficiency
     /// Fewer keyframes, larger intervals, loose thresholds
@@ -532,6 +539,7 @@ impl CompressionConfig {
 
 /// Compressed history storage system using keyframes + deltas
 #[derive(Clone, Debug)]
+#[allow(dead_code)] // Will be used in GUI integration
 pub struct CompressedHistorySystem {
     /// Full snapshots at regular intervals (keyframes)
     keyframes: VecDeque<KeyframeEntry>,
@@ -550,12 +558,14 @@ pub struct CompressedHistorySystem {
 }
 
 #[derive(Clone, Debug)]
+#[allow(dead_code)] // Internal structure for CompressedHistorySystem
 struct KeyframeEntry {
     frame: usize,
     snapshot: LightSnapshot,
 }
 
 #[derive(Clone, Debug)]
+#[allow(dead_code)] // Internal structure for CompressedHistorySystem
 struct DeltaEntry {
     frame: usize,
     delta: DeltaSnapshot,
@@ -563,6 +573,7 @@ struct DeltaEntry {
     keyframe_frame: usize,
 }
 
+#[allow(dead_code)] // Will be used in GUI integration
 impl CompressedHistorySystem {
     pub fn new(config: CompressionConfig) -> Self {
         Self {
@@ -1199,6 +1210,7 @@ impl CompressedHistorySystem {
 
 /// Errors that can occur during frame reconstruction
 #[derive(Clone, Debug)]
+#[allow(dead_code)] // Will be used in GUI integration
 pub enum ReconstructionError {
     /// No keyframe available for the requested frame
     NoKeyframeAvailable { frame: usize },
@@ -1238,6 +1250,7 @@ impl std::error::Error for ReconstructionError {}
 
 /// Result of validation checks on reconstructed data
 #[derive(Clone, Debug)]
+#[allow(dead_code)] // Will be used in GUI integration
 pub struct ValidationResult {
     pub frame: usize,
     pub is_valid: bool,
@@ -1247,6 +1260,7 @@ pub struct ValidationResult {
 
 /// Issues found during validation
 #[derive(Clone, Debug)]
+#[allow(dead_code)] // Will be used in GUI integration
 pub enum ValidationIssue {
     /// Frame number mismatch
     FrameMismatch { expected: usize, actual: usize },
@@ -1261,6 +1275,7 @@ pub enum ValidationIssue {
 }
 
 #[derive(Clone, Debug)]
+#[allow(dead_code)] // Will be used in GUI integration
 pub struct MemoryStats {
     pub keyframe_count: usize,
     pub delta_count: usize,
@@ -1271,6 +1286,7 @@ pub struct MemoryStats {
     pub newest_frame: usize,
 }
 
+#[allow(dead_code)] // Will be used in GUI integration
 impl MemoryStats {
     pub fn total_memory_mb(&self) -> f64 {
         self.total_memory_bytes as f64 / (1024.0 * 1024.0)

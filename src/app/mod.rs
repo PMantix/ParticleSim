@@ -3,11 +3,11 @@ use crate::renderer::Renderer;
 use crate::simulation::Simulation;
 use std::sync::mpsc::channel;
 
-mod command_loop;
-mod simulation_loop;
-mod spawn;
+pub mod command_loop;
+pub mod simulation_loop;
+pub mod spawn;
 
-pub use command_loop::handle_command;
+// Main command handling is now done directly via simulation_loop
 
 pub const RANDOM_ATTEMPTS: usize = 20;
 
