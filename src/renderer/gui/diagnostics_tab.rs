@@ -156,5 +156,71 @@ impl super::super::Renderer {
             let temp = crate::simulation::compute_temperature(&self.bodies);
             ui.label(format!("Temperature: {:.3}", temp));
         });
+
+        ui.separator();
+
+        // 2D Domain Density Calculation
+        ui.group(|ui| {
+            ui.label("🗺️ 2D Domain Density");
+            ui.separator();
+            
+            ui.horizontal(|ui| {
+                if ui.checkbox(&mut self.sim_config.show_2d_domain_density, "Show Density Heatmap").changed() {
+                    // Update global config when toggle changes
+                    let mut global_config = crate::config::LJ_CONFIG.lock();
+                    global_config.show_2d_domain_density = self.sim_config.show_2d_domain_density;
+                }
+            });
+            
+            if self.sim_config.show_2d_domain_density {
+                ui.separator();
+                ui.label("📊 Species Selection:");
+                ui.horizontal(|ui| {
+                    ui.checkbox(&mut self.density_calc_lithium_ion, "Li⁺");
+                    ui.checkbox(&mut self.density_calc_lithium_metal, "Li⁰");
+                    ui.checkbox(&mut self.density_calc_foil_metal, "Foil");
+                });
+                ui.horizontal(|ui| {
+                    ui.checkbox(&mut self.density_calc_electrolyte_anion, "Anion");
+                    ui.checkbox(&mut self.density_calc_ec, "EC");
+                    ui.checkbox(&mut self.density_calc_dmc, "DMC");
+                });
+                
+                ui.separator();
+                
+                // Calculate and display numerical density
+                let (avg_density, particle_count, effective_area) = self.calculate_numerical_density();
+                ui.label("📈 Density Metrics:");
+                ui.horizontal(|ui| {
+                    ui.label("Selected Particles:");
+                    ui.label(format!("{}", particle_count));
+                });
+                ui.horizontal(|ui| {
+                    ui.label("Effective Area:");
+                    ui.label(format!("{:.1} Ų", effective_area));
+                });
+                ui.horizontal(|ui| {
+                    ui.label("Number Density:");
+                    ui.strong(format!("{:.6} particles/Ų", avg_density));
+                });
+                
+                if avg_density > 0.0 {
+                    ui.horizontal(|ui| {
+                        ui.label("Area per Particle:");
+                        ui.label(format!("{:.1} Ų/particle", 1.0 / avg_density));
+                    });
+                }
+                
+                if particle_count > 0 {
+                    ui.separator();
+                    ui.label("ℹ️ Number Density = Selected Particles / Effective Area");
+                    ui.label("   Area calculation adapts to particle distribution");
+                    ui.label("   (bounding box for spread out, buffered area for dense)");
+                } else {
+                    ui.separator();
+                    ui.label("⚠️ No particles selected - choose species above");
+                }
+            }
+        });
     }
 }

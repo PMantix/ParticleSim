@@ -3,6 +3,7 @@
 mod field;
 mod charge;
 mod foil_wave;
+mod density;
 
 pub use field::compute_field_at_point;
 
@@ -74,6 +75,10 @@ impl super::Renderer {
             }
             *lock = false;
         }
+
+        // Synchronize domain size from shared state to keep GUI in sync
+        self.domain_width = *crate::renderer::state::DOMAIN_WIDTH.lock();
+        self.domain_height = *crate::renderer::state::DOMAIN_HEIGHT.lock();
 
         ctx.clear_circles();
         ctx.clear_lines();
@@ -407,6 +412,10 @@ impl super::Renderer {
 
         if self.sim_config.show_charge_density {
             self.draw_charge_density(ctx);
+        }
+
+        if self.sim_config.show_2d_domain_density {
+            self.draw_2d_domain_density(ctx);
         }
 
         if self.sim_config.show_field_isolines {

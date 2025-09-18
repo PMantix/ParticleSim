@@ -44,6 +44,10 @@ impl super::super::Renderer {
                 "Show Charge Density",
             );
             ui.checkbox(
+                &mut self.sim_config.show_2d_domain_density,
+                "Show 2D Domain Density",
+            );
+            ui.checkbox(
                 &mut self.sim_config.show_field_vectors,
                 "Show Field Vectors",
             );

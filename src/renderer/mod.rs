@@ -162,6 +162,14 @@ pub struct Renderer {
     pub show_s2ip_ions: bool,
     pub show_fd_ions: bool,
     
+    // 2D Domain Density Calculation - Species Selection
+    pub density_calc_lithium_ion: bool,
+    pub density_calc_lithium_metal: bool,
+    pub density_calc_foil_metal: bool,
+    pub density_calc_electrolyte_anion: bool,
+    pub density_calc_ec: bool,
+    pub density_calc_dmc: bool,
+    
     // View mode toggle
     pub side_view_mode: bool,  // false = X-Y (top-down), true = X-Z (side view)
     
@@ -284,6 +292,14 @@ impl quarkstrom::Renderer for Renderer {
             show_sip_ions: false,
             show_s2ip_ions: false,
             show_fd_ions: false,
+
+            // 2D Domain Density Calculation - Species Selection (default to Li+ only)
+            density_calc_lithium_ion: true,
+            density_calc_lithium_metal: false,
+            density_calc_foil_metal: false,
+            density_calc_electrolyte_anion: false,
+            density_calc_ec: false,
+            density_calc_dmc: false,
 
             // View mode - default to top-down (X-Y)
             side_view_mode: false,

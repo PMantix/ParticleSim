@@ -159,6 +159,7 @@ pub const WINDOW_HEIGHT: u32 = 1200;                     // Window height in pix
 pub const SHOW_FIELD_ISOLINES: bool = false;        /// Show electric field isolines/// Show electric-field isolines
 pub const SHOW_VELOCITY_VECTORS: bool = false;      /// Show velocity vectors
 pub const SHOW_CHARGE_DENSITY: bool = false;      /// Show charge-density heatmap
+pub const SHOW_2D_DOMAIN_DENSITY: bool = false;   /// Show 2D particle density heatmap
 pub const SHOW_FIELD_VECTORS: bool = false; // Show electric field vectors
 
 // ====================
@@ -193,6 +194,7 @@ pub struct SimConfig {
     pub show_field_isolines: bool,
     pub show_velocity_vectors: bool,
     pub show_charge_density: bool,
+    pub show_2d_domain_density: bool,
     pub show_field_vectors: bool, // NEW: show field vectors
     pub isoline_field_mode: IsolineFieldMode,
     pub damping_base: f32, // Add base damping factor
@@ -232,6 +234,7 @@ impl Default for SimConfig {
             show_field_isolines: SHOW_FIELD_ISOLINES,
             show_velocity_vectors: SHOW_VELOCITY_VECTORS,
             show_charge_density: SHOW_CHARGE_DENSITY,
+            show_2d_domain_density: SHOW_2D_DOMAIN_DENSITY,
             show_field_vectors: SHOW_FIELD_VECTORS, // NEW
             isoline_field_mode: IsolineFieldMode::Total,
             damping_base: 1.00, // Default base damping
