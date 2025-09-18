@@ -7,6 +7,8 @@ mod command_loop;
 mod simulation_loop;
 mod spawn;
 
+pub use command_loop::handle_command;
+
 pub const RANDOM_ATTEMPTS: usize = 20;
 
 pub fn run() {

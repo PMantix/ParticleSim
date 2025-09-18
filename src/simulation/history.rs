@@ -39,8 +39,7 @@ impl SimulationSnapshot {
     }
 
     pub fn apply(&self, simulation: &mut Simulation) {
-        let mut state = self.state.clone();
-        state.apply_to(simulation);
+        self.state.clone().apply_to(simulation);
         simulation.frame = self.frame;
         simulation.dt = self.dt;
         simulation.last_thermostat_time = self.last_thermostat_time;
@@ -175,7 +174,7 @@ impl Simulation {
     }
 
     pub fn apply_snapshot(&mut self, index: usize) -> bool {
-        if let Some(snapshot) = self.history.get(index) {
+        if let Some(snapshot) = self.history.get(index).cloned() {
             snapshot.apply(self);
             true
         } else {
@@ -254,7 +253,7 @@ impl Simulation {
         for _ in 0..frames {
             if self.history_cursor + 1 < self.history.len() {
                 self.history_cursor += 1;
-                if let Some(snapshot) = self.history.get(self.history_cursor) {
+                if let Some(snapshot) = self.history.get(self.history_cursor).cloned() {
                     snapshot.apply(self);
                     self.history_dirty = false;
                     advanced = true;
