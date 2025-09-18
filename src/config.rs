@@ -113,7 +113,9 @@ pub const SURROUND_CHECK_INTERVAL: usize = 10;
 pub const DEFAULT_DT_FS: f32 = 5.0;
 pub const COLLISION_PASSES: usize = 5; // Number of collision resolution passes
 /// Number of frames of history preserved for playback controls
-pub const PLAYBACK_HISTORY_FRAMES: usize = 2000;
+/// Memory usage: ~115KB per 1000 particles per frame
+/// 5000 frames ≈ 576MB for small sims, 2.9GB for medium sims
+pub const PLAYBACK_HISTORY_FRAMES: usize = 10000;
 
 // ====================
 // Quadtree Parameters
