@@ -1,7 +1,7 @@
 // renderer_utils.rs
 // Utility functions for rendering and simulation state management
 
-use crate::renderer::state::{UPDATE_LOCK, SPAWN, BODIES, QUADTREE, FOILS};
+use crate::renderer::state::{BODIES, FOILS, QUADTREE, SPAWN, UPDATE_LOCK};
 use crate::simulation::Simulation;
 
 /// Update the renderer state with current simulation data
@@ -11,6 +11,8 @@ pub fn render(simulation: &mut Simulation) {
     for body in SPAWN.lock().drain(..) {
         simulation.bodies.push(body);
     }
+
+    simulation.publish_playback_status();
     {
         let mut lock = BODIES.lock();
         lock.clear();

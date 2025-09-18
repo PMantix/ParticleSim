@@ -1,35 +1,36 @@
-pub mod state;
-pub mod input;
-pub mod gui;
 pub mod draw;
+pub mod gui;
+pub mod input;
 pub mod screen_capture;
+pub mod state;
 
-use crate::body::{Body, Species, foil::Foil};
+use crate::body::{foil::Foil, Body, Species};
 use crate::config::SimConfig;
+use crate::diagnostics::{FoilElectronFractionDiagnostic, TransferenceNumberDiagnostic};
+use crate::plotting::{PlotType, PlottingSystem, Quantity, SamplingMode};
 use crate::quadtree::Node;
-use crate::plotting::{PlottingSystem, PlotType, Quantity, SamplingMode};
-use crate::diagnostics::{TransferenceNumberDiagnostic, FoilElectronFractionDiagnostic};
 use crate::renderer::state::{SimCommand, SIM_COMMAND_SENDER};
-use ultraviolet::Vec2;
+use quarkstrom::egui::{self, Color32, Pos2, Vec2 as EVec2};
 use quarkstrom::winit_input_helper::WinitInputHelper;
 use std::collections::HashMap;
-use quarkstrom::egui::{self, Color32, Pos2, Vec2 as EVec2};
 use std::fs;
+use ultraviolet::Vec2;
 
 const SPLASH_ART: &[&str] = &[
-"██████╗  █████╗ ██████╗ ████████╗██╗ ██████╗██╗     ███████╗",
-"██╔══██╗██╔══██╗██╔══██╗╚══██╔══╝██║██╔════╝██║     ██╔════╝",
-"██████╔╝███████║██████╔╝   ██║   ██║██║     ██║     █████╗  ",
-"██╔═══╝ ██╔══██║██╔══██╗   ██║   ██║██║     ██║     ██╔══╝  ",
-"██║     ██║  ██║██║  ██║   ██║   ██║╚██████╗███████╗███████╗",
-"╚═╝     ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝ ╚═════╝╚══════╝╚══════╝",
-"",
-"███████╗██╗███╗   ███╗",
-"██╔════╝██║████╗ ████║",
-"███████╗██║██╔████╔██║",
-"╚════██║██║██║╚██╔╝██║",
-"███████║██║██║ ╚═╝ ██║",
-"╚══════╝╚═╝╚═╝     ╚═╝"]; 
+    "██████╗  █████╗ ██████╗ ████████╗██╗ ██████╗██╗     ███████╗",
+    "██╔══██╗██╔══██╗██╔══██╗╚══██╔══╝██║██╔════╝██║     ██╔════╝",
+    "██████╔╝███████║██████╔╝   ██║   ██║██║     ██║     █████╗  ",
+    "██╔═══╝ ██╔══██║██╔══██╗   ██║   ██║██║     ██║     ██╔══╝  ",
+    "██║     ██║  ██║██║  ██║   ██║   ██║╚██████╗███████╗███████╗",
+    "╚═╝     ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝ ╚═════╝╚══════╝╚══════╝",
+    "",
+    "███████╗██╗███╗   ███╗",
+    "██╔════╝██║████╗ ████║",
+    "███████╗██║██╔████╔██║",
+    "╚════██║██║██║╚██╔╝██║",
+    "███████║██║██║ ╚═╝ ██║",
+    "╚══════╝╚═╝╚═╝     ╚═╝",
+];
 
 struct PopEffect {
     pos: Pos2,
@@ -112,6 +113,10 @@ pub struct Renderer {
     sim_config: SimConfig,
     /// Local copy of the simulation frame for time-based visualizations
     frame: usize,
+    playback_cursor: usize,
+    playback_speed: f32,
+    playback_follow_live: bool,
+    playback_auto_resume: bool,
     /// History of on/off states for selected foils
     foil_wave_history: HashMap<u64, Vec<(f32, f32)>>,
     // Scenario controls
@@ -119,7 +124,7 @@ pub struct Renderer {
     scenario_x: f32,
     scenario_y: f32,
     scenario_species: Species,
-    scenario_width: f32,           
+    scenario_width: f32,
     scenario_height: f32,
     scenario_random_count: usize,
     //pub scenario_charge: i32,
@@ -155,7 +160,7 @@ pub struct Renderer {
     pub transference_number_diagnostic: Option<TransferenceNumberDiagnostic>,
     pub foil_electron_fraction_diagnostic: Option<FoilElectronFractionDiagnostic>,
     pub solvation_diagnostic: Option<crate::diagnostics::SolvationDiagnostic>,
-    
+
     // Solvation visualization flags
     pub show_cip_ions: bool,
     pub show_sip_ions: bool,
@@ -171,20 +176,20 @@ pub struct Renderer {
     pub density_calc_dmc: bool,
     
     // View mode toggle
-    pub side_view_mode: bool,  // false = X-Y (top-down), true = X-Z (side view)
-    
+    pub side_view_mode: bool, // false = X-Y (top-down), true = X-Z (side view)
+
     // Electrolyte solution controls
     pub electrolyte_molarity: f32,
     pub electrolyte_total_particles: usize,
-    
+
     // Screen capture functionality
     pub screen_capture_enabled: bool,
-    pub capture_interval: f32,  // seconds between captures
+    pub capture_interval: f32, // seconds between captures
     pub last_capture_time: f32,
     pub capture_folder: String,
-    pub selection_start: Option<Vec2>,  // for drag selection
+    pub selection_start: Option<Vec2>, // for drag selection
     pub selection_end: Option<Vec2>,
-    pub capture_region: Option<(Vec2, Vec2)>,  // (top_left, bottom_right) in world space
+    pub capture_region: Option<(Vec2, Vec2)>, // (top_left, bottom_right) in world space
     pub capture_region_ratio: Option<(Vec2, Vec2)>,
     pub is_selecting_region: bool,
     pub capture_counter: usize,
@@ -207,18 +212,22 @@ pub struct Renderer {
 impl quarkstrom::Renderer for Renderer {
     fn new() -> Self {
         let char_size = 16.0;
-        let splash_art_width = SPLASH_ART.iter().map(|s| s.chars().count()).max().unwrap_or(0);
+        let splash_art_width = SPLASH_ART
+            .iter()
+            .map(|s| s.chars().count())
+            .max()
+            .unwrap_or(0);
         let splash_art_height = SPLASH_ART.len();
         let splash_chars = {
             let mut chars = Vec::new();
             for (row, line) in SPLASH_ART.iter().enumerate() {
                 for (col, ch) in line.chars().enumerate() {
                     if ch != ' ' {
-                        chars.push(SplashChar { 
-                            row, 
-                            col, 
-                            ch, 
-                            color: Color32::WHITE, 
+                        chars.push(SplashChar {
+                            row,
+                            col,
+                            ch,
+                            color: Color32::WHITE,
                             original_color: Color32::WHITE,
                             color_timer: 0.0,
                         });
@@ -250,6 +259,10 @@ impl quarkstrom::Renderer for Renderer {
             selected_pid_foil_id: None, // Initialize PID graph foil selection to None
             sim_config: crate::config::LJ_CONFIG.lock().clone(),
             frame: 0,
+            playback_cursor: 0,
+            playback_speed: 1.0,
+            playback_follow_live: true,
+            playback_auto_resume: true,
             foil_wave_history: HashMap::new(),
             scenario_radius: 1.0,
             scenario_x: 0.0,
@@ -261,7 +274,7 @@ impl quarkstrom::Renderer for Renderer {
             //scenario_charge: 0,
             velocity_vector_scale: 0.1,
             //scenario_current: 0.0,
-            window_width: 800, // default value, can be changed
+            window_width: 800,  // default value, can be changed
             window_height: 600, // default value, can be changed
             show_foil_electron_deficiency: true,
             show_metal_electron_deficiency: false,
@@ -278,11 +291,11 @@ impl quarkstrom::Renderer for Renderer {
             new_plot_spatial_bins: 50,
             new_plot_time_window: 10.0,
             new_plot_update_frequency: 5.0,
-            domain_width: *crate::renderer::state::DOMAIN_WIDTH.lock(),  // Initialize from shared state
+            domain_width: *crate::renderer::state::DOMAIN_WIDTH.lock(), // Initialize from shared state
             domain_height: *crate::renderer::state::DOMAIN_HEIGHT.lock(), // Initialize from shared state
             selected_lj_species: Species::LithiumMetal, // Default to LithiumMetal for LJ editing
             selected_delete_option: DeleteOption::AllSpecies, // Default to All Species
-            current_tab: GuiTab::default(), // Default to Simulation tab
+            current_tab: GuiTab::default(),             // Default to Simulation tab
             transference_number_diagnostic: Some(TransferenceNumberDiagnostic::new()),
             foil_electron_fraction_diagnostic: Some(FoilElectronFractionDiagnostic::new()),
             solvation_diagnostic: Some(crate::diagnostics::SolvationDiagnostic::new()),
@@ -305,12 +318,12 @@ impl quarkstrom::Renderer for Renderer {
             side_view_mode: false,
 
             // Electrolyte solution controls
-            electrolyte_molarity: 1.0,        // 1M default
+            electrolyte_molarity: 1.0,         // 1M default
             electrolyte_total_particles: 1000, // 1000 particles default
 
             // Screen capture defaults
             screen_capture_enabled: false,
-            capture_interval: 1.0,  // 1 second between captures
+            capture_interval: 1.0, // 1 second between captures
             last_capture_time: 0.0,
             capture_folder: "captures".to_string(),
             selection_start: None,
@@ -373,26 +386,36 @@ impl Renderer {
 
     fn random_color() -> Color32 {
         let mut rng = fastrand::Rng::new();
-        Color32::from_rgb((rng.f32() * 255.0) as u8, (rng.f32() * 255.0) as u8, (rng.f32() * 255.0) as u8)
+        Color32::from_rgb(
+            (rng.f32() * 255.0) as u8,
+            (rng.f32() * 255.0) as u8,
+            (rng.f32() * 255.0) as u8,
+        )
     }
 
-    fn update_splash_particles(&mut self, width: f32, height: f32, _rects: &[egui::Rect], mouse_pos: Option<EVec2>) {
+    fn update_splash_particles(
+        &mut self,
+        width: f32,
+        height: f32,
+        _rects: &[egui::Rect],
+        mouse_pos: Option<EVec2>,
+    ) {
         let mut rng = fastrand::Rng::new();
-        
+
         // Initialize particles on first update when we have actual window dimensions
         if self.splash_particles.is_empty() {
             for _ in 0..200 {
-                let x = rng.f32() * width;  // Use actual window width
+                let x = rng.f32() * width; // Use actual window width
                 let y = rng.f32() * height; // Use actual window height
-                
+
                 let pos = Pos2::new(x, y);
                 let vel = EVec2::new(
-                    (rng.f32() - 0.5) * 2.0,  // Gentle initial velocities
-                    (rng.f32() - 0.5) * 2.0
+                    (rng.f32() - 0.5) * 2.0, // Gentle initial velocities
+                    (rng.f32() - 0.5) * 2.0,
                 );
-                
-                self.splash_particles.push(SplashParticle { 
-                    pos, 
+
+                self.splash_particles.push(SplashParticle {
+                    pos,
                     vel,
                     radius: 3.0,
                     stuck_timer: 0.0,
@@ -400,12 +423,16 @@ impl Renderer {
                     charge: 1.0, // Positive charge
                 });
             }
-            println!("Created {} particles distributed across window {}x{}", 
-                     self.splash_particles.len(), width as u32, height as u32);
+            println!(
+                "Created {} particles distributed across window {}x{}",
+                self.splash_particles.len(),
+                width as u32,
+                height as u32
+            );
         }
-        
+
         let dt = 0.0004; // Even smaller time step for ultra-smooth physics
-        
+
         // Update mouse velocity tracking
         if let Some(current_mouse_pos) = mouse_pos {
             if let Some(last_pos) = self.last_mouse_pos {
@@ -419,7 +446,7 @@ impl Renderer {
             // No mouse position available, decay the velocity
             self.mouse_velocity *= 0.9;
         }
-        
+
         // Update pop effects
         self.pop_effects.retain_mut(|effect| {
             effect.pos.x += effect.vel.x;
@@ -429,32 +456,38 @@ impl Renderer {
             effect.life -= dt;
             effect.life > 0.0
         });
-        
+
         // Update character colors - gradual fade back to white
         for ch in &mut self.splash_chars {
             if ch.color_timer > 0.0 {
                 ch.color_timer -= dt;
                 let fade_progress = ch.color_timer / 2.0; // 2 seconds total
-                
+
                 // Interpolate between current color and original white
-                let r = (ch.color.r() as f32 * fade_progress + ch.original_color.r() as f32 * (1.0 - fade_progress)) as u8;
-                let g = (ch.color.g() as f32 * fade_progress + ch.original_color.g() as f32 * (1.0 - fade_progress)) as u8;
-                let b = (ch.color.b() as f32 * fade_progress + ch.original_color.b() as f32 * (1.0 - fade_progress)) as u8;
+                let r = (ch.color.r() as f32 * fade_progress
+                    + ch.original_color.r() as f32 * (1.0 - fade_progress))
+                    as u8;
+                let g = (ch.color.g() as f32 * fade_progress
+                    + ch.original_color.g() as f32 * (1.0 - fade_progress))
+                    as u8;
+                let b = (ch.color.b() as f32 * fade_progress
+                    + ch.original_color.b() as f32 * (1.0 - fade_progress))
+                    as u8;
                 ch.color = Color32::from_rgb(r, g, b);
-                
+
                 if ch.color_timer <= 0.0 {
                     ch.color = ch.original_color;
                     ch.color_timer = 0.0;
                 }
             }
         }
-        
+
         // Track particles to remove (stuck ones)
         let mut particles_to_remove = Vec::new();
-        
+
         // Calculate electrostatic forces for all particles first
         let mut forces: Vec<(f32, f32)> = vec![(0.0, 0.0); self.splash_particles.len()];
-        
+
         // Particle-to-particle repulsion
         for i in 0..self.splash_particles.len() {
             for j in i + 1..self.splash_particles.len() {
@@ -462,19 +495,21 @@ impl Renderer {
                 let dy = self.splash_particles[i].pos.y - self.splash_particles[j].pos.y;
                 let distance_sq = dx * dx + dy * dy + 1.0; // Add 1 to prevent division by zero
                 let distance = distance_sq.sqrt();
-                
+
                 // Coulomb force: F = k * q1 * q2 / r^2 (positive charges repel)
-                let force_magnitude = 500.0 * self.splash_particles[i].charge * self.splash_particles[j].charge / distance_sq;
+                let force_magnitude =
+                    500.0 * self.splash_particles[i].charge * self.splash_particles[j].charge
+                        / distance_sq;
                 let force_x = force_magnitude * dx / distance;
                 let force_y = force_magnitude * dy / distance;
-                
+
                 // Apply equal and opposite forces
                 forces[i].0 += force_x;
                 forces[i].1 += force_y;
                 forces[j].0 -= force_x;
                 forces[j].1 -= force_y;
             }
-            
+
             // Attraction to ASCII letters
             let art_width_px = self.splash_art_width as f32 * self.char_size;
             let art_height_px = self.splash_art_height as f32 * self.char_size;
@@ -482,68 +517,71 @@ impl Renderer {
             let art_center_y = height / 2.0 - 40.0;
             let art_left = art_center_x - art_width_px / 2.0;
             let art_top = art_center_y - art_height_px / 2.0;
-            
+
             for splash_char in &self.splash_chars {
-                let letter_x = art_left + splash_char.col as f32 * self.char_size + self.char_size / 2.0;
-                let letter_y = art_top + splash_char.row as f32 * self.char_size + self.char_size / 2.0;
-                
+                let letter_x =
+                    art_left + splash_char.col as f32 * self.char_size + self.char_size / 2.0;
+                let letter_y =
+                    art_top + splash_char.row as f32 * self.char_size + self.char_size / 2.0;
+
                 let dx = letter_x - self.splash_particles[i].pos.x;
                 let dy = letter_y - self.splash_particles[i].pos.y;
                 let distance_sq = dx * dx + dy * dy + 100.0; // Minimum distance to prevent too strong attraction
                 let distance = distance_sq.sqrt();
-                
+
                 // Only attract if reasonably close (within 150 pixels)
                 if distance < 150.0 {
                     let letter_charge = -0.3; // Negative charge on letters
-                    let force_magnitude = 300.0 * self.splash_particles[i].charge * letter_charge / distance_sq;
+                    let force_magnitude =
+                        300.0 * self.splash_particles[i].charge * letter_charge / distance_sq;
                     forces[i].0 += force_magnitude * dx / distance;
                     forces[i].1 += force_magnitude * dy / distance;
                 }
             }
         }
-        
+
         // Update particles
         for (i, p) in self.splash_particles.iter_mut().enumerate() {
             // Check if particle is stuck (hasn't moved much)
-            let distance_moved = ((p.pos.x - p.last_pos.x).powi(2) + (p.pos.y - p.last_pos.y).powi(2)).sqrt();
-            if distance_moved < 50.0 { // 50 pixels movement window
+            let distance_moved =
+                ((p.pos.x - p.last_pos.x).powi(2) + (p.pos.y - p.last_pos.y).powi(2)).sqrt();
+            if distance_moved < 50.0 {
+                // 50 pixels movement window
                 p.stuck_timer += dt;
             } else {
                 p.stuck_timer = 0.0;
                 p.last_pos = p.pos;
             }
-            
+
             // If stuck too long, mark for popping
-            if p.stuck_timer > 3.0 { // 3 seconds stuck
+            if p.stuck_timer > 3.0 {
+                // 3 seconds stuck
                 particles_to_remove.push(i);
-                
+
                 // Create pop effect
                 let pop_chars = [',', '.', '·', '°', 'o', '*'];
                 self.pop_effects.push(PopEffect {
                     pos: p.pos,
-                    vel: EVec2::new(
-                        (rng.f32() - 0.5) * 4.0,
-                        (rng.f32() - 0.5) * 4.0
-                    ),
+                    vel: EVec2::new((rng.f32() - 0.5) * 4.0, (rng.f32() - 0.5) * 4.0),
                     char: pop_chars[rng.usize(..pop_chars.len())],
                     life: 1.0,
                 });
                 continue;
             }
-            
+
             // Apply electrostatic forces to velocity (adjusted for smaller timestep)
             p.vel.x += forces[i].0 * dt * 1.0; // Increased multiplier to compensate for smaller dt
             p.vel.y += forces[i].1 * dt * 1.0;
-            
+
             // Add gentle mouse movement influence to ALL particles
             // All particles get a small velocity boost in the direction the mouse is moving
             p.vel.x += self.mouse_velocity.x * 0.000002; // Almost imperceptible influence (0.000002)
             p.vel.y += self.mouse_velocity.y * 0.000002;
-            
+
             // Simple physics - move particle
             p.pos.x += p.vel.x;
             p.pos.y += p.vel.y;
-            
+
             // Bounce off screen edges
             if p.pos.x <= 0.0 || p.pos.x >= width {
                 p.vel.x = -p.vel.x;
@@ -553,7 +591,7 @@ impl Renderer {
                 p.vel.y = -p.vel.y;
                 p.pos.y = p.pos.y.clamp(0.0, height);
             }
-            
+
             // Check collision with ASCII art letters
             let art_width_px = self.splash_art_width as f32 * self.char_size;
             let art_height_px = self.splash_art_height as f32 * self.char_size;
@@ -561,37 +599,41 @@ impl Renderer {
             let art_center_y = height / 2.0 - 40.0;
             let art_left = art_center_x - art_width_px / 2.0;
             let art_top = art_center_y - art_height_px / 2.0;
-            
+
             // Check if particle is in the art area
-            if p.pos.x >= art_left && p.pos.x <= art_left + art_width_px 
-               && p.pos.y >= art_top && p.pos.y <= art_top + art_height_px {
-                
+            if p.pos.x >= art_left
+                && p.pos.x <= art_left + art_width_px
+                && p.pos.y >= art_top
+                && p.pos.y <= art_top + art_height_px
+            {
                 let char_x = ((p.pos.x - art_left) / self.char_size) as usize;
                 let char_y = ((p.pos.y - art_top) / self.char_size) as usize;
-                
+
                 if char_y < SPLASH_ART.len() && char_x < SPLASH_ART[char_y].chars().count() {
                     let ch = SPLASH_ART[char_y].chars().nth(char_x).unwrap_or(' ');
-                    
+
                     // If we hit a letter (non-space), apply gentle damping
                     if ch != ' ' {
                         // Simple collision with gentle damping - no bouncing energy
-                        let cell_center_x = art_left + char_x as f32 * self.char_size + self.char_size / 2.0;
-                        let cell_center_y = art_top + char_y as f32 * self.char_size + self.char_size / 2.0;
-                        
+                        let cell_center_x =
+                            art_left + char_x as f32 * self.char_size + self.char_size / 2.0;
+                        let cell_center_y =
+                            art_top + char_y as f32 * self.char_size + self.char_size / 2.0;
+
                         let dx = p.pos.x - cell_center_x;
                         let dy = p.pos.y - cell_center_y;
-                        
+
                         // Normal reflection without energy boost, just damping
                         if dx.abs() > dy.abs() {
                             p.vel.x = -p.vel.x;
                         } else {
                             p.vel.y = -p.vel.y;
                         }
-                        
+
                         // Apply gentle damping - 10x stronger
                         p.vel.x *= 0.99; // Stronger damping (0.99 instead of 0.999)
                         p.vel.y *= 0.99;
-                        
+
                         // Push particle away from the letter center to prevent overlap
                         let push_distance = 2.0;
                         if dx != 0.0 || dy != 0.0 {
@@ -601,7 +643,7 @@ impl Renderer {
                                 p.pos.y += (dy / distance) * push_distance;
                             }
                         }
-                        
+
                         // Find the corresponding SplashChar and change its color temporarily
                         for splash_char in &mut self.splash_chars {
                             if splash_char.row == char_y && splash_char.col == char_x {
@@ -614,20 +656,20 @@ impl Renderer {
                 }
             }
         }
-        
+
         // Remove stuck particles and spawn new ones
         for &i in particles_to_remove.iter().rev() {
             self.splash_particles.remove(i);
-            
+
             // Spawn replacement particle at random location
             let x = rng.f32() * width;
             let y = rng.f32() * height;
             let pos = Pos2::new(x, y);
             let vel = EVec2::new(
-                (rng.f32() - 0.5) * 2.0,  // Slower initial velocity for respawned particles too
-                (rng.f32() - 0.5) * 2.0
+                (rng.f32() - 0.5) * 2.0, // Slower initial velocity for respawned particles too
+                (rng.f32() - 0.5) * 2.0,
             );
-            
+
             self.splash_particles.push(SplashParticle {
                 pos,
                 vel,
@@ -637,7 +679,7 @@ impl Renderer {
                 charge: 1.0, // Positive charge
             });
         }
-        
+
         // Particle-to-particle collision detection
         let len = self.splash_particles.len();
         for i in 0..len {
@@ -645,45 +687,46 @@ impl Renderer {
                 let dx = self.splash_particles[i].pos.x - self.splash_particles[j].pos.x;
                 let dy = self.splash_particles[i].pos.y - self.splash_particles[j].pos.y;
                 let distance_sq = dx * dx + dy * dy;
-                let min_distance = self.splash_particles[i].radius + self.splash_particles[j].radius;
-                
+                let min_distance =
+                    self.splash_particles[i].radius + self.splash_particles[j].radius;
+
                 // If particles are colliding
                 if distance_sq < min_distance * min_distance && distance_sq > 0.0 {
                     let distance = distance_sq.sqrt();
-                    
+
                     // Normalize collision vector
                     let nx = dx / distance;
                     let ny = dy / distance;
-                    
+
                     // Separate particles to prevent overlap
                     let overlap = min_distance - distance;
                     let separation = overlap * 0.5;
-                    
+
                     self.splash_particles[i].pos.x += nx * separation;
                     self.splash_particles[i].pos.y += ny * separation;
                     self.splash_particles[j].pos.x -= nx * separation;
                     self.splash_particles[j].pos.y -= ny * separation;
-                    
+
                     // Calculate relative velocity
                     let rel_vel_x = self.splash_particles[i].vel.x - self.splash_particles[j].vel.x;
                     let rel_vel_y = self.splash_particles[i].vel.y - self.splash_particles[j].vel.y;
-                    
+
                     // Calculate relative velocity along collision normal
                     let vel_along_normal = rel_vel_x * nx + rel_vel_y * ny;
-                    
+
                     // Don't resolve if velocities are separating
                     if vel_along_normal > 0.0 {
                         continue;
                     }
-                    
+
                     // Restitution (bounciness) - reduced for gentler collisions
                     let restitution = 0.9; // Reduced from 1.2 to 0.9
                     let impulse_scalar = -(1.0 + restitution) * vel_along_normal;
-                    
+
                     // Apply impulse (assuming equal mass)
                     let impulse_x = impulse_scalar * nx * 0.5;
                     let impulse_y = impulse_scalar * ny * 0.5;
-                    
+
                     self.splash_particles[i].vel.x += impulse_x;
                     self.splash_particles[i].vel.y += impulse_y;
                     self.splash_particles[j].vel.x -= impulse_x;
@@ -711,4 +754,3 @@ impl Renderer {
 
 #[cfg(test)]
 mod tests;
-

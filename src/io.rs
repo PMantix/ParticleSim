@@ -1,13 +1,13 @@
-use serde::{Serialize, Deserialize};
+use crate::profile_scope;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::Path;
-use crate::profile_scope;
 
-use crate::simulation::Simulation;
-use crate::body::{Body, foil::Foil};
+use crate::body::{foil::Foil, Body};
 use crate::config::SimConfig;
+use crate::simulation::Simulation;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct SimulationState {
     pub bodies: Vec<Body>,
     pub foils: Vec<Foil>,
@@ -17,6 +17,16 @@ pub struct SimulationState {
     pub domain_width: f32,
     #[serde(default = "default_domain_height")]
     pub domain_height: f32,
+    #[serde(default = "default_domain_depth")]
+    pub domain_depth: f32,
+    #[serde(default = "default_frame")]
+    pub frame: usize,
+    #[serde(default = "default_sim_time")]
+    pub sim_time: f32,
+    #[serde(default = "default_dt")]
+    pub dt: f32,
+    #[serde(default = "default_last_thermostat_time")]
+    pub last_thermostat_time: f32,
 }
 
 fn default_domain_width() -> f32 {
@@ -25,6 +35,26 @@ fn default_domain_width() -> f32 {
 
 fn default_domain_height() -> f32 {
     400.0 // Default domain height
+}
+
+fn default_domain_depth() -> f32 {
+    crate::config::DOMAIN_DEPTH
+}
+
+fn default_frame() -> usize {
+    0
+}
+
+fn default_sim_time() -> f32 {
+    0.0
+}
+
+fn default_dt() -> f32 {
+    crate::config::DEFAULT_DT_FS
+}
+
+fn default_last_thermostat_time() -> f32 {
+    0.0
 }
 
 impl SimulationState {
@@ -36,6 +66,11 @@ impl SimulationState {
             config: sim.config.clone(),
             domain_width: sim.domain_width,
             domain_height: sim.domain_height,
+            domain_depth: sim.domain_depth,
+            frame: sim.frame,
+            sim_time: sim.frame as f32 * sim.dt,
+            dt: sim.dt,
+            last_thermostat_time: sim.last_thermostat_time,
         }
     }
 
@@ -46,13 +81,20 @@ impl SimulationState {
         sim.config = self.config;
         sim.domain_width = self.domain_width;
         sim.domain_height = self.domain_height;
-        
+        sim.domain_depth = self.domain_depth;
+        sim.frame = self.frame;
+        sim.dt = self.dt;
+        sim.last_thermostat_time = self.last_thermostat_time;
+
         // Update the shared state for the GUI (convert half-width/height to full width/height)
         *crate::renderer::state::DOMAIN_WIDTH.lock() = self.domain_width * 2.0;
         *crate::renderer::state::DOMAIN_HEIGHT.lock() = self.domain_height * 2.0;
-        
+        *crate::renderer::state::TIMESTEP.lock() = self.dt;
+        *crate::renderer::state::SIM_TIME.lock() = self.sim_time;
+
         sim.quadtree.build(&mut sim.bodies);
         sim.cell_list.rebuild(&sim.bodies);
+        sim.rewound_flags.resize(sim.bodies.len(), false);
     }
 }
 
@@ -71,6 +113,7 @@ pub fn save_state<P: AsRef<Path>>(path: P, sim: &Simulation) -> std::io::Result<
 pub fn load_state<P: AsRef<Path>>(path: P) -> std::io::Result<SimulationState> {
     profile_scope!("load_state");
     let data = std::fs::read_to_string(path)?;
-    let state: SimulationState = serde_json::from_str(&data).map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+    let state: SimulationState = serde_json::from_str(&data)
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
     Ok(state)
 }

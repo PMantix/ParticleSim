@@ -3,10 +3,10 @@
 // ====================
 // Electron Parameters
 // ====================
-pub const ELECTRON_SPRING_K: f32 = 0.05;                // Spring constant for electron drift
+pub const ELECTRON_SPRING_K: f32 = 0.05; // Spring constant for electron drift
 pub const ELECTRON_SPRING_K_METAL: f32 = ELECTRON_SPRING_K; // Metal-specific spring constant
-pub const ELECTRON_SPRING_K_EC: f32 = ELECTRON_SPRING_K;    // EC-specific spring constant
-pub const ELECTRON_SPRING_K_DMC: f32 = ELECTRON_SPRING_K;   // DMC-specific spring constant
+pub const ELECTRON_SPRING_K_EC: f32 = ELECTRON_SPRING_K; // EC-specific spring constant
+pub const ELECTRON_SPRING_K_DMC: f32 = ELECTRON_SPRING_K; // DMC-specific spring constant
 
 // Effective polarization charge (in units of e) for solvent molecules
 pub const POLAR_CHARGE_EC: f32 = 0.40;
@@ -26,17 +26,20 @@ pub fn electron_spring_k(species: Species) -> f32 {
         _ => ELECTRON_SPRING_K,
     }
 }
-pub const ELECTRON_DRIFT_RADIUS_FACTOR_EC: f32 = 1.0;         // Max electron speed as a factor of body radius per 
-pub const ELECTRON_DRIFT_RADIUS_FACTOR_DMC: f32 = 0.73;      // DMC-specific drift radius factor
-pub const ELECTRON_DRIFT_RADIUS_FACTOR_METAL: f32 = 2.0;    // Metal-specific drift radius factor
-pub const ELECTRON_MAX_SPEED_FACTOR: f32 = 1.2;         // Max electron speed as a factor of body radius per dt
-pub const HOP_RADIUS_FACTOR: f32 = 2.1;                      // Hopping radius as a factor of body radius
-pub const HOP_RATE_K0: f32 = 1.0;            /// Base hop‐rate constant (per unit time) at zero overpotential
-pub const HOP_TRANSFER_COEFF: f32 = 0.5;            /// Transfer coefficient α (unitless, ~0.5)   
-pub const HOP_ACTIVATION_ENERGY: f32 = 0.025;      /// Thermal energy k_BT (in your same charge‐units)
+pub const ELECTRON_DRIFT_RADIUS_FACTOR_EC: f32 = 1.0; // Max electron speed as a factor of body radius per
+pub const ELECTRON_DRIFT_RADIUS_FACTOR_DMC: f32 = 0.73; // DMC-specific drift radius factor
+pub const ELECTRON_DRIFT_RADIUS_FACTOR_METAL: f32 = 2.0; // Metal-specific drift radius factor
+pub const ELECTRON_MAX_SPEED_FACTOR: f32 = 1.2; // Max electron speed as a factor of body radius per dt
+pub const HOP_RADIUS_FACTOR: f32 = 2.1; // Hopping radius as a factor of body radius
+pub const HOP_RATE_K0: f32 = 1.0;
+/// Base hop‐rate constant (per unit time) at zero overpotential
+pub const HOP_TRANSFER_COEFF: f32 = 0.5;
+/// Transfer coefficient α (unitless, ~0.5)   
+pub const HOP_ACTIVATION_ENERGY: f32 = 0.025;
+/// Thermal energy k_BT (in your same charge‐units)
 
 /// Get the effective polarization charge for a given species
-/* 
+/*
     use Species::*;
     match species {
         EC => POLAR_CHARGE_EC,
@@ -44,7 +47,6 @@ pub const HOP_ACTIVATION_ENERGY: f32 = 0.025;      /// Thermal energy k_BT (in y
         _ => POLAR_CHARGE_DEFAULT,
     }
 }*/
-
 // ====================
 // Butler-Volmer Parameters
 // ====================
@@ -80,14 +82,14 @@ pub const LJ_CELL_DENSITY_THRESHOLD: f32 = 0.001;
 // ====================
 // Species/Body Parameters
 // ====================
-pub const LITHIUM_ION_THRESHOLD: f32 = 0.5;             // Charge threshold for lithium ion/metal transition
+pub const LITHIUM_ION_THRESHOLD: f32 = 0.5; // Charge threshold for lithium ion/metal transition
 pub const FOIL_NEUTRAL_ELECTRONS: usize = 1;
 pub const LITHIUM_METAL_NEUTRAL_ELECTRONS: usize = 1;
 pub const ELECTROLYTE_ANION_NEUTRAL_ELECTRONS: usize = 0;
 pub const EC_NEUTRAL_ELECTRONS: usize = 1;
 pub const DMC_NEUTRAL_ELECTRONS: usize = 1;
-pub const FOIL_MAX_ELECTRONS: usize = 2;           // Max electrons for foil metal
-pub const LITHIUM_METAL_MAX_ELECTRONS: usize = 3;     // Max electrons for lithium metal
+pub const FOIL_MAX_ELECTRONS: usize = 2; // Max electrons for foil metal
+pub const LITHIUM_METAL_MAX_ELECTRONS: usize = 3; // Max electrons for lithium metal
 /// Maximum number of nearby metallic neighbors allowed before ionization is inhibited
 //pub const IONIZATION_NEIGHBOR_THRESHOLD: usize = 4;
 /// Minimum local electric-field magnitude required for ionization/reduction
@@ -109,21 +111,23 @@ pub const SURROUND_CHECK_INTERVAL: usize = 10;
 /// Default timestep in femtoseconds.
 /// Typical MD timesteps: 0.5-2.0 fs. Old value was 0.015 fs (too small).
 pub const DEFAULT_DT_FS: f32 = 5.0;
-pub const COLLISION_PASSES: usize =5;                  // Number of collision resolution passes
+pub const COLLISION_PASSES: usize = 5; // Number of collision resolution passes
+/// Number of frames of history preserved for playback controls
+pub const PLAYBACK_HISTORY_FRAMES: usize = 2000;
 
 // ====================
 // Quadtree Parameters
 // ====================
-pub const QUADTREE_THETA: f32 = 1.0;                    // Barnes-Hut opening angle
-pub const QUADTREE_EPSILON: f32 = 2.0;                  // Softening parameter
-pub const QUADTREE_LEAF_CAPACITY: usize = 1;            // Max bodies per quadtree leaf
-pub const QUADTREE_THREAD_CAPACITY: usize = 1024;       // Max bodies per thread chunk
+pub const QUADTREE_THETA: f32 = 1.0; // Barnes-Hut opening angle
+pub const QUADTREE_EPSILON: f32 = 2.0; // Softening parameter
+pub const QUADTREE_LEAF_CAPACITY: usize = 1; // Max bodies per quadtree leaf
+pub const QUADTREE_THREAD_CAPACITY: usize = 1024; // Max bodies per thread chunk
 
 // ====================
 // Initialization/Clumping
 // ====================
-pub const CLUMP_RADIUS: f32 = 20.0;                     // Radius of each clump
-pub const DOMAIN_BOUNDS: f32 = 350.0;                   // Simulation domain boundary
+pub const CLUMP_RADIUS: f32 = 20.0; // Radius of each clump
+pub const DOMAIN_BOUNDS: f32 = 350.0; // Simulation domain boundary
 /// Half-depth of the simulation domain for quasi-3D motion
 pub const DOMAIN_DEPTH: f32 = 1.0;
 pub const OUT_OF_PLANE_ENABLED: bool = false;
@@ -144,21 +148,24 @@ pub const LI_COLLISION_SOFTNESS: f32 = 0.0;
 // ====================
 // Threading/Parallelism
 // ====================
-pub const MIN_THREADS: usize = 3;                       // Minimum number of threads to use
-pub const THREADS_LEAVE_FREE: usize = 2;                // Number of logical cores to leave free
+pub const MIN_THREADS: usize = 3; // Minimum number of threads to use
+pub const THREADS_LEAVE_FREE: usize = 2; // Number of logical cores to leave free
 
 // ====================
 // Window/Rendering
 // ====================
-pub const WINDOW_WIDTH: u32 = 1500;                      // Window width in pixels
-pub const WINDOW_HEIGHT: u32 = 1200;                     // Window height in pixels
+pub const WINDOW_WIDTH: u32 = 1500; // Window width in pixels
+pub const WINDOW_HEIGHT: u32 = 1200; // Window height in pixels
 
 // ====================
 // DISPLAY/GUI Parameters
 // ====================
-pub const SHOW_FIELD_ISOLINES: bool = false;        /// Show electric field isolines/// Show electric-field isolines
-pub const SHOW_VELOCITY_VECTORS: bool = false;      /// Show velocity vectors
-pub const SHOW_CHARGE_DENSITY: bool = false;      /// Show charge-density heatmap
+pub const SHOW_FIELD_ISOLINES: bool = false;
+/// Show electric field isolines/// Show electric-field isolines
+pub const SHOW_VELOCITY_VECTORS: bool = false;
+/// Show velocity vectors
+pub const SHOW_CHARGE_DENSITY: bool = false;
+/// Show charge-density heatmap
 pub const SHOW_2D_DOMAIN_DENSITY: bool = false;   /// Show 2D particle density heatmap
 pub const SHOW_FIELD_VECTORS: bool = false; // Show electric field vectors
 
@@ -168,7 +175,7 @@ pub const SHOW_FIELD_VECTORS: bool = false; // Show electric field vectors
 /// Default simulation temperature for thermal motion (Kelvin)
 pub const DEFAULT_TEMPERATURE: f32 = 300.0; // Room temperature in Kelvin
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum IsolineFieldMode {
@@ -197,7 +204,7 @@ pub struct SimConfig {
     pub show_2d_domain_density: bool,
     pub show_field_vectors: bool, // NEW: show field vectors
     pub isoline_field_mode: IsolineFieldMode,
-    pub damping_base: f32, // Add base damping factor
+    pub damping_base: f32,              // Add base damping factor
     pub show_lj_vs_coulomb_ratio: bool, // Show LJ/Coulomb force ratio debug overlay
     pub cell_list_density_threshold: f32,
     // Global LJ parameters for GUI control
@@ -215,7 +222,7 @@ pub struct SimConfig {
     pub max_z: f32,
     /// Enable expensive many-body z-forces (solvation, density effects)
     pub enable_z_many_body_forces: bool,
-    
+
     // Li+ collision softness (simple, force-independent)
     pub li_collision_softness: f32,
 }
@@ -237,7 +244,7 @@ impl Default for SimConfig {
             show_2d_domain_density: SHOW_2D_DOMAIN_DENSITY,
             show_field_vectors: SHOW_FIELD_VECTORS, // NEW
             isoline_field_mode: IsolineFieldMode::Total,
-            damping_base: 1.00, // Default base damping
+            damping_base: 1.00,              // Default base damping
             show_lj_vs_coulomb_ratio: false, // Default off
             cell_list_density_threshold: LJ_CELL_DENSITY_THRESHOLD,
             lj_force_epsilon: LJ_FORCE_EPSILON,
@@ -251,7 +258,7 @@ impl Default for SimConfig {
             z_damping: Z_DAMPING,
             max_z: MAX_Z,
             enable_z_many_body_forces: false, // Default to false for performance
-            
+
             // Li+ collision softness (simple)
             li_collision_softness: LI_COLLISION_SOFTNESS,
         }
