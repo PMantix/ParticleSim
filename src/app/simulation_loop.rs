@@ -1,7 +1,8 @@
-use crate::renderer::state::{SimCommand, BODIES, FOILS, PAUSED, QUADTREE, SPAWN, UPDATE_LOCK};
-use crate::simulation::Simulation;
 use crate::profile_scope;
+use crate::renderer::state::{SimCommand, BODIES, FOILS, PAUSED, QUADTREE, SPAWN, UPDATE_LOCK};
+use crate::simulation::{PlaybackProgress, Simulation};
 use std::sync::atomic::Ordering;
+use std::time::Instant;
 
 use super::command_loop;
 
@@ -9,13 +10,15 @@ pub fn render(simulation: &mut Simulation) {
     // debug log removed
     let mut lock = UPDATE_LOCK.lock();
     // debug log removed
-    
+
     // debug log removed
     for body in SPAWN.lock().drain(..) {
         simulation.bodies.push(body);
     }
     // debug log removed
-    
+
+    simulation.publish_playback_status();
+
     {
         // debug log removed
         let mut lock = BODIES.lock();
@@ -37,7 +40,7 @@ pub fn render(simulation: &mut Simulation) {
         lock.extend_from_slice(&simulation.foils);
         // debug log removed
     }
-    
+
     // debug log removed
     *lock |= true;
     // debug log removed
@@ -45,32 +48,52 @@ pub fn render(simulation: &mut Simulation) {
 
 pub fn run_simulation_loop(rx: std::sync::mpsc::Receiver<SimCommand>, mut simulation: Simulation) {
     // Initialize shared state domain size from simulation
-    *crate::renderer::state::DOMAIN_WIDTH.lock() = simulation.domain_width * 2.0;  // Convert half-width to full width for GUI
+    *crate::renderer::state::DOMAIN_WIDTH.lock() = simulation.domain_width * 2.0; // Convert half-width to full width for GUI
     *crate::renderer::state::DOMAIN_HEIGHT.lock() = simulation.domain_height * 2.0; // Convert half-height to full height for GUI
-    
+
     // debug log removed
     loop {
         // debug log removed
-        
+
         // Handle commands
         while let Ok(cmd) = rx.try_recv() {
             // debug log removed
             command_loop::handle_command(cmd, &mut simulation);
         }
-        
+
+        simulation.flush_history_if_dirty();
+
         if PAUSED.load(Ordering::Relaxed) {
             // debug log removed
+            if let PlaybackProgress::ReachedLive { should_resume_live } =
+                simulation.advance_playback(Instant::now())
+            {
+                if should_resume_live {
+                    PAUSED.store(false, Ordering::Relaxed);
+                }
+            }
             std::thread::yield_now();
         } else {
             // debug log removed
             // Validate simulation state before stepping
-            let invalid_count = simulation.bodies.iter()
-                .filter(|b| !b.pos.x.is_finite() || !b.pos.y.is_finite() || !b.z.is_finite() ||
-                           !b.vel.x.is_finite() || !b.vel.y.is_finite() || !b.vz.is_finite())
+            let invalid_count = simulation
+                .bodies
+                .iter()
+                .filter(|b| {
+                    !b.pos.x.is_finite()
+                        || !b.pos.y.is_finite()
+                        || !b.z.is_finite()
+                        || !b.vel.x.is_finite()
+                        || !b.vel.y.is_finite()
+                        || !b.vz.is_finite()
+                })
                 .count();
-                
+
             if invalid_count > 0 {
-                eprintln!("[ERROR] Found {} particles with invalid positions/velocities! Resetting...", invalid_count);
+                eprintln!(
+                    "[ERROR] Found {} particles with invalid positions/velocities! Resetting...",
+                    invalid_count
+                );
                 for body in &mut simulation.bodies {
                     if !body.pos.x.is_finite() || !body.pos.y.is_finite() {
                         body.pos = ultraviolet::Vec2::zero();
@@ -89,7 +112,7 @@ pub fn run_simulation_loop(rx: std::sync::mpsc::Receiver<SimCommand>, mut simula
                     }
                 }
             }
-            
+
             // debug log removed
             {
                 profile_scope!("simulation_loop");
@@ -97,15 +120,16 @@ pub fn run_simulation_loop(rx: std::sync::mpsc::Receiver<SimCommand>, mut simula
             }
             // debug log removed
         }
-        
+
         // debug log removed
+        simulation.publish_playback_status();
         render(&mut simulation);
         // debug log removed
-        
+
         // Allow GUI thread to update by yielding CPU time
         // debug log removed
         std::thread::yield_now();
-        
+
         #[cfg(feature = "profiling")]
         {
             crate::PROFILER.lock().print_and_clear_if_running(
@@ -114,7 +138,7 @@ pub fn run_simulation_loop(rx: std::sync::mpsc::Receiver<SimCommand>, mut simula
                 None,
             );
         }
-        
-    // debug log removed
+
+        // debug log removed
     }
 }

@@ -152,6 +152,7 @@ The simulation includes a comprehensive plotting system for real-time data analy
 - **Manual Stepping**: Use the GUI step button for frame-by-frame analysis
 - **Particle Selection**: Click particles to view detailed diagnostics in console
 - **State Management**: Save/load simulation states for reproducible experiments
+- **Playback History**: Scrub through the recorded history buffer, adjust replay speed, and seamlessly resume live simulation. Save files now include frame, time, and thermostat metadata while remaining backward compatible.
 - **Configurable Physics**: Modify parameters in real-time through the GUI
 - **Comprehensive Testing**: Run the test suite with `cargo test`
 - **Performance Profiling**: Enable with `cargo run --features profiling`

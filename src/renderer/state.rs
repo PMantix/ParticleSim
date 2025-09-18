@@ -1,10 +1,10 @@
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 use std::sync::atomic::AtomicBool;
-use std::sync::mpsc::{Sender};
+use std::sync::mpsc::Sender;
 
-use crate::body::Body;
 use crate::body::foil::{Foil, LinkMode};
+use crate::body::Body;
 use crate::config;
 use crate::quadtree::Node;
 
@@ -24,6 +24,45 @@ pub static Z_VISUALIZATION_STRENGTH: Lazy<Mutex<f32>> = Lazy::new(|| Mutex::new(
 pub static DOMAIN_WIDTH: Lazy<Mutex<f32>> = Lazy::new(|| Mutex::new(300.0)); // Default domain width
 pub static DOMAIN_HEIGHT: Lazy<Mutex<f32>> = Lazy::new(|| Mutex::new(300.0)); // Default domain height
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PlaybackModeStatus {
+    Live,
+    HistoryPaused,
+    HistoryPlaying,
+}
+
+#[derive(Clone, Debug)]
+pub struct PlaybackStatus {
+    pub history_len: usize,
+    pub latest_index: usize,
+    pub cursor: usize,
+    pub is_playing: bool,
+    pub mode: PlaybackModeStatus,
+    pub speed: f32,
+    pub sim_time: f32,
+    pub frame: usize,
+    pub dt: f32,
+}
+
+impl Default for PlaybackStatus {
+    fn default() -> Self {
+        Self {
+            history_len: 0,
+            latest_index: 0,
+            cursor: 0,
+            is_playing: false,
+            mode: PlaybackModeStatus::Live,
+            speed: 1.0,
+            sim_time: 0.0,
+            frame: 0,
+            dt: crate::config::DEFAULT_DT_FS,
+        }
+    }
+}
+
+pub static PLAYBACK_STATUS: Lazy<Mutex<PlaybackStatus>> =
+    Lazy::new(|| Mutex::new(PlaybackStatus::default()));
+
 // PID Graph state
 pub static SHOW_PID_GRAPH: Lazy<AtomicBool> = Lazy::new(|| AtomicBool::new(false));
 pub static PID_GRAPH_HISTORY_SIZE: Lazy<Mutex<usize>> = Lazy::new(|| Mutex::new(1000));
@@ -32,21 +71,28 @@ pub static PID_GRAPH_HISTORY_SIZE: Lazy<Mutex<usize>> = Lazy::new(|| Mutex::new(
 // These are used to send commands to the simulation thread from the GUI thread
 #[allow(dead_code)]
 pub enum SimCommand {
-    ChangeCharge {id: u64, delta: f32},
-    AddBody { body: Body },
+    ChangeCharge {
+        id: u64,
+        delta: f32,
+    },
+    AddBody {
+        body: Body,
+    },
     DeleteAll,
-    DeleteSpecies { species: crate::body::Species },
+    DeleteSpecies {
+        species: crate::body::Species,
+    },
     AddCircle {
         body: crate::body::Body,
         x: f32,
         y: f32,
-        radius: f32, 
+        radius: f32,
     },
     AddRing {
         body: crate::body::Body,
         x: f32,
         y: f32,
-        radius: f32, 
+        radius: f32,
     },
     AddRectangle {
         body: crate::body::Body,
@@ -69,8 +115,15 @@ pub enum SimCommand {
         particle_radius: f32,
         current: f32,
     },
-    LinkFoils { a: u64, b: u64, mode: LinkMode },
-    UnlinkFoils { a: u64, b: u64 },
+    LinkFoils {
+        a: u64,
+        b: u64,
+        mode: LinkMode,
+    },
+    UnlinkFoils {
+        a: u64,
+        b: u64,
+    },
     SetFoilCurrent {
         foil_id: u64,
         current: f32,
@@ -112,19 +165,45 @@ pub enum SimCommand {
     DisableOverpotentialMode {
         foil_id: u64,
     },
-    SaveState { path: String },
-    LoadState { path: String },
+    SaveState {
+        path: String,
+    },
+    LoadState {
+        path: String,
+    },
     StepOnce,
-    SetDomainSize { width: f32, height: f32 },
-    SetTemperature { temperature: f32 },
+    SetDomainSize {
+        width: f32,
+        height: f32,
+    },
+    SetTemperature {
+        temperature: f32,
+    },
     SetOutOfPlane {
         enabled: bool,
         max_z: f32,
         z_stiffness: f32,
         z_damping: f32,
     },
-    ToggleZVisualization { enabled: bool },
-    SetZVisualizationStrength { strength: f32 },
+    ToggleZVisualization {
+        enabled: bool,
+    },
+    SetZVisualizationStrength {
+        strength: f32,
+    },
+    PlaybackSeek {
+        index: usize,
+    },
+    PlaybackPlay {
+        auto_resume: bool,
+    },
+    PlaybackPause,
+    PlaybackSetSpeed {
+        speed: f32,
+    },
+    PlaybackResumeLive,
+    PlaybackResumeFromCurrent,
 }
 
-pub static SIM_COMMAND_SENDER: Lazy<Mutex<Option<Sender<SimCommand>>>> = Lazy::new(|| Mutex::new(None));
+pub static SIM_COMMAND_SENDER: Lazy<Mutex<Option<Sender<SimCommand>>>> =
+    Lazy::new(|| Mutex::new(None));

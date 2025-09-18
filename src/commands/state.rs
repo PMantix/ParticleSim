@@ -1,7 +1,7 @@
-use crate::simulation::Simulation;
+use crate::io::{load_state, save_state};
 use crate::profile_scope;
 use crate::renderer::state::PAUSED;
-use crate::io::{save_state, load_state};
+use crate::simulation::Simulation;
 
 #[cfg(feature = "profiling")]
 use crate::PROFILER;
@@ -27,7 +27,10 @@ pub fn handle_save_state(simulation: &Simulation, path: String) {
 /// Load the simulation state from disk.
 pub fn handle_load_state(simulation: &mut Simulation, path: String) {
     match load_state(path) {
-        Ok(state) => state.apply_to(simulation),
+        Ok(state) => {
+            simulation.load_state(state);
+            PAUSED.store(true, std::sync::atomic::Ordering::Relaxed);
+        }
         Err(e) => eprintln!("Failed to load state: {}", e),
     }
 }
@@ -46,16 +49,13 @@ pub fn handle_set_out_of_plane(
     cfg.max_z = max_z;
     cfg.z_stiffness = z_stiffness;
     cfg.z_damping = z_damping;
-    
+
     // Update simulation domain depth
     simulation.domain_depth = max_z;
 
     if !enabled {
         simulation.bodies.iter_mut().for_each(|b| b.reset_z());
     } else {
-        simulation
-            .bodies
-            .iter_mut()
-            .for_each(|b| b.clamp_z(max_z));
+        simulation.bodies.iter_mut().for_each(|b| b.clamp_z(max_z));
     }
 }
