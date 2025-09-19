@@ -467,10 +467,10 @@ impl SwitchUiState {
     }
 
     pub fn poll_status(&mut self) {
-        let Some(rx) = &self.status_rx else {
-            return;
-        };
         loop {
+            let Some(rx) = &self.status_rx else {
+                return;
+            };
             match rx.try_recv() {
                 Ok(SwitchStatus::RunState(state)) => {
                     self.run_state = state;
@@ -541,6 +541,7 @@ impl SwitchUiState {
         self.config.role_to_foil.insert(role, foil_id);
         self.config_dirty = true;
         self.update_validation();
+        self.send_update(); // Send update immediately
     }
 
     fn ensure_paused_for_edit(&mut self) {
@@ -554,6 +555,7 @@ impl SwitchUiState {
         self.config.role_to_foil.remove(&role);
         self.config_dirty = true;
         self.update_validation();
+        self.send_update(); // Send update immediately
     }
 
     pub fn edit_step(&mut self, step: u8, new_setpoint: StepSetpoint) {
@@ -567,6 +569,7 @@ impl SwitchUiState {
             self.config.step_setpoints.insert(step, new_setpoint);
             self.config_dirty = true;
             self.update_validation();
+            self.send_update(); // Send update immediately
         }
     }
 
@@ -577,6 +580,7 @@ impl SwitchUiState {
             self.config.recompute_from_hz();
             self.config_dirty = true;
             self.update_validation();
+            self.send_update(); // Send update immediately
         }
     }
 
@@ -587,6 +591,7 @@ impl SwitchUiState {
             self.config.recompute_from_steps();
             self.config_dirty = true;
             self.update_validation();
+            self.send_update(); // Send update immediately
         }
     }
 
@@ -715,7 +720,7 @@ pub fn ui_switch_charging(ui: &mut egui::Ui, state: &mut SwitchUiState) {
         let steps_response = ui.add(
             egui::DragValue::new(&mut steps)
                 .speed(1.0)
-                .range(1..=1_000_000)
+                .clamp_range(1..=1_000_000)
                 .suffix(" steps"),
         );
         if steps_response.changed() {
@@ -852,6 +857,7 @@ pub fn ui_switch_charging(ui: &mut egui::Ui, state: &mut SwitchUiState) {
                         state.config = cfg;
                         state.config_dirty = true;
                         state.update_validation();
+                        state.send_update(); // Send update immediately after import
                         state.status_message = Some("Configuration imported".into());
                         state.import_error = None;
                     }

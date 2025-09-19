@@ -3,6 +3,7 @@ mod partition;
 mod quadtree;
 mod cell_list;
 mod renderer;
+mod renderer_utils;
 mod simulation;
 mod utils;
 mod config;
@@ -12,9 +13,11 @@ mod species;
 mod plotting;
 mod init_config;
 mod diagnostics;
+mod commands;
 mod app;
 mod units;
 mod scenario;
+mod switch_charging;
 
 #[cfg(feature = "profiling")]
 use once_cell::sync::Lazy;

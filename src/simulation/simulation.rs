@@ -196,7 +196,10 @@ impl Simulation {
 
     fn apply_switch_step(&mut self, pair: (u64, u64), setpoint: &switch_charging::StepSetpoint) {
         self.switch_active_pair = Some(pair);
-        for &foil_id in self.switch_config.role_to_foil.values() {
+        
+        // Collect foil IDs to avoid borrow conflicts
+        let foil_ids: Vec<u64> = self.switch_config.role_to_foil.values().copied().collect();
+        for &foil_id in &foil_ids {
             if foil_id != pair.0 && foil_id != pair.1 {
                 self.restore_snapshot_for(foil_id);
             }
