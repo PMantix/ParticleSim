@@ -485,10 +485,13 @@ impl SwitchUiState {
                     self.last_step_status = Some((step_index, dwell_remaining));
                 }
                 Ok(SwitchStatus::ConfigApplied(cfg)) => {
-                    self.config = cfg;
-                    self.config.ensure_all_steps();
+                    // Only update config if we don't have pending local changes
+                    if !self.config_dirty {
+                        self.config = cfg;
+                        self.config.ensure_all_steps();
+                        self.update_validation();
+                    }
                     self.config_dirty = false;
-                    self.update_validation();
                     self.status_message = Some("Configuration applied to simulation".into());
                 }
                 Ok(SwitchStatus::ValidationFailed(message)) => {
