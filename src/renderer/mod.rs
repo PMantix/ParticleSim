@@ -10,6 +10,7 @@ use crate::diagnostics::{FoilElectronFractionDiagnostic, TransferenceNumberDiagn
 use crate::plotting::{PlotType, PlottingSystem, Quantity, SamplingMode};
 use crate::quadtree::Node;
 use crate::renderer::state::{SimCommand, SIM_COMMAND_SENDER};
+use crate::switch_charging;
 use quarkstrom::egui::{self, Color32, Pos2, Vec2 as EVec2};
 use quarkstrom::winit_input_helper::WinitInputHelper;
 use std::collections::HashMap;
@@ -77,6 +78,7 @@ pub enum GuiTab {
     Physics,
     Scenario,
     Foils,
+    SwitchCharging,
     Analysis,
     Debug,
     Diagnostics,
@@ -110,6 +112,7 @@ pub struct Renderer {
     selected_foil_ids: Vec<u64>,
     selected_particle_ids: Vec<u64>,
     selected_pid_foil_id: Option<u64>, // For PID graph foil selection
+    switch_ui_state: switch_charging::SwitchUiState,
     sim_config: SimConfig,
     /// Local copy of the simulation frame for time-based visualizations
     frame: usize,
@@ -166,7 +169,7 @@ pub struct Renderer {
     pub show_sip_ions: bool,
     pub show_s2ip_ions: bool,
     pub show_fd_ions: bool,
-    
+
     // 2D Domain Density Calculation - Species Selection
     pub density_calc_lithium_ion: bool,
     pub density_calc_lithium_metal: bool,
@@ -174,7 +177,7 @@ pub struct Renderer {
     pub density_calc_electrolyte_anion: bool,
     pub density_calc_ec: bool,
     pub density_calc_dmc: bool,
-    
+
     // View mode toggle
     pub side_view_mode: bool, // false = X-Y (top-down), true = X-Z (side view)
 
@@ -257,6 +260,7 @@ impl quarkstrom::Renderer for Renderer {
             selected_foil_ids: Vec::new(),
             selected_particle_ids: Vec::new(),
             selected_pid_foil_id: None, // Initialize PID graph foil selection to None
+            switch_ui_state: switch_charging::SwitchUiState::new(),
             sim_config: crate::config::LJ_CONFIG.lock().clone(),
             frame: 0,
             playback_cursor: 0,

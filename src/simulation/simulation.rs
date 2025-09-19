@@ -15,10 +15,14 @@ use crate::{
     body::{Body, Electron, Species},
     cell_list::CellList,
     quadtree::Quadtree,
+    switch_charging::{
+        self, FoilStateSnapshot, RunState, StatusSender, SwitchControl, SwitchScheduler,
+        SwitchStatus,
+    },
 };
 use rand::prelude::*; // Import all prelude traits for rand 0.9+
 use rayon::prelude::*;
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use ultraviolet::Vec2;
 
 /// The main simulation state and logic for the particle system.
@@ -43,6 +47,12 @@ pub struct Simulation {
     pub history_dirty: bool,
     pub history_capacity: usize,
     pub playback: PlaybackController,
+    pub switch_config: switch_charging::SwitchChargingConfig,
+    pub switch_scheduler: SwitchScheduler,
+    pub switch_run_state: RunState,
+    pub switch_saved_states: HashMap<u64, FoilStateSnapshot>,
+    pub switch_active_pair: Option<(u64, u64)>,
+    pub switch_status_tx: Option<StatusSender>,
 }
 
 impl Simulation {
@@ -80,9 +90,182 @@ impl Simulation {
             history_dirty: false,
             history_capacity,
             playback: PlaybackController::new(),
+            switch_config: switch_charging::SwitchChargingConfig::default(),
+            switch_scheduler: SwitchScheduler::default(),
+            switch_run_state: RunState::Idle,
+            switch_saved_states: HashMap::new(),
+            switch_active_pair: None,
+            switch_status_tx: None,
         };
         sim.initialize_history();
         sim
+    }
+
+    pub fn set_switch_status_sender(&mut self, sender: StatusSender) {
+        self.switch_status_tx = Some(sender);
+    }
+
+    pub fn handle_switch_control(&mut self, control: SwitchControl) {
+        match control {
+            SwitchControl::Start => self.start_switch_charging(),
+            SwitchControl::Pause => self.pause_switch_charging(),
+            SwitchControl::Stop => self.stop_switch_charging(),
+            SwitchControl::UpdateConfig(cfg) => self.update_switch_config(cfg),
+        }
+    }
+
+    fn start_switch_charging(&mut self) {
+        match self.switch_config.validate() {
+            Ok(_) => {
+                self.refresh_switch_snapshots();
+                self.switch_scheduler.start(&self.switch_config);
+                self.switch_run_state = RunState::Running;
+                self.send_switch_status(SwitchStatus::RunState(RunState::Running));
+                self.mark_history_dirty();
+            }
+            Err(err) => {
+                self.send_switch_status(SwitchStatus::ValidationFailed(err));
+            }
+        }
+    }
+
+    fn pause_switch_charging(&mut self) {
+        if self.switch_run_state == RunState::Running {
+            self.switch_scheduler.pause();
+            self.switch_run_state = RunState::Paused;
+            self.send_switch_status(SwitchStatus::RunState(RunState::Paused));
+        }
+    }
+
+    fn stop_switch_charging(&mut self) {
+        if self.switch_run_state != RunState::Idle {
+            self.switch_scheduler.stop();
+            self.switch_run_state = RunState::Idle;
+            self.switch_active_pair = None;
+            self.restore_all_switch_snapshots();
+            self.switch_saved_states.clear();
+            self.send_switch_status(SwitchStatus::RunState(RunState::Idle));
+            self.mark_history_dirty();
+        }
+    }
+
+    fn update_switch_config(&mut self, mut cfg: switch_charging::SwitchChargingConfig) {
+        cfg.ensure_all_steps();
+        self.switch_config = cfg;
+        self.switch_config.sim_dt_s = (self.dt as f64) * 1e-15;
+        self.switch_active_pair = None;
+        match self.switch_config.validate() {
+            Ok(_) => {
+                self.switch_scheduler.sync_with_config(&self.switch_config);
+                self.refresh_switch_snapshots();
+                self.send_switch_status(SwitchStatus::ConfigApplied(self.switch_config.clone()));
+                self.mark_history_dirty();
+            }
+            Err(err) => {
+                self.send_switch_status(SwitchStatus::ValidationFailed(err));
+            }
+        }
+    }
+
+    fn refresh_switch_snapshots(&mut self) {
+        let assigned: HashSet<u64> = self.switch_config.role_to_foil.values().copied().collect();
+        self.switch_saved_states
+            .retain(|id, _| assigned.contains(id));
+        for foil_id in assigned {
+            if let Some(foil) = self.foils.iter().find(|f| f.id == foil_id) {
+                self.switch_saved_states
+                    .insert(foil_id, FoilStateSnapshot::from_foil(foil));
+            }
+        }
+    }
+
+    fn restore_snapshot_for(&mut self, foil_id: u64) {
+        if let Some(snapshot) = self.switch_saved_states.get(&foil_id).cloned() {
+            if let Some(foil) = self.foils.iter_mut().find(|f| f.id == foil_id) {
+                snapshot.apply(foil);
+            }
+        }
+    }
+
+    fn restore_all_switch_snapshots(&mut self) {
+        let ids: Vec<u64> = self.switch_saved_states.keys().copied().collect();
+        for foil_id in ids {
+            self.restore_snapshot_for(foil_id);
+        }
+    }
+
+    fn apply_switch_step(&mut self, pair: (u64, u64), setpoint: &switch_charging::StepSetpoint) {
+        self.switch_active_pair = Some(pair);
+        for &foil_id in self.switch_config.role_to_foil.values() {
+            if foil_id != pair.0 && foil_id != pair.1 {
+                self.restore_snapshot_for(foil_id);
+            }
+        }
+        self.restore_snapshot_for(pair.0);
+        self.restore_snapshot_for(pair.1);
+
+        match setpoint.mode {
+            switch_charging::Mode::Current => {
+                if let Some(foil) = self.foils.iter_mut().find(|f| f.id == pair.0) {
+                    if foil.charging_mode != crate::body::foil::ChargingMode::Current {
+                        foil.disable_overpotential_mode();
+                    }
+                    foil.charging_mode = crate::body::foil::ChargingMode::Current;
+                    foil.dc_current = setpoint.value as f32;
+                    foil.ac_current = 0.0;
+                    foil.switch_hz = 0.0;
+                }
+                if let Some(foil) = self.foils.iter_mut().find(|f| f.id == pair.1) {
+                    if foil.charging_mode != crate::body::foil::ChargingMode::Current {
+                        foil.disable_overpotential_mode();
+                    }
+                    foil.charging_mode = crate::body::foil::ChargingMode::Current;
+                    foil.dc_current = -(setpoint.value as f32);
+                    foil.ac_current = 0.0;
+                    foil.switch_hz = 0.0;
+                }
+            }
+            switch_charging::Mode::Overpotential => {
+                let target_positive = setpoint.value as f32;
+                let target_negative = (2.0 - setpoint.value) as f32;
+                if let Some(foil) = self.foils.iter_mut().find(|f| f.id == pair.0) {
+                    if foil.charging_mode != crate::body::foil::ChargingMode::Overpotential {
+                        foil.enable_overpotential_mode(target_positive);
+                    }
+                    if let Some(controller) = foil.overpotential_controller.as_mut() {
+                        controller.target_ratio = target_positive;
+                    }
+                }
+                if let Some(foil) = self.foils.iter_mut().find(|f| f.id == pair.1) {
+                    if foil.charging_mode != crate::body::foil::ChargingMode::Overpotential {
+                        foil.enable_overpotential_mode(target_negative);
+                    }
+                    if let Some(controller) = foil.overpotential_controller.as_mut() {
+                        controller.target_ratio = target_negative;
+                    }
+                }
+            }
+        }
+    }
+
+    fn tick_switch_charging(&mut self) {
+        self.switch_config.sim_dt_s = (self.dt as f64) * 1e-15;
+        if self.switch_run_state != RunState::Running {
+            return;
+        }
+        if let Some(((pos, neg), setpoint)) = self.switch_scheduler.on_tick(&self.switch_config) {
+            self.apply_switch_step((pos, neg), &setpoint);
+            self.send_switch_status(SwitchStatus::ActiveStep {
+                step_index: self.switch_scheduler.current_step(),
+                dwell_remaining: self.switch_scheduler.dwell_remaining(),
+            });
+        }
+    }
+
+    fn send_switch_status(&self, status: SwitchStatus) {
+        if let Some(tx) = &self.switch_status_tx {
+            let _ = tx.send(status);
+        }
     }
 
     pub fn step(&mut self) {
@@ -97,6 +280,7 @@ impl Simulation {
             .par_iter_mut()
             .for_each(|flag| *flag = false);
         self.dt = *TIMESTEP.lock();
+        self.tick_switch_charging();
         let time = self.frame as f32 * self.dt;
 
         // Update global simulation time for GUI access

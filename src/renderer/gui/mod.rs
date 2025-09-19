@@ -5,6 +5,7 @@ use crate::body::Species;
 use crate::config::IsolineFieldMode;
 use crate::profile_scope;
 use crate::renderer::Body;
+use crate::switch_charging;
 use quarkstrom::egui::{self, Vec2 as EVec2};
 use ultraviolet::Vec2;
 
@@ -107,6 +108,11 @@ impl super::Renderer {
                         );
                         ui.selectable_value(
                             &mut self.current_tab,
+                            super::GuiTab::SwitchCharging,
+                            "🔁 Switch Charging",
+                        );
+                        ui.selectable_value(
+                            &mut self.current_tab,
                             super::GuiTab::SoftDynamics,
                             "🔧 Soft Dynamics",
                         );
@@ -114,6 +120,13 @@ impl super::Renderer {
                 });
 
                 ui.separator();
+
+                self.switch_ui_state
+                    .sync_sim_dt(*crate::renderer::state::TIMESTEP.lock());
+                self.switch_ui_state.update_available_foils(&self.foils);
+                let selected_for_assignment = self.selected_foil_ids.last().copied();
+                self.switch_ui_state
+                    .consume_selected_foil(selected_for_assignment);
 
                 // Show content based on selected tab
                 egui::ScrollArea::vertical()
@@ -125,6 +138,9 @@ impl super::Renderer {
                         super::GuiTab::Physics => self.show_physics_tab(ui),
                         super::GuiTab::Scenario => self.show_scenario_tab(ui),
                         super::GuiTab::Foils => self.show_foils_tab(ui),
+                        super::GuiTab::SwitchCharging => {
+                            switch_charging::ui_switch_charging(ui, &mut self.switch_ui_state)
+                        }
                         super::GuiTab::Analysis => self.show_analysis_tab(ui),
                         super::GuiTab::Debug => self.show_debug_tab(ui),
                         super::GuiTab::Diagnostics => self.show_diagnostics_tab(ui),

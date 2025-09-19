@@ -16,6 +16,7 @@ pub mod init_config;
 pub mod diagnostics;
 pub mod commands;
 pub mod scenario;
+pub mod switch_charging;
 
 pub mod app;
 
