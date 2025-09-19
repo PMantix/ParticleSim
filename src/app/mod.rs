@@ -33,10 +33,14 @@ pub fn run() {
     let (tx, rx) = channel();
     *SIM_COMMAND_SENDER.lock() = Some(tx);
 
-    let simulation = Simulation::new();
+    let (ui_handles, sim_handles) = crate::switch_charging::create_channels();
+    crate::switch_charging::install_ui_handles(ui_handles);
+
+    let mut simulation = Simulation::new();
+    simulation.set_switch_status_sender(sim_handles.status_tx.clone());
 
     std::thread::spawn(move || {
-        simulation_loop::run_simulation_loop(rx, simulation);
+        simulation_loop::run_simulation_loop(rx, simulation, sim_handles);
     });
 
     quarkstrom::run::<Renderer>(config);

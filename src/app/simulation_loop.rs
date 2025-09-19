@@ -1,6 +1,7 @@
 use crate::profile_scope;
 use crate::renderer::state::{SimCommand, BODIES, FOILS, PAUSED, QUADTREE, SPAWN, UPDATE_LOCK};
 use crate::simulation::{PlaybackProgress, Simulation};
+use crate::switch_charging;
 use std::sync::atomic::Ordering;
 use std::time::Instant;
 
@@ -46,7 +47,15 @@ pub fn render(simulation: &mut Simulation) {
     // debug log removed
 }
 
-pub fn run_simulation_loop(rx: std::sync::mpsc::Receiver<SimCommand>, mut simulation: Simulation) {
+pub fn run_simulation_loop(
+    rx: std::sync::mpsc::Receiver<SimCommand>,
+    mut simulation: Simulation,
+    switch_handles: switch_charging::SimHandles,
+) {
+    let switch_charging::SimHandles {
+        control_rx: switch_control_rx,
+        status_tx: _,
+    } = switch_handles;
     // Initialize shared state domain size from simulation
     *crate::renderer::state::DOMAIN_WIDTH.lock() = simulation.domain_width * 2.0; // Convert half-width to full width for GUI
     *crate::renderer::state::DOMAIN_HEIGHT.lock() = simulation.domain_height * 2.0; // Convert half-height to full height for GUI
@@ -59,6 +68,10 @@ pub fn run_simulation_loop(rx: std::sync::mpsc::Receiver<SimCommand>, mut simula
         while let Ok(cmd) = rx.try_recv() {
             // debug log removed
             command_loop::handle_command(cmd, &mut simulation);
+        }
+
+        while let Ok(control) = switch_control_rx.try_recv() {
+            simulation.handle_switch_control(control);
         }
 
         simulation.flush_history_if_dirty();
