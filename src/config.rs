@@ -115,7 +115,7 @@ pub const COLLISION_PASSES: usize = 5; // Number of collision resolution passes
 /// Number of frames of history preserved for playback controls
 /// Memory usage: ~115KB per 1000 particles per frame
 /// 5000 frames ≈ 576MB for small sims, 2.9GB for medium sims
-pub const PLAYBACK_HISTORY_FRAMES: usize = 10000;
+// Configuration constants
 
 // ====================
 // Quadtree Parameters

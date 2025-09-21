@@ -3,7 +3,8 @@
 
 use super::collision;
 use super::forces;
-use super::history::{PlaybackController, SimulationSnapshot};
+use super::history::PlaybackController;
+use super::compressed_history::CompressedHistorySystem;
 use crate::body::foil::LinkMode;
 use crate::config;
 use crate::profile_scope;
@@ -18,7 +19,7 @@ use crate::{
 };
 use rand::prelude::*; // Import all prelude traits for rand 0.9+
 use rayon::prelude::*;
-use std::collections::{HashMap, VecDeque};
+use std::collections::HashMap;
 use ultraviolet::Vec2;
 
 /// The main simulation state and logic for the particle system.
@@ -38,10 +39,9 @@ pub struct Simulation {
     pub config: config::SimConfig, //
     /// Track when thermostat was last applied (in simulation time)
     pub last_thermostat_time: f32,
-    pub history: VecDeque<SimulationSnapshot>,
+    pub compressed_history: CompressedHistorySystem,
     pub history_cursor: usize,
     pub history_dirty: bool,
-    pub history_capacity: usize,
     pub playback: PlaybackController,
 }
 
@@ -59,7 +59,8 @@ impl Simulation {
         let cell_size = crate::species::max_lj_cutoff();
         let cell_list = CellList::new(bounds, bounds, cell_size);
         let rewound_flags = vec![];
-        let history_capacity = std::cmp::max(1, config::PLAYBACK_HISTORY_FRAMES);
+        // Initialize compressed history system
+        let compressed_history = CompressedHistorySystem::new_default();
         let mut sim = Self {
             dt,
             frame: 0,
@@ -75,10 +76,9 @@ impl Simulation {
             body_to_foil: HashMap::new(),
             config: config::SimConfig::default(),
             last_thermostat_time: 0.0,
-            history: VecDeque::new(),
+            compressed_history,
             history_cursor: 0,
             history_dirty: false,
-            history_capacity,
             playback: PlaybackController::new(),
         };
         sim.initialize_history();

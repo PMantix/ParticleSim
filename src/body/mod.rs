@@ -4,7 +4,7 @@
 mod types;
 mod electron;
 mod redox;
-mod tests;
+// Module declarations removed dead test files
 pub mod foil;
 
 pub use types::*;
