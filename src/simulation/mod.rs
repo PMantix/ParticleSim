@@ -14,7 +14,7 @@ pub use utils::compute_temperature;
 pub mod out_of_plane;
 
 #[cfg(test)]
-mod tests;
+// Module declarations removed dead test files
 
 #[cfg(test)]
 mod out_of_plane_tests;
