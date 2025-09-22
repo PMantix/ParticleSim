@@ -106,9 +106,9 @@ screenshots = "0.7"
 incremental = true
 
 [profile.release]
-# Release profile
-lto = true
-codegen-units = 1
+# Release profile with parallel compilation
+lto = thin  # Thin LTO - faster compile than full LTO, still good optimization
+codegen-units = 16  # Use parallel codegen units for faster compilation
 
 [features]
 profiling = []

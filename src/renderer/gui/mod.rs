@@ -13,6 +13,7 @@ pub mod analysis_tab;
 pub mod debug_tab;
 pub mod diagnostics_tab;
 pub mod foils_tab;
+pub mod pid_controller;
 pub mod physics_tab;
 pub mod scenario_tab;
 pub mod screen_capture_tab;

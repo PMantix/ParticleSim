@@ -29,6 +29,7 @@ pub static PROFILER: Lazy<Mutex<profiler::Profiler>> = Lazy::new(|| {
     Mutex::new(profiler::Profiler::new())
 });
 
+// Updated main
 fn main() {
     app::run();
 }

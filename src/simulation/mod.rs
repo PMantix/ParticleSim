@@ -3,8 +3,10 @@
 
 //pub mod core;
 pub mod collision;
+mod electron_hopping;
 pub mod forces;
 pub mod simulation;
+pub mod thermal;
 pub use simulation::*;
 pub mod history;
 pub use history::PlaybackProgress;
