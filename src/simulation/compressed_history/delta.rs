@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use ultraviolet::Vec2;
 
 use super::types::{LightBody, LightFoil};
-use crate::body::Species;
+// Species import removed - not needed in delta module
 
 /// Error type for frame reconstruction
 #[derive(Debug)]

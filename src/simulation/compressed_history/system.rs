@@ -3,9 +3,9 @@
 
 use std::collections::{HashMap, VecDeque};
 use super::{
-    config::{CompressionConfig, ChangeThresholds},
+    config::CompressionConfig,
     types::{LightSnapshot, LightBody, LightFoil},
-    delta::{DeltaSnapshot, BodyDelta, FoilDelta, ReconstructionError, apply_body_delta, apply_foil_delta}
+    delta::{DeltaSnapshot, ReconstructionError, apply_body_delta, apply_foil_delta}
 };
 
 /// Memory usage statistics for the compressed history system

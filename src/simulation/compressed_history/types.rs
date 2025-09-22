@@ -5,8 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use ultraviolet::Vec2;
 
-use crate::body::{Body, Species};
-use crate::body::foil::Foil;
+use crate::body::Species;
 use crate::config::SimConfig;
 
 /// Lightweight body representation that excludes computed values
