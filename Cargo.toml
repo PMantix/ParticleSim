@@ -63,6 +63,14 @@ path = "debug/detect_sawtooth_pattern.rs"
 name = "toml_density_analysis"
 path = "debug/toml_density_analysis.rs"
 
+[[bin]]
+name = "perf_harness"
+path = "scripts/perf_harness.rs"
+
+[[bin]]
+name = "runtime_probe"
+path = "scripts/runtime_probe.rs"
+
 [dependencies]
 quarkstrom = { path = "../quarkstrom/quarkstrom" }
 
@@ -102,13 +110,29 @@ screenshots = "0.7"
 # No build dependencies needed currently
 
 [profile.dev]
-# Development profile optimizations for faster builds with dependencies
+# Development profile tuned for fast iteration
 incremental = true
+lto = false
+codegen-units = 16
+debug = 1
 
 [profile.release]
-# Release profile with parallel compilation
-lto = thin  # Thin LTO - faster compile than full LTO, still good optimization
-codegen-units = 16  # Use parallel codegen units for faster compilation
+# Baseline release profile with maximum optimization
+lto = "fat"
+codegen-units = 1
+
+[profile.release-thin]
+# Release profile matching the previous thin-LTO settings
+inherits = "release"
+lto = "thin"
+codegen-units = 16
+
+[profile.release-fast]
+# High-throughput profile for near-release performance with faster builds
+inherits = "release"
+lto = false
+codegen-units = 16
+incremental = true
 
 [features]
 profiling = []

@@ -62,6 +62,21 @@ guidelines.
    cargo run --release
    ```
 
+### Build profiles
+
+ParticleSim now ships with explicit Cargo profiles tuned for the LTO
+investigation:
+
+| Profile | LTO | Codegen Units | Notes |
+| --- | --- | --- | --- |
+| `dev` | `false` | 16 | Fast incremental builds with minimal debug info (debug level 1). |
+| `release` | `"fat"` | 1 | Baseline configuration for maximum runtime performance. |
+| `release-thin` | `"thin"` | 16 | Matches the previous default thin-LTO setup for comparison. |
+| `release-fast` | `false` | 16 | High-throughput builds for profiling without LTO. |
+
+Use these profiles with `cargo build --profile <name>` to switch between
+configurations without editing `Cargo.toml`.
+
 ---
 
 ## Controls
@@ -156,6 +171,13 @@ The simulation includes a comprehensive plotting system for real-time data analy
 - **Configurable Physics**: Modify parameters in real-time through the GUI
 - **Comprehensive Testing**: Run the test suite with `cargo test`
 - **Performance Profiling**: Enable with `cargo run --features profiling`
+
+### Performance measurement harness
+
+Run `cargo run --bin perf_harness` to collect build timings and runtime
+benchmarks for the full LTO/codegen-unit matrix. The harness generates CSV
+artifacts under `docs/perf/` summarising wall-clock build times, binary sizes,
+and simulation throughput metrics from the `runtime_probe` benchmark.
 
 ---
 
