@@ -758,7 +758,7 @@ pub fn ui_switch_charging(ui: &mut egui::Ui, state: &mut SwitchUiState) {
         ui.horizontal(|ui| {
             ui.label("Frequency:");
             let mut hz = state.config.switch_rate_hz;
-            ui.add(egui::DragValue::new(&mut hz).speed(0.1).clamp_range(0.0001..=1_000_000.0));
+            ui.add(egui::DragValue::new(&mut hz).speed(0.1).clamp_range(0.0001..=1_000_000_000_000_000.0));
             if (hz - state.config.switch_rate_hz).abs() > f64::EPSILON {
                 state.set_switch_rate_hz(hz);
             }
@@ -795,12 +795,35 @@ pub fn ui_switch_charging(ui: &mut egui::Ui, state: &mut SwitchUiState) {
 
                 for step in 0..4u8 {
                     let (pos, neg) = roles_for_step(step);
-                    ui.label(format!(
-                        "{}: {} → {}",
-                        step + 1,
-                        pos.display(),
-                        neg.display()
-                    ));
+                    
+                    // Check if this is the currently active step
+                    let is_active_step = state.last_step_status.map(|(active_step, _)| active_step == step).unwrap_or(false);
+                    
+                    // Highlight the active step with a background color
+                    let bg_color = if is_active_step {
+                        Some(egui::Color32::from_rgb(50, 100, 50)) // Green background for active step
+                    } else {
+                        None
+                    };
+                    
+                    if let Some(color) = bg_color {
+                        ui.painter().rect_filled(
+                            ui.available_rect_before_wrap(),
+                            0.0,
+                            color,
+                        );
+                    }
+                    
+                    let step_label = if is_active_step {
+                        format!("▶ {}: {} → {}", step + 1, pos.display(), neg.display())
+                    } else {
+                        format!("{}: {} → {}", step + 1, pos.display(), neg.display())
+                    };
+                    
+                    ui.colored_label(
+                        if is_active_step { egui::Color32::WHITE } else { ui.style().visuals.text_color() },
+                        step_label
+                    );
 
                     let mut setpoint = state
                         .config
@@ -810,6 +833,8 @@ pub fn ui_switch_charging(ui: &mut egui::Ui, state: &mut SwitchUiState) {
                         .unwrap_or_default();
 
                     let mut changed = false;
+
+                    let original_mode = setpoint.mode;
 
                     let mode_response = egui::ComboBox::from_id_source(format!("switch-step-mode-{step}"))
                         .selected_text(match setpoint.mode {
@@ -825,7 +850,7 @@ pub fn ui_switch_charging(ui: &mut egui::Ui, state: &mut SwitchUiState) {
                             );
                         });
                     
-                    if mode_response.response.changed() {
+                    if mode_response.response.changed() || setpoint.mode != original_mode {
                         changed = true;
                     }
 

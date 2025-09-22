@@ -254,8 +254,35 @@ impl super::Renderer {
 
                     if body.species == Species::FoilMetal {
                         if let Some(foil) = self.foils.iter().find(|f| f.body_ids.contains(&body.id)) {
+                            // Selected foil highlight
                             if self.selected_foil_ids.contains(&foil.id) {
                                 ctx.draw_circle(self.get_display_position(body), body.radius * 1.1, [255, 255, 0, 32]);
+                            }
+                            
+                            // Switching role halo
+                            if self.show_switching_role_halos {
+                                if let Some((current_step, _)) = self.switch_ui_state.last_step_status {
+                                    let (pos_role, neg_role) = crate::switch_charging::roles_for_step(current_step);
+                                    
+                                    // Check if this foil has a role in the current active step
+                                    let pos_foils = self.switch_ui_state.config.foils_for_role(pos_role);
+                                    let neg_foils = self.switch_ui_state.config.foils_for_role(neg_role);
+                                    
+                                    if pos_foils.contains(&foil.id) {
+                                        // Positive role - draw green halo
+                                        ctx.draw_circle(self.get_display_position(body), body.radius * 1.3, [0, 255, 0, 100]);
+                                    } else if neg_foils.contains(&foil.id) {
+                                        // Negative role - draw red halo  
+                                        ctx.draw_circle(self.get_display_position(body), body.radius * 1.3, [255, 0, 0, 100]);
+                                    } else {
+                                        // Inactive foil in switching mode - draw gray halo
+                                        let has_any_role = crate::switch_charging::Role::ALL.iter()
+                                            .any(|role| self.switch_ui_state.config.foils_for_role(*role).contains(&foil.id));
+                                        if has_any_role {
+                                            ctx.draw_circle(self.get_display_position(body), body.radius * 1.2, [128, 128, 128, 60]);
+                                        }
+                                    }
+                                }
                             }
                         }
                     }

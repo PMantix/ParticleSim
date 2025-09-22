@@ -107,7 +107,7 @@ incremental = true
 
 [profile.release]
 # Release profile with parallel compilation
-lto = thin  # Thin LTO - faster compile than full LTO, still good optimization
+lto = "thin"  # Thin LTO - faster compile than full LTO, still good optimization
 codegen-units = 16  # Use parallel codegen units for faster compilation
 
 [features]

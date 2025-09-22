@@ -18,6 +18,10 @@ impl super::super::Renderer {
                 &mut self.show_metal_electron_deficiency,
                 "Show Metal Electron Deficiency/Excess",
             );
+            ui.checkbox(
+                &mut self.show_switching_role_halos,
+                "Show Switching Role Halos",
+            );
         });
     }
 }

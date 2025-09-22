@@ -204,18 +204,39 @@ impl Simulation {
         
         // Collect all foil IDs to avoid borrow conflicts
         let all_foil_ids: Vec<u64> = self.switch_config.role_to_foil.values().flatten().copied().collect();
+        
+        // First, restore all snapshots
         for &foil_id in &all_foil_ids {
-            if !pos_ids.contains(&foil_id) && !neg_ids.contains(&foil_id) {
-                self.restore_snapshot_for(foil_id);
-            }
+            self.restore_snapshot_for(foil_id);
         }
         
-        // Restore snapshots for active foils
-        for &foil_id in pos_ids {
-            self.restore_snapshot_for(foil_id);
-        }
-        for &foil_id in neg_ids {
-            self.restore_snapshot_for(foil_id);
+        // Set inactive foils to neutral values (not participating in current step)
+        for &foil_id in &all_foil_ids {
+            if !pos_ids.contains(&foil_id) && !neg_ids.contains(&foil_id) {
+                if let Some(foil) = self.foils.iter_mut().find(|f| f.id == foil_id) {
+                    match setpoint.mode {
+                        switch_charging::Mode::Current => {
+                            // Inactive foils get 0 current
+                            if foil.charging_mode != crate::body::foil::ChargingMode::Current {
+                                foil.disable_overpotential_mode();
+                            }
+                            foil.charging_mode = crate::body::foil::ChargingMode::Current;
+                            foil.dc_current = 0.0;
+                            foil.ac_current = 0.0;
+                            foil.switch_hz = 0.0;
+                        }
+                        switch_charging::Mode::Overpotential => {
+                            // Inactive foils get neutral overpotential (1.0 ratio)
+                            if foil.charging_mode != crate::body::foil::ChargingMode::Overpotential {
+                                foil.enable_overpotential_mode(1.0);
+                            }
+                            if let Some(controller) = foil.overpotential_controller.as_mut() {
+                                controller.target_ratio = 1.0; // Neutral ratio
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         match setpoint.mode {
