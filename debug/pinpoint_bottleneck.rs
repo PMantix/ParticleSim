@@ -62,7 +62,7 @@ fn main() {
         
         // Time JUST the history capture
         let history_start = Instant::now();
-        if step % particle_sim::config::HISTORY_CAPTURE_INTERVAL == 0 {
+        if step % 10 == 0 { // Hardcoded since we removed the constant
             sim.push_history_snapshot();
         }
         let history_time = history_start.elapsed();

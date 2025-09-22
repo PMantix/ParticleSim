@@ -76,7 +76,10 @@ pub fn run_simulation_loop(
 
         simulation.flush_history_if_dirty();
 
-        if PAUSED.load(Ordering::Relaxed) {
+        let is_paused = PAUSED.load(Ordering::Relaxed);
+        let is_viewing_history = simulation.is_viewing_history();
+
+        if is_paused || is_viewing_history {
             // debug log removed
             if let PlaybackProgress::ReachedLive { should_resume_live } =
                 simulation.advance_playback(Instant::now())

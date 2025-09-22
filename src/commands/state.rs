@@ -1,3 +1,5 @@
+#![allow(dead_code)] // Public API functions that may be used by other systems
+
 use crate::io::{load_state, save_state};
 use crate::profile_scope;
 use crate::renderer::state::PAUSED;

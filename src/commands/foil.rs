@@ -1,3 +1,5 @@
+#![allow(dead_code)] // Public API functions that may be used by other systems
+
 use crate::simulation::Simulation;
 use crate::body::{Species, foil::LinkMode};
 use ultraviolet::Vec2;

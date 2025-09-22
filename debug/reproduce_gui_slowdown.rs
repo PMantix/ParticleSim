@@ -1,5 +1,5 @@
 // Test that reproduces the GUI environment more accurately to find the real bottleneck
-use particle_sim::{simulation, body, config, renderer::state};
+use particle_sim::{simulation, body};
 use std::time::Instant;
 
 fn main() {
@@ -26,7 +26,7 @@ fn main() {
     sim.initialize_history();
     
     println!("Testing with {} particles", sim.bodies.len());
-    println!("History capture interval: {} frames", config::HISTORY_CAPTURE_INTERVAL);
+    println!("History capture interval: {} frames", 10); // Hardcoded since we removed the constant
     
     let mut step_times = Vec::new();
     let mut history_ops = 0;
@@ -41,7 +41,7 @@ fn main() {
         step_times.push(step_time.as_micros());
         
         // Count when history operations happen
-        if step % config::HISTORY_CAPTURE_INTERVAL == 0 {
+        if step % 10 == 0 { // Hardcoded since we removed the constant
             history_ops += 1;
         }
         

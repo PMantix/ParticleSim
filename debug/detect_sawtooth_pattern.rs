@@ -1,5 +1,5 @@
 // Long-running test to detect sawtooth performance pattern in compressed history
-use particle_sim::{simulation, body, config};
+use particle_sim::{simulation, body};
 use std::time::Instant;
 
 fn main() {
@@ -32,7 +32,7 @@ fn main() {
     
     println!("Testing with {} particles", sim.bodies.len());
     println!("Keyframe interval: {} frames", get_keyframe_interval(&sim));
-    println!("History capture interval: {} frames", config::HISTORY_CAPTURE_INTERVAL);
+    println!("History capture interval: {} frames", 10); // Hardcoded since we removed the constant
     println!("Running long test to detect sawtooth pattern...\n");
     
     let mut step_times = Vec::new();
@@ -70,7 +70,7 @@ fn main() {
     println!("Average step time: {:.2}ms", step_times.iter().sum::<u128>() as f64 / step_times.len() as f64 / 1000.0);
 }
 
-fn get_keyframe_interval(sim: &simulation::Simulation) -> usize {
+fn get_keyframe_interval(_sim: &simulation::Simulation) -> usize {
     // Try to extract keyframe interval from compressed history config
     // For now, assume default of 100 based on typical settings
     100
@@ -144,7 +144,7 @@ fn analyze_sawtooth_pattern(step_times: &[u128], history_stats: &[(usize, usize,
         
         // Look for correlation between delta count and performance
         let mut delta_perf_correlation = Vec::new();
-        for &(step, _keyframes, deltas, step_time) in history_stats {
+        for &(_step, _keyframes, deltas, step_time) in history_stats {
             delta_perf_correlation.push((deltas, step_time));
         }
         

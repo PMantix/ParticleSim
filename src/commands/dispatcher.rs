@@ -1,3 +1,5 @@
+#![allow(dead_code)] // Public API function that may be used by other systems
+
 use crate::renderer::state::SimCommand;
 use crate::simulation::Simulation;
 use crate::app::command_loop::handle_command;

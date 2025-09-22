@@ -5,6 +5,7 @@ use crate::renderer::state::{BODIES, FOILS, QUADTREE, SPAWN, UPDATE_LOCK};
 use crate::simulation::Simulation;
 
 /// Update the renderer state with current simulation data
+#[allow(dead_code)] // Utility function that may be used for debugging
 pub fn render(simulation: &mut Simulation) {
     let mut lock = UPDATE_LOCK.lock();
     //if new body was created, add to simulation

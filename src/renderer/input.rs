@@ -33,8 +33,30 @@ impl super::Renderer {
         self.settings_window_open ^= input.key_pressed(VirtualKeyCode::E);
 
         if input.key_pressed(VirtualKeyCode::Space) {
-            let val = PAUSED.load(Ordering::Relaxed);
-            PAUSED.store(!val, Ordering::Relaxed)
+            // Check if we're in playback mode
+            let playback_status = crate::renderer::state::PLAYBACK_STATUS.lock();
+            match playback_status.mode {
+                crate::renderer::state::PlaybackModeStatus::HistoryPaused => {
+                    // In history mode, send PlaybackPlay command instead of toggling PAUSED
+                    drop(playback_status);
+                    if let Some(sender) = &*crate::renderer::state::SIM_COMMAND_SENDER.lock() {
+                        let _ = sender.send(crate::renderer::state::SimCommand::PlaybackPlay { auto_resume: false });
+                    }
+                },
+                crate::renderer::state::PlaybackModeStatus::HistoryPlaying => {
+                    // In history playing mode, send PlaybackPause command
+                    drop(playback_status);
+                    if let Some(sender) = &*crate::renderer::state::SIM_COMMAND_SENDER.lock() {
+                        let _ = sender.send(crate::renderer::state::SimCommand::PlaybackPause);
+                    }
+                },
+                crate::renderer::state::PlaybackModeStatus::Live => {
+                    // In live mode, toggle PAUSED as normal
+                    drop(playback_status);
+                    let val = PAUSED.load(Ordering::Relaxed);
+                    PAUSED.store(!val, Ordering::Relaxed);
+                }
+            }
         }
 
         if input.key_pressed(VirtualKeyCode::Back) {

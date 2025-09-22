@@ -197,7 +197,7 @@ impl Simulation {
 
     pub fn start_playback(&mut self, auto_resume: bool) {
         // Check if we have any history available
-        if self.compressed_history.get_frame_range().is_none() {
+        if self.simple_history.is_empty() {
             return;
         }
         self.playback.start(auto_resume);
@@ -272,6 +272,14 @@ impl Simulation {
         self.history_dirty = false;
         self.playback.reset();
         self.publish_playback_status();
+    }
+
+    pub fn is_viewing_history(&self) -> bool {
+        if self.simple_history.is_empty() {
+            return false;
+        }
+        let latest_index = self.simple_history.len().saturating_sub(1);
+        self.history_cursor < latest_index
     }
 
     pub fn publish_playback_status(&mut self) {

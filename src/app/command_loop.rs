@@ -467,7 +467,7 @@ pub fn handle_command(cmd: SimCommand, simulation: &mut Simulation) {
         SimCommand::PlaybackPlay { auto_resume } => {
             simulation.start_playback(auto_resume);
             state_changed = true;
-            PAUSED.store(true, Ordering::Relaxed);
+            // Let playback system control PAUSED state via simulation loop
         }
         SimCommand::PlaybackPause => {
             simulation.pause_playback();
