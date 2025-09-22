@@ -488,6 +488,12 @@ pub fn handle_command(cmd: SimCommand, simulation: &mut Simulation) {
             state_changed = true;
             PAUSED.store(false, Ordering::Relaxed);
         }
+        SimCommand::ResetTime => {
+            simulation.frame = 0;
+            // Update global simulation time
+            *crate::renderer::state::SIM_TIME.lock() = 0.0;
+            state_changed = true;
+        }
     }
 
     if state_changed {

@@ -29,6 +29,9 @@ pub fn load_and_apply_scenario() -> Result<(), Box<dyn std::error::Error>> {
 fn apply_configuration(init_config: InitConfig) -> Result<(), Box<dyn std::error::Error>> {
     let tx = SIM_COMMAND_SENDER.lock().as_ref().unwrap().clone();
     
+    // Reset time to 0 when loading a new scenario
+    tx.send(SimCommand::ResetTime)?;
+    
     // Determine domain size from config or fallback constant
     let (global_width, global_height) = if let Some(ref sim_config) = init_config.simulation {
         let (width, height) = sim_config.domain_size();
@@ -204,6 +207,11 @@ fn get_body_for_species(templates: &BodyTemplates, species: Species) -> crate::b
 
 /// Load and apply the hardcoded fallback scenario
 pub fn load_hardcoded_scenario() -> Result<(), Box<dyn std::error::Error>> {
+    let tx = SIM_COMMAND_SENDER.lock().as_ref().unwrap().clone();
+    
+    // Reset time to 0 when loading hardcoded scenario
+    tx.send(SimCommand::ResetTime)?;
+    
     // Hardcoded Scenario setup: Add two 10mm lithium clumps and a central ion clump
     let bounds = crate::config::DOMAIN_BOUNDS;
     let clump_radius = crate::config::CLUMP_RADIUS;
@@ -237,7 +245,6 @@ pub fn load_hardcoded_scenario() -> Result<(), Box<dyn std::error::Error>> {
     );
     
     // Send SimCommands to populate the simulation
-    let tx = SIM_COMMAND_SENDER.lock().as_ref().unwrap().clone();
     let width = bounds * 2.0;
     let height = bounds * 2.0;
     *crate::renderer::state::DOMAIN_WIDTH.lock() = width;

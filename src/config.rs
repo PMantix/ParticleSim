@@ -114,7 +114,7 @@ pub const SURROUND_CHECK_INTERVAL: usize = 10;
 
 /// Number of frames of history preserved for playback controls
 /// Simple ring buffer approach - much faster than compressed deltas
-pub const PLAYBACK_HISTORY_FRAMES: usize = 1000;
+pub const PLAYBACK_HISTORY_FRAMES: usize = 5000;
 
 // ====================
 // Simulation Parameters

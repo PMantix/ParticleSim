@@ -203,6 +203,7 @@ pub enum SimCommand {
     },
     PlaybackResumeLive,
     PlaybackResumeFromCurrent,
+    ResetTime,
 }
 
 pub static SIM_COMMAND_SENDER: Lazy<Mutex<Option<Sender<SimCommand>>>> =

@@ -21,35 +21,77 @@ z_frustration_strength = 0.1
 
 [particles]
 # Metal rectangles (positions are center coordinates)
-# Optimized: closer together (±100 Å), taller and thinner for better geometry
+# Updated: 5 electrodes at x = -200, -100, 0, 100, 200 with 50x350 metal + 7x350 foil each
 [[particles.metal_rectangles]]
-x = -100.0  # Center X coordinate (was -150.0)
+x = -200.0  # Center X coordinate
 y = 0.0     # Center Y coordinate
-width = 30.0   # Thinner (was 51.0)
-height = 350.0 # Taller (was 100.0)
+width = 50.0   # 50 width as requested
+height = 350.0 # 350 height as requested
 species = "LithiumMetal"
 
 [[particles.metal_rectangles]]
-x = 100.0   # Center X coordinate (was 150.0)
+x = -100.0  # Center X coordinate
 y = 0.0     # Center Y coordinate
-width = 30.0   # Thinner (was 51.0)
-height = 350.0 # Taller (was 100.0)
+width = 50.0   # 50 width as requested
+height = 350.0 # 350 height as requested
+species = "LithiumMetal"
+
+[[particles.metal_rectangles]]
+x = 0.0     # Center X coordinate
+y = 0.0     # Center Y coordinate
+width = 50.0   # 50 width as requested
+height = 350.0 # 350 height as requested
+species = "LithiumMetal"
+
+[[particles.metal_rectangles]]
+x = 100.0   # Center X coordinate
+y = 0.0     # Center Y coordinate
+width = 50.0   # 50 width as requested
+height = 350.0 # 350 height as requested
+species = "LithiumMetal"
+
+[[particles.metal_rectangles]]
+x = 200.0   # Center X coordinate
+y = 0.0     # Center Y coordinate
+width = 50.0   # 50 width as requested
+height = 350.0 # 350 height as requested
 species = "LithiumMetal"
 
 # Foil rectangles (positions are center coordinates)
-# Optimized: thinner foils matching new electrode positions
+# Updated: 5 foils at x = -200, -100, 0, 100, 200 with 7x350 dimensions
 [[particles.foil_rectangles]]
-x = -100.0  # Center X coordinate (matches metal above)
+x = -200.0  # Center X coordinate
 y = 0.0     # Center Y coordinate
-width = 5.0    # Thinner (was 7.0)
-height = 350.0 # Taller (was 100.0)
+width = 7.0    # 7 width as requested
+height = 350.0 # 350 height as requested
 current = 0.0
 
 [[particles.foil_rectangles]]
-x = 100.0   # Center X coordinate (matches metal above)
+x = -100.0  # Center X coordinate
 y = 0.0     # Center Y coordinate
-width = 5.0    # Thinner (was 7.0)
-height = 350.0 # Taller (was 100.0)
+width = 7.0    # 7 width as requested
+height = 350.0 # 350 height as requested
+current = 0.0
+
+[[particles.foil_rectangles]]
+x = 0.0     # Center X coordinate
+y = 0.0     # Center Y coordinate
+width = 7.0    # 7 width as requested
+height = 350.0 # 350 height as requested
+current = 0.0
+
+[[particles.foil_rectangles]]
+x = 100.0   # Center X coordinate
+y = 0.0     # Center Y coordinate
+width = 7.0    # 7 width as requested
+height = 350.0 # 350 height as requested
+current = 0.0
+
+[[particles.foil_rectangles]]
+x = 200.0   # Center X coordinate
+y = 0.0     # Center Y coordinate
+width = 7.0    # 7 width as requested
+height = 350.0 # 350 height as requested
 current = 0.0
 
 # Random particles

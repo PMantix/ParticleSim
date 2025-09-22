@@ -173,7 +173,7 @@ impl Simulation {
     }
 
     fn refresh_switch_snapshots(&mut self) {
-        let assigned: HashSet<u64> = self.switch_config.role_to_foil.values().copied().collect();
+        let assigned: HashSet<u64> = self.switch_config.role_to_foil.values().flatten().copied().collect();
         self.switch_saved_states
             .retain(|id, _| assigned.contains(id));
         for foil_id in assigned {
@@ -199,57 +199,80 @@ impl Simulation {
         }
     }
 
-    fn apply_switch_step(&mut self, pair: (u64, u64), setpoint: &switch_charging::StepSetpoint) {
-        self.switch_active_pair = Some(pair);
+    fn apply_switch_step(&mut self, foil_pairs: (Vec<u64>, Vec<u64>), setpoint: &switch_charging::StepSetpoint) {
+        let (pos_ids, neg_ids) = &foil_pairs;
+        self.switch_active_pair = Some((pos_ids[0], neg_ids[0])); // For compatibility, store first pair
         
-        // Collect foil IDs to avoid borrow conflicts
-        let foil_ids: Vec<u64> = self.switch_config.role_to_foil.values().copied().collect();
-        for &foil_id in &foil_ids {
-            if foil_id != pair.0 && foil_id != pair.1 {
+        // Collect all foil IDs to avoid borrow conflicts
+        let all_foil_ids: Vec<u64> = self.switch_config.role_to_foil.values().flatten().copied().collect();
+        for &foil_id in &all_foil_ids {
+            if !pos_ids.contains(&foil_id) && !neg_ids.contains(&foil_id) {
                 self.restore_snapshot_for(foil_id);
             }
         }
-        self.restore_snapshot_for(pair.0);
-        self.restore_snapshot_for(pair.1);
+        
+        // Restore snapshots for active foils
+        for &foil_id in pos_ids {
+            self.restore_snapshot_for(foil_id);
+        }
+        for &foil_id in neg_ids {
+            self.restore_snapshot_for(foil_id);
+        }
 
         match setpoint.mode {
             switch_charging::Mode::Current => {
-                if let Some(foil) = self.foils.iter_mut().find(|f| f.id == pair.0) {
-                    if foil.charging_mode != crate::body::foil::ChargingMode::Current {
-                        foil.disable_overpotential_mode();
+                // Divide current between foils in each group
+                let pos_current_per_foil = setpoint.value as f32 / pos_ids.len() as f32;
+                let neg_current_per_foil = setpoint.value as f32 / neg_ids.len() as f32;
+                
+                for &foil_id in pos_ids {
+                    if let Some(foil) = self.foils.iter_mut().find(|f| f.id == foil_id) {
+                        if foil.charging_mode != crate::body::foil::ChargingMode::Current {
+                            foil.disable_overpotential_mode();
+                        }
+                        foil.charging_mode = crate::body::foil::ChargingMode::Current;
+                        foil.dc_current = pos_current_per_foil;
+                        foil.ac_current = 0.0;
+                        foil.switch_hz = 0.0;
                     }
-                    foil.charging_mode = crate::body::foil::ChargingMode::Current;
-                    foil.dc_current = setpoint.value as f32;
-                    foil.ac_current = 0.0;
-                    foil.switch_hz = 0.0;
                 }
-                if let Some(foil) = self.foils.iter_mut().find(|f| f.id == pair.1) {
-                    if foil.charging_mode != crate::body::foil::ChargingMode::Current {
-                        foil.disable_overpotential_mode();
+                
+                for &foil_id in neg_ids {
+                    if let Some(foil) = self.foils.iter_mut().find(|f| f.id == foil_id) {
+                        if foil.charging_mode != crate::body::foil::ChargingMode::Current {
+                            foil.disable_overpotential_mode();
+                        }
+                        foil.charging_mode = crate::body::foil::ChargingMode::Current;
+                        foil.dc_current = -neg_current_per_foil;
+                        foil.ac_current = 0.0;
+                        foil.switch_hz = 0.0;
                     }
-                    foil.charging_mode = crate::body::foil::ChargingMode::Current;
-                    foil.dc_current = -(setpoint.value as f32);
-                    foil.ac_current = 0.0;
-                    foil.switch_hz = 0.0;
                 }
             }
             switch_charging::Mode::Overpotential => {
+                // Apply same overpotential to all foils in each group
                 let target_positive = setpoint.value as f32;
                 let target_negative = (2.0 - setpoint.value) as f32;
-                if let Some(foil) = self.foils.iter_mut().find(|f| f.id == pair.0) {
-                    if foil.charging_mode != crate::body::foil::ChargingMode::Overpotential {
-                        foil.enable_overpotential_mode(target_positive);
-                    }
-                    if let Some(controller) = foil.overpotential_controller.as_mut() {
-                        controller.target_ratio = target_positive;
+                
+                for &foil_id in pos_ids {
+                    if let Some(foil) = self.foils.iter_mut().find(|f| f.id == foil_id) {
+                        if foil.charging_mode != crate::body::foil::ChargingMode::Overpotential {
+                            foil.enable_overpotential_mode(target_positive);
+                        }
+                        if let Some(controller) = foil.overpotential_controller.as_mut() {
+                            controller.target_ratio = target_positive;
+                        }
                     }
                 }
-                if let Some(foil) = self.foils.iter_mut().find(|f| f.id == pair.1) {
-                    if foil.charging_mode != crate::body::foil::ChargingMode::Overpotential {
-                        foil.enable_overpotential_mode(target_negative);
-                    }
-                    if let Some(controller) = foil.overpotential_controller.as_mut() {
-                        controller.target_ratio = target_negative;
+                
+                for &foil_id in neg_ids {
+                    if let Some(foil) = self.foils.iter_mut().find(|f| f.id == foil_id) {
+                        if foil.charging_mode != crate::body::foil::ChargingMode::Overpotential {
+                            foil.enable_overpotential_mode(target_negative);
+                        }
+                        if let Some(controller) = foil.overpotential_controller.as_mut() {
+                            controller.target_ratio = target_negative;
+                        }
                     }
                 }
             }
@@ -261,8 +284,8 @@ impl Simulation {
         if self.switch_run_state != RunState::Running {
             return;
         }
-        if let Some(((pos, neg), setpoint)) = self.switch_scheduler.on_tick(&self.switch_config) {
-            self.apply_switch_step((pos, neg), &setpoint);
+        if let Some(((pos_ids, neg_ids), setpoint)) = self.switch_scheduler.on_tick(&self.switch_config) {
+            self.apply_switch_step((pos_ids, neg_ids), &setpoint);
             self.send_switch_status(SwitchStatus::ActiveStep {
                 step_index: self.switch_scheduler.current_step(),
                 dwell_remaining: self.switch_scheduler.dwell_remaining(),

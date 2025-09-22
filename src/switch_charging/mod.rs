@@ -64,12 +64,7 @@ impl Default for Mode {
 }
 
 impl Mode {
-    pub fn tooltip(&self) -> &'static str {
-        match self {
-            Mode::Current => "Direct current control in electrons/fs",
-            Mode::Overpotential => "PID-controlled overpotential target",
-        }
-    }
+    
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -90,7 +85,7 @@ impl Default for StepSetpoint {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default)]
 pub struct SwitchChargingConfig {
-    pub role_to_foil: HashMap<Role, FoilId>,
+    pub role_to_foil: HashMap<Role, Vec<FoilId>>,
     pub sim_dt_s: f64,
     pub switch_rate_hz: f64,
     pub delta_steps: u32,
@@ -103,8 +98,13 @@ impl Default for SwitchChargingConfig {
             role_to_foil: HashMap::new(),
             sim_dt_s: default_sim_dt_s(),
             switch_rate_hz: 1.0,
-            delta_steps: 1,
-            step_setpoints: HashMap::new(),
+            delta_steps: 10000,
+            step_setpoints: HashMap::from([
+                (0, StepSetpoint { mode: Mode::Current, value: 100.0 }),
+                (1, StepSetpoint { mode: Mode::Current, value: 100.0 }),
+                (2, StepSetpoint { mode: Mode::Current, value: 100.0 }),
+                (3, StepSetpoint { mode: Mode::Current, value: 100.0 }),
+            ]),
         };
         cfg.ensure_all_steps();
         cfg.recompute_from_steps();
@@ -125,17 +125,19 @@ impl SwitchChargingConfig {
         }
 
         for role in Role::ALL.iter() {
-            if !self.role_to_foil.contains_key(role) {
+            if !self.role_to_foil.contains_key(role) || self.role_to_foil[role].is_empty() {
                 return Err(format!("Missing foil assignment for role {}", role));
             }
         }
 
         let mut seen = HashSet::new();
-        for (role, foil_id) in &self.role_to_foil {
-            if !seen.insert(*foil_id) {
-                return Err(format!(
-                    "Foil {foil_id} has been assigned to multiple roles (including {role})"
-                ));
+        for (role, foil_ids) in &self.role_to_foil {
+            for &foil_id in foil_ids {
+                if !seen.insert(foil_id) {
+                    return Err(format!(
+                        "Foil {foil_id} has been assigned to multiple roles (including {role})"
+                    ));
+                }
             }
         }
 
@@ -168,8 +170,8 @@ impl SwitchChargingConfig {
         4.0 * self.delta_steps as f64 * self.sim_dt_s
     }
 
-    pub fn foil_for_role(&self, role: Role) -> Option<FoilId> {
-        self.role_to_foil.get(&role).copied()
+    pub fn foils_for_role(&self, role: Role) -> &[FoilId] {
+        self.role_to_foil.get(&role).map(|v| v.as_slice()).unwrap_or(&[])
     }
 
     pub fn ensure_all_steps(&mut self) {
@@ -315,7 +317,7 @@ impl SwitchScheduler {
     pub fn on_tick(
         &mut self,
         cfg: &SwitchChargingConfig,
-    ) -> Option<((FoilId, FoilId), StepSetpoint)> {
+    ) -> Option<((Vec<FoilId>, Vec<FoilId>), StepSetpoint)> {
         if !self.armed || cfg.delta_steps == 0 {
             return None;
         }
@@ -327,11 +329,16 @@ impl SwitchScheduler {
         self.steps_left = self.steps_left.saturating_sub(1);
         let step = self.current_step;
         let (positive, negative) = roles_for_step(step);
-        let pos_id = cfg.foil_for_role(positive)?;
-        let neg_id = cfg.foil_for_role(negative)?;
+        let pos_ids = cfg.foils_for_role(positive).to_vec();
+        let neg_ids = cfg.foils_for_role(negative).to_vec();
+        
+        if pos_ids.is_empty() || neg_ids.is_empty() {
+            return None;
+        }
+        
         let setpoint = cfg.step_setpoints.get(&step)?.clone();
 
-        Some(((pos_id, neg_id), setpoint))
+        Some(((pos_ids, neg_ids), setpoint))
     }
 
     pub fn current_step(&self) -> u8 {
@@ -437,7 +444,8 @@ impl SwitchUiState {
         let dt_s = (dt_fs as f64) * 1e-15;
         if dt_s.is_finite() && dt_s > 0.0 && (dt_s - self.config.sim_dt_s).abs() > f64::EPSILON {
             self.config.sim_dt_s = dt_s;
-            self.config.recompute_from_steps();
+            // Don't automatically recompute user-set values during simulation
+            // self.config.recompute_from_steps();
             self.update_validation();
         }
     }
@@ -457,9 +465,22 @@ impl SwitchUiState {
         if let Some(role) = self.pending_role {
             if let Some(foil_id) = selected {
                 if Some(foil_id) != self.last_selected_foil {
-                    self.assign_role(role, foil_id);
-                    self.pending_role = None;
-                    self.status_message = Some(format!("Assigned foil {foil_id} to role {role}"));
+                    // Check if this foil is already assigned to this role
+                    let already_assigned = self.config.foils_for_role(role).contains(&foil_id);
+                    
+                    if !already_assigned {
+                        self.add_foil_to_role(role, foil_id);
+                        self.pending_role = None;
+                        let role_foils = self.config.foils_for_role(role);
+                        if role_foils.len() == 1 {
+                            self.status_message = Some(format!("Assigned foil {foil_id} to role {role}"));
+                        } else {
+                            self.status_message = Some(format!("Added foil {foil_id} to role {role} ({} foils total)", role_foils.len()));
+                        }
+                    } else {
+                        self.status_message = Some(format!("Foil {foil_id} is already assigned to role {role}"));
+                        self.pending_role = None;
+                    }
                 }
             }
         }
@@ -539,12 +560,30 @@ impl SwitchUiState {
         self.config_dirty = false;
     }
 
-    fn assign_role(&mut self, role: Role, foil_id: FoilId) {
+    /// Add a foil to an existing role assignment (supports multiple foils per role)
+    pub fn add_foil_to_role(&mut self, role: Role, foil_id: FoilId) {
         self.ensure_paused_for_edit();
-        self.config.role_to_foil.insert(role, foil_id);
-        self.config_dirty = true;
-        self.update_validation();
-        self.send_update(); // Send update immediately
+        let foils = self.config.role_to_foil.entry(role).or_insert_with(Vec::new);
+        if !foils.contains(&foil_id) {
+            foils.push(foil_id);
+            self.config_dirty = true;
+            self.update_validation();
+            self.send_update();
+        }
+    }
+
+    /// Remove a specific foil from a role assignment
+    pub fn remove_foil_from_role(&mut self, role: Role, foil_id: FoilId) {
+        self.ensure_paused_for_edit();
+        if let Some(foils) = self.config.role_to_foil.get_mut(&role) {
+            foils.retain(|&id| id != foil_id);
+            if foils.is_empty() {
+                self.config.role_to_foil.remove(&role);
+            }
+            self.config_dirty = true;
+            self.update_validation();
+            self.send_update();
+        }
     }
 
     fn ensure_paused_for_edit(&mut self) {
@@ -580,33 +619,12 @@ impl SwitchUiState {
         let hz = hz.max(0.0);
         if (self.config.switch_rate_hz - hz).abs() > f64::EPSILON {
             self.config.switch_rate_hz = hz;
+            // Auto-calculate steps from frequency (like original design intended)
             self.config.recompute_from_hz();
             self.config_dirty = true;
             self.update_validation();
             self.send_update(); // Send update immediately
         }
-    }
-
-    pub fn set_delta_steps(&mut self, steps: u32) {
-        let steps = steps.max(1);
-        if self.config.delta_steps != steps {
-            self.config.delta_steps = steps;
-            self.config.recompute_from_steps();
-            self.config_dirty = true;
-            self.update_validation();
-            self.send_update(); // Send update immediately
-        }
-    }
-
-    pub fn assigned_label(&self, role: Role) -> Option<String> {
-        let foil_id = self.config.role_to_foil.get(&role)?;
-        let label = self
-            .available_foils
-            .iter()
-            .find(|entry| &entry.id == foil_id)
-            .map(|entry| entry.label.clone())
-            .unwrap_or_else(|| format!("Foil {foil_id}"));
-        Some(label)
     }
 
     fn send_control(&self, msg: SwitchControl) {
@@ -666,19 +684,46 @@ pub fn ui_switch_charging(ui: &mut egui::Ui, state: &mut SwitchUiState) {
             .show(ui, |ui| {
                 for role in Role::ALL.iter() {
                     ui.label(format!("{}", role.description()));
+                    
+                    // Get assigned foils (create owned copy to avoid borrow issues)
+                    let assigned_foils: Vec<FoilId> = state.config.foils_for_role(*role).to_vec();
+                    
+                    if !assigned_foils.is_empty() {
+                        ui.vertical(|ui| {
+                            for foil_id in &assigned_foils {
+                                ui.horizontal(|ui| {
+                                    // Show foil name/label
+                                    let foil_name = state.available_foils
+                                        .iter()
+                                        .find(|f| f.id == *foil_id)
+                                        .map(|f| f.label.clone())
+                                        .unwrap_or_else(|| format!("Foil {}", foil_id));
+                                    
+                                    ui.label(format!("• {}", foil_name));
+                                    
+                                    // Remove button for this specific foil
+                                    if ui.small_button("❌").on_hover_text("Remove this foil from role").clicked() {
+                                        state.remove_foil_from_role(*role, *foil_id);
+                                    }
+                                });
+                            }
+                        });
+                    } else {
+                        ui.label("(no foils assigned)");
+                    }
+                    
+                    // Add and Clear buttons
                     ui.horizontal(|ui| {
-                        if ui.button(format!("Assign {}", role.display())).clicked() {
+                        if ui.button(format!("+ Add Foil to {}", role.display())).clicked() {
                             state.pending_role = Some(*role);
                             state.status_message =
-                                Some(format!("Select a foil in the viewport for role {}", role));
+                                Some(format!("Select a foil in the viewport to add to role {}", role));
                         }
-                        if let Some(label) = state.assigned_label(*role) {
-                            ui.label(label);
-                        } else {
-                            ui.label("(unassigned)");
-                        }
-                        if ui.button("Clear").clicked() {
-                            state.remove_role(*role);
+                        
+                        if !assigned_foils.is_empty() {
+                            if ui.button("Clear All").clicked() {
+                                state.remove_role(*role);
+                            }
                         }
                     });
                     ui.end_row();
@@ -708,27 +753,24 @@ pub fn ui_switch_charging(ui: &mut egui::Ui, state: &mut SwitchUiState) {
 
     ui.group(|ui| {
         ui.label("Switching Rate");
-        let mut hz = state.config.switch_rate_hz;
-        let hz_response = ui.add(
-            egui::DragValue::new(&mut hz)
-                .speed(0.1)
-                .clamp_range(0.0001..=1_000_000.0)
-                .suffix(" Hz"),
-        );
-        if hz_response.changed() {
-            state.set_switch_rate_hz(hz);
-        }
+        
+        // Use DragValue pattern like other successful tabs
+        ui.horizontal(|ui| {
+            ui.label("Frequency:");
+            let mut hz = state.config.switch_rate_hz;
+            ui.add(egui::DragValue::new(&mut hz).speed(0.1).clamp_range(0.0001..=1_000_000.0));
+            if (hz - state.config.switch_rate_hz).abs() > f64::EPSILON {
+                state.set_switch_rate_hz(hz);
+            }
+            ui.label("Hz");
+        });
 
-        let mut steps = state.config.delta_steps;
-        let steps_response = ui.add(
-            egui::DragValue::new(&mut steps)
-                .speed(1.0)
-                .clamp_range(1..=1_000_000)
-                .suffix(" steps"),
-        );
-        if steps_response.changed() {
-            state.set_delta_steps(steps);
-        }
+        // Steps is now calculated and display-only
+        ui.horizontal(|ui| {
+            ui.label("Steps per half-cycle:");
+            ui.label(format!("{}", state.config.delta_steps));
+            ui.weak("(calculated from frequency)");
+        });
 
         ui.label(format!(
             "Cycle period: {:.6} s ({} total steps)",
@@ -767,7 +809,9 @@ pub fn ui_switch_charging(ui: &mut egui::Ui, state: &mut SwitchUiState) {
                         .cloned()
                         .unwrap_or_default();
 
-                    egui::ComboBox::from_id_source(format!("switch-step-mode-{step}"))
+                    let mut changed = false;
+
+                    let mode_response = egui::ComboBox::from_id_source(format!("switch-step-mode-{step}"))
                         .selected_text(match setpoint.mode {
                             Mode::Current => "Current",
                             Mode::Overpotential => "Overpotential",
@@ -779,9 +823,11 @@ pub fn ui_switch_charging(ui: &mut egui::Ui, state: &mut SwitchUiState) {
                                 Mode::Overpotential,
                                 "Overpotential",
                             );
-                        })
-                        .response
-                        .on_hover_text(setpoint.mode.tooltip());
+                        });
+                    
+                    if mode_response.response.changed() {
+                        changed = true;
+                    }
 
                     let label = match setpoint.mode {
                         Mode::Current => "Current (e/fs)",
@@ -790,17 +836,16 @@ pub fn ui_switch_charging(ui: &mut egui::Ui, state: &mut SwitchUiState) {
                     ui.horizontal(|ui| {
                         ui.label(label);
                         let mut value = setpoint.value;
-                        let response = ui.add(
-                            egui::DragValue::new(&mut value)
-                                .speed(0.1)
-                                .clamp_range(-10_000.0..=10_000.0),
-                        );
-                        if response.changed() {
+                        ui.add(egui::DragValue::new(&mut value).speed(0.1).clamp_range(-10_000.0..=10_000.0));
+                        if (value - setpoint.value).abs() > f64::EPSILON {
                             setpoint.value = value;
+                            changed = true;
                         }
                     });
 
-                    state.edit_step(step, setpoint);
+                    if changed {
+                        state.edit_step(step, setpoint);
+                    }
                     ui.end_row();
                 }
             });
@@ -904,10 +949,10 @@ mod tests {
 
     fn make_valid_config() -> SwitchChargingConfig {
         let mut cfg = SwitchChargingConfig::default();
-        cfg.role_to_foil.insert(Role::PosA, 1);
-        cfg.role_to_foil.insert(Role::NegA, 2);
-        cfg.role_to_foil.insert(Role::PosB, 3);
-        cfg.role_to_foil.insert(Role::NegB, 4);
+        cfg.role_to_foil.insert(Role::PosA, vec![1]);
+        cfg.role_to_foil.insert(Role::NegA, vec![2]);
+        cfg.role_to_foil.insert(Role::PosB, vec![3]);
+        cfg.role_to_foil.insert(Role::NegB, vec![4]);
         cfg.delta_steps = 2;
         cfg.recompute_from_steps();
         cfg.ensure_all_steps();
@@ -956,16 +1001,21 @@ mod tests {
             pairs.push((a, b));
         }
         let expected = vec![
-            (1, 2),
-            (1, 2),
-            (3, 4),
-            (3, 4),
-            (3, 2),
-            (3, 2),
-            (1, 4),
-            (1, 4),
+            (vec![1], vec![2]),
+            (vec![1], vec![2]),
+            (vec![3], vec![4]),
+            (vec![3], vec![4]),
+            (vec![3], vec![2]),
+            (vec![3], vec![2]),
+            (vec![1], vec![4]),
+            (vec![1], vec![4]),
         ];
-        assert_eq!(pairs, expected);
+        
+        assert_eq!(pairs.len(), expected.len());
+        for (i, (actual, expected)) in pairs.iter().zip(expected.iter()).enumerate() {
+            assert_eq!(actual.0, expected.0, "Mismatch at step {} pos", i);
+            assert_eq!(actual.1, expected.1, "Mismatch at step {} neg", i);
+        }
     }
 
     #[test]
@@ -975,9 +1025,9 @@ mod tests {
 
         cfg.role_to_foil.remove(&Role::NegB);
         assert!(cfg.validate().is_err());
-        cfg.role_to_foil.insert(Role::NegB, 3);
+        cfg.role_to_foil.insert(Role::NegB, vec![3]);
         assert!(cfg.validate().is_err());
-        cfg.role_to_foil.insert(Role::NegB, 4);
+        cfg.role_to_foil.insert(Role::NegB, vec![4]);
 
         cfg.switch_rate_hz = 0.0;
         assert!(cfg.validate().is_err());

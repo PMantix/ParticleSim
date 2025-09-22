@@ -99,6 +99,15 @@ impl super::super::Renderer {
                 "Currently viewing frame {} ({:.2} fs, Δt {:.2} fs)",
                 playback_status.frame, playback_status.sim_time, playback_status.dt
             ));
+            
+            // Reset Time Button
+            if let Some(sender) = &sender_opt {
+                ui.horizontal(|ui| {
+                    if ui.button("🔄 Reset Time to 0").on_hover_text("Reset simulation time to 0 (does not change simulation state, only the time counter)").clicked() {
+                        let _ = sender.send(SimCommand::ResetTime);
+                    }
+                });
+            }
         });
 
         // Field Controls

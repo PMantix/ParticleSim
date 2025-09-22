@@ -1,0 +1,51 @@
+# Replace all [[bin]] sections (except particle_sim) with:
+
+[[example]]
+name = "debug_out_of_plane"
+path = "debug/debug_out_of_plane.rs"
+
+[[example]]
+name = "verify_config"
+path = "debug/verify_config.rs"
+
+[[example]]
+name = "minimal_test"
+path = "debug/minimal_test.rs"
+
+[[example]]
+name = "diagnose_slowdown"
+path = "debug/diagnose_slowdown.rs"
+
+[[example]]
+name = "test_history_isolation"
+path = "debug/test_history_isolation.rs"
+
+[[example]]
+name = "analyze_history_growth"
+path = "debug/analyze_history_growth.rs"
+
+[[example]]
+name = "debug_graphics"
+path = "debug/debug_graphics.rs"
+
+[[example]]
+name = "pinpoint_bottleneck"
+path = "debug/pinpoint_bottleneck.rs"
+
+[[example]]
+name = "reproduce_gui_slowdown"
+path = "debug/reproduce_gui_slowdown.rs"
+
+[[example]]
+name = "test_user_scenarios"
+path = "debug/test_user_scenarios.rs"
+
+[[example]]
+name = "detect_sawtooth_pattern"
+path = "debug/detect_sawtooth_pattern.rs"
+
+[[example]]
+name = "toml_density_analysis"
+path = "debug/toml_density_analysis.rs"
+
+# Then run with: cargo run --example debug_out_of_plane
