@@ -667,9 +667,13 @@ impl CompressedHistorySystem {
         let mut body_deltas = Vec::new();
         let mut foil_deltas = Vec::new();
         
-        // Generate body deltas
+        // Create HashMap for O(1) lookup of previous bodies by ID
+        let previous_bodies: std::collections::HashMap<u64, &LightBody> = 
+            previous.bodies.iter().map(|b| (b.id, b)).collect();
+        
+        // Generate body deltas with O(N) performance
         for current_body in &current.bodies {
-            if let Some(prev_body) = previous.bodies.iter().find(|b| b.id == current_body.id) {
+            if let Some(prev_body) = previous_bodies.get(&current_body.id) {
                 if let Some(delta) = current_body.create_delta(prev_body, &self.config.thresholds) {
                     body_deltas.push(delta);
                 }
@@ -690,9 +694,13 @@ impl CompressedHistorySystem {
             }
         }
         
-        // Generate foil deltas
+        // Create HashMap for O(1) lookup of previous foils by ID  
+        let previous_foils: std::collections::HashMap<u64, &LightFoil> =
+            previous.foils.iter().map(|f| (f.id, f)).collect();
+        
+        // Generate foil deltas with O(N) performance
         for current_foil in &current.foils {
-            if let Some(prev_foil) = previous.foils.iter().find(|f| f.id == current_foil.id) {
+            if let Some(prev_foil) = previous_foils.get(&current_foil.id) {
                 if let Some(delta) = current_foil.create_delta(prev_foil) {
                     foil_deltas.push(delta);
                 }

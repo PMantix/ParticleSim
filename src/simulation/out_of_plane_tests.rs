@@ -55,7 +55,6 @@ mod out_of_plane_tests {
     }
 
     #[test]
-    #[ignore] // Temporarily disabled - pre-existing physics test issue  
     fn test_out_of_plane_forces_applied() {
         let mut sim = create_test_simulation();
         

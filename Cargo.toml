@@ -28,8 +28,36 @@ name = "minimal_test"
 path = "debug/minimal_test.rs"
 
 [[bin]]
+name = "diagnose_slowdown"
+path = "debug/diagnose_slowdown.rs"
+
+[[bin]]
+name = "test_history_isolation"
+path = "debug/test_history_isolation.rs"
+
+[[bin]]
+name = "analyze_history_growth"
+path = "debug/analyze_history_growth.rs"
+
+[[bin]]
 name = "debug_graphics"
 path = "debug/debug_graphics.rs"
+
+[[bin]]
+name = "pinpoint_bottleneck"
+path = "debug/pinpoint_bottleneck.rs"
+
+[[bin]]
+name = "reproduce_gui_slowdown"
+path = "debug/reproduce_gui_slowdown.rs"
+
+[[bin]]
+name = "test_user_scenarios"
+path = "debug/test_user_scenarios.rs"
+
+[[bin]]
+name = "detect_sawtooth_pattern"
+path = "debug/detect_sawtooth_pattern.rs"
 
 [[bin]]
 name = "toml_density_analysis"

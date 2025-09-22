@@ -122,34 +122,21 @@ pub enum PlaybackProgress {
 
 impl Simulation {
     pub fn initialize_history(&mut self) {
-        // Clear existing history and create initial snapshot
-        self.compressed_history = super::compressed_history::CompressedHistorySystem::new_default();
+        // Initialize simple history system
+        self.simple_history.clear();
         self.history_cursor = 0;
         self.history_dirty = false;
         self.playback.reset();
         
-        // Create and add initial snapshot
-        let light_snapshot = super::compressed_history::LightSnapshot::from(&*self);
-        *SIM_TIME.lock() = light_snapshot.sim_time;
-        self.compressed_history.push_frame(light_snapshot);
+        // Add initial snapshot to simple history
+        self.push_simple_history_snapshot();
         
         self.publish_playback_status();
     }
 
     pub fn push_history_snapshot(&mut self) {
-        self.truncate_future_history();
-        
-        // Create lightweight snapshot and add to compressed history
-        let light_snapshot = super::compressed_history::LightSnapshot::from(&*self);
-        *SIM_TIME.lock() = light_snapshot.sim_time;
-        self.compressed_history.push_frame(light_snapshot);
-        
-        // Update cursor to latest frame
-        if let Some((_, newest)) = self.compressed_history.get_frame_range() {
-            self.history_cursor = newest;
-        }
-        
-        self.history_dirty = false;
+        // Use the simple history implementation
+        self.push_simple_history_snapshot();
         self.publish_playback_status();
     }
 
@@ -163,20 +150,20 @@ impl Simulation {
         }
     }
 
-    pub fn apply_snapshot(&mut self, frame: usize) -> bool {
-        if let Ok(light_snapshot) = self.compressed_history.reconstruct_frame(frame) {
-            let simulation_state = SimulationState::from(&light_snapshot);
-            let full_snapshot = SimulationSnapshot::from_state(simulation_state);
-            full_snapshot.apply(self);
+    pub fn apply_snapshot(&mut self, index: usize) -> bool {
+        if let Some(state) = self.simple_history.get(index) {
+            // Apply the simulation state directly
+            let snapshot = SimulationSnapshot::from_state(state.clone());
+            snapshot.apply(self);
             true
         } else {
             false
         }
     }
 
-    pub fn seek_history(&mut self, frame: usize) {
-        if self.apply_snapshot(frame) {
-            self.history_cursor = frame;
+    pub fn seek_history(&mut self, index: usize) {
+        if self.apply_snapshot(index) {
+            self.history_cursor = index;
             self.history_dirty = false;
             self.playback.pause();
             self.publish_playback_status();
@@ -184,28 +171,25 @@ impl Simulation {
     }
 
     pub fn truncate_future_history(&mut self) {
-        // For now, we'll implement a simple version that doesn't truncate future
-        // since the compressed history system manages its own cleanup
-        // TODO: Implement proper future truncation in CompressedHistorySystem
+        // Truncate history from cursor forward
+        let new_len = self.history_cursor + 1;
+        self.simple_history.truncate(new_len);
     }
 
     pub fn resume_live_from_current(&mut self) {
         self.truncate_future_history();
         // Update cursor to latest available frame
-        if let Some((_, newest)) = self.compressed_history.get_frame_range() {
-            self.history_cursor = newest;
-        }
+        self.history_cursor = self.simple_history.len().saturating_sub(1);
         self.playback.pause();
         self.publish_playback_status();
     }
 
     pub fn go_to_latest(&mut self) {
-        // Get the latest frame from compressed history
-        if let Some((_, newest)) = self.compressed_history.get_frame_range() {
-            if self.apply_snapshot(newest) {
-                self.history_cursor = newest;
-                self.history_dirty = false;
-            }
+        // Go to the latest frame in simple history
+        let latest_index = self.simple_history.len().saturating_sub(1);
+        if self.apply_snapshot(latest_index) {
+            self.history_cursor = latest_index;
+            self.history_dirty = false;
         }
         self.playback.pause();
         self.publish_playback_status();
@@ -232,20 +216,17 @@ impl Simulation {
 
     pub fn advance_playback(&mut self, now: Instant) -> PlaybackProgress {
         let frames = self.playback.frames_to_advance(now);
-        if frames == 0 || self.compressed_history.get_frame_range().is_none() {
+        if frames == 0 || self.simple_history.is_empty() {
             return PlaybackProgress::NoChange;
         }
 
-        let (_oldest, newest) = self.compressed_history.get_frame_range().unwrap();
+        let newest = self.simple_history.len().saturating_sub(1);
         let mut advanced = false;
         
         for _ in 0..frames {
             if self.history_cursor + 1 <= newest {
                 self.history_cursor += 1;
-                if let Ok(light_snapshot) = self.compressed_history.reconstruct_frame(self.history_cursor) {
-                    let simulation_state = SimulationState::from(&light_snapshot);
-                    let full_snapshot = SimulationSnapshot::from_state(simulation_state);
-                    full_snapshot.apply(self);
+                if self.apply_snapshot(self.history_cursor) {
                     self.history_dirty = false;
                     advanced = true;
                 }
@@ -295,13 +276,15 @@ impl Simulation {
 
     pub fn publish_playback_status(&mut self) {
         let mut status = PLAYBACK_STATUS.lock();
-        let (history_len, latest_index, cursor, sim_time, frame, dt) = if let Some((_oldest, newest)) = self.compressed_history.get_frame_range() {
-            let history_len = 1; // For compatibility, we'll report 1 when we have frames
-            let cursor_clamped = self.history_cursor.max(0).min(newest);
-            if let Ok(light_snapshot) = self.compressed_history.reconstruct_frame(cursor_clamped) {
-                (history_len, newest, cursor_clamped, light_snapshot.sim_time, light_snapshot.frame, light_snapshot.dt)
+        let (history_len, latest_index, cursor, sim_time, frame, dt) = if !self.simple_history.is_empty() {
+            let history_len = self.simple_history.len();
+            let latest_index = history_len.saturating_sub(1);
+            let cursor_clamped = self.history_cursor.min(latest_index);
+            
+            if let Some(state) = self.simple_history.get(cursor_clamped) {
+                (history_len, latest_index, cursor_clamped, state.sim_time, state.frame, state.dt)
             } else {
-                (history_len, newest, cursor_clamped, self.frame as f32 * self.dt, self.frame, self.dt)
+                (history_len, latest_index, cursor_clamped, self.frame as f32 * self.dt, self.frame, self.dt)
             }
         } else {
             (0, 0, 0, self.frame as f32 * self.dt, self.frame, self.dt)

@@ -43,9 +43,11 @@ pub struct Simulation {
     pub config: config::SimConfig, //
     /// Track when thermostat was last applied (in simulation time)
     pub last_thermostat_time: f32,
-    pub compressed_history: CompressedHistorySystem,
+    pub compressed_history: CompressedHistorySystem,  // Keep for compatibility but unused
+    pub simple_history: std::collections::VecDeque<crate::io::SimulationState>,
     pub history_cursor: usize,
     pub history_dirty: bool,
+    pub history_capacity: usize,
     pub playback: PlaybackController,
     pub switch_config: switch_charging::SwitchChargingConfig,
     pub switch_scheduler: SwitchScheduler,
@@ -71,6 +73,7 @@ impl Simulation {
         let rewound_flags = vec![];
         // Initialize compressed history system
         let compressed_history = CompressedHistorySystem::new_default();
+        let history_capacity = std::cmp::max(1, config::PLAYBACK_HISTORY_FRAMES);
         let mut sim = Self {
             dt,
             frame: 0,
@@ -87,8 +90,10 @@ impl Simulation {
             config: config::SimConfig::default(),
             last_thermostat_time: 0.0,
             compressed_history,
+            simple_history: std::collections::VecDeque::new(),
             history_cursor: 0,
             history_dirty: false,
+            history_capacity,
             playback: PlaybackController::new(),
             switch_config: switch_charging::SwitchChargingConfig::default(),
             switch_scheduler: SwitchScheduler::default(),
@@ -407,7 +412,12 @@ impl Simulation {
         }
 
         self.frame += 1;
-        self.push_history_snapshot();
+        
+        // Capture history with lightweight ring buffer approach
+        // Only capture every 10 frames and keep limited history for good performance
+        if self.frame % 10 == 0 {
+            self.push_history_snapshot();
+        }
 
         #[cfg(test)]
         // After all updates, print debug info for anions
@@ -419,6 +429,37 @@ impl Simulation {
                 );
             }
         }
+    }
+
+    /// Simple history capture using VecDeque ring buffer (like the original working system)
+    pub fn push_simple_history_snapshot(&mut self) {
+        // Create lightweight state snapshot
+        let state = crate::io::SimulationState {
+            frame: self.frame,
+            sim_time: self.frame as f32 * self.dt,
+            dt: self.dt,
+            bodies: self.bodies.clone(),
+            foils: self.foils.clone(),
+            body_to_foil: self.body_to_foil.clone(),
+            config: self.config.clone(),
+            last_thermostat_time: self.last_thermostat_time,
+            domain_width: self.domain_width,
+            domain_height: self.domain_height,
+            domain_depth: self.domain_depth,
+        };
+        
+        // Add to ring buffer with capacity limit
+        self.simple_history.push_back(state);
+        while self.simple_history.len() > self.history_capacity {
+            self.simple_history.pop_front();
+            if self.history_cursor > 0 {
+                self.history_cursor -= 1;
+            }
+        }
+        
+        // Update cursor to latest frame
+        self.history_cursor = self.simple_history.len().saturating_sub(1);
+        self.history_dirty = false;
     }
 
     pub fn iterate(&mut self) {

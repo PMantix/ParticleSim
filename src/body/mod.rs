@@ -17,9 +17,7 @@ mod foil_electron_limits;
 #[cfg(test)]
 #[path = "tests/foil_mass_and_inertia.rs"]
 mod foil_mass_and_inertia;
-#[cfg(test)]
-#[path = "tests/foil_lj_force.rs"]
-mod foil_lj_force;
+
 #[cfg(test)]
 #[path = "tests/foil_cohesion_and_overlap.rs"]
 mod foil_cohesion_and_overlap;

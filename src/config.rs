@@ -106,6 +106,18 @@ pub const SURROUND_MOVE_THRESHOLD: f32 = 0.5;
 pub const SURROUND_CHECK_INTERVAL: usize = 10;
 
 // ====================
+// History/Playback Performance
+// ====================
+/// History capture interval - capture every N frames instead of every frame
+/// This prevents O(N) per-frame overhead from killing performance with many particles
+/// Value of 5 = capture every 5th frame = 5x less history overhead, playback still smooth
+pub const HISTORY_CAPTURE_INTERVAL: usize = 5;
+
+/// Number of frames of history preserved for playback controls
+/// Simple ring buffer approach - much faster than compressed deltas
+pub const PLAYBACK_HISTORY_FRAMES: usize = 1000;
+
+// ====================
 // Simulation Parameters
 // ====================
 /// Default timestep in femtoseconds.
@@ -167,9 +179,9 @@ pub const SHOW_FIELD_ISOLINES: bool = false;
 pub const SHOW_VELOCITY_VECTORS: bool = false;
 /// Show velocity vectors
 pub const SHOW_CHARGE_DENSITY: bool = false;
-/// Show charge-density heatmap
-pub const SHOW_2D_DOMAIN_DENSITY: bool = false;   /// Show 2D particle density heatmap
-pub const SHOW_FIELD_VECTORS: bool = false; // Show electric field vectors
+/// Show charge-density heatmap (DISABLED FOR PERFORMANCE)
+pub const SHOW_2D_DOMAIN_DENSITY: bool = false;   /// Show 2D particle density heatmap (DISABLED FOR PERFORMANCE)
+pub const SHOW_FIELD_VECTORS: bool = false; // Show electric field vectors (DISABLED FOR PERFORMANCE)
 
 // ====================
 // Temperature
