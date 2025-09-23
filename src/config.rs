@@ -301,7 +301,7 @@ impl Default for SimConfig {
             induced_field_overpot_scale: 100.0,
 
             // Vacancy polarization bias (disabled by default)
-            hop_vacancy_polarization_gain: 5.0,
+            hop_vacancy_polarization_gain: 300.0,
         }
     }
 }
