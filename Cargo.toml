@@ -63,6 +63,10 @@ path = "debug/detect_sawtooth_pattern.rs"
 name = "toml_density_analysis"
 path = "debug/toml_density_analysis.rs"
 
+[[bin]]
+name = "debug_field_alignment_scaling"
+path = "debug/debug_field_alignment_scaling.rs"
+
 [dependencies]
 quarkstrom = { path = "../quarkstrom/quarkstrom" }
 

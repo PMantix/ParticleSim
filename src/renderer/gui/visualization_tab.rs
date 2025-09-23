@@ -85,5 +85,26 @@ impl super::super::Renderer {
                     .step_by(0.01),
             );
         });
+
+        ui.separator();
+
+        // Species Dark Mode
+        ui.group(|ui| {
+            ui.label("🌙 Species Dark Mode");
+            ui.checkbox(
+                &mut self.species_dark_mode_enabled,
+                "Enable Dark Mode"
+            )
+            .on_hover_text("Enable dark background mode for better visibility of particles");
+            
+            if self.species_dark_mode_enabled {
+                ui.add(
+                    egui::Slider::new(&mut self.species_dark_mode_strength, 0.0..=1.0)
+                        .text("Dark Mode Strength")
+                        .step_by(0.01)
+                )
+                .on_hover_text("Controls how dark the background becomes (0.0 = light, 1.0 = full dark)");
+            }
+        });
     }
 }

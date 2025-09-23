@@ -54,7 +54,7 @@ impl super::super::Renderer {
             );
             ui.small("Expands the search distance for partner particles—grow it to enable longer-range hops.");
             ui.add(
-                egui::Slider::new(&mut self.sim_config.hop_alignment_bias, 0.0..=5.0)
+                egui::Slider::new(&mut self.sim_config.hop_alignment_bias, 0.0..=1000.0)
                     .text("Field Alignment Bias")
                     .step_by(0.01),
             )

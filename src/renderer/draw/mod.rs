@@ -189,6 +189,19 @@ impl super::Renderer {
                     let mut color = body.species.color();
                     let mut draw_radius = body.radius;
 
+                    // Apply dark mode if enabled
+                    if self.species_dark_mode_enabled {
+                        match body.species {
+                            Species::LithiumMetal | Species::ElectrolyteAnion | Species::EC | Species::DMC => {
+                                let darkness_factor = 1.0 - self.species_dark_mode_strength;
+                                color[0] = (color[0] as f32 * darkness_factor) as u8;
+                                color[1] = (color[1] as f32 * darkness_factor) as u8;
+                                color[2] = (color[2] as f32 * darkness_factor) as u8;
+                            }
+                            _ => {} // Don't apply dark mode to other species
+                        }
+                    }
+
                     if SHOW_Z_VISUALIZATION.load(Ordering::Relaxed) {
                         let max_z = self.sim_config.max_z.max(1.0);
                         let z_strength = *crate::renderer::state::Z_VISUALIZATION_STRENGTH.lock();
