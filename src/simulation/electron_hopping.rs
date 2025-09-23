@@ -99,6 +99,32 @@ impl Simulation {
                     return false;
                 }
 
+                // Vacancy polarization bias: favor hops that reduce local electron offset direction
+                let mut polarization_factor = 1.0f32;
+                let pol_gain = self.config.hop_vacancy_polarization_gain.max(0.0);
+                if pol_gain > 0.0 {
+                    // Estimate local electron offset vectors at src and dst
+                    // Use average of electron relative positions as a proxy for polarization direction
+                    let src_pol = if !src_body.electrons.is_empty() {
+                        let mut v = Vec2::zero();
+                        for e in &src_body.electrons { v += e.rel_pos; }
+                        v / (src_body.electrons.len() as f32)
+                    } else { Vec2::zero() };
+                    let dst_pol = if !dst_body.electrons.is_empty() {
+                        let mut v = Vec2::zero();
+                        for e in &dst_body.electrons { v += e.rel_pos; }
+                        v / (dst_body.electrons.len() as f32)
+                    } else { Vec2::zero() };
+                    // For a vacancy moving from src to dst, we want the hop direction to align with
+                    // the local electron offset direction (electrons displaced roughly opposite external field).
+                    let pol_dir = if (src_pol + dst_pol).mag() > 1e-6 { (src_pol + dst_pol).normalized() } else { Vec2::zero() };
+                    if pol_dir != Vec2::zero() && hop_dir != Vec2::zero() {
+                        let align = hop_dir.dot(pol_dir).max(0.0); // [0,1]
+                        // Map to multiplier 1 + gain*align (kept modest to avoid dominance)
+                        polarization_factor = 1.0 + pol_gain * align;
+                    }
+                }
+
                 let rate = if self.config.use_butler_volmer && src_body.species != dst_body.species
                 {
                     // Butler-Volmer kinetics for inter-species electron transfer
@@ -121,7 +147,7 @@ impl Simulation {
                 if rate <= 0.0 {
                     return false;
                 }
-                let p_hop = alignment * (1.0 - (-rate * self.dt).exp());
+                let p_hop = alignment * polarization_factor * (1.0 - (-rate * self.dt).exp());
                 rand::random::<f32>() < p_hop
             }) {
                 hops.push((src_idx, dst_idx));

@@ -11,7 +11,7 @@ impl super::super::Renderer {
             ui.add(
                 egui::Slider::new(&mut self.sim_config.bv_exchange_current, 0.0..=1.0e6)
                     .text("Exchange Current i0")
-                    .step_by(1.0),
+                    .step_by(0.01),
             );
             ui.add(
                 egui::Slider::new(&mut self.sim_config.bv_transfer_coeff, 0.0..=1.0)
@@ -64,6 +64,13 @@ impl super::super::Renderer {
             ui.small(
                 "Set above 1 to favor down-field transfers, or below 1 to relax the surface-alignment preference.",
             );
+
+            // Vacancy polarization bias slider
+            ui.add(
+                egui::Slider::new(&mut self.sim_config.hop_vacancy_polarization_gain, 0.0..=1000.0)
+                    .text("Vacancy Polarization Bias")
+                    .step_by(0.01),
+            ).on_hover_text("Bias vacancy hops to move along the local valence-electron offset direction in metals. 0 = off.");
         });
 
         ui.separator();
@@ -151,6 +158,31 @@ impl super::super::Renderer {
         });
 
         ui.separator();
+
+        // Induced field from foil charging
+        ui.group(|ui| {
+            ui.label("📡 Induced External Field");
+            ui.small("Automatically add an external field based on foil charging setpoints.");
+            ui.add(
+                egui::Slider::new(&mut self.sim_config.induced_field_gain, 0.0..=5_000_000.0)
+                    .text("Induced Field Gain")
+                    .step_by(0.1)
+                    .logarithmic(true),
+            );
+            ui.add(
+                egui::Slider::new(&mut self.sim_config.induced_field_smoothing, 0.0..=0.999)
+                    .text("Induced Field Smoothing α")
+                    .step_by(0.001),
+            );
+            ui.checkbox(&mut self.sim_config.induced_field_use_direction, "Use foil-based direction (neg→pos)");
+            ui.add(
+                egui::Slider::new(&mut self.sim_config.induced_field_overpot_scale, 0.0..=10_000_000.0)
+                    .text("Overpotential→Drive Scale")
+                    .step_by(1.0)
+                    .logarithmic(true),
+            );
+            ui.small("Drive magnitude: |current| or |target_ratio−1|×scale.");
+        });
 
         ui.group(|ui| {
             ui.label("🌡️ Simulation Temperature");

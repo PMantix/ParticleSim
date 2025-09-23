@@ -37,6 +37,7 @@ pub struct Simulation {
     pub domain_depth: f32,  // Half-depth of the domain (for z-direction)
     pub rewound_flags: Vec<bool>,
     pub background_e_field: Vec2,
+    pub prev_induced_e_field: Vec2,
     pub foils: Vec<crate::body::foil::Foil>,
     pub body_to_foil: HashMap<u64, u64>,
     pub config: config::SimConfig, //
@@ -84,6 +85,7 @@ impl Simulation {
             domain_depth: bounds,  // Initialize with square domain depth
             rewound_flags,
             background_e_field: Vec2::zero(),
+            prev_induced_e_field: Vec2::zero(),
             foils: Vec::new(),
             body_to_foil: HashMap::new(),
             config: config::SimConfig::default(),
@@ -326,7 +328,100 @@ impl Simulation {
 
         let mag = *FIELD_MAGNITUDE.lock();
         let theta = (*FIELD_DIRECTION.lock()).to_radians();
-        self.background_e_field = Vec2::new(theta.cos(), theta.sin()) * mag;
+        let manual_field = Vec2::new(theta.cos(), theta.sin()) * mag;
+
+        // Compute induced external field from foil charging (current or overpotential)
+        let mut induced_field = Vec2::zero();
+        if self.foils.len() >= 2 && self.config.induced_field_gain != 0.0 {
+            // Determine active positive/negative foil groups for direction
+            // Fallback: use first two foils as pos/neg by net current sign
+            let mut pos_centroid = Vec2::zero();
+            let mut neg_centroid = Vec2::zero();
+            let mut pos_count = 0u32;
+            let mut neg_count = 0u32;
+            let mut pos_drive_sum = 0.0f32;
+            let mut neg_drive_sum = 0.0f32;
+
+            // Determine per-foil drive based on mode
+            for foil in &self.foils {
+                // Compute a drive magnitude: |current| for current mode, or |target-1|*scale for overpotential
+                let drive = match foil.charging_mode {
+                    crate::body::foil::ChargingMode::Current => foil.dc_current.abs(),
+                    crate::body::foil::ChargingMode::Overpotential => {
+                        if let Some(ctrl) = &foil.overpotential_controller {
+                            (ctrl.target_ratio - 1.0).abs() * self.config.induced_field_overpot_scale
+                        } else {
+                            0.0
+                        }
+                    }
+                };
+
+                // Compute foil centroid
+                if !foil.body_ids.is_empty() {
+                    let mut c = Vec2::zero();
+                    let mut n = 0.0f32;
+                    for id in &foil.body_ids {
+                        if let Some(b) = self.bodies.iter().find(|b| b.id == *id) {
+                            c += b.pos;
+                            n += 1.0;
+                        }
+                    }
+                    if n > 0.0 { c /= n; }
+
+                    // Classify by sign of intended current if in current mode; else by link mode/heuristic
+                    let is_pos = match foil.charging_mode {
+                        crate::body::foil::ChargingMode::Current => foil.dc_current > 0.0,
+                        crate::body::foil::ChargingMode::Overpotential => {
+                            // Heuristic: target>1 => cathodic (acts like positive collector of electrons)
+                            if let Some(ctrl) = &foil.overpotential_controller { ctrl.target_ratio >= 1.0 } else { false }
+                        }
+                    };
+
+                    if is_pos {
+                        pos_centroid += c;
+                        pos_count += 1;
+                        pos_drive_sum += drive;
+                    } else {
+                        neg_centroid += c;
+                        neg_count += 1;
+                        neg_drive_sum += drive;
+                    }
+                }
+            }
+
+            if pos_count > 0 { pos_centroid /= pos_count as f32; }
+            if neg_count > 0 { neg_centroid /= neg_count as f32; }
+
+            // Direction from negative to positive
+            let mut dir = pos_centroid - neg_centroid;
+            if dir.mag() > 1e-6 { dir = dir.normalized(); } else { dir = Vec2::new(theta.cos(), theta.sin()); }
+
+            // Magnitude based on average drive between groups
+            let avg_drive = {
+                let p = if pos_count>0 { pos_drive_sum / pos_count as f32 } else { 0.0 };
+                let n = if neg_count>0 { neg_drive_sum / neg_count as f32 } else { 0.0 };
+                0.5*(p+n)
+            };
+            let induced_mag = avg_drive * self.config.induced_field_gain;
+
+            // Optionally override direction with foil-based direction
+            // If not using foil-based direction, fall back to manual field direction (normalize if non-zero)
+            let induced_dir = if self.config.induced_field_use_direction {
+                dir
+            } else {
+                let m = manual_field.mag();
+                if m > 1e-9 { manual_field / m } else { Vec2::zero() }
+            };
+            induced_field = induced_dir * induced_mag;
+        }
+
+    // Smooth induced field across frames (simple exponential)
+    let alpha = self.config.induced_field_smoothing.clamp(0.0, 0.9999);
+    let smoothed_induced = self.prev_induced_e_field * alpha + induced_field * (1.0 - alpha);
+    self.prev_induced_e_field = smoothed_induced;
+
+    // Compose total external: manual + smoothed induced
+    self.background_e_field = manual_field + smoothed_induced;
         self.rewound_flags
             .par_iter_mut()
             .for_each(|flag| *flag = false);

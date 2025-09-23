@@ -3,7 +3,7 @@
 // ====================
 // Electron Parameters
 // ====================
-pub const ELECTRON_SPRING_K: f32 = 0.05; // Spring constant for electron drift
+pub const ELECTRON_SPRING_K: f32 = 5.0; // Spring constant for electron drift
 pub const ELECTRON_SPRING_K_METAL: f32 = ELECTRON_SPRING_K; // Metal-specific spring constant
 pub const ELECTRON_SPRING_K_EC: f32 = ELECTRON_SPRING_K; // EC-specific spring constant
 pub const ELECTRON_SPRING_K_DMC: f32 = ELECTRON_SPRING_K; // DMC-specific spring constant
@@ -28,8 +28,8 @@ pub fn electron_spring_k(species: Species) -> f32 {
 }
 pub const ELECTRON_DRIFT_RADIUS_FACTOR_EC: f32 = 1.0; // Max electron speed as a factor of body radius per
 pub const ELECTRON_DRIFT_RADIUS_FACTOR_DMC: f32 = 0.73; // DMC-specific drift radius factor
-pub const ELECTRON_DRIFT_RADIUS_FACTOR_METAL: f32 = 2.0; // Metal-specific drift radius factor
-pub const ELECTRON_MAX_SPEED_FACTOR: f32 = 1.2; // Max electron speed as a factor of body radius per dt
+pub const ELECTRON_DRIFT_RADIUS_FACTOR_METAL: f32 = 1.0; // Metal-specific drift radius factor
+pub const ELECTRON_MAX_SPEED_FACTOR: f32 = 10.2; // Max electron speed as a factor of body radius per dt
 pub const HOP_RADIUS_FACTOR: f32 = 2.1; // Hopping radius as a factor of body radius
 pub const HOP_RATE_K0: f32 = 1.0;
 /// Base hop‐rate constant (per unit time) at zero overpotential
@@ -38,7 +38,7 @@ pub const HOP_TRANSFER_COEFF: f32 = 0.5;
 pub const HOP_ACTIVATION_ENERGY: f32 = 0.025;
 /// Thermal energy k_BT (in your same charge‐units)
 pub fn default_hop_alignment_bias() -> f32 {
-    1.0
+    0.01
 }
 
 /// Get the effective polarization charge for a given species
@@ -56,7 +56,7 @@ pub fn default_hop_alignment_bias() -> f32 {
 /// Enable Butler-Volmer kinetics for inter-species electron transfer
 pub const BV_ENABLED: bool = true;
 /// Exchange current density i0 used in the Butler-Volmer expression
-pub const BV_EXCHANGE_CURRENT: f32 = 1.0;
+pub const BV_EXCHANGE_CURRENT: f32 = 0.1;
 /// Transfer coefficient alpha used in the Butler-Volmer expression
 pub const BV_TRANSFER_COEFF: f32 = 0.5;
 /// Scale factor corresponding to RT/(nF) for the overpotential term
@@ -125,7 +125,7 @@ pub const PLAYBACK_HISTORY_FRAMES: usize = 5000;
 /// Default timestep in femtoseconds.
 /// Typical MD timesteps: 0.5-2.0 fs. Old value was 0.015 fs (too small).
 pub const DEFAULT_DT_FS: f32 = 5.0;
-pub const COLLISION_PASSES: usize = 5; // Number of collision resolution passes
+pub const COLLISION_PASSES: usize = 7; // Number of collision resolution passes
 /// Number of frames of history preserved for playback controls
 /// Memory usage: ~115KB per 1000 particles per frame
 /// 5000 frames ≈ 576MB for small sims, 2.9GB for medium sims
@@ -157,7 +157,7 @@ pub const MAX_Z: f32 = DOMAIN_DEPTH;
 // ====================
 /// Single knob controlling how soft Li+ collisions are.
 /// 0.0 = hard collisions (baseline); 1.0 = very soft (max reduction).
-pub const LI_COLLISION_SOFTNESS: f32 = 0.0;
+pub const LI_COLLISION_SOFTNESS: f32 = 0.3;
 /// Size of position history buffer for movement analysis
 // Position history removed (simplified approach)
 
@@ -243,6 +243,19 @@ pub struct SimConfig {
 
     // Li+ collision softness (simple, force-independent)
     pub li_collision_softness: f32,
+
+    // Induced external field from foil charging
+    /// Gain mapping foil drive (current or overpotential) to induced |E|
+    pub induced_field_gain: f32,
+    /// Exponential smoothing factor for induced field [0..1): higher = smoother
+    pub induced_field_smoothing: f32,
+    /// If true, use foil centroids to set field direction (neg -> pos). If false, keep UI direction.
+    pub induced_field_use_direction: bool,
+    /// Scale that converts overpotential ratio deviation |target-1| into an equivalent drive
+    pub induced_field_overpot_scale: f32,
+
+    /// Vacancy polarization bias gain: scales the influence of local valence-electron offset on hop selection
+    pub hop_vacancy_polarization_gain: f32,
 }
 
 impl Default for SimConfig {
@@ -280,6 +293,15 @@ impl Default for SimConfig {
 
             // Li+ collision softness (simple)
             li_collision_softness: LI_COLLISION_SOFTNESS,
+
+            // Induced external field defaults (disabled by default via zero gain)
+            induced_field_gain: 0.0,
+            induced_field_smoothing: 0.9,
+            induced_field_use_direction: true,
+            induced_field_overpot_scale: 100.0,
+
+            // Vacancy polarization bias (disabled by default)
+            hop_vacancy_polarization_gain: 5.0,
         }
     }
 }
