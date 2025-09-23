@@ -34,9 +34,12 @@ pub const HOP_RADIUS_FACTOR: f32 = 2.1; // Hopping radius as a factor of body ra
 pub const HOP_RATE_K0: f32 = 1.0;
 /// Base hop‐rate constant (per unit time) at zero overpotential
 pub const HOP_TRANSFER_COEFF: f32 = 0.5;
-/// Transfer coefficient α (unitless, ~0.5)   
+/// Transfer coefficient α (unitless, ~0.5)
 pub const HOP_ACTIVATION_ENERGY: f32 = 0.025;
 /// Thermal energy k_BT (in your same charge‐units)
+pub fn default_hop_alignment_bias() -> f32 {
+    1.0
+}
 
 /// Get the effective polarization charge for a given species
 /*
@@ -203,6 +206,8 @@ pub struct SimConfig {
     pub hop_transfer_coeff: f32,
     pub hop_activation_energy: f32,
     pub hop_radius_factor: f32,
+    #[serde(default = "default_hop_alignment_bias")]
+    pub hop_alignment_bias: f32,
     /// Enable Butler-Volmer kinetics for inter-species hops
     pub use_butler_volmer: bool,
     /// Exchange current density i0 for Butler-Volmer
@@ -247,6 +252,7 @@ impl Default for SimConfig {
             hop_transfer_coeff: HOP_TRANSFER_COEFF,
             hop_activation_energy: HOP_ACTIVATION_ENERGY,
             hop_radius_factor: HOP_RADIUS_FACTOR,
+            hop_alignment_bias: default_hop_alignment_bias(),
             use_butler_volmer: BV_ENABLED,
             bv_exchange_current: BV_EXCHANGE_CURRENT,
             bv_transfer_coeff: BV_TRANSFER_COEFF,

@@ -92,6 +92,8 @@ impl Simulation {
                 if field_dir == Vec2::zero() {
                     alignment = 1.0;
                 }
+                let bias = self.config.hop_alignment_bias.max(0.0);
+                alignment = (alignment * bias).clamp(0.0, 1.0);
                 if alignment < 1e-3 {
                     return false;
                 }

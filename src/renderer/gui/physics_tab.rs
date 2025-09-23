@@ -53,6 +53,17 @@ impl super::super::Renderer {
                     .step_by(0.1),
             );
             ui.small("Expands the search distance for partner particles—grow it to enable longer-range hops.");
+            ui.add(
+                egui::Slider::new(&mut self.sim_config.hop_alignment_bias, 0.0..=5.0)
+                    .text("Field Alignment Bias")
+                    .step_by(0.01),
+            )
+            .on_hover_text(
+                "Scales how strongly hops prefer moving with the electric field; >1 boosts surface-directed hops.",
+            );
+            ui.small(
+                "Set above 1 to favor down-field transfers, or below 1 to relax the surface-alignment preference.",
+            );
         });
 
         ui.separator();
