@@ -40,7 +40,6 @@ struct RuntimeReport {
     bodies: usize,
     sample_window: usize,
     total_step_micros: u128,
-    wall_time_micros: u128,
     avg_step_micros: f64,
     early_avg_micros: f64,
     late_avg_micros: f64,
@@ -104,8 +103,8 @@ fn measure_build(
         .arg("--bin")
         .arg("particle_sim")
         .arg("--target-dir")
-        .arg(target_dir)
-        .arg("--timings=json");
+        .arg(target_dir);
+        // Removed --timings=json since it requires nightly Rust
     cmd.env("RUSTFLAGS", rustflags);
 
     let start = Instant::now();
@@ -122,7 +121,9 @@ fn measure_build(
     let binary_path = target_dir.join("release").join(binary_name("particle_sim"));
     let binary_size = fs::metadata(&binary_path)?.len();
 
-    let timing_wall_seconds = read_latest_timing(target_dir)?;
+    // Since we can't use --timings=json on stable Rust, we'll use None
+    // The wall-clock time (elapsed) is still available and more important
+    let timing_wall_seconds = None;
 
     Ok(BuildMeasurement {
         lto: lto_label.to_string(),
