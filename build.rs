@@ -7,7 +7,7 @@ fn main() {
     println!("cargo:rerun-if-changed=Cargo.toml");
     
     // Check if we need to update quarkstrom dependency
-    let quarkstrom_path = "../quarkstrom/quarkstrom";
+    let quarkstrom_path = "../quarkstrom";
     
     if Path::new(quarkstrom_path).exists() {
         println!("cargo:warning=Quarkstrom dependency found at {}", quarkstrom_path);

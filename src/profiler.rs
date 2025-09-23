@@ -233,5 +233,7 @@ macro_rules! profile_scope {
     ($name:expr) => {
         #[cfg(feature = "profiling")]
         let _guard = $crate::profiler::start($name);
+        #[cfg(not(feature = "profiling"))]
+        let _guard = ();
     };
 }
