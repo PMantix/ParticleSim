@@ -25,6 +25,36 @@ impl super::super::Renderer {
             );
         });
 
+        ui.group(|ui| {
+            ui.label("🪙 Electron Hopping");
+            ui.add(
+                egui::Slider::new(&mut self.sim_config.hop_rate_k0, 0.0..=20.0)
+                    .text("Base Hop Rate k₀")
+                    .step_by(0.1),
+            );
+            ui.small("Sets the baseline probability for hops—raise to speed up electron motion everywhere.");
+            ui.add(
+                egui::Slider::new(&mut self.sim_config.hop_transfer_coeff, 0.0..=1.0)
+                    .text("Field Response α")
+                    .step_by(0.01),
+            );
+            ui.small(
+                "Controls how strongly potential differences amplify hopping; higher values react more to fields.",
+            );
+            ui.add(
+                egui::Slider::new(&mut self.sim_config.hop_activation_energy, 0.0..=0.2)
+                    .text("Activation Barrier (eV)")
+                    .step_by(0.001),
+            );
+            ui.small("Lower the barrier to make hops exponentially easier even without strong fields.");
+            ui.add(
+                egui::Slider::new(&mut self.sim_config.hop_radius_factor, 0.5..=5.0)
+                    .text("Neighbor Radius ×R")
+                    .step_by(0.1),
+            );
+            ui.small("Expands the search distance for partner particles—grow it to enable longer-range hops.");
+        });
+
         ui.separator();
 
         // External Electric Field Controls
