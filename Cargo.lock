@@ -1947,6 +1947,7 @@ dependencies = [
  "chrono",
  "crossbeam",
  "fastrand",
+ "flate2",
  "image",
  "once_cell",
  "palette",
