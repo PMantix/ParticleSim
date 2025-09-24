@@ -1,4 +1,5 @@
 use super::state::*;
+use super::{GuiTab, MeasurementRecord};
 use quarkstrom::winit::event::VirtualKeyCode;
 use std::sync::atomic::Ordering;
 use std::f32::consts::{PI, TAU};
@@ -146,6 +147,39 @@ impl super::Renderer {
             mouse.x -= width as f32 / height as f32;
             mouse * self.scale + self.pos
         };
+
+        if self.current_tab == GuiTab::Measurement {
+            self.measurement_cursor = input.mouse().map(|_| world_mouse());
+
+            if input.mouse_pressed(1) {
+                self.current_tab = self.last_non_measurement_tab;
+                self.measurement_selecting_start = false;
+                return;
+            }
+
+            if self.measurement_selecting_start {
+                if input.mouse_pressed(0) {
+                    if let Some(pos) = self.measurement_cursor {
+                        self.measurement_start = Some(pos);
+                        self.measurement_selecting_start = false;
+                    }
+                }
+            } else if input.mouse_pressed(0) {
+                if let Some(distance) = self.current_measurement_distance() {
+                    let time_fs = *crate::renderer::state::SIM_TIME.lock();
+                    self.measurement_history.push(MeasurementRecord {
+                        step: self.frame,
+                        time_fs,
+                        distance,
+                    });
+                }
+            }
+
+            return;
+        } else {
+            self.measurement_cursor = None;
+            self.measurement_selecting_start = false;
+        }
 
         if input.mouse_pressed(1) {
             if self.spawn_body.is_none() {

@@ -497,6 +497,12 @@ impl super::Renderer {
             self.draw_foil_square_waves(ctx);
         }
 
+        if self.current_tab == super::GuiTab::Measurement {
+            if let (Some(start), Some(cursor)) = (self.measurement_start, self.measurement_cursor) {
+                self.draw_measurement_overlay(ctx, start, cursor);
+            }
+        }
+
         // Draw screen capture region selection
         if self.is_selecting_region {
             if let (Some(start), Some(end)) = (self.selection_start, self.selection_end) {
@@ -547,6 +553,53 @@ impl super::Renderer {
             ctx.draw_line(top_right, bottom_right, blue);
             ctx.draw_line(bottom_right, bottom_left, blue);
             ctx.draw_line(bottom_left, top_left, blue);
+        }
+    }
+}
+
+impl super::Renderer {
+    fn draw_measurement_overlay(
+        &self,
+        ctx: &mut quarkstrom::RenderContext,
+        start: Vec2,
+        cursor: Vec2,
+    ) {
+        let color = [255, 0, 0, 255];
+        let dash_color = [255, 0, 0, 200];
+        let point_radius = 2.0;
+
+        ctx.draw_circle(start, point_radius, color);
+        ctx.draw_circle(cursor, point_radius, color);
+
+        let diff = cursor - start;
+        let distance = diff.mag();
+        if distance < 1e-6 {
+            return;
+        }
+
+        let direction = diff / distance;
+        let perpendicular = Vec2::new(-direction.y, direction.x);
+        let cross_half_length = 0.5 * distance.max(10.0).min(100.0);
+
+        ctx.draw_line(
+            start - perpendicular * cross_half_length,
+            start + perpendicular * cross_half_length,
+            color,
+        );
+        ctx.draw_line(
+            cursor - perpendicular * cross_half_length,
+            cursor + perpendicular * cross_half_length,
+            color,
+        );
+
+        let dash_length = 5.0;
+        let gap_length = 3.0;
+        let mut traveled = 0.0;
+        while traveled < distance {
+            let dash_start = start + direction * traveled;
+            let dash_end = start + direction * (traveled + dash_length).min(distance);
+            ctx.draw_line(dash_start, dash_end, dash_color);
+            traveled += dash_length + gap_length;
         }
     }
 }
