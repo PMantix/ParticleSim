@@ -97,8 +97,8 @@ impl Default for SwitchChargingConfig {
         let mut cfg = Self {
             role_to_foil: HashMap::new(),
             sim_dt_s: default_sim_dt_s(),
-            switch_rate_hz: 1.0,
-            delta_steps: 10000,
+            switch_rate_hz: 1_000_000_000_000.0,
+            delta_steps: 20,
             step_setpoints: HashMap::from([
                 (0, StepSetpoint { mode: Mode::Overpotential, value: 0.9 }),
                 (1, StepSetpoint { mode: Mode::Overpotential, value: 0.9 }),
