@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-use crate::io::SimulationState;
+use crate::io::{SavedScenario, SimulationState};
 use crate::renderer::state::{PlaybackModeStatus, PlaybackStatus, PLAYBACK_STATUS, SIM_TIME};
 
 use super::simulation::Simulation;
@@ -127,10 +127,10 @@ impl Simulation {
         self.history_cursor = 0;
         self.history_dirty = false;
         self.playback.reset();
-        
+
         // Add initial snapshot to simple history
         self.push_simple_history_snapshot();
-        
+
         self.publish_playback_status();
     }
 
@@ -222,7 +222,7 @@ impl Simulation {
 
         let newest = self.simple_history.len().saturating_sub(1);
         let mut advanced = false;
-        
+
         for _ in 0..frames {
             if self.history_cursor + 1 <= newest {
                 self.history_cursor += 1;
@@ -262,13 +262,50 @@ impl Simulation {
         }
     }
 
-    pub fn load_state(&mut self, state: SimulationState) {
-        let snapshot = SimulationSnapshot::from_state(state);
+    pub fn load_state(&mut self, saved: SavedScenario) {
+        let SavedScenario {
+            current,
+            history,
+            history_cursor,
+            history_capacity,
+        } = saved;
+
+        let snapshot = SimulationSnapshot::from_state(current);
         snapshot.apply(self);
-        // Recreate compressed history with default config
+
+        // Reset derived systems
         self.compressed_history = super::compressed_history::CompressedHistorySystem::new_default();
-        self.initialize_history();
-        self.history_cursor = 0;
+
+        self.history_capacity = history_capacity.max(1);
+
+        if history.is_empty() {
+            self.initialize_history();
+            return;
+        }
+
+        self.simple_history = history.into();
+
+        if self.simple_history.len() > self.history_capacity {
+            let drop_count = self.simple_history.len() - self.history_capacity;
+            for _ in 0..drop_count {
+                self.simple_history.pop_front();
+            }
+        }
+
+        if self.simple_history.is_empty() {
+            self.initialize_history();
+            return;
+        }
+
+        let latest_index = self.simple_history.len().saturating_sub(1);
+        let cursor = history_cursor.min(latest_index);
+        self.history_cursor = cursor;
+        if !self.apply_snapshot(cursor) {
+            let fallback_cursor = self.simple_history.len().saturating_sub(1);
+            if self.apply_snapshot(fallback_cursor) {
+                self.history_cursor = fallback_cursor;
+            }
+        }
         self.history_dirty = false;
         self.playback.reset();
         self.publish_playback_status();
@@ -284,19 +321,34 @@ impl Simulation {
 
     pub fn publish_playback_status(&mut self) {
         let mut status = PLAYBACK_STATUS.lock();
-        let (history_len, latest_index, cursor, sim_time, frame, dt) = if !self.simple_history.is_empty() {
-            let history_len = self.simple_history.len();
-            let latest_index = history_len.saturating_sub(1);
-            let cursor_clamped = self.history_cursor.min(latest_index);
-            
-            if let Some(state) = self.simple_history.get(cursor_clamped) {
-                (history_len, latest_index, cursor_clamped, state.sim_time, state.frame, state.dt)
+        let (history_len, latest_index, cursor, sim_time, frame, dt) =
+            if !self.simple_history.is_empty() {
+                let history_len = self.simple_history.len();
+                let latest_index = history_len.saturating_sub(1);
+                let cursor_clamped = self.history_cursor.min(latest_index);
+
+                if let Some(state) = self.simple_history.get(cursor_clamped) {
+                    (
+                        history_len,
+                        latest_index,
+                        cursor_clamped,
+                        state.sim_time,
+                        state.frame,
+                        state.dt,
+                    )
+                } else {
+                    (
+                        history_len,
+                        latest_index,
+                        cursor_clamped,
+                        self.frame as f32 * self.dt,
+                        self.frame,
+                        self.dt,
+                    )
+                }
             } else {
-                (history_len, latest_index, cursor_clamped, self.frame as f32 * self.dt, self.frame, self.dt)
-            }
-        } else {
-            (0, 0, 0, self.frame as f32 * self.dt, self.frame, self.dt)
-        };
+                (0, 0, 0, self.frame as f32 * self.dt, self.frame, self.dt)
+            };
 
         let mode = if cursor >= latest_index {
             if self.playback.is_playing() {
