@@ -274,7 +274,21 @@ impl super::Renderer {
                             
                             // Switching role halo
                             if self.show_switching_role_halos {
-                                if let Some((current_step, _)) = self.switch_ui_state.last_step_status {
+                                // Determine playback mode to decide step precedence.
+                                // In playback (HistoryPlaying/HistoryPaused), always use the stored historical step.
+                                // In live mode, prefer the UI-reported step and fall back to the cached one if missing.
+                                let playback_mode = { crate::renderer::state::PLAYBACK_STATUS.lock().mode };
+                                let cached_step = *crate::renderer::state::SWITCH_STEP.lock();
+                                let maybe_step = match playback_mode {
+                                    crate::renderer::state::PlaybackModeStatus::Live => {
+                                        self.switch_ui_state
+                                            .last_step_status
+                                            .map(|(s, _)| s)
+                                            .or(cached_step)
+                                    }
+                                    _ => cached_step,
+                                };
+                                if let Some(current_step) = maybe_step {
                                     let (pos_role, neg_role) = crate::switch_charging::roles_for_step(current_step);
                                     
                                     // Check if this foil has a role in the current active step

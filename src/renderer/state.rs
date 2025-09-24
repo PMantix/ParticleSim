@@ -19,6 +19,8 @@ pub static FOILS: Lazy<Mutex<Vec<Foil>>> = Lazy::new(|| Mutex::new(Vec::new()));
 pub static SPAWN: Lazy<Mutex<Vec<Body>>> = Lazy::new(|| Mutex::new(Vec::new()));
 pub static COLLISION_PASSES: Lazy<Mutex<usize>> = Lazy::new(|| Mutex::new(7));
 pub static SIM_TIME: Lazy<Mutex<f32>> = Lazy::new(|| Mutex::new(0.0));
+// Current switching step index (0..3) for history playback highlighting
+pub static SWITCH_STEP: Lazy<Mutex<Option<u8>>> = Lazy::new(|| Mutex::new(None));
 pub static SHOW_Z_VISUALIZATION: Lazy<AtomicBool> = Lazy::new(|| AtomicBool::new(false));
 pub static Z_VISUALIZATION_STRENGTH: Lazy<Mutex<f32>> = Lazy::new(|| Mutex::new(1.0));
 pub static DOMAIN_WIDTH: Lazy<Mutex<f32>> = Lazy::new(|| Mutex::new(300.0)); // Default domain width

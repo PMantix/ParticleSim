@@ -312,6 +312,8 @@ impl Simulation {
                 step_index: self.switch_scheduler.current_step(),
                 dwell_remaining: self.switch_scheduler.dwell_remaining(),
             });
+            // Mirror the active step for renderer global state (used in playback and live)
+            *crate::renderer::state::SWITCH_STEP.lock() = Some(self.switch_scheduler.current_step());
         }
     }
 
@@ -584,6 +586,7 @@ impl Simulation {
             domain_width: self.domain_width,
             domain_height: self.domain_height,
             domain_depth: self.domain_depth,
+            switch_step: Some(self.switch_scheduler.current_step()),
         };
         
         // Add to ring buffer with capacity limit

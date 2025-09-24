@@ -1441,6 +1441,7 @@ impl From<&LightSnapshot> for SimulationState {
             domain_width: light.domain_width,
             domain_height: light.domain_height,
             domain_depth: light.domain_depth,
+            switch_step: None,
         }
     }
 }
