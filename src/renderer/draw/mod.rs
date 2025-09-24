@@ -593,7 +593,7 @@ impl super::Renderer {
 
         let direction = diff / distance;
         let perpendicular = Vec2::new(-direction.y, direction.x);
-        let cross_half_length = 0.5 * distance.max(10.0).min(100.0);
+        let cross_half_length = 100.0 * distance.max(10.0).min(100.0);
 
         ctx.draw_line(
             start - perpendicular * cross_half_length,
