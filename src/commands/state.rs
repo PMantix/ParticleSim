@@ -29,8 +29,8 @@ pub fn handle_save_state(simulation: &Simulation, path: String) {
 /// Load the simulation state from disk.
 pub fn handle_load_state(simulation: &mut Simulation, path: String) {
     match load_state(path) {
-        Ok(state) => {
-            simulation.load_state(state);
+        Ok(scenario) => {
+            simulation.load_state(scenario);
             PAUSED.store(true, std::sync::atomic::Ordering::Relaxed);
         }
         Err(e) => eprintln!("Failed to load state: {}", e),
