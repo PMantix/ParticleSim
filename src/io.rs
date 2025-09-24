@@ -27,6 +27,9 @@ pub struct SimulationState {
     pub dt: f32,
     #[serde(default = "default_last_thermostat_time")]
     pub last_thermostat_time: f32,
+    /// Switching charging step at the time of capture (0..3). None if not running.
+    #[serde(default)]
+    pub switch_step: Option<u8>,
 }
 
 fn default_domain_width() -> f32 {
@@ -71,6 +74,7 @@ impl SimulationState {
             sim_time: sim.frame as f32 * sim.dt,
             dt: sim.dt,
             last_thermostat_time: sim.last_thermostat_time,
+            switch_step: Some(sim.switch_scheduler.current_step()),
         }
     }
 
@@ -85,6 +89,8 @@ impl SimulationState {
         sim.frame = self.frame;
         sim.dt = self.dt;
         sim.last_thermostat_time = self.last_thermostat_time;
+    // Update current switching step for playback visualization
+    *crate::renderer::state::SWITCH_STEP.lock() = self.switch_step;
 
         // Update the shared state for the GUI (convert half-width/height to full width/height)
         *crate::renderer::state::DOMAIN_WIDTH.lock() = self.domain_width * 2.0;
