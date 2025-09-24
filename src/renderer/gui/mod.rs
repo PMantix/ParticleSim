@@ -13,8 +13,9 @@ pub mod analysis_tab;
 pub mod debug_tab;
 pub mod diagnostics_tab;
 pub mod foils_tab;
-pub mod pid_controller;
+pub mod measurement_tab;
 pub mod physics_tab;
+pub mod pid_controller;
 pub mod scenario_tab;
 pub mod screen_capture_tab;
 pub mod simulation_tab;
@@ -109,6 +110,11 @@ impl super::Renderer {
                         );
                         ui.selectable_value(
                             &mut self.current_tab,
+                            super::GuiTab::Measurement,
+                            "📏 Measurement",
+                        );
+                        ui.selectable_value(
+                            &mut self.current_tab,
                             super::GuiTab::SwitchCharging,
                             "🔁 Switch Charging",
                         );
@@ -121,6 +127,10 @@ impl super::Renderer {
                 });
 
                 ui.separator();
+
+                if self.current_tab != super::GuiTab::Measurement {
+                    self.last_non_measurement_tab = self.current_tab;
+                }
 
                 self.switch_ui_state
                     .sync_sim_dt(*crate::renderer::state::TIMESTEP.lock());
@@ -142,6 +152,7 @@ impl super::Renderer {
                         super::GuiTab::SwitchCharging => {
                             switch_charging::ui_switch_charging(ui, &mut self.switch_ui_state)
                         }
+                        super::GuiTab::Measurement => self.show_measurement_tab(ui),
                         super::GuiTab::Analysis => self.show_analysis_tab(ui),
                         super::GuiTab::Debug => self.show_debug_tab(ui),
                         super::GuiTab::Diagnostics => self.show_diagnostics_tab(ui),

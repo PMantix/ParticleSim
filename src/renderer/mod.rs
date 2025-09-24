@@ -70,6 +70,13 @@ pub enum DeleteOption {
     DMC,
 }
 
+#[derive(Clone, Debug)]
+pub struct MeasurementRecord {
+    pub step: usize,
+    pub time_fs: f32,
+    pub distance: f32,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum GuiTab {
     Simulation,
@@ -79,6 +86,7 @@ pub enum GuiTab {
     Scenario,
     Foils,
     SwitchCharging,
+    Measurement,
     Analysis,
     Debug,
     Diagnostics,
@@ -200,6 +208,11 @@ pub struct Renderer {
     pub is_selecting_region: bool,
     pub capture_counter: usize,
     pub should_capture_next_frame: bool,
+    pub measurement_start: Option<Vec2>,
+    pub measurement_selecting_start: bool,
+    pub measurement_history: Vec<MeasurementRecord>,
+    pub measurement_cursor: Option<Vec2>,
+    pub last_non_measurement_tab: GuiTab,
     // Splash screen state
     show_splash: bool,
     splash_chars: Vec<SplashChar>,
@@ -343,6 +356,11 @@ impl quarkstrom::Renderer for Renderer {
             is_selecting_region: false,
             capture_counter: 0,
             should_capture_next_frame: false,
+            measurement_start: None,
+            measurement_selecting_start: false,
+            measurement_history: Vec::new(),
+            measurement_cursor: None,
+            last_non_measurement_tab: GuiTab::Simulation,
             show_splash: true,
             splash_chars,
             splash_particles,
@@ -401,6 +419,14 @@ impl Renderer {
             (rng.f32() * 255.0) as u8,
             (rng.f32() * 255.0) as u8,
         )
+    }
+
+    pub fn current_measurement_distance(&self) -> Option<f32> {
+        if let (Some(start), Some(cursor)) = (self.measurement_start, self.measurement_cursor) {
+            Some((cursor - start).mag())
+        } else {
+            None
+        }
     }
 
     fn update_splash_particles(
