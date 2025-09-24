@@ -60,6 +60,21 @@ fn default_last_thermostat_time() -> f32 {
     0.0
 }
 
+fn default_history_capacity() -> usize {
+    crate::config::PLAYBACK_HISTORY_FRAMES
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct SavedScenario {
+    pub current: SimulationState,
+    #[serde(default)]
+    pub history: Vec<SimulationState>,
+    #[serde(default)]
+    pub history_cursor: usize,
+    #[serde(default = "default_history_capacity")]
+    pub history_capacity: usize,
+}
+
 impl SimulationState {
     pub fn from_simulation(sim: &Simulation) -> Self {
         Self {
@@ -89,8 +104,8 @@ impl SimulationState {
         sim.frame = self.frame;
         sim.dt = self.dt;
         sim.last_thermostat_time = self.last_thermostat_time;
-    // Update current switching step for playback visualization
-    *crate::renderer::state::SWITCH_STEP.lock() = self.switch_step;
+        // Update current switching step for playback visualization
+        *crate::renderer::state::SWITCH_STEP.lock() = self.switch_step;
 
         // Update the shared state for the GUI (convert half-width/height to full width/height)
         *crate::renderer::state::DOMAIN_WIDTH.lock() = self.domain_width * 2.0;
@@ -110,16 +125,36 @@ pub fn save_state<P: AsRef<Path>>(path: P, sim: &Simulation) -> std::io::Result<
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)?;
     }
-    let state = SimulationState::from_simulation(sim);
+    let state = SavedScenario {
+        current: SimulationState::from_simulation(sim),
+        history: sim.simple_history.iter().cloned().collect(),
+        history_cursor: sim.history_cursor,
+        history_capacity: sim.history_capacity,
+    };
     let json = serde_json::to_string_pretty(&state)
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
     std::fs::write(path, json)
 }
 
-pub fn load_state<P: AsRef<Path>>(path: P) -> std::io::Result<SimulationState> {
+pub fn load_state<P: AsRef<Path>>(path: P) -> std::io::Result<SavedScenario> {
     profile_scope!("load_state");
     let data = std::fs::read_to_string(path)?;
-    let state: SimulationState = serde_json::from_str(&data)
-        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
-    Ok(state)
+    match serde_json::from_str::<SavedScenario>(&data) {
+        Ok(scenario) => Ok(scenario),
+        Err(primary_err) => match serde_json::from_str::<SimulationState>(&data) {
+            Ok(state) => Ok(SavedScenario {
+                current: state,
+                history: Vec::new(),
+                history_cursor: 0,
+                history_capacity: default_history_capacity(),
+            }),
+            Err(legacy_err) => Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!(
+                    "failed to parse saved scenario: {}; legacy format error: {}",
+                    primary_err, legacy_err
+                ),
+            )),
+        },
+    }
 }

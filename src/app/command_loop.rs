@@ -134,8 +134,8 @@ pub fn handle_command(cmd: SimCommand, simulation: &mut Simulation) {
             }
         }
         SimCommand::LoadState { path } => match load_state(path) {
-            Ok(state) => {
-                simulation.load_state(state);
+            Ok(scenario) => {
+                simulation.load_state(scenario);
                 PAUSED.store(true, Ordering::Relaxed);
                 state_changed = true;
             }
@@ -412,7 +412,7 @@ pub fn handle_command(cmd: SimCommand, simulation: &mut Simulation) {
             simulation
                 .cell_list
                 .update_domain_size(half_width, half_height);
-            
+
             // Update shared state so GUI stays in sync
             *crate::renderer::state::DOMAIN_WIDTH.lock() = width;
             *crate::renderer::state::DOMAIN_HEIGHT.lock() = height;

@@ -76,8 +76,8 @@ pub struct StepSetpoint {
 impl Default for StepSetpoint {
     fn default() -> Self {
         Self {
-            mode: Mode::Current,
-            value: 0.0,
+            mode: Mode::Overpotential,
+            value: 0.9,
         }
     }
 }
@@ -97,13 +97,13 @@ impl Default for SwitchChargingConfig {
         let mut cfg = Self {
             role_to_foil: HashMap::new(),
             sim_dt_s: default_sim_dt_s(),
-            switch_rate_hz: 1.0,
-            delta_steps: 10000,
+            switch_rate_hz: 1_000_000_000_000.0,
+            delta_steps: 20,
             step_setpoints: HashMap::from([
-                (0, StepSetpoint { mode: Mode::Current, value: 100.0 }),
-                (1, StepSetpoint { mode: Mode::Current, value: 100.0 }),
-                (2, StepSetpoint { mode: Mode::Current, value: 100.0 }),
-                (3, StepSetpoint { mode: Mode::Current, value: 100.0 }),
+                (0, StepSetpoint { mode: Mode::Overpotential, value: 0.9 }),
+                (1, StepSetpoint { mode: Mode::Overpotential, value: 0.9 }),
+                (2, StepSetpoint { mode: Mode::Overpotential, value: 0.9 }),
+                (3, StepSetpoint { mode: Mode::Overpotential, value: 0.9 }),
             ]),
         };
         cfg.ensure_all_steps();
