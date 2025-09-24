@@ -380,7 +380,9 @@ impl quarkstrom::Renderer for Renderer {
             // Window is minimized; ignore input until restored
             return;
         }
-        self.scale_factor = input.scale_factor().unwrap_or(1.0) as f32;
+        if let Some(scale_factor) = input.scale_factor() {
+            self.scale_factor = scale_factor as f32;
+        }
         self.handle_input(input, width, height);
     }
     fn render(&mut self, ctx: &mut quarkstrom::RenderContext) {
