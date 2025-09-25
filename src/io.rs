@@ -160,7 +160,7 @@ pub fn save_state<P: AsRef<Path>>(path: P, sim: &Simulation) -> std::io::Result<
     };
     // Write to a temporary file first to avoid truncation on crash/interruption
     // Compression preference primarily controlled by global SAVE_COMPRESS; fallback to extension for legacy compatibility
-    let mut use_gzip = *crate::renderer::state::SAVE_COMPRESS.lock();
+    let use_gzip = *crate::renderer::state::SAVE_COMPRESS.lock();
     let save_format = *crate::renderer::state::SAVE_FORMAT.lock();
     if !use_gzip {
         // If user disabled compression but filename explicitly ends with .gz, still honor preference OFF

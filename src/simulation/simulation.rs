@@ -55,6 +55,7 @@ pub struct Simulation {
     pub switch_saved_states: HashMap<u64, FoilStateSnapshot>,
     pub switch_active_pair: Option<(u64, u64)>,
     pub switch_status_tx: Option<StatusSender>,
+    pub thermostat_bootstrapped: bool,
 }
 
 impl Simulation {
@@ -102,6 +103,7 @@ impl Simulation {
             switch_saved_states: HashMap::new(),
             switch_active_pair: None,
             switch_status_tx: None,
+            thermostat_bootstrapped: false,
         };
         sim.initialize_history();
         sim
@@ -545,7 +547,23 @@ impl Simulation {
 
         self.perform_electron_hopping_with_exclusions(&foil_current_recipients);
 
-        // Apply periodic thermostat if enough time has passed
+        // One-time forced bootstrap (before periodic): if not yet bootstrapped and we have liquid species with near-zero temp
+        if !self.thermostat_bootstrapped {
+            let liquid_temp = crate::simulation::utils::compute_liquid_temperature(&self.bodies);
+            if liquid_temp <= 1e-6 {
+                // Check if we actually have liquid species present
+                let has_liquid = self.bodies.iter().any(|b| matches!(b.species, crate::body::Species::LithiumIon | crate::body::Species::ElectrolyteAnion | crate::body::Species::EC | crate::body::Species::DMC));
+                if has_liquid {
+                    crate::simulation::utils::initialize_liquid_velocities_to_temperature(&mut self.bodies, self.config.temperature);
+                    eprintln!("[thermostat-force-bootstrap] frame={} assigned initial velocities at {:.2}K", self.frame, self.config.temperature);
+                    self.thermostat_bootstrapped = true;
+                }
+            } else {
+                self.thermostat_bootstrapped = true; // Already warm
+            }
+        }
+
+        // Apply periodic thermostat if enough time has passed (after ensuring bootstrap)
         if time - self.last_thermostat_time >= self.config.thermostat_interval_fs {
             self.apply_thermostat();
             self.last_thermostat_time = time;

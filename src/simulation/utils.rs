@@ -65,6 +65,31 @@ pub fn compute_liquid_temperature(bodies: &[Body]) -> f32 {
     avg / BOLTZMANN_CONSTANT
 }
 
+/// Initialize (or reinitialize) velocities for liquid species to match a target temperature.
+/// If velocities are all ~0, the thermostat cannot bootstrap; this provides a Maxwell-Boltzmann draw.
+pub fn initialize_liquid_velocities_to_temperature(bodies: &mut [Body], target_temp: f32) {
+    if target_temp <= 0.0 { return; }
+    use rand::{rng, Rng};
+    let mut rng = rng();
+    // In 2D: (1/2) m (vx^2 + vy^2) = k_B T => each component variance = k_B T / m
+    for b in bodies.iter_mut() {
+        match b.species {
+            Species::LithiumIon | Species::ElectrolyteAnion | Species::EC | Species::DMC => {
+                let sigma = (BOLTZMANN_CONSTANT * target_temp / b.mass).sqrt();
+                // Box-Muller
+                let r1: f32 = rng.random::<f32>().max(1e-12);
+                let r2: f32 = rng.random::<f32>();
+                let mag: f32 = (-2.0_f32 * r1.ln()).sqrt();
+                let z0 = mag * (2.0 * std::f32::consts::PI * r2).cos();
+                let z1 = mag * (2.0 * std::f32::consts::PI * r2).sin();
+                b.vel.x = z0 * sigma;
+                b.vel.y = z1 * sigma;
+            }
+            _ => {}
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

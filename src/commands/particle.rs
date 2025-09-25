@@ -286,11 +286,13 @@ pub fn handle_set_domain_size(simulation: &mut Simulation, width: f32, height: f
 
 pub fn handle_set_temperature(simulation: &mut Simulation, temperature: f32) {
     let current = crate::simulation::utils::compute_temperature(&simulation.bodies);
-    if current > 0.0 {
+    if current > 1e-8 {
         let scale = (temperature / current).sqrt();
-        for body in &mut simulation.bodies {
-            body.vel *= scale;
-        }
+        for body in &mut simulation.bodies { body.vel *= scale; }
+    } else {
+        crate::simulation::utils::initialize_liquid_velocities_to_temperature(&mut simulation.bodies, temperature);
+        // If we only initialize liquid species, optionally scale metal species tiny random? Keep them zero for now.
+        eprintln!("[set_temperature-bootstrap] initialized velocities to {:.2}K (prev ~0)", temperature);
     }
     crate::config::LJ_CONFIG.lock().temperature = temperature;
 }
