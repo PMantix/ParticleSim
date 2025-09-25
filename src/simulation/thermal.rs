@@ -14,40 +14,36 @@ impl Simulation {
             return;
         }
 
-        // Calculate current temperature of solvent particles only
-        let mut solvent_ke = 0.0;
-        let mut solvent_count = 0;
-
+        // Calculate current temperature of liquid particles (Li+, Anion, EC, DMC)
+        let mut liquid_ke = 0.0;
+        let mut liquid_count = 0;
         for body in &self.bodies {
             match body.species {
-                Species::EC | Species::DMC => {
-                    solvent_ke += 0.5 * body.mass * body.vel.mag_sq();
-                    solvent_count += 1;
+                Species::LithiumIon | Species::ElectrolyteAnion | Species::EC | Species::DMC => {
+                    liquid_ke += 0.5 * body.mass * body.vel.mag_sq();
+                    liquid_count += 1;
                 }
-                _ => {} // Skip metals and ions
+                _ => {}
             }
         }
-
-        if solvent_count == 0 {
-            return; // No solvent particles to thermostat
-        }
-
-        // For 2D: <E> = k_B * T, so T = <E> / k_B
-        let avg_kinetic_energy = solvent_ke / solvent_count as f32;
+        if liquid_count == 0 { return; }
+        let avg_kinetic_energy = liquid_ke / liquid_count as f32;
         let current_temp = avg_kinetic_energy / BOLTZMANN_CONSTANT;
-
-        if current_temp > 0.0 {
-            let scale = (target_temp / current_temp).sqrt();
-
-            // Scale velocities of solvent particles only
-            for body in &mut self.bodies {
-                match body.species {
-                    Species::EC | Species::DMC => {
-                        body.vel *= scale;
-                    }
-                    _ => {} // Don't modify metals or ions
+        if current_temp <= 0.0 { return; }
+    let scale = (target_temp / current_temp).sqrt();
+    *crate::renderer::state::LAST_THERMOSTAT_SCALE.lock() = scale;
+        // Scale velocities for liquid species only
+        for body in &mut self.bodies {
+            match body.species {
+                Species::LithiumIon | Species::ElectrolyteAnion | Species::EC | Species::DMC => {
+                    body.vel *= scale;
                 }
+                _ => {}
             }
         }
+        if (self.frame % 500) == 0 {
+            eprintln!("[thermostat] frame={} current_liquid_T={:.2}K target_T={:.2}K scale={:.4}", self.frame, current_temp, target_temp, scale);
+        }
+        // Store last scale factor in a debug field? Could add instrumentation later.
     }
 }

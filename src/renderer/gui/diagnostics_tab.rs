@@ -153,8 +153,14 @@ impl super::super::Renderer {
             ui.label(format!("Anion particles: {}", anion_count));
             ui.label(format!("Foil particles: {}", foil_count));
             ui.label(format!("Total particles: {}", self.bodies.len()));
-            let temp = crate::simulation::compute_temperature(&self.bodies);
-            ui.label(format!("Temperature: {:.3}", temp));
+            let temp_global = crate::simulation::compute_temperature(&self.bodies);
+            let temp_liquid = crate::simulation::utils::compute_liquid_temperature(&self.bodies);
+            ui.label(format!("Global T: {:.3} K", temp_global));
+            ui.label(format!("Liquid T: {:.3} K", temp_liquid));
+            let scale = *crate::renderer::state::LAST_THERMOSTAT_SCALE.lock();
+            if scale > 0.0 {
+                ui.label(format!("Thermostat scale (last): {:.4}", scale));
+            }
         });
 
         ui.separator();

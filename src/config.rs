@@ -232,8 +232,9 @@ pub struct SimConfig {
     pub coulomb_constant: f32,
     /// Current simulation temperature
     pub temperature: f32,
-    /// How frequently (in femtoseconds) to apply the thermostat
-    pub thermostat_frequency: f32,
+    /// Interval between thermostat applications (fs)
+    #[serde(alias = "thermostat_frequency")]
+    pub thermostat_interval_fs: f32,
     pub enable_out_of_plane: bool,
     pub z_stiffness: f32,
     pub z_damping: f32,
@@ -284,7 +285,7 @@ impl Default for SimConfig {
             lj_force_cutoff: LJ_FORCE_CUTOFF,
             coulomb_constant: units::COULOMB_CONSTANT,
             temperature: DEFAULT_TEMPERATURE,
-            thermostat_frequency: 1.0, // Apply thermostat every 1.0 fs by default
+            thermostat_interval_fs: 1.0, // Apply thermostat every 1 fs by default
             enable_out_of_plane: OUT_OF_PLANE_ENABLED,
             z_stiffness: Z_STIFFNESS,
             z_damping: Z_DAMPING,

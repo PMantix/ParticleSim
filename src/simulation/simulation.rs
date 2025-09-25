@@ -546,7 +546,7 @@ impl Simulation {
         self.perform_electron_hopping_with_exclusions(&foil_current_recipients);
 
         // Apply periodic thermostat if enough time has passed
-        if time - self.last_thermostat_time >= self.config.thermostat_frequency {
+        if time - self.last_thermostat_time >= self.config.thermostat_interval_fs {
             self.apply_thermostat();
             self.last_thermostat_time = time;
         }

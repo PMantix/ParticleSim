@@ -47,6 +47,24 @@ pub fn compute_temperature(bodies: &[Body]) -> f32 {
     avg_kinetic_energy / BOLTZMANN_CONSTANT
 }
 
+/// Compute temperature for "liquid" species only (Li+, ElectrolyteAnion, EC, DMC)
+pub fn compute_liquid_temperature(bodies: &[Body]) -> f32 {
+    let mut kinetic = 0.0f32;
+    let mut count = 0usize;
+    for b in bodies.iter() {
+        match b.species {
+            Species::LithiumIon | Species::ElectrolyteAnion | Species::EC | Species::DMC => {
+                kinetic += 0.5 * b.mass * b.vel.mag_sq();
+                count += 1;
+            }
+            _ => {}
+        }
+    }
+    if count == 0 { return 0.0; }
+    let avg = kinetic / count as f32;
+    avg / BOLTZMANN_CONSTANT
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -29,6 +29,8 @@ pub static DOMAIN_HEIGHT: Lazy<Mutex<f32>> = Lazy::new(|| Mutex::new(300.0)); //
 pub static SAVE_COMPRESS: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(true));
 // Whether to include playback history when saving. Large size impact. Default: true for backward compatibility.
 pub static SAVE_INCLUDE_HISTORY: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(true));
+// Last applied thermostat scale factor for diagnostics
+pub static LAST_THERMOSTAT_SCALE: Lazy<Mutex<f32>> = Lazy::new(|| Mutex::new(1.0));
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SaveFormat {
