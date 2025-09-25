@@ -483,15 +483,14 @@ impl super::super::Renderer {
                 let saved_state_dir = PathBuf::from("saved_state");
                 // Ensure directory exists
                 let _ = fs::create_dir_all(&saved_state_dir);
-                // List all .json files in saved_state
+                // List all recognized save files (.json, .json.gz, .bin, .bin.gz)
                 let mut state_files: Vec<String> = fs::read_dir(&saved_state_dir)
                     .map(|rd| {
                         rd.filter_map(|e| e.ok())
                             .filter(|e| {
-                                e.path()
-                                    .extension()
-                                    .map(|ext| ext == "json")
-                                    .unwrap_or(false)
+                                if let Some(name) = e.file_name().to_str() {                    
+                                    name.ends_with(".json") || name.ends_with(".json.gz") || name.ends_with(".bin") || name.ends_with(".bin.gz")
+                                } else { false }
                             })
                             .map(|e| e.file_name().to_string_lossy().to_string())
                             .collect()
@@ -499,27 +498,63 @@ impl super::super::Renderer {
                     .unwrap_or_default();
                 state_files.sort();
 
+                // Save format selector
+                {
+                    use crate::renderer::state::SaveFormat;
+                    let mut fmt = *crate::renderer::state::SAVE_FORMAT.lock();
+                    egui::ComboBox::from_id_source("save_format_combo")
+                        .selected_text(match fmt { SaveFormat::Json => "JSON", SaveFormat::Binary => "Binary" })
+                        .show_ui(ui, |ui| {
+                            ui.selectable_value(&mut fmt, SaveFormat::Json, "JSON");
+                            ui.selectable_value(&mut fmt, SaveFormat::Binary, "Binary");
+                        });
+                    *crate::renderer::state::SAVE_FORMAT.lock() = fmt;
+                }
+
+                // Compression toggle
+                {
+                    let mut compress = *crate::renderer::state::SAVE_COMPRESS.lock();
+                    let mut uncompressed = !compress;
+                    if ui.checkbox(&mut uncompressed, "Save uncompressed (debug)").on_hover_text("Unchecked = gzip compress saves (default). Checked = plain JSON.").changed() {
+                        compress = !uncompressed;
+                        *crate::renderer::state::SAVE_COMPRESS.lock() = compress;
+                    }
+                }
+
+                // Include history toggle
+                {
+                    let mut include_history = *crate::renderer::state::SAVE_INCLUDE_HISTORY.lock();
+                    if ui.checkbox(&mut include_history, "Include history").on_hover_text("If unchecked, only the current frame is saved (much smaller/faster). History playback data omitted.").changed() {
+                        *crate::renderer::state::SAVE_INCLUDE_HISTORY.lock() = include_history;
+                    }
+                }
+
                 // Save name input
                 ui.label("Save as:");
                 let save_name = &mut self.save_state_name;
                 let save_clicked = ui.text_edit_singleline(save_name).lost_focus()
                     && ui.input(|i| i.key_pressed(egui::Key::Enter));
                 if ui.button("Save State").clicked() || save_clicked {
-                    // If no name, auto-increment
+                    // If no name, auto-increment base name with chosen format
                     let mut name = save_name.trim().to_string();
+                    let fmt = *crate::renderer::state::SAVE_FORMAT.lock();
+                    let compress = *crate::renderer::state::SAVE_COMPRESS.lock();
                     if name.is_empty() {
-                        // Find next available save_XX.json
                         let mut idx = 1;
                         loop {
-                            let candidate = format!("save_{:02}.json", idx);
+                            let candidate = format!("save_{:02}.{}", idx, fmt.extension(compress));
                             if !state_files.iter().any(|f| f == &candidate) {
                                 name = candidate;
                                 break;
                             }
                             idx += 1;
                         }
-                    } else if !name.ends_with(".json") {
-                        name.push_str(".json");
+                    } else {
+                        // Strip any known suffixes then append correct one
+                        for suf in [".json.gz", ".json", ".bin.gz", ".bin"] {
+                            if name.ends_with(suf) { name = name.trim_end_matches(suf).to_string(); break; }
+                        }
+                        name = format!("{name}.{}", fmt.extension(compress));
                     }
                     let path = saved_state_dir.join(&name);
                     SIM_COMMAND_SENDER

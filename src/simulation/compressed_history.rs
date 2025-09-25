@@ -1437,6 +1437,7 @@ impl From<&LightSnapshot> for SimulationState {
             foils: light.foils.iter().map(Foil::from).collect(),
             body_to_foil: light.body_to_foil.clone(),
             config: light.config.clone(),
+            switch_config: crate::switch_charging::SwitchChargingConfig::default(),
             
             domain_width: light.domain_width,
             domain_height: light.domain_height,

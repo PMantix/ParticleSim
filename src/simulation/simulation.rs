@@ -582,6 +582,7 @@ impl Simulation {
             foils: self.foils.clone(),
             body_to_foil: self.body_to_foil.clone(),
             config: self.config.clone(),
+            switch_config: self.switch_config.clone(),
             last_thermostat_time: self.last_thermostat_time,
             domain_width: self.domain_width,
             domain_height: self.domain_height,

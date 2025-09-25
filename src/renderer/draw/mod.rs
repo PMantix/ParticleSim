@@ -281,10 +281,9 @@ impl super::Renderer {
                                 let cached_step = *crate::renderer::state::SWITCH_STEP.lock();
                                 let maybe_step = match playback_mode {
                                     crate::renderer::state::PlaybackModeStatus::Live => {
-                                        self.switch_ui_state
-                                            .last_step_status
-                                            .map(|(s, _)| s)
-                                            .or(cached_step)
+                                        // Live mode: rely on current simulation-updated global SWITCH_STEP;
+                                        // (simulation updates this each tick in tick_switch_charging)
+                                        cached_step
                                     }
                                     _ => cached_step,
                                 };

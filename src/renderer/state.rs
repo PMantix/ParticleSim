@@ -25,6 +25,29 @@ pub static SHOW_Z_VISUALIZATION: Lazy<AtomicBool> = Lazy::new(|| AtomicBool::new
 pub static Z_VISUALIZATION_STRENGTH: Lazy<Mutex<f32>> = Lazy::new(|| Mutex::new(1.0));
 pub static DOMAIN_WIDTH: Lazy<Mutex<f32>> = Lazy::new(|| Mutex::new(300.0)); // Default domain width
 pub static DOMAIN_HEIGHT: Lazy<Mutex<f32>> = Lazy::new(|| Mutex::new(300.0)); // Default domain height
+// Whether to compress saved scenarios (gzip). Default: true (compression on)
+pub static SAVE_COMPRESS: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(true));
+// Whether to include playback history when saving. Large size impact. Default: true for backward compatibility.
+pub static SAVE_INCLUDE_HISTORY: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(true));
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SaveFormat {
+    Json,
+    Binary,
+}
+
+impl SaveFormat {
+    pub fn extension(self, compressed: bool) -> &'static str {
+        match (self, compressed) {
+            (SaveFormat::Json, true) => "json.gz",
+            (SaveFormat::Json, false) => "json",
+            (SaveFormat::Binary, true) => "bin.gz",
+            (SaveFormat::Binary, false) => "bin",
+        }
+    }
+}
+
+pub static SAVE_FORMAT: Lazy<Mutex<SaveFormat>> = Lazy::new(|| Mutex::new(SaveFormat::Binary));
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PlaybackModeStatus {

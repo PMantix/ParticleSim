@@ -100,10 +100,10 @@ impl Default for SwitchChargingConfig {
             switch_rate_hz: 1.0,
             delta_steps: 10000,
             step_setpoints: HashMap::from([
-                (0, StepSetpoint { mode: Mode::Current, value: 100.0 }),
-                (1, StepSetpoint { mode: Mode::Current, value: 100.0 }),
-                (2, StepSetpoint { mode: Mode::Current, value: 100.0 }),
-                (3, StepSetpoint { mode: Mode::Current, value: 100.0 }),
+                (0, StepSetpoint { mode: Mode::Overpotential, value: 0.9 }),
+                (1, StepSetpoint { mode: Mode::Overpotential, value: 0.9 }),
+                (2, StepSetpoint { mode: Mode::Overpotential, value: 0.9 }),
+                (3, StepSetpoint { mode: Mode::Overpotential, value: 0.9 }),
             ]),
         };
         cfg.ensure_all_steps();
