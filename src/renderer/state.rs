@@ -192,6 +192,12 @@ pub enum SimCommand {
     DisableOverpotentialMode {
         foil_id: u64,
     },
+    // Group linking controls
+    SetFoilGroups {
+        group_a: Vec<u64>,
+        group_b: Vec<u64>,
+    },
+    ClearFoilGroups,
     SaveState {
         path: String,
     },

@@ -9,11 +9,12 @@ use crate::profile_scope;
 #[derive(Default)]
 pub struct FoilElectronFractionDiagnostic {
     pub fractions: HashMap<u64, f32>,
+    pub last_calc_time: f32,
 }
 
 impl FoilElectronFractionDiagnostic {
     pub fn new() -> Self {
-        Self { fractions: HashMap::new() }
+        Self { fractions: HashMap::new(), last_calc_time: f32::NEG_INFINITY }
     }
 
     /// Recompute electron fractions for all foils using quadtree for efficient neighbor search.
@@ -79,20 +80,10 @@ impl FoilElectronFractionDiagnostic {
     /// More efficient version that only recalculates if enough time has passed
     /// to avoid performance issues during rendering
     pub fn calculate_if_needed(&mut self, bodies: &[Body], foils: &[Foil], quadtree: &Quadtree, current_time: f32, min_interval: f32) -> bool {
-        static mut LAST_CALCULATION_TIME: f32 = 0.0;
-        
-        let time_since_last = unsafe { 
-            let elapsed = current_time - LAST_CALCULATION_TIME;
-            if elapsed >= min_interval {
-                LAST_CALCULATION_TIME = current_time;
-                true
-            } else {
-                false
-            }
-        };
-        
-        if time_since_last {
+        let elapsed = current_time - self.last_calc_time;
+        if elapsed >= min_interval {
             self.calculate(bodies, foils, quadtree);
+            self.last_calc_time = current_time;
             true
         } else {
             false

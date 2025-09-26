@@ -2,7 +2,6 @@
 // Focused test using actual configuration but scaled down
 use particle_sim::simulation::Simulation;
 use particle_sim::body::{Body, Species};
-use particle_sim::config::SimConfig;
 use particle_sim::init_config::InitConfig;
 use ultraviolet::Vec2;
 use rand::Rng;

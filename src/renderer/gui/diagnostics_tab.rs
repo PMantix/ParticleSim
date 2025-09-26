@@ -65,16 +65,7 @@ impl super::super::Renderer {
         ui.group(|ui| {
             ui.label("🔋 Foil Electron Ratio");
             
-            // Update diagnostic periodically using quadtree for efficiency
             if let Some(diag) = &mut self.foil_electron_fraction_diagnostic {
-                // Reconstruct quadtree from current node data for diagnostic calculation
-                let mut temp_quadtree = crate::quadtree::Quadtree::new(1.0, 2.0, 1, 1024);
-                temp_quadtree.nodes = self.quadtree.clone();
-                
-                // Only recalculate every 0.5 fs to avoid performance issues
-                let current_time = *crate::renderer::state::SIM_TIME.lock();
-                diag.calculate_if_needed(&self.bodies, &self.foils, &temp_quadtree, current_time, 0.5);
-                
                 for foil in &self.foils {
                     if let Some(frac) = diag.fractions.get(&foil.id) {
                         ui.horizontal(|ui| {

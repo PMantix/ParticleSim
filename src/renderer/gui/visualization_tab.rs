@@ -79,10 +79,17 @@ impl super::super::Renderer {
                         "Body Only",
                     );
                 });
+            // Dipole visualization controls
+            ui.checkbox(&mut self.show_dipoles, "Show EC/DMC dipoles");
+            if self.show_dipoles {
+                ui.add(egui::Slider::new(&mut self.dipole_scale, 0.1..=5.0).text("Dipole scale"));
+            }
+
+            // Velocity vector scale control
             ui.add(
                 egui::Slider::new(&mut self.velocity_vector_scale, 0.01..=1.0)
                     .text("Velocity Vector Scale")
-                    .step_by(0.01),
+                    .step_by(0.01)
             );
         });
 

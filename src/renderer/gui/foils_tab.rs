@@ -55,6 +55,75 @@ impl super::super::Renderer {
 
         ui.separator();
 
+        // Group Linking UI
+        ui.group(|ui| {
+            ui.label("👥 Foil Group Linking (A/B)");
+            let foils = FOILS.lock();
+            if foils.is_empty() {
+                ui.label("No foils available to group.");
+            } else {
+                ui.horizontal(|ui| {
+                    ui.vertical(|ui| {
+                        ui.label("Group A:");
+                        for foil in foils.iter() {
+                            let mut in_a = self.group_a_selected.contains(&foil.id);
+                            if ui.checkbox(&mut in_a, format!("Foil {}", foil.id)).clicked() {
+                                if in_a {
+                                    if !self.group_a_selected.contains(&foil.id) {
+                                        self.group_a_selected.push(foil.id);
+                                    }
+                                    // ensure not in B
+                                    self.group_b_selected.retain(|&id| id != foil.id);
+                                } else {
+                                    self.group_a_selected.retain(|&id| id != foil.id);
+                                }
+                            }
+                        }
+                        if ui.button("Clear A").clicked() { self.group_a_selected.clear(); }
+                    });
+                    ui.separator();
+                    ui.vertical(|ui| {
+                        ui.label("Group B:");
+                        for foil in foils.iter() {
+                            let mut in_b = self.group_b_selected.contains(&foil.id);
+                            if ui.checkbox(&mut in_b, format!("Foil {}", foil.id)).clicked() {
+                                if in_b {
+                                    if !self.group_b_selected.contains(&foil.id) {
+                                        self.group_b_selected.push(foil.id);
+                                    }
+                                    // ensure not in A
+                                    self.group_a_selected.retain(|&id| id != foil.id);
+                                } else {
+                                    self.group_b_selected.retain(|&id| id != foil.id);
+                                }
+                            }
+                        }
+                        if ui.button("Clear B").clicked() { self.group_b_selected.clear(); }
+                    });
+                });
+                ui.horizontal(|ui| {
+                    if ui.button("Apply Groups").clicked() {
+                        if let Some(sender) = SIM_COMMAND_SENDER.lock().as_ref() {
+                            let _ = sender.send(SimCommand::SetFoilGroups {
+                                group_a: self.group_a_selected.clone(),
+                                group_b: self.group_b_selected.clone(),
+                            });
+                        }
+                    }
+                    if ui.button("Clear Groups").clicked() {
+                        self.group_a_selected.clear();
+                        self.group_b_selected.clear();
+                        if let Some(sender) = SIM_COMMAND_SENDER.lock().as_ref() {
+                            let _ = sender.send(SimCommand::ClearFoilGroups);
+                        }
+                    }
+                });
+                ui.label("Within-group: parallel; Between-group: opposite.");
+            }
+        });
+
+        ui.separator();
+
         // Foil Linking Controls
         ui.group(|ui| {
             ui.label("🔗 Foil Link Controls");
@@ -124,14 +193,6 @@ impl super::super::Renderer {
             ui.label("🔋 All Foils Electron Ratios");
             
             if let Some(diag) = &mut self.foil_electron_fraction_diagnostic {
-                // Reconstruct quadtree from current node data for diagnostic calculation
-                let mut temp_quadtree = crate::quadtree::Quadtree::new(1.0, 2.0, 1, 1024);
-                temp_quadtree.nodes = self.quadtree.clone();
-                
-                // Recalculate every 0.5 fs to avoid performance issues
-                let current_time = *SIM_TIME.lock();
-                diag.calculate_if_needed(&self.bodies, &self.foils, &temp_quadtree, current_time, 0.5);
-                
                 let foils = FOILS.lock();
                 for foil in foils.iter() {
                     ui.horizontal(|ui| {

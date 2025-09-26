@@ -67,24 +67,62 @@ pub fn apply_polar_forces(sim: &mut Simulation) {
         };
 
         for &j in &neighbors {
-            if sim.bodies[j].charge.abs() < f32::EPSILON {
+            let k_e = sim.config.coulomb_constant;
+            let field_from_source = |point: ultraviolet::Vec2,
+                                     point_radius: f32,
+                                     src_pos: ultraviolet::Vec2,
+                                     src_radius: f32,
+                                     src_charge: f32| {
+                if src_charge.abs() < f32::EPSILON { return ultraviolet::Vec2::zero(); }
+                let d = point - src_pos;
+                let dist = d.mag();
+                let min_sep = point_radius + src_radius;
+                let r_eff = dist.max(min_sep);
+                let denom = (r_eff * r_eff + epsilon_sq) * r_eff;
+                d * (k_e * src_charge / denom)
+            };
+
+            // Total field at i's nucleus/electron from j's net charge and (if present) j's dipole
+            let i_nuc_pos = sim.bodies[i].pos;
+            let i_nuc_rad = sim.bodies[i].radius;
+            let i_ele_pos = e_pos;
+
+            // j source terms
+            let j_pos = sim.bodies[j].pos;
+            let j_rad = sim.bodies[j].radius;
+            let j_q = sim.bodies[j].charge;
+            let j_has_dipole = matches!(sim.bodies[j].species, Species::EC | Species::DMC)
+                && !sim.bodies[j].electrons.is_empty();
+            let j_e_pos = if j_has_dipole {
+                j_pos + sim.bodies[j].electrons[0].rel_pos
+            } else { j_pos };
+            let j_q_eff = if j_has_dipole { sim.bodies[j].species.polar_charge() } else { 0.0 };
+
+            // Field at nucleus
+            let mut field_nucleus = ultraviolet::Vec2::zero();
+            // From j net charge
+            field_nucleus += field_from_source(i_nuc_pos, i_nuc_rad, j_pos, j_rad, j_q);
+            // From j dipole (+q_eff at nucleus, -q_eff at electron)
+            if j_has_dipole {
+                field_nucleus += field_from_source(i_nuc_pos, i_nuc_rad, j_pos, j_rad,  j_q_eff);
+                field_nucleus -= field_from_source(i_nuc_pos, i_nuc_rad, j_e_pos, 0.0,  j_q_eff);
+            }
+
+            // Field at electron
+            let mut field_electron = ultraviolet::Vec2::zero();
+            field_electron += field_from_source(i_ele_pos, 0.0, j_pos, j_rad, j_q);
+            if j_has_dipole {
+                field_electron += field_from_source(i_ele_pos, 0.0, j_pos, j_rad,  j_q_eff);
+                field_electron -= field_from_source(i_ele_pos, 0.0, j_e_pos, 0.0,  j_q_eff);
+            }
+
+            // If j contributes neither charge nor dipole, skip
+            if field_nucleus == ultraviolet::Vec2::zero() && field_electron == ultraviolet::Vec2::zero() {
                 continue;
             }
 
-            let k_e = sim.config.coulomb_constant;
-            let field_from = |point: ultraviolet::Vec2, point_radius: f32| {
-                let d = point - sim.bodies[j].pos;
-                let dist = d.mag();
-                let min_sep = point_radius + sim.bodies[j].radius;
-                let r_eff = dist.max(min_sep);
-                let denom = (r_eff * r_eff + epsilon_sq) * r_eff;
-                d * (k_e * sim.bodies[j].charge / denom)
-            };
-
-            let field_nucleus = field_from(sim.bodies[i].pos, sim.bodies[i].radius);
-            let field_electron = field_from(e_pos, 0.0);
-            let q_eff = sim.bodies[i].species.polar_charge();
-            let force = (field_nucleus - field_electron) * q_eff;
+            let q_eff_i = sim.bodies[i].species.polar_charge();
+            let force = (field_nucleus - field_electron) * q_eff_i;
 
             if i < j {
                 let (left, right) = sim.bodies.split_at_mut(j);

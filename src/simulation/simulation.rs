@@ -56,6 +56,9 @@ pub struct Simulation {
     pub switch_active_pair: Option<(u64, u64)>,
     pub switch_status_tx: Option<StatusSender>,
     pub thermostat_bootstrapped: bool,
+    // Foil group linking (parallel within group, opposite between groups)
+    pub group_a: std::collections::HashSet<u64>,
+    pub group_b: std::collections::HashSet<u64>,
 }
 
 impl Simulation {
@@ -104,6 +107,8 @@ impl Simulation {
             switch_active_pair: None,
             switch_status_tx: None,
             thermostat_bootstrapped: false,
+            group_a: std::collections::HashSet::new(),
+            group_b: std::collections::HashSet::new(),
         };
         sim.initialize_history();
         sim
@@ -446,7 +451,234 @@ impl Simulation {
             // NaN values detected at step start
         }
 
-        // Propagate linked foil currents - removed since we now handle linking at the property level
+        // Apply group linking constraints each frame (parallel within groups, opposite between groups)
+        if !(self.group_a.is_empty() && self.group_b.is_empty()) {
+            // Determine representatives (masters) for A and B, pick smallest id
+            let master_a = self.group_a.iter().min().copied();
+            let master_b = self.group_b.iter().min().copied();
+
+            // Helper to get index by id
+            let index_of = |foils: &[crate::body::foil::Foil], id: u64| -> Option<usize> {
+                foils.iter().position(|f| f.id == id)
+            };
+
+            // Sync within group A
+            if let Some(ma) = master_a {
+                if let Some(master_idx) = index_of(&self.foils, ma) {
+                    // Snapshot master values to avoid holding borrows while updating followers
+                    let master_mode = self.foils[master_idx].charging_mode;
+                    let (m_dc, m_ac, m_hz) = (
+                        self.foils[master_idx].dc_current,
+                        self.foils[master_idx].ac_current,
+                        self.foils[master_idx].switch_hz,
+                    );
+                    let m_ctrl = self.foils[master_idx]
+                        .overpotential_controller
+                        .as_ref()
+                        .map(|c| (c.target_ratio, c.kp, c.ki, c.kd));
+
+                    for id in self.group_a.iter().copied().filter(|&id| id != ma) {
+                        if let Some(idx) = index_of(&self.foils, id) {
+                            let f = &mut self.foils[idx];
+                            match master_mode {
+                                crate::body::foil::ChargingMode::Current => {
+                                    if f.charging_mode != crate::body::foil::ChargingMode::Current {
+                                        f.disable_overpotential_mode();
+                                    }
+                                    f.charging_mode = crate::body::foil::ChargingMode::Current;
+                                    f.dc_current = m_dc;
+                                    f.ac_current = m_ac;
+                                    f.switch_hz = m_hz;
+                                }
+                                crate::body::foil::ChargingMode::Overpotential => {
+                                    if f.charging_mode != crate::body::foil::ChargingMode::Overpotential {
+                                        f.enable_overpotential_mode(1.0);
+                                    }
+                                    if let (Some((target, kp, ki, kd)), Some(dst)) = (m_ctrl, f.overpotential_controller.as_mut()) {
+                                        dst.target_ratio = target;
+                                        dst.kp = kp;
+                                        dst.ki = ki;
+                                        dst.kd = kd;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Sync within group B
+            if let Some(mb) = master_b {
+                if let Some(master_idx) = index_of(&self.foils, mb) {
+                    // Snapshot master values
+                    let master_mode = self.foils[master_idx].charging_mode;
+                    let (m_dc, m_ac, m_hz) = (
+                        self.foils[master_idx].dc_current,
+                        self.foils[master_idx].ac_current,
+                        self.foils[master_idx].switch_hz,
+                    );
+                    let m_ctrl = self.foils[master_idx]
+                        .overpotential_controller
+                        .as_ref()
+                        .map(|c| (c.target_ratio, c.kp, c.ki, c.kd));
+
+                    for id in self.group_b.iter().copied().filter(|&id| id != mb) {
+                        if let Some(idx) = index_of(&self.foils, id) {
+                            let f = &mut self.foils[idx];
+                            match master_mode {
+                                crate::body::foil::ChargingMode::Current => {
+                                    if f.charging_mode != crate::body::foil::ChargingMode::Current {
+                                        f.disable_overpotential_mode();
+                                    }
+                                    f.charging_mode = crate::body::foil::ChargingMode::Current;
+                                    f.dc_current = m_dc;
+                                    f.ac_current = m_ac;
+                                    f.switch_hz = m_hz;
+                                }
+                                crate::body::foil::ChargingMode::Overpotential => {
+                                    if f.charging_mode != crate::body::foil::ChargingMode::Overpotential {
+                                        f.enable_overpotential_mode(1.0);
+                                    }
+                                    if let (Some((target, kp, ki, kd)), Some(dst)) = (m_ctrl, f.overpotential_controller.as_mut()) {
+                                        dst.target_ratio = target;
+                                        dst.kp = kp;
+                                        dst.ki = ki;
+                                        dst.kd = kd;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Enforce opposite across groups when both have masters
+            if let (Some(ma), Some(mb)) = (master_a, master_b) {
+                let mode_a = index_of(&self.foils, ma).map(|idx| self.foils[idx].charging_mode);
+                let mode_b = index_of(&self.foils, mb).map(|idx| self.foils[idx].charging_mode);
+                match (mode_a, mode_b) {
+                    (Some(crate::body::foil::ChargingMode::Current), Some(crate::body::foil::ChargingMode::Current)) => {
+                        if let (Some(a_idx), Some(b_idx)) = (index_of(&self.foils, ma), index_of(&self.foils, mb)) {
+                            let a_dc = self.foils[a_idx].dc_current;
+                            let a_ac = self.foils[a_idx].ac_current;
+                            let a_hz = self.foils[a_idx].switch_hz;
+                            self.foils[b_idx].dc_current = -a_dc;
+                            self.foils[b_idx].ac_current = a_ac;
+                            self.foils[b_idx].switch_hz = a_hz;
+                        }
+                    }
+                    (Some(crate::body::foil::ChargingMode::Overpotential), Some(crate::body::foil::ChargingMode::Overpotential)) => {
+                        if let (Some(a_idx), Some(b_idx)) = (index_of(&self.foils, ma), index_of(&self.foils, mb)) {
+                            // Snapshot A controller values first
+                            let a_vals = self.foils[a_idx]
+                                .overpotential_controller
+                                .as_ref()
+                                .map(|c| (c.target_ratio, c.kp, c.ki, c.kd));
+                            if let (Some((a_target, a_kp, a_ki, a_kd)), Some(b_ctrl)) = (a_vals, self.foils[b_idx].overpotential_controller.as_mut()) {
+                                b_ctrl.target_ratio = 2.0 - a_target;
+                                b_ctrl.kp = a_kp;
+                                b_ctrl.ki = a_ki;
+                                b_ctrl.kd = a_kd;
+                            }
+                        }
+                    }
+                    // Mixed modes: prefer Current to dominate; force other group to Current with opposite DC
+                    (Some(crate::body::foil::ChargingMode::Current), Some(_)) => {
+                        if let (Some(a_idx), Some(b_idx)) = (index_of(&self.foils, ma), index_of(&self.foils, mb)) {
+                            self.foils[b_idx].disable_overpotential_mode();
+                            self.foils[b_idx].charging_mode = crate::body::foil::ChargingMode::Current;
+                            self.foils[b_idx].dc_current = -self.foils[a_idx].dc_current;
+                            self.foils[b_idx].ac_current = self.foils[a_idx].ac_current;
+                            self.foils[b_idx].switch_hz = self.foils[a_idx].switch_hz;
+                        }
+                    }
+                    (Some(_), Some(crate::body::foil::ChargingMode::Current)) => {
+                        if let (Some(a_idx), Some(b_idx)) = (index_of(&self.foils, ma), index_of(&self.foils, mb)) {
+                            self.foils[a_idx].disable_overpotential_mode();
+                            self.foils[a_idx].charging_mode = crate::body::foil::ChargingMode::Current;
+                            self.foils[a_idx].dc_current = -self.foils[b_idx].dc_current;
+                            self.foils[a_idx].ac_current = self.foils[b_idx].ac_current;
+                            self.foils[a_idx].switch_hz = self.foils[b_idx].switch_hz;
+                        }
+                    }
+                    _ => {}
+                }
+            }
+
+            // Final sync pass so followers mirror their (possibly updated) masters
+            // Group A
+            if let Some(ma) = master_a {
+                if let Some(master_idx) = index_of(&self.foils, ma) {
+                    let master_mode = self.foils[master_idx].charging_mode;
+                    let (m_dc, m_ac, m_hz) = (
+                        self.foils[master_idx].dc_current,
+                        self.foils[master_idx].ac_current,
+                        self.foils[master_idx].switch_hz,
+                    );
+                    let m_ctrl = self.foils[master_idx]
+                        .overpotential_controller
+                        .as_ref()
+                        .map(|c| (c.target_ratio, c.kp, c.ki, c.kd));
+
+                    for id in self.group_a.iter().copied().filter(|&id| id != ma) {
+                        if let Some(idx) = index_of(&self.foils, id) {
+                            let f = &mut self.foils[idx];
+                            match master_mode {
+                                crate::body::foil::ChargingMode::Current => {
+                                    if f.charging_mode != crate::body::foil::ChargingMode::Current { f.disable_overpotential_mode(); }
+                                    f.charging_mode = crate::body::foil::ChargingMode::Current;
+                                    f.dc_current = m_dc;
+                                    f.ac_current = m_ac;
+                                    f.switch_hz = m_hz;
+                                }
+                                crate::body::foil::ChargingMode::Overpotential => {
+                                    if f.charging_mode != crate::body::foil::ChargingMode::Overpotential { f.enable_overpotential_mode(1.0); }
+                                    if let (Some((target, kp, ki, kd)), Some(dst)) = (m_ctrl, f.overpotential_controller.as_mut()) {
+                                        dst.target_ratio = target; dst.kp = kp; dst.ki = ki; dst.kd = kd;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            // Group B
+            if let Some(mb) = master_b {
+                if let Some(master_idx) = index_of(&self.foils, mb) {
+                    let master_mode = self.foils[master_idx].charging_mode;
+                    let (m_dc, m_ac, m_hz) = (
+                        self.foils[master_idx].dc_current,
+                        self.foils[master_idx].ac_current,
+                        self.foils[master_idx].switch_hz,
+                    );
+                    let m_ctrl = self.foils[master_idx]
+                        .overpotential_controller
+                        .as_ref()
+                        .map(|c| (c.target_ratio, c.kp, c.ki, c.kd));
+
+                    for id in self.group_b.iter().copied().filter(|&id| id != mb) {
+                        if let Some(idx) = index_of(&self.foils, id) {
+                            let f = &mut self.foils[idx];
+                            match master_mode {
+                                crate::body::foil::ChargingMode::Current => {
+                                    if f.charging_mode != crate::body::foil::ChargingMode::Current { f.disable_overpotential_mode(); }
+                                    f.charging_mode = crate::body::foil::ChargingMode::Current;
+                                    f.dc_current = m_dc;
+                                    f.ac_current = m_ac;
+                                    f.switch_hz = m_hz;
+                                }
+                                crate::body::foil::ChargingMode::Overpotential => {
+                                    if f.charging_mode != crate::body::foil::ChargingMode::Overpotential { f.enable_overpotential_mode(1.0); }
+                                    if let (Some((target, kp, ki, kd)), Some(dst)) = (m_ctrl, f.overpotential_controller.as_mut()) {
+                                        dst.target_ratio = target; dst.kp = kp; dst.ki = ki; dst.kd = kd;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         self.bodies.par_iter_mut().for_each(|body| {
             body.acc = Vec2::zero();

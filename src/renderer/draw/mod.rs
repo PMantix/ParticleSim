@@ -53,10 +53,9 @@ impl super::Renderer {
                     // Create a temporary quadtree for diagnostic calculation
                     let mut temp_quadtree = crate::quadtree::Quadtree::new(1.0, 2.0, 1, 1024);
                     temp_quadtree.nodes = self.quadtree.clone();
-                    
-                    // Use time-throttled calculation to avoid performance issues
+                    // Throttle at 0.25 fs for more responsive UI
                     let current_time = *crate::renderer::state::SIM_TIME.lock();
-                    diag.calculate_if_needed(&self.bodies, &self.foils, &temp_quadtree, current_time, 1.0);
+                    let _ = diag.calculate_if_needed(&self.bodies, &self.foils, &temp_quadtree, current_time, 0.25);
                 }
                 if let Some(ref mut diag) = self.solvation_diagnostic {
                     profile_scope!("diagnostics_solvation");
@@ -370,6 +369,34 @@ impl super::Renderer {
                 for body in &self.bodies {
                     let end = body.pos + body.vel * scale;
                     ctx.draw_line(body.pos, end, color);
+                }
+            }
+
+            // --- Dipole Overlay for EC/DMC ---
+            if self.show_dipoles {
+                use crate::body::Species;
+                for body in &self.bodies {
+                    if !(matches!(body.species, Species::EC | Species::DMC) && !body.electrons.is_empty()) {
+                        continue;
+                    }
+                    // Use first electron to represent dipole direction
+                    let rel = body.electrons[0].rel_pos * self.dipole_scale;
+                    // Start at displayed body position
+                    let start = self.get_display_position(body);
+                    // Compute end in world XY, then project with current view mode
+                    let world_end = body.pos + rel;
+                    let end = if self.side_view_mode {
+                        ultraviolet::Vec2::new(world_end.x, body.z)
+                    } else {
+                        world_end
+                    };
+
+                    let color = match body.species {
+                        Species::EC => [50, 200, 255, 220],
+                        Species::DMC => [50, 255, 150, 220],
+                        _ => [200, 200, 200, 200],
+                    };
+                    ctx.draw_line(start, end, color);
                 }
             }
 

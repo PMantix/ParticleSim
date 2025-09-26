@@ -226,6 +226,12 @@ pub struct Renderer {
     // Mouse interaction
     last_mouse_pos: Option<EVec2>,
     mouse_velocity: EVec2,
+    // Foil group linking selections
+    group_a_selected: Vec<u64>,
+    group_b_selected: Vec<u64>,
+    // Dipole visualization
+    pub show_dipoles: bool,
+    pub dipole_scale: f32,
 }
 
 impl quarkstrom::Renderer for Renderer {
@@ -372,6 +378,10 @@ impl quarkstrom::Renderer for Renderer {
             char_size,
             last_mouse_pos: None,
             mouse_velocity: EVec2::new(0.0, 0.0),
+            group_a_selected: Vec::new(),
+            group_b_selected: Vec::new(),
+            show_dipoles: false,
+            dipole_scale: 1.0,
         }
     }
 

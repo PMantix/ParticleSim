@@ -355,6 +355,27 @@ pub fn handle_command(cmd: SimCommand, simulation: &mut Simulation) {
                 }
             }
         }
+        SimCommand::SetFoilGroups { group_a, group_b } => {
+            // Update simulation group memberships; ensure no overlap
+            simulation.group_a.clear();
+            simulation.group_b.clear();
+            for id in group_a {
+                simulation.group_a.insert(id);
+            }
+            for id in group_b {
+                if simulation.group_a.contains(&id) {
+                    // skip overlap, A wins
+                    continue;
+                }
+                simulation.group_b.insert(id);
+            }
+            mark_dirty(simulation);
+        }
+        SimCommand::ClearFoilGroups => {
+            simulation.group_a.clear();
+            simulation.group_b.clear();
+            mark_dirty(simulation);
+        }
         SimCommand::LinkFoils { a, b, mode } => {
             let a_idx = simulation.foils.iter().position(|f| f.id == a);
             let b_idx = simulation.foils.iter().position(|f| f.id == b);
