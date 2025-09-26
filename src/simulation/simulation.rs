@@ -555,7 +555,14 @@ impl Simulation {
                 let has_liquid = self.bodies.iter().any(|b| matches!(b.species, crate::body::Species::LithiumIon | crate::body::Species::ElectrolyteAnion | crate::body::Species::EC | crate::body::Species::DMC));
                 if has_liquid {
                     crate::simulation::utils::initialize_liquid_velocities_to_temperature(&mut self.bodies, self.config.temperature);
-                    eprintln!("[thermostat-force-bootstrap] frame={} assigned initial velocities at {:.2}K", self.frame, self.config.temperature);
+                    #[cfg(feature = "thermostat_debug")]
+                    {
+                        crate::simulation::thermal::tdbg!(
+                            "[thermostat-force-bootstrap] frame={} assigned initial velocities at {:.2}K",
+                            self.frame,
+                            self.config.temperature
+                        );
+                    }
                     self.thermostat_bootstrapped = true;
                 }
             } else {
@@ -565,8 +572,29 @@ impl Simulation {
 
         // Apply periodic thermostat if enough time has passed (after ensuring bootstrap)
         if time - self.last_thermostat_time >= self.config.thermostat_interval_fs {
+            #[cfg(feature = "thermostat_debug")]
+            {
+                crate::simulation::thermal::tdbg!(
+                    "[thermo-trigger] frame={} time={:.2} calling apply_thermostat",
+                    self.frame,
+                    time
+                );
+            }
             self.apply_thermostat();
             self.last_thermostat_time = time;
+        }
+
+        // Debug: track bodies count
+        #[cfg(feature = "thermostat_debug")]
+        {
+            if self.frame % 100 == 0 {
+                crate::simulation::thermal::tdbg!(
+                    "[bodies-count] frame={} bodies={} time={:.1}fs",
+                    self.frame,
+                    self.bodies.len(),
+                    time
+                );
+            }
         }
 
         self.frame += 1;

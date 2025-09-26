@@ -66,8 +66,9 @@ pub fn run_simulation_loop(
 
         // Handle commands
         while let Ok(cmd) = rx.try_recv() {
-            // debug log removed
+            eprintln!("[command-recv] Processing command: {:?}", std::mem::discriminant(&cmd));
             command_loop::handle_command(cmd, &mut simulation);
+            eprintln!("[command-done] Bodies count now: {}", simulation.bodies.len());
         }
 
         while let Ok(control) = switch_control_rx.try_recv() {

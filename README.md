@@ -156,6 +156,14 @@ The simulation includes a comprehensive plotting system for real-time data analy
 - **Configurable Physics**: Modify parameters in real-time through the GUI
 - **Comprehensive Testing**: Run the test suite with `cargo test`
 - **Performance Profiling**: Enable with `cargo run --features profiling`
+- **Thermostat Debug (Optional)**: Enable detailed thermostat logging (scales, per-frame temperature diagnostics) with `--features thermostat_debug`.
+
+### Temperature Definitions
+The simulation distinguishes between:
+- **Liquid Temperature**: Computed over LithiumIon, ElectrolyteAnion, EC, and DMC particles (center-of-mass drift removed). This represents the thermal state of the mobile electrolyte phase.
+- **Global Temperature**: Computed over all dynamic bodies (excluding constrained metals’ bulk drift via COM subtraction). Useful for detecting runaway energy in non-thermostatted components.
+
+Only liquid species (Li⁺, anion, EC, DMC) are rescaled by the Maxwell–Boltzmann thermostat. Metals (LithiumMetal, FoilMetal) are excluded to preserve electrode dynamics. During bootstrap (very low initial KE) all liquid species are assigned randomized velocities to seed a Maxwellian distribution.
 
 ---
 

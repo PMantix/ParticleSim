@@ -30,7 +30,9 @@ fn apply_configuration(init_config: InitConfig) -> Result<(), Box<dyn std::error
     let tx = SIM_COMMAND_SENDER.lock().as_ref().unwrap().clone();
     
     // Reset time to 0 when loading a new scenario
+    eprintln!("[scenario-debug] Sending ResetTime command");
     tx.send(SimCommand::ResetTime)?;
+    eprintln!("[scenario-debug] ResetTime sent successfully");
     
     // Determine domain size from config or fallback constant
     let (global_width, global_height) = if let Some(ref sim_config) = init_config.simulation {
@@ -112,12 +114,14 @@ fn apply_configuration(init_config: InitConfig) -> Result<(), Box<dyn std::error
                 let body = get_body_for_species(&body_templates, species);
                 let width = random_config.domain_width.unwrap_or(global_width);
                 let height = random_config.domain_height.unwrap_or(global_height);
+                eprintln!("[scenario-debug] Sending AddRandom command for {} {} particles", random_config.count, random_config.species);
                 tx.send(SimCommand::AddRandom {
                     body,
                     count: random_config.count,
                     domain_width: width,
                     domain_height: height
                 })?;
+                eprintln!("[scenario-debug] AddRandom sent successfully");
                 println!("Added {} random {} particles in {}x{} domain",
                          random_config.count, random_config.species, width, height);
             }

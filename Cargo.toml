@@ -119,3 +119,4 @@ codegen-units = 16  # Use parallel codegen units for faster compilation
 [features]
 profiling = []
 debug_quadtree = []
+thermostat_debug = []

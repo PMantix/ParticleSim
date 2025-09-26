@@ -33,49 +33,61 @@ pub fn can_transfer_electron(src: &Body, dst: &Body) -> bool {
 /// Compute the instantaneous temperature from particle velocities.
 /// Returns temperature in Kelvin for 2D simulation.
 pub fn compute_temperature(bodies: &[Body]) -> f32 {
-    if bodies.is_empty() {
-        return 0.0;
+    if bodies.is_empty() { return 0.0; }
+    let mut total_mass = 0.0f32;
+    let mut momentum = ultraviolet::Vec2::zero();
+    let mut kinetic = 0.0f32;
+    for b in bodies.iter() {
+        total_mass += b.mass;
+        momentum += b.vel * b.mass;
     }
-    let kinetic: f32 = bodies
-        .iter()
-        .map(|b| 0.5 * b.mass * b.vel.mag_sq())
-        .sum();
-    
-    // For 2D: <E> = k_B * T, so T = <E> / k_B
-    // where <E> is average kinetic energy per particle
-    let avg_kinetic_energy = kinetic / bodies.len() as f32;
-    avg_kinetic_energy / BOLTZMANN_CONSTANT
+    // Remove center-of-mass (COM) motion for a proper thermal temperature
+    let com_vel = if total_mass > 0.0 { momentum / total_mass } else { ultraviolet::Vec2::zero() };
+    for b in bodies.iter() {
+        let rel_v = b.vel - com_vel;
+        kinetic += 0.5 * b.mass * rel_v.mag_sq();
+    }
+    let ke_per_particle = kinetic / bodies.len() as f32;
+    ke_per_particle / BOLTZMANN_CONSTANT
 }
 
-/// Compute temperature for "liquid" species only (Li+, ElectrolyteAnion, EC, DMC)
+/// Compute temperature for "liquid" species: LithiumIon, ElectrolyteAnion, EC, DMC
+/// Excludes metals (LithiumMetal, FoilMetal) which may have constrained or collective behavior.
 pub fn compute_liquid_temperature(bodies: &[Body]) -> f32 {
-    let mut kinetic = 0.0f32;
+    let mut total_mass = 0.0f32;
+    let mut momentum = ultraviolet::Vec2::zero();
     let mut count = 0usize;
     for b in bodies.iter() {
-        match b.species {
-            Species::LithiumIon | Species::ElectrolyteAnion | Species::EC | Species::DMC => {
-                kinetic += 0.5 * b.mass * b.vel.mag_sq();
-                count += 1;
-            }
-            _ => {}
+    if matches!(b.species, Species::LithiumIon | Species::ElectrolyteAnion | Species::EC | Species::DMC) {
+            total_mass += b.mass;
+            momentum += b.vel * b.mass;
+            count += 1;
         }
     }
-    if count == 0 { return 0.0; }
-    let avg = kinetic / count as f32;
-    avg / BOLTZMANN_CONSTANT
+    if count == 0 { return f32::NAN; }
+    let com_vel = if total_mass > 0.0 { momentum / total_mass } else { ultraviolet::Vec2::zero() };
+    let mut kinetic = 0.0f32;
+    for b in bodies.iter() {
+    if matches!(b.species, Species::LithiumIon | Species::ElectrolyteAnion | Species::EC | Species::DMC) {
+            let rel_v = b.vel - com_vel;
+            kinetic += 0.5 * b.mass * rel_v.mag_sq();
+        }
+    }
+    let ke_per_particle = kinetic / count as f32;
+    ke_per_particle / BOLTZMANN_CONSTANT
 }
 
-/// Initialize (or reinitialize) velocities for liquid species to match a target temperature.
-/// If velocities are all ~0, the thermostat cannot bootstrap; this provides a Maxwell-Boltzmann draw.
+/// Initialize (or reinitialize) velocities for liquid species (Li+, anion, EC, DMC) to match target temperature.
+/// This seeds a Maxwell-Boltzmann distribution across all liquid components when bootstrapping.
 pub fn initialize_liquid_velocities_to_temperature(bodies: &mut [Body], target_temp: f32) {
     if target_temp <= 0.0 { return; }
     use rand::{rng, Rng};
     let mut rng = rng();
-    // In 2D: (1/2) m (vx^2 + vy^2) = k_B T => each component variance = k_B T / m
+    // In simulation units: (1/2) m (vx^2 + vy^2) = T => each component variance = T / m
     for b in bodies.iter_mut() {
         match b.species {
             Species::LithiumIon | Species::ElectrolyteAnion | Species::EC | Species::DMC => {
-                let sigma = (BOLTZMANN_CONSTANT * target_temp / b.mass).sqrt();
+                let sigma = (target_temp / b.mass).sqrt();
                 // Box-Muller
                 let r1: f32 = rng.random::<f32>().max(1e-12);
                 let r2: f32 = rng.random::<f32>();
@@ -85,7 +97,7 @@ pub fn initialize_liquid_velocities_to_temperature(bodies: &mut [Body], target_t
                 b.vel.x = z0 * sigma;
                 b.vel.y = z1 * sigma;
             }
-            _ => {}
+            _ => {} // Skip metals
         }
     }
 }

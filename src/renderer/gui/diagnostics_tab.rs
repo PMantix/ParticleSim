@@ -156,10 +156,22 @@ impl super::super::Renderer {
             let temp_global = crate::simulation::compute_temperature(&self.bodies);
             let temp_liquid = crate::simulation::utils::compute_liquid_temperature(&self.bodies);
             ui.label(format!("Global T: {:.3} K", temp_global));
-            ui.label(format!("Liquid T: {:.3} K", temp_liquid));
+            
+            // Handle liquid temperature display
+            if temp_liquid.is_nan() {
+                ui.label("Liquid T: Initializing...");
+            } else {
+                ui.label(format!("Liquid T: {:.3} K", temp_liquid));
+            }
+            
+            // Show thermostat scale with context
             let scale = *crate::renderer::state::LAST_THERMOSTAT_SCALE.lock();
-            if scale > 0.0 {
-                ui.label(format!("Thermostat scale (last): {:.4}", scale));
+            if temp_liquid.is_nan() {
+                ui.label("Thermostat: Waiting for particles...");
+            } else if (scale - 1.0).abs() < 0.001 {
+                ui.label("Thermostat: At target temperature");
+            } else {
+                ui.label(format!("Thermostat scale: {:.4}", scale));
             }
         });
 
