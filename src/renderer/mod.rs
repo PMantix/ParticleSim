@@ -75,6 +75,12 @@ pub struct MeasurementRecord {
     pub step: usize,
     pub time_fs: f32,
     pub distance: f32,
+    // Optional switching metadata captured at the moment of measurement
+    pub switch_step: Option<u8>,          // 0..3
+    pub switch_mode: Option<String>,      // "Current" | "Overpotential"
+    pub switch_value: Option<f64>,        // setpoint value for the active step
+    pub pos_role: Option<String>,         // e.g., "+A"
+    pub neg_role: Option<String>,         // e.g., "-A"
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

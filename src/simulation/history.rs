@@ -350,7 +350,7 @@ impl Simulation {
                 (0, 0, 0, self.frame as f32 * self.dt, self.frame, self.dt)
             };
 
-        let mode = if cursor >= latest_index {
+    let mode = if cursor >= latest_index {
             if self.playback.is_playing() {
                 PlaybackModeStatus::HistoryPlaying
             } else {
@@ -362,6 +362,7 @@ impl Simulation {
             PlaybackModeStatus::HistoryPaused
         };
 
+        // Present 1-based indices for UI friendliness; keep internal 0-based
         *status = PlaybackStatus {
             history_len,
             latest_index,

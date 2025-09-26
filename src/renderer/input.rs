@@ -167,10 +167,32 @@ impl super::Renderer {
             } else if input.mouse_pressed(0) {
                 if let Some(distance) = self.current_measurement_distance() {
                     let time_fs = *crate::renderer::state::SIM_TIME.lock();
+                    // Gather switch charging metadata at this moment (if available)
+                    let switch_step_opt = *crate::renderer::state::SWITCH_STEP.lock();
+                    let mut switch_mode: Option<String> = None;
+                    let mut switch_value: Option<f64> = None;
+                    let mut pos_role: Option<String> = None;
+                    let mut neg_role: Option<String> = None;
+                    if let Some(step) = switch_step_opt {
+                        // Roles for this step
+                        let (pos, neg) = crate::switch_charging::roles_for_step(step);
+                        pos_role = Some(pos.display().to_string());
+                        neg_role = Some(neg.display().to_string());
+                        // Active setpoint per step from current UI config
+                        if let Some(sp) = self.switch_ui_state.config.step_setpoints.get(&step).cloned() {
+                            switch_mode = Some(match sp.mode { crate::switch_charging::Mode::Current => "Current".to_string(), crate::switch_charging::Mode::Overpotential => "Overpotential".to_string() });
+                            switch_value = Some(sp.value);
+                        }
+                    }
                     self.measurement_history.push(MeasurementRecord {
                         step: self.frame,
                         time_fs,
                         distance,
+                        switch_step: switch_step_opt,
+                        switch_mode,
+                        switch_value,
+                        pos_role,
+                        neg_role,
                     });
                 }
             }

@@ -15,11 +15,16 @@ impl super::super::Renderer {
             let copy_button =
                 ui.add_enabled(copy_enabled, egui::Button::new("📋 Copy History (.csv)"));
             if copy_button.clicked() {
-                let mut csv = String::from("step,time_fs,distance\n");
+                let mut csv = String::from("step,time_fs,distance,switch_step,switch_mode,switch_value,pos_role,neg_role\n");
                 for record in &self.measurement_history {
+                    let ss = record.switch_step.map(|v| v.to_string()).unwrap_or_default();
+                    let sm = record.switch_mode.clone().unwrap_or_default();
+                    let sv = record.switch_value.map(|v| format!("{:.6}", v)).unwrap_or_default();
+                    let pr = record.pos_role.clone().unwrap_or_default();
+                    let nr = record.neg_role.clone().unwrap_or_default();
                     csv.push_str(&format!(
-                        "{},{:.6},{:.6}\n",
-                        record.step, record.time_fs, record.distance
+                        "{},{:.6},{:.6},{},{},{},{},{}\n",
+                        record.step, record.time_fs, record.distance, ss, sm, sv, pr, nr
                     ));
                 }
                 ui.output_mut(|o| o.copied_text = csv);
@@ -81,12 +86,22 @@ impl super::super::Renderer {
                             ui.label(RichText::new("Step").strong());
                             ui.label(RichText::new("Time (fs)").strong());
                             ui.label(RichText::new("Distance").strong());
+                            ui.label(RichText::new("Switch Step").strong());
+                            ui.label(RichText::new("Mode").strong());
+                            ui.label(RichText::new("Value").strong());
+                            ui.label(RichText::new("+Role").strong());
+                            ui.label(RichText::new("-Role").strong());
                             ui.end_row();
 
                             for record in self.measurement_history.iter().rev() {
                                 ui.label(format!("{}", record.step));
                                 ui.label(format!("{:.3}", record.time_fs));
                                 ui.label(format!("{:.3}", record.distance));
+                                ui.label(record.switch_step.map(|v| v.to_string()).unwrap_or_else(|| "".into()));
+                                ui.label(record.switch_mode.clone().unwrap_or_default());
+                                ui.label(record.switch_value.map(|v| format!("{:.3}", v)).unwrap_or_default());
+                                ui.label(record.pos_role.clone().unwrap_or_default());
+                                ui.label(record.neg_role.clone().unwrap_or_default());
                                 ui.end_row();
                             }
                         });

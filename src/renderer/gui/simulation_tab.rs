@@ -4,7 +4,7 @@ impl super::super::Renderer {
     pub fn show_simulation_tab(&mut self, ui: &mut egui::Ui) {
         ui.heading("⚙️ Simulation Controls");
 
-        let playback_status = PLAYBACK_STATUS.lock().clone();
+    let playback_status = PLAYBACK_STATUS.lock().clone();
         let sender_opt = SIM_COMMAND_SENDER.lock().clone();
         if self.playback_follow_live && playback_status.mode == PlaybackModeStatus::Live {
             self.playback_cursor = playback_status.latest_index;
@@ -47,6 +47,12 @@ impl super::super::Renderer {
                 if ui.button("⏸ Pause").clicked() {
                     if let Some(sender) = sender_opt.clone() {
                         let _ = sender.send(SimCommand::PlaybackPause);
+                    }
+                }
+                if ui.button("⏮ Rewind").on_hover_text("Jump to the first recorded frame").clicked() {
+                    self.playback_follow_live = false;
+                    if let Some(sender) = sender_opt.clone() {
+                        let _ = sender.send(SimCommand::PlaybackSeek { index: 0 });
                     }
                 }
                 if ui.button("Go Live").clicked() {
@@ -95,9 +101,10 @@ impl super::super::Renderer {
                 );
             });
 
+            // Display 1-based frame number for friendlier UX
             ui.label(format!(
                 "Currently viewing frame {} ({:.2} fs, Δt {:.2} fs)",
-                playback_status.frame, playback_status.sim_time, playback_status.dt
+                playback_status.frame + 1, playback_status.sim_time, playback_status.dt
             ));
             
             // Reset Time Button
