@@ -66,8 +66,10 @@ pub fn run_simulation_loop(
 
         // Handle commands
         while let Ok(cmd) = rx.try_recv() {
+            #[cfg(feature = "command_debug")]
             eprintln!("[command-recv] Processing command: {:?}", std::mem::discriminant(&cmd));
             command_loop::handle_command(cmd, &mut simulation);
+            #[cfg(feature = "command_debug")]
             eprintln!("[command-done] Bodies count now: {}", simulation.bodies.len());
         }
 
