@@ -54,7 +54,7 @@ impl Simulation {
                     // Allow hop if donor is more excess than recipient
                     if src_diff >= dst_diff {
                         match dst_body.species {
-                            Species::LithiumMetal | Species::FoilMetal | Species::LithiumIon => {
+                            Species::LithiumMetal | Species::FoilMetal | Species::LithiumCation => {
                                 can_transfer_electron(src_body, dst_body)
                             }
                             _ => false,

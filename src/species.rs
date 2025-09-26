@@ -27,7 +27,7 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
     use Species::*;
     let mut m = HashMap::new();
     m.insert(
-        LithiumIon,
+        LithiumCation,
         SpeciesProps {
             mass: 6.94, // amu
             radius: 0.76, // Å
@@ -81,7 +81,7 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
         },
     );
     m.insert(
-        ElectrolyteAnion,
+        Pf6Anion,
         SpeciesProps {
             mass: 145.0, // amu
             radius: 2.0, // Å
@@ -140,7 +140,7 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
 /// Maximum LJ interaction range across all species.
 pub fn max_lj_cutoff() -> f32 {
     use Species::*;
-    let species_list = [LithiumIon, LithiumMetal, FoilMetal, ElectrolyteAnion, EC, DMC];
+    let species_list = [LithiumCation, LithiumMetal, FoilMetal, Pf6Anion, EC, DMC];
     
     species_list
         .iter()
@@ -153,7 +153,7 @@ pub fn max_lj_cutoff() -> f32 {
 /// Maximum repulsion cutoff across all species.
 pub fn max_repulsion_cutoff() -> f32 {
     use Species::*;
-    let species_list = [LithiumIon, LithiumMetal, FoilMetal, ElectrolyteAnion, EC, DMC];
+    let species_list = [LithiumCation, LithiumMetal, FoilMetal, Pf6Anion, EC, DMC];
 
     species_list
         .iter()

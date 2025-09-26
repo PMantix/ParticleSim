@@ -21,7 +21,7 @@ impl super::super::Renderer {
                     ui.label(format!("{:.6} Å/fs", diagnostic.lithium_drift_velocity));
                 });
                 ui.horizontal(|ui| {
-                    ui.label("Anion Drift Velocity:");
+                    ui.label("PF6⁻ Drift Velocity:");
                     ui.label(format!("{:.6} Å/fs", diagnostic.anion_drift_velocity));
                 });
                 ui.separator();
@@ -30,7 +30,7 @@ impl super::super::Renderer {
                     ui.label(format!("{:.6} e/fs", diagnostic.li_current_contribution));
                 });
                 ui.horizontal(|ui| {
-                    ui.label("Anion Current Contribution:");
+                    ui.label("PF6⁻ Current Contribution:");
                     ui.label(format!("{:.6} e/fs", diagnostic.anion_current_contribution));
                 });
                 ui.horizontal(|ui| {
@@ -52,7 +52,7 @@ impl super::super::Renderer {
 
                 ui.separator();
                 ui.label("ℹ️ Theory: t⁺ = 1 means only Li⁺ carries current");
-                ui.label("   t⁺ = 0 means only anions carry current");
+                ui.label("   t⁺ = 0 means only PF6⁻ anions carry current");
                 ui.label("   Current ∝ charge × concentration × velocity");
             } else {
                 ui.label("❌ No diagnostic data available.");
@@ -127,12 +127,12 @@ impl super::super::Renderer {
             let lithium_count = self
                 .bodies
                 .iter()
-                .filter(|b| b.species == crate::body::Species::LithiumIon)
+                .filter(|b| b.species == crate::body::Species::LithiumCation)
                 .count();
             let anion_count = self
                 .bodies
                 .iter()
-                .filter(|b| b.species == crate::body::Species::ElectrolyteAnion)
+                .filter(|b| b.species == crate::body::Species::Pf6Anion)
                 .count();
             let foil_count = self
                 .bodies
@@ -141,7 +141,7 @@ impl super::super::Renderer {
                 .count();
 
             ui.label(format!("Li⁺ particles: {}", lithium_count));
-            ui.label(format!("Anion particles: {}", anion_count));
+            ui.label(format!("PF6 anion particles: {}", anion_count));
             ui.label(format!("Foil particles: {}", foil_count));
             ui.label(format!("Total particles: {}", self.bodies.len()));
             let temp_global = crate::simulation::compute_temperature(&self.bodies);
@@ -185,12 +185,12 @@ impl super::super::Renderer {
                 ui.separator();
                 ui.label("📊 Species Selection:");
                 ui.horizontal(|ui| {
-                    ui.checkbox(&mut self.density_calc_lithium_ion, "Li⁺");
+                    ui.checkbox(&mut self.density_calc_lithium_cation, "Li⁺");
                     ui.checkbox(&mut self.density_calc_lithium_metal, "Li⁰");
                     ui.checkbox(&mut self.density_calc_foil_metal, "Foil");
                 });
                 ui.horizontal(|ui| {
-                    ui.checkbox(&mut self.density_calc_electrolyte_anion, "Anion");
+                    ui.checkbox(&mut self.density_calc_pf6_anion, "PF6⁻");
                     ui.checkbox(&mut self.density_calc_ec, "EC");
                     ui.checkbox(&mut self.density_calc_dmc, "DMC");
                 });

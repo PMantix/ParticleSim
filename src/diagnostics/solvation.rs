@@ -61,7 +61,7 @@ impl SolvationDiagnostic {
     /// Calculate solvation statistics using quadtree for spatial optimization
     pub fn calculate(&mut self, bodies: &[Body], quadtree: &Quadtree) {
         profile_scope!("solvation_calculation_internal");
-        const CATION_SHELL_FACTOR: f32 = 4.5; // Larger shell for small lithium ions to capture solvents
+        const CATION_SHELL_FACTOR: f32 = 4.5; // Larger shell for small lithium cations to capture solvents
         const ANION_SHELL_FACTOR: f32 = 2.5;  // Smaller shell for larger anions
         const CONTACT_BUFFER: f32 = 0.1;
 
@@ -87,7 +87,7 @@ impl SolvationDiagnostic {
 
         for (i, body) in bodies.iter().enumerate() {
             match body.species {
-                Species::LithiumIon => {
+                Species::LithiumCation => {
                     // Skip ions that are surrounded by metal (not truly ionic)
                     if body.surrounded_by_metal {
                         continue;
@@ -114,7 +114,7 @@ impl SolvationDiagnostic {
 
                     // Find nearest anion using quadtree - search in expanding radius
                     let max_search_radius = body.radius + bodies.iter()
-                        .filter(|b| b.species == Species::ElectrolyteAnion)
+                        .filter(|b| b.species == Species::Pf6Anion)
                         .map(|b| b.radius)
                         .fold(0.0, f32::max) + 2.0 * avg_solvent_radius + 50.0; // Add buffer
                     
@@ -163,7 +163,7 @@ impl SolvationDiagnostic {
                         self.fd_cations.push((body.id, li_solvent_ids));
                     }
                 }
-                Species::ElectrolyteAnion => {
+                Species::Pf6Anion => {
                     anion_count += 1;
                     let an_shell = body.radius * ANION_SHELL_FACTOR;
                     
@@ -208,7 +208,7 @@ impl SolvationDiagnostic {
             let mut best_dist = f32::INFINITY;
             
             for &idx in &nearby_indices {
-                if bodies[idx].species == Species::ElectrolyteAnion {
+                if bodies[idx].species == Species::Pf6Anion {
                     let dist = distance_3d(&bodies[idx], body_ref);
                     if dist < best_dist {
                         best_dist = dist;

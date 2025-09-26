@@ -62,8 +62,8 @@ impl TransferenceNumberDiagnostic {
         for body in bodies {
             let projection = body.vel.dot(self.drift_direction);
             match body.species {
-                Species::LithiumIon => lithium_velocities.push(projection),
-                Species::ElectrolyteAnion => anion_velocities.push(projection),
+                Species::LithiumCation => lithium_velocities.push(projection),
+                Species::Pf6Anion => anion_velocities.push(projection),
                 _ => {}
             }
         }

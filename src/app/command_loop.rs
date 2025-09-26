@@ -46,9 +46,9 @@ pub fn handle_command(cmd: SimCommand, simulation: &mut Simulation) {
                     );
                     println!("Particle {} new species: {:?}", id, body.species);
                     let was_metal = body.species == crate::body::Species::LithiumMetal;
-                    let was_ion = body.species == crate::body::Species::LithiumIon;
+                    let was_ion = body.species == crate::body::Species::LithiumCation;
                     body.update_species();
-                    if was_metal && body.species == crate::body::Species::LithiumIon {
+                    if was_metal && body.species == crate::body::Species::LithiumCation {
                         println!();
                         println!("Should become ion below...");
                         println!("Particle {} new species: {:?}", id, body.species);
@@ -70,7 +70,7 @@ pub fn handle_command(cmd: SimCommand, simulation: &mut Simulation) {
             if matches!(
                 body.species,
                 crate::body::Species::LithiumMetal
-                    | crate::body::Species::ElectrolyteAnion
+                    | crate::body::Species::Pf6Anion
                     | crate::body::Species::EC
                     | crate::body::Species::DMC
             ) {

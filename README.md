@@ -13,7 +13,7 @@ This repository contains a modular, parallelized particle simulation for large-s
   - Electrons polarize in response to local electric fields, providing realistic charge separation visualization.
   - Butler-Volmer kinetics for electron transfer between species (configurable).
 - **Accurate Redox Transitions & Charge Conservation**:  
-  - Lithium ions (Li⁺) and lithium metal (Li) dynamically update their species based on electron count.
+  - Lithium cations (Li⁺) and lithium metal (Li) dynamically update their species based on electron count.
   - Electron hopping with strict conservation rules and distance-dependent rates.
 - **Real-time Data Analysis & Plotting**:
   - **Time Series Plots**: Track species populations, foil currents, and electron hop rates over time.
@@ -31,7 +31,7 @@ This repository contains a modular, parallelized particle simulation for large-s
   - Real-time current monitoring and analysis.
 - **Polar Solvents**:
   - Ethylene carbonate (EC) and dimethyl carbonate (DMC) are modeled as neutral molecules with a bound electron.
-  - A polarization force is applied between the displaced electron and the molecular center, enabling solvent shells around lithium ions without Lennard-Jones attraction.
+  - A polarization force is applied between the displaced electron and the molecular center, enabling solvent shells around lithium cations without Lennard-Jones attraction.
 - **Optional 2.5D Out-of-Plane Flex**: Ions and anions can temporarily move in an abstract vertical direction to bypass 2D crowding near electrodes. The feature preserves bulk behavior and is disabled by default.
 - **State Management**:
   - Save and load simulation states for reproducible experiments.
@@ -160,10 +160,10 @@ The simulation includes a comprehensive plotting system for real-time data analy
 
 ### Temperature Definitions
 The simulation distinguishes between:
-- **Liquid Temperature**: Computed over LithiumIon, ElectrolyteAnion, EC, and DMC particles (center-of-mass drift removed). This represents the thermal state of the mobile electrolyte phase.
+- **Liquid Temperature**: Computed over Lithium Cation, PF6 Anion, EC, and DMC particles (center-of-mass drift removed). This represents the thermal state of the mobile electrolyte phase.
 - **Global Temperature**: Computed over all dynamic bodies (excluding constrained metals’ bulk drift via COM subtraction). Useful for detecting runaway energy in non-thermostatted components.
 
-Only liquid species (Li⁺, anion, EC, DMC) are rescaled by the Maxwell–Boltzmann thermostat. Metals (LithiumMetal, FoilMetal) are excluded to preserve electrode dynamics. During bootstrap (very low initial KE) all liquid species are assigned randomized velocities to seed a Maxwellian distribution.
+Only liquid species (Li⁺ cation, PF6⁻ anion, EC, DMC) are rescaled by the Maxwell–Boltzmann thermostat. Metals (LithiumMetal, FoilMetal) are excluded to preserve electrode dynamics. During bootstrap (very low initial KE) all liquid species are assigned randomized velocities to seed a Maxwellian distribution.
 
 ---
 

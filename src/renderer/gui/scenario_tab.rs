@@ -10,10 +10,10 @@ impl super::super::Renderer {
                 egui::ComboBox::from_id_source("delete_species_combo")
                     .selected_text(match self.selected_delete_option {
                         crate::renderer::DeleteOption::AllSpecies => "All Species",
-                        crate::renderer::DeleteOption::LithiumIon => "Li+ Ions",
+                        crate::renderer::DeleteOption::LithiumCation => "Li+ Cations",
                         crate::renderer::DeleteOption::LithiumMetal => "Li Metal",
                         crate::renderer::DeleteOption::FoilMetal => "Foil Metal",
-                        crate::renderer::DeleteOption::ElectrolyteAnion => "Anions",
+                        crate::renderer::DeleteOption::Pf6Anion => "PF6 Anions",
                         crate::renderer::DeleteOption::EC => "EC",
                         crate::renderer::DeleteOption::DMC => "DMC",
                     })
@@ -25,8 +25,8 @@ impl super::super::Renderer {
                         );
                         ui.selectable_value(
                             &mut self.selected_delete_option,
-                            crate::renderer::DeleteOption::LithiumIon,
-                            "Li+ Ions",
+                            crate::renderer::DeleteOption::LithiumCation,
+                            "Li+ Cations",
                         );
                         ui.selectable_value(
                             &mut self.selected_delete_option,
@@ -40,8 +40,8 @@ impl super::super::Renderer {
                         );
                         ui.selectable_value(
                             &mut self.selected_delete_option,
-                            crate::renderer::DeleteOption::ElectrolyteAnion,
-                            "Anions",
+                            crate::renderer::DeleteOption::Pf6Anion,
+                            "PF6 Anions",
                         );
                         ui.selectable_value(
                             &mut self.selected_delete_option,
@@ -66,12 +66,12 @@ impl super::super::Renderer {
                                 .send(SimCommand::DeleteAll)
                                 .unwrap();
                         }
-                        crate::renderer::DeleteOption::LithiumIon => {
+                        crate::renderer::DeleteOption::LithiumCation => {
                             SIM_COMMAND_SENDER
                                 .lock()
                                 .as_ref()
                                 .unwrap()
-                                .send(SimCommand::DeleteSpecies { species: Species::LithiumIon })
+                                .send(SimCommand::DeleteSpecies { species: Species::LithiumCation })
                                 .unwrap();
                         }
                         crate::renderer::DeleteOption::LithiumMetal => {
@@ -90,12 +90,12 @@ impl super::super::Renderer {
                                 .send(SimCommand::DeleteSpecies { species: Species::FoilMetal })
                                 .unwrap();
                         }
-                        crate::renderer::DeleteOption::ElectrolyteAnion => {
+                        crate::renderer::DeleteOption::Pf6Anion => {
                             SIM_COMMAND_SENDER
                                 .lock()
                                 .as_ref()
                                 .unwrap()
-                                .send(SimCommand::DeleteSpecies { species: Species::ElectrolyteAnion })
+                                .send(SimCommand::DeleteSpecies { species: Species::Pf6Anion })
                                 .unwrap();
                         }
                         crate::renderer::DeleteOption::EC => {
@@ -192,13 +192,13 @@ impl super::super::Renderer {
                         );
                         ui.selectable_value(
                             &mut self.scenario_species,
-                            Species::LithiumIon,
-                            "Lithium Ion",
+                            Species::LithiumCation,
+                            "Lithium Cation",
                         );
                         ui.selectable_value(
                             &mut self.scenario_species,
-                            Species::ElectrolyteAnion,
-                            "Electrolyte Anion",
+                            Species::Pf6Anion,
+                            "PF6 Anion",
                         );
                         ui.selectable_value(
                             &mut self.scenario_species,
@@ -365,7 +365,7 @@ impl super::super::Renderer {
                         let li_body = make_body_with_species(
                             ultraviolet::Vec2::zero(),
                             ultraviolet::Vec2::zero(),
-                            Species::LithiumIon,
+                            Species::LithiumCation,
                         );
                         SIM_COMMAND_SENDER
                             .lock()
@@ -385,7 +385,7 @@ impl super::super::Renderer {
                         let pf6_body = make_body_with_species(
                             ultraviolet::Vec2::zero(),
                             ultraviolet::Vec2::zero(),
-                            Species::ElectrolyteAnion,
+                            Species::Pf6Anion,
                         );
                         SIM_COMMAND_SENDER
                             .lock()
@@ -594,7 +594,7 @@ pub fn make_body_with_species(
                 });
             }
         }
-        Species::LithiumIon => {
+        Species::LithiumCation => {
             // Ions: one less electron than neutral metal, positive charge
             if LITHIUM_METAL_NEUTRAL_ELECTRONS > 1 {
                 for _ in 0..(LITHIUM_METAL_NEUTRAL_ELECTRONS - 1) {
@@ -606,8 +606,8 @@ pub fn make_body_with_species(
             }
             // If LITHIUM_METAL_NEUTRAL_ELECTRONS is 1, then Li+ has 0 electrons (which is correct)
         }
-        Species::ElectrolyteAnion => {
-            // Anions: one more electron than neutral metal, negative charge
+        Species::Pf6Anion => {
+            // PF6 anions: one more electron than neutral metal, negative charge
             if LITHIUM_METAL_NEUTRAL_ELECTRONS > 0 {
                 for _ in 0..(LITHIUM_METAL_NEUTRAL_ELECTRONS + 1) {
                     body.electrons.push(Electron {
@@ -633,12 +633,12 @@ mod tests {
 
     #[test]
     fn make_body_with_species_uses_correct_radius() {
-        let ion = make_body_with_species(Vec2::zero(), Vec2::zero(), Species::LithiumIon);
+        let ion = make_body_with_species(Vec2::zero(), Vec2::zero(), Species::LithiumCation);
         let metal = make_body_with_species(Vec2::zero(), Vec2::zero(), Species::LithiumMetal);
         
-        assert_eq!(ion.radius, Species::LithiumIon.radius());
-        assert_eq!(ion.mass, Species::LithiumIon.mass());
-        assert_eq!(ion.species, Species::LithiumIon);
+        assert_eq!(ion.radius, Species::LithiumCation.radius());
+        assert_eq!(ion.mass, Species::LithiumCation.mass());
+        assert_eq!(ion.species, Species::LithiumCation);
         
         assert_eq!(metal.radius, Species::LithiumMetal.radius());
         assert_eq!(metal.mass, Species::LithiumMetal.mass());

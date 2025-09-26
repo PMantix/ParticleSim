@@ -33,11 +33,11 @@ pub fn _uniform_disc(n: usize) -> Vec<Body> {
         let charge = if pos.x < 0.0 { 1.0 } else { -1.0 };
 
         let species = if charge > 0.5 {
-            Species::LithiumIon
+            Species::LithiumCation
         } else if charge <= 0.0 {
             Species::LithiumMetal
         } else {
-            Species::LithiumIon
+            Species::LithiumCation
         };
 
         let radius = species.radius();
@@ -121,9 +121,9 @@ pub fn _two_lithium_clumps_with_ions(
     for _ in 0..clump_size*2 {
         let pos = random_in_disc(center);
         let vel = Vec2::zero();
-        let mass = Species::LithiumIon.mass();
-        let radius = Species::LithiumIon.radius();
-        let mut body = Body::new(pos, vel, mass, radius, 1.0, Species::LithiumIon);
+        let mass = Species::LithiumCation.mass();
+        let radius = Species::LithiumCation.radius();
+        let mut body = Body::new(pos, vel, mass, radius, 1.0, Species::LithiumCation);
         body.electrons.clear();
         body.update_charge_from_electrons();
         bodies.push(body);
@@ -140,7 +140,7 @@ pub fn _two_lithium_clumps_with_ions(
         let mass:f32 = 0.5;
         let radius = 1.0 * mass.cbrt();
         let charge = 1.0;
-        bodies.push(Body::new(pos, vel, mass, radius, charge, Species::LithiumIon));
+        bodies.push(Body::new(pos, vel, mass, radius, charge, Species::LithiumCation));
     }*/
 
     bodies
@@ -161,8 +161,8 @@ mod tests {
                 body.species, expected_radius, body.radius);
         }
         
-        // Check that we have both LithiumIon and LithiumMetal particles with different radii
-        let ions: Vec<_> = bodies.iter().filter(|b| b.species == Species::LithiumIon).collect();
+        // Check that we have both LithiumCation and LithiumMetal particles with different radii
+        let ions: Vec<_> = bodies.iter().filter(|b| b.species == Species::LithiumCation).collect();
         let metals: Vec<_> = bodies.iter().filter(|b| b.species == Species::LithiumMetal).collect();
         
         assert!(!ions.is_empty(), "Should have some ions");
@@ -188,7 +188,7 @@ mod tests {
         }
         
         // Check that we have both species with different radii
-        let ions: Vec<_> = bodies.iter().filter(|b| b.species == Species::LithiumIon).collect();
+        let ions: Vec<_> = bodies.iter().filter(|b| b.species == Species::LithiumCation).collect();
         let metals: Vec<_> = bodies.iter().filter(|b| b.species == Species::LithiumMetal).collect();
         
         assert!(!ions.is_empty(), "Should have some ions");

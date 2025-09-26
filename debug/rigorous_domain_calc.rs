@@ -64,9 +64,9 @@ fn main() {
     let ec_radius = 3.0; // Å
     let dmc_radius = 2.5; // Å
     
-    println!("Particle counts: Li⁺={}, Anions={}, EC={}, DMC={}", sim_li, sim_anion, sim_ec, sim_dmc);
+    println!("Particle counts: Li⁺={}, PF6 Anions={}, EC={}, DMC={}", sim_li, sim_anion, sim_ec, sim_dmc);
     println!("Total particles: {}", total_sim_particles);
-    println!("Particle radii: Li⁺={:.2} Å, Anion={:.1} Å, EC={:.1} Å, DMC={:.1} Å", 
+    println!("Particle radii: Li⁺={:.2} Å, PF6 Anion={:.1} Å, EC={:.1} Å, DMC={:.1} Å", 
              li_radius, anion_radius, ec_radius, dmc_radius);
     
     // Step 3: Calculate effective volume per particle

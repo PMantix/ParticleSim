@@ -20,10 +20,10 @@ To convert back to SI units multiply simulation values by the factors above
 
 | Species           | Mass (amu) | Radius (Å) |
 |-------------------|-----------:|-----------:|
-| Lithium Ion (Li⁺) | 6.94       | 0.76       |
+| Lithium Cation (Li⁺) | 6.94       | 0.76       |
 | Lithium Metal     | 6.94       | 1.52       |
 | Foil Metal        | 1.0e6      | 1.52       |
-| Electrolyte Anion | 145.0      | 2.0        |
+| PF6 Anion (PF₆⁻) | 145.0      | 2.0        |
 | EC                | 88.06      | 2.5        |
 | DMC               | 90.08      | 2.5        |
 

@@ -6,16 +6,16 @@ fn main() {
     println!("=== TESTING TYPICAL USER SCENARIOS ===");
     
     // Test different scenarios that users commonly run
-    test_lithium_ion_scenario();
+    test_lithium_cation_scenario();
     test_mixed_species_scenario(); 
     test_high_particle_density_scenario();
 }
 
-fn test_lithium_ion_scenario() {
-    println!("\n--- Testing Lithium Ion Scenario ---");
+fn test_lithium_cation_scenario() {
+    println!("\n--- Testing Lithium Cation Scenario ---");
     let mut sim = simulation::Simulation::new();
     
-    // Add typical lithium ion simulation setup
+    // Add typical lithium cation simulation setup
     for i in 0..200 {
         let angle = i as f32 * 0.05;
         let radius = 10.0 + (i as f32 * 0.1) % 5.0;
@@ -29,12 +29,12 @@ fn test_lithium_ion_scenario() {
                 (rand::random::<f32>() - 0.5) * 0.2
             ),
             1.0, 1.0, 1.0,
-            body::Species::LithiumIon,
+            body::Species::LithiumCation,
         );
         sim.bodies.push(body);
     }
     
-    // Add some anions for electrochemical behavior
+    // Add some PF6 anions for electrochemical behavior
     for i in 0..50 {
         let angle = i as f32 * 0.15;
         let radius = 8.0;
@@ -48,13 +48,13 @@ fn test_lithium_ion_scenario() {
                 (rand::random::<f32>() - 0.5) * 0.1
             ),
             -1.0, 1.0, 1.0,
-            body::Species::ElectrolyteAnion,
+            body::Species::Pf6Anion,
         );
         sim.bodies.push(body);
     }
     
     sim.initialize_history();
-    run_performance_test(&mut sim, "Lithium Ion");
+    run_performance_test(&mut sim, "Lithium Cation");
 }
 
 fn test_mixed_species_scenario() {
@@ -69,15 +69,15 @@ fn test_mixed_species_scenario() {
         let y = radius * angle.sin();
         
         let species = match i % 4 {
-            0 => body::Species::LithiumIon,
-            1 => body::Species::ElectrolyteAnion, 
+            0 => body::Species::LithiumCation,
+            1 => body::Species::Pf6Anion, 
             2 => body::Species::EC,
             _ => body::Species::DMC,
         };
         
         let charge = match species {
-            body::Species::LithiumIon => 1.0,
-            body::Species::ElectrolyteAnion => -1.0,
+            body::Species::LithiumCation => 1.0,
+            body::Species::Pf6Anion => -1.0,
             _ => 0.0,
         };
         
@@ -114,7 +114,7 @@ fn test_high_particle_density_scenario() {
             ),
             if rand::random::<bool>() { 1.0 } else { -1.0 },
             1.0, 1.0,
-            body::Species::LithiumIon,
+            body::Species::LithiumCation,
         );
         sim.bodies.push(body);
     }
