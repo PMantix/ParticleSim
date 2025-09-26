@@ -194,6 +194,19 @@ pub const DEFAULT_TEMPERATURE: f32 = 300.0; // Room temperature in Kelvin
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum DipoleModel {
+    /// Original model: only use the field difference at nucleus vs. electron from neighbors' NET charges
+    /// (i.e., do not treat neighbors as explicit ±q dipoles). Simpler and typically more stable.
+    SingleOffset,
+    /// Newer model: treat EC/DMC as explicit ±q_eff conjugate pairs to enable dipole–dipole interactions.
+    ConjugatePair,
+}
+
+impl Default for DipoleModel {
+    fn default() -> Self { DipoleModel::SingleOffset }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum IsolineFieldMode {
     Total,
     ExternalOnly,
@@ -257,6 +270,10 @@ pub struct SimConfig {
 
     /// Vacancy polarization bias gain: scales the influence of local valence-electron offset on hop selection
     pub hop_vacancy_polarization_gain: f32,
+
+    /// Dipole interaction model for EC/DMC
+    #[serde(default)]
+    pub dipole_model: DipoleModel,
 }
 
 impl Default for SimConfig {
@@ -303,6 +320,9 @@ impl Default for SimConfig {
 
             // Vacancy polarization bias (disabled by default)
             hop_vacancy_polarization_gain: 300.0,
+
+            // Dipole model default: original SingleOffset
+            dipole_model: DipoleModel::SingleOffset,
         }
     }
 }

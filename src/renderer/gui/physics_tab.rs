@@ -159,6 +159,40 @@ impl super::super::Renderer {
 
         ui.separator();
 
+        // Dipole model selection
+        ui.group(|ui| {
+            ui.label("🧲 Polar Solvent Dipole Model (EC/DMC)");
+            ui.horizontal(|ui| {
+                ui.label("Model:");
+                let mut model = self.sim_config.dipole_model;
+                egui::ComboBox::from_id_source("dipole_model_combo")
+                    .selected_text(match model {
+                        crate::config::DipoleModel::SingleOffset => "Single offset (original)",
+                        crate::config::DipoleModel::ConjugatePair => "Conjugate pair (±q)",
+                    })
+                    .show_ui(ui, |ui| {
+                        ui.selectable_value(
+                            &mut model,
+                            crate::config::DipoleModel::SingleOffset,
+                            "Single offset (original)",
+                        );
+                        ui.selectable_value(
+                            &mut model,
+                            crate::config::DipoleModel::ConjugatePair,
+                            "Conjugate pair (±q)",
+                        );
+                    });
+                if model != self.sim_config.dipole_model {
+                    self.sim_config.dipole_model = model;
+                    // Persist to global config so the sim thread picks it up next step
+                    *crate::config::LJ_CONFIG.lock() = self.sim_config.clone();
+                }
+            });
+            ui.small("Single offset: field difference nucleus vs electron (original). Conjugate pair: explicit ±q dipoles enabling dipole–dipole interactions.");
+        });
+
+        ui.separator();
+
         // Induced field from foil charging
         ui.group(|ui| {
             ui.label("📡 Induced External Field");

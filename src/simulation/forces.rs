@@ -98,23 +98,33 @@ pub fn apply_polar_forces(sim: &mut Simulation) {
             } else { j_pos };
             let j_q_eff = if j_has_dipole { sim.bodies[j].species.polar_charge() } else { 0.0 };
 
-            // Field at nucleus
-            let mut field_nucleus = ultraviolet::Vec2::zero();
-            // From j net charge
-            field_nucleus += field_from_source(i_nuc_pos, i_nuc_rad, j_pos, j_rad, j_q);
-            // From j dipole (+q_eff at nucleus, -q_eff at electron)
-            if j_has_dipole {
-                field_nucleus += field_from_source(i_nuc_pos, i_nuc_rad, j_pos, j_rad,  j_q_eff);
-                field_nucleus -= field_from_source(i_nuc_pos, i_nuc_rad, j_e_pos, 0.0,  j_q_eff);
-            }
-
-            // Field at electron
-            let mut field_electron = ultraviolet::Vec2::zero();
-            field_electron += field_from_source(i_ele_pos, 0.0, j_pos, j_rad, j_q);
-            if j_has_dipole {
-                field_electron += field_from_source(i_ele_pos, 0.0, j_pos, j_rad,  j_q_eff);
-                field_electron -= field_from_source(i_ele_pos, 0.0, j_e_pos, 0.0,  j_q_eff);
-            }
+            // Field at nucleus/electron depends on selected dipole model
+            let (field_nucleus, field_electron) = match sim.config.dipole_model {
+                crate::config::DipoleModel::SingleOffset => {
+                    // Original: only neighbors' net charges contribute; no explicit dipole sources
+                    let mut fnuc = ultraviolet::Vec2::zero();
+                    let mut fele = ultraviolet::Vec2::zero();
+                    fnuc += field_from_source(i_nuc_pos, i_nuc_rad, j_pos, j_rad, j_q);
+                    fele += field_from_source(i_ele_pos, 0.0,       j_pos, j_rad, j_q);
+                    (fnuc, fele)
+                }
+                crate::config::DipoleModel::ConjugatePair => {
+                    // Current model: explicit ±q_eff sources for j's dipole
+                    let mut fnuc = ultraviolet::Vec2::zero();
+                    let mut fele = ultraviolet::Vec2::zero();
+                    // From j net charge
+                    fnuc += field_from_source(i_nuc_pos, i_nuc_rad, j_pos, j_rad, j_q);
+                    fele += field_from_source(i_ele_pos, 0.0,       j_pos, j_rad, j_q);
+                    // From j dipole (+q_eff at nucleus, -q_eff at electron)
+                    if j_has_dipole {
+                        fnuc += field_from_source(i_nuc_pos, i_nuc_rad, j_pos,  j_rad, j_q_eff);
+                        fnuc -= field_from_source(i_nuc_pos, i_nuc_rad, j_e_pos, 0.0,  j_q_eff);
+                        fele += field_from_source(i_ele_pos, 0.0,       j_pos,  j_rad, j_q_eff);
+                        fele -= field_from_source(i_ele_pos, 0.0,       j_e_pos, 0.0,  j_q_eff);
+                    }
+                    (fnuc, fele)
+                }
+            };
 
             // If j contributes neither charge nor dipole, skip
             if field_nucleus == ultraviolet::Vec2::zero() && field_electron == ultraviolet::Vec2::zero() {
