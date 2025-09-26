@@ -157,7 +157,7 @@ pub const MAX_Z: f32 = DOMAIN_DEPTH;
 // ====================
 /// Single knob controlling how soft Li+ collisions are.
 /// 0.0 = hard collisions (baseline); 1.0 = very soft (max reduction).
-pub const LI_COLLISION_SOFTNESS: f32 = 0.3;
+pub const LI_COLLISION_SOFTNESS: f32 = 0.8;
 /// Size of position history buffer for movement analysis
 // Position history removed (simplified approach)
 

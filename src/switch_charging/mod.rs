@@ -153,13 +153,6 @@ impl SwitchChargingConfig {
         Ok(())
     }
 
-    pub fn recompute_from_hz(&mut self) {
-        if self.switch_rate_hz.is_finite() && self.switch_rate_hz > 0.0 && self.sim_dt_s > 0.0 {
-            let steps = (1.0 / (self.switch_rate_hz * self.sim_dt_s)).round();
-            self.delta_steps = steps.max(1.0) as u32;
-        }
-    }
-
     pub fn recompute_from_steps(&mut self) {
         if self.delta_steps > 0 && self.sim_dt_s > 0.0 {
             self.switch_rate_hz = 1.0 / (self.delta_steps as f64 * self.sim_dt_s);
@@ -615,12 +608,12 @@ impl SwitchUiState {
         }
     }
 
-    pub fn set_switch_rate_hz(&mut self, hz: f64) {
-        let hz = hz.max(0.0);
-        if (self.config.switch_rate_hz - hz).abs() > f64::EPSILON {
-            self.config.switch_rate_hz = hz;
-            // Auto-calculate steps from frequency (like original design intended)
-            self.config.recompute_from_hz();
+    pub fn set_delta_steps(&mut self, steps: u32) {
+        let steps = steps.max(1);
+        if self.config.delta_steps != steps {
+            self.config.delta_steps = steps;
+            // Calculate frequency from steps according to the current dt
+            self.config.recompute_from_steps();
             self.config_dirty = true;
             self.update_validation();
             self.send_update(); // Send update immediately
@@ -754,22 +747,21 @@ pub fn ui_switch_charging(ui: &mut egui::Ui, state: &mut SwitchUiState) {
     ui.group(|ui| {
         ui.label("Switching Rate");
         
-        // Use DragValue pattern like other successful tabs
-        ui.horizontal(|ui| {
-            ui.label("Frequency:");
-            let mut hz = state.config.switch_rate_hz;
-            ui.add(egui::DragValue::new(&mut hz).speed(0.1).clamp_range(0.0001..=1_000_000_000_000_000.0));
-            if (hz - state.config.switch_rate_hz).abs() > f64::EPSILON {
-                state.set_switch_rate_hz(hz);
-            }
-            ui.label("Hz");
-        });
-
-        // Steps is now calculated and display-only
+        // Steps per half-cycle is the primary control; frequency is derived
         ui.horizontal(|ui| {
             ui.label("Steps per half-cycle:");
-            ui.label(format!("{}", state.config.delta_steps));
-            ui.weak("(calculated from frequency)");
+            let mut steps = state.config.delta_steps;
+            ui.add(egui::DragValue::new(&mut steps).speed(1.0));
+            if steps != state.config.delta_steps {
+                state.set_delta_steps(steps);
+            }
+        });
+
+        // Frequency is now display-only, derived from steps and dt
+        ui.horizontal(|ui| {
+            ui.label("Frequency:");
+            ui.label(format!("{:.6}", state.config.switch_rate_hz));
+            ui.weak("Hz (calculated)");
         });
 
         ui.label(format!(
@@ -1001,17 +993,22 @@ mod tests {
     fn hz_to_steps_conversion_matches_dt() {
         let mut cfg = make_valid_config();
         cfg.sim_dt_s = 1e-4;
-        cfg.switch_rate_hz = 10.0;
-        cfg.recompute_from_hz();
-        assert_eq!(cfg.delta_steps, 1000);
+        // Given a target frequency, derive steps and verify
+        let target_hz = 10.0;
+        let expected_steps = (1.0 / (target_hz * cfg.sim_dt_s)).round().max(1.0) as u32;
+        cfg.delta_steps = expected_steps;
+        cfg.recompute_from_steps();
+        assert!((cfg.switch_rate_hz - target_hz).abs() < 1e-6);
         cfg.delta_steps = 500;
         cfg.recompute_from_steps();
         assert!((cfg.switch_rate_hz - 20.0).abs() < 1e-6);
 
         cfg.sim_dt_s = 5e-5;
-        cfg.switch_rate_hz = 50.0;
-        cfg.recompute_from_hz();
-        assert_eq!(cfg.delta_steps, 400);
+        let target_hz2 = 50.0;
+        let expected_steps2 = (1.0 / (target_hz2 * cfg.sim_dt_s)).round().max(1.0) as u32;
+        cfg.delta_steps = expected_steps2;
+        cfg.recompute_from_steps();
+        assert!((cfg.switch_rate_hz - target_hz2).abs() < 1e-6);
     }
 
     #[test]
