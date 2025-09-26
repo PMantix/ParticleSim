@@ -16,7 +16,7 @@ fn main() {
             1.0,    // mass
             1.0,    // radius
             0.0,    // charge
-            body::Species::LithiumIon,
+            body::Species::LithiumCation,
         );
         body.z = i as f32 - 2.0; // Start at different z levels
         sim.bodies.push(body);
@@ -85,7 +85,7 @@ fn main() {
             Vec2::new((i % 10) as f32 * 2.0, (i / 10) as f32 * 2.0),
             Vec2::new(0.0, 0.0),
             1.0, 1.0, 0.0,
-            body::Species::LithiumIon,
+            body::Species::LithiumCation,
         );
         sim.bodies.push(body);
     }

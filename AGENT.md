@@ -3,7 +3,7 @@
 This repository is a Rust project that simulates electrochemical particle systems.
 
 ## Thermostat & Temperature Notes
-- "Liquid temperature" now includes LithiumIon, ElectrolyteAnion, EC, and DMC (COM drift removed).
+- "Liquid temperature" now includes Lithium Cation, PF6 Anion, EC, and DMC (COM drift removed).
 - Maxwell–Boltzmann thermostat rescales only these liquid species (metals excluded) every configured interval.
 - Detailed thermostat diagnostics are gated behind the cargo feature `thermostat_debug`.
 	- Enable via: `cargo run --features thermostat_debug --release`

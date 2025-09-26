@@ -61,7 +61,7 @@ fn main() {
                          new_ec as f32 * ec_radius + new_dmc as f32 * dmc_radius) / actual_total as f32;
         
         println!("Scale factor: {:.1}×", scale_factor);
-        println!("New counts: Li⁺={}, Anions={}, EC={}, DMC={}", new_li, new_anion, new_ec, new_dmc);
+        println!("New counts: Li⁺={}, PF6 Anions={}, EC={}, DMC={}", new_li, new_anion, new_ec, new_dmc);
         println!("Total particles: {}", actual_total);
         println!("2D density: {:.4} particles/Å²", new_density);
         println!("Average spacing: {:.1} Å", avg_spacing);

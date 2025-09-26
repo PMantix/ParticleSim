@@ -12,7 +12,7 @@ fn main() {
     // Molecular masses (g/mol)
     let ec_mass = 88.0;   // Ethylene carbonate
     let dmc_mass = 90.0;  // Dimethyl carbonate
-    let li_mass = 7.0;    // Lithium ion
+    let li_mass = 7.0;    // Lithium cation
     let pf6_mass = 145.0; // PF6 anion
     
     // Volume calculations
@@ -60,7 +60,7 @@ fn main() {
     let total_particles = current_li + current_anion + current_ec + current_dmc;
     
     println!("\nCurrent particle counts:");
-    println!("Li⁺: {}, Anions: {}, EC: {}, DMC: {}", current_li, current_anion, current_ec, current_dmc);
+    println!("Li⁺: {}, PF6 Anions: {}, EC: {}, DMC: {}", current_li, current_anion, current_ec, current_dmc);
     println!("Total: {}", total_particles);
     
     // Calculate required area for realistic density

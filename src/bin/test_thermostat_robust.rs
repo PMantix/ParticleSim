@@ -261,8 +261,8 @@ fn get_body_template_for_species(species: Species) -> Body {
     match species {
         Species::EC => Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::EC),
         Species::DMC => Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::DMC),
-        Species::LithiumIon => Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 1.0, Species::LithiumIon),
-        Species::ElectrolyteAnion => Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, -1.0, Species::ElectrolyteAnion),
+        Species::LithiumCation => Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 1.0, Species::LithiumCation),
+        Species::Pf6Anion => Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, -1.0, Species::Pf6Anion),
         Species::LithiumMetal => Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::LithiumMetal),
         Species::FoilMetal => Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::FoilMetal),
     }
@@ -318,7 +318,7 @@ fn calculate_detailed_temperature(bodies: &[Body]) -> DetailedTemp {
                 dmc_ke += ke;
                 dmc_count += 1;
             },
-            Species::LithiumIon => {
+            Species::LithiumCation => {
                 li_ke += ke;
                 li_count += 1;
             },
@@ -366,7 +366,7 @@ fn capture_velocity_stats(bodies: &[Body]) -> VelocityStats {
                 dmc_vel_sum += vel_mag;
                 dmc_count += 1;
             },
-            Species::LithiumIon => {
+            Species::LithiumCation => {
                 li_vel_sum += vel_mag;
                 li_count += 1;
             },

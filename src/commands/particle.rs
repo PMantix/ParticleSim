@@ -45,10 +45,10 @@ pub fn handle_change_charge(simulation: &mut Simulation, id: u64, delta: f32) {
         println!("Particle {} new species: {:?}", id, body.species);
 
         let was_metal = body.species == Species::LithiumMetal;
-        let was_ion = body.species == Species::LithiumIon;
+        let was_ion = body.species == Species::LithiumCation;
         body.update_species();
 
-        if was_metal && body.species == Species::LithiumIon {
+        if was_metal && body.species == Species::LithiumCation {
             println!();
             println!("Should become ion below...");
             println!("Particle {} new species: {:?}", id, body.species);
@@ -67,7 +67,7 @@ pub fn handle_add_body(simulation: &mut Simulation, body: &mut crate::body::Body
     body.electrons.clear();
     if matches!(
         body.species,
-        Species::LithiumMetal | Species::ElectrolyteAnion | Species::EC | Species::DMC
+        Species::LithiumMetal | Species::Pf6Anion | Species::EC | Species::DMC
     ) {
         body.electrons.push(Electron {
             rel_pos: Vec2::zero(),
@@ -136,7 +136,7 @@ pub fn handle_add_circle(
                 body.species,
             );
             new_body.electrons.clear();
-            if matches!(new_body.species, Species::LithiumMetal | Species::ElectrolyteAnion) {
+            if matches!(new_body.species, Species::LithiumMetal | Species::Pf6Anion) {
                 new_body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
             }
             new_body.update_charge_from_electrons();
@@ -174,7 +174,7 @@ pub fn handle_add_ring(
             body.species,
         );
         new_body.electrons.clear();
-        if matches!(new_body.species, Species::LithiumMetal | Species::ElectrolyteAnion) {
+        if matches!(new_body.species, Species::LithiumMetal | Species::Pf6Anion) {
             new_body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
         }
         new_body.update_charge_from_electrons();
@@ -215,7 +215,7 @@ pub fn handle_add_rectangle(
                 body.species,
             );
             new_body.electrons.clear();
-            if matches!(new_body.species, Species::LithiumMetal | Species::ElectrolyteAnion) {
+            if matches!(new_body.species, Species::LithiumMetal | Species::Pf6Anion) {
                 new_body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
             }
             new_body.update_charge_from_electrons();
@@ -249,7 +249,7 @@ pub fn handle_add_random(
                     body.species,
                 );
                 new_body.electrons.clear();
-                if matches!(new_body.species, Species::LithiumMetal | Species::ElectrolyteAnion) {
+                if matches!(new_body.species, Species::LithiumMetal | Species::Pf6Anion) {
                     new_body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
                 }
                 new_body.update_charge_from_electrons();

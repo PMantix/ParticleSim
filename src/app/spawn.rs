@@ -78,7 +78,7 @@ pub fn add_circle(
             new_body.electrons.clear();
             if matches!(
                 new_body.species,
-                Species::LithiumMetal | Species::ElectrolyteAnion | Species::EC | Species::DMC
+                Species::LithiumMetal | Species::Pf6Anion | Species::EC | Species::DMC
             ) {
                 new_body.electrons.push(Electron {
                     rel_pos: Vec2::zero(),
@@ -112,7 +112,7 @@ pub fn add_ring(simulation: &mut Simulation, body: crate::body::Body, x: f32, y:
         new_body.electrons.clear();
         if matches!(
             new_body.species,
-            Species::LithiumMetal | Species::ElectrolyteAnion | Species::EC | Species::DMC
+            Species::LithiumMetal | Species::Pf6Anion | Species::EC | Species::DMC
         ) {
             new_body.electrons.push(Electron {
                 rel_pos: Vec2::zero(),
@@ -160,7 +160,7 @@ pub fn add_rectangle(
             new_body.electrons.clear();
             if matches!(
                 new_body.species,
-                Species::LithiumMetal | Species::ElectrolyteAnion | Species::EC | Species::DMC
+                Species::LithiumMetal | Species::Pf6Anion | Species::EC | Species::DMC
             ) {
                 new_body.electrons.push(Electron {
                     rel_pos: Vec2::zero(),
@@ -202,7 +202,7 @@ pub fn add_random(
                 );
                 new_body.vel = sample_velocity(new_body.mass, temp);
                 new_body.electrons.clear();
-                if matches!(new_body.species, Species::LithiumMetal | Species::ElectrolyteAnion | Species::EC | Species::DMC) {
+                if matches!(new_body.species, Species::LithiumMetal | Species::Pf6Anion | Species::EC | Species::DMC) {
                     new_body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
                 }
                 new_body.update_charge_from_electrons();

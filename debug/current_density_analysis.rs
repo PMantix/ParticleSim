@@ -38,7 +38,7 @@ fn main() {
     
     println!("\nParticle counts:");
     println!("Li⁺: {}", li_count);
-    println!("Anions: {}", anion_count);
+    println!("PF6 Anions: {}", anion_count);
     println!("EC: {}", ec_count);
     println!("DMC: {}", dmc_count);
     println!("Total liquid particles: {}", total_liquid_particles);
@@ -82,9 +82,9 @@ fn main() {
     let ec_area = PI * ec_radius * ec_radius;
     let dmc_area = PI * dmc_radius * dmc_radius;
     
-    println!("Particle radii: Li⁺={:.2} Å, Anion={:.1} Å, EC={:.1} Å, DMC={:.1} Å", 
+    println!("Particle radii: Li⁺={:.2} Å, PF6 Anion={:.1} Å, EC={:.1} Å, DMC={:.1} Å", 
              li_radius, anion_radius, ec_radius, dmc_radius);
-    println!("Particle diameters: Li⁺={:.2} Å, Anion={:.1} Å, EC={:.1} Å, DMC={:.1} Å", 
+    println!("Particle diameters: Li⁺={:.2} Å, PF6 Anion={:.1} Å, EC={:.1} Å, DMC={:.1} Å", 
              2.0*li_radius, 2.0*anion_radius, 2.0*ec_radius, 2.0*dmc_radius);
     
     // Total particle area

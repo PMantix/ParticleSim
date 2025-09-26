@@ -17,10 +17,10 @@ impl Body {
             Species::LithiumMetal => {
                 self.charge = -(self.electrons.len() as f32 - LITHIUM_METAL_NEUTRAL_ELECTRONS as f32);
             }
-            Species::LithiumIon => {
+            Species::LithiumCation => {
                 self.charge = 1.0 - (self.electrons.len() as f32);
             }
-            Species::ElectrolyteAnion | Species::EC | Species::DMC => {
+            Species::Pf6Anion | Species::EC | Species::DMC => {
                 self.charge = -(self.electrons.len() as f32 - self.neutral_electron_count() as f32);
             }
         }
@@ -29,7 +29,7 @@ impl Body {
         let old_species = self.species;
         
         match self.species {
-            Species::LithiumIon => {
+            Species::LithiumCation => {
                 if !self.electrons.is_empty() {
                     self.species = Species::LithiumMetal;
                     self.update_charge_from_electrons();
@@ -46,7 +46,7 @@ impl Body {
                     };
                     
                     if can_oxidize {
-                        self.species = Species::LithiumIon;
+                        self.species = Species::LithiumCation;
                         self.update_charge_from_electrons();
                     }
                 }
@@ -54,8 +54,8 @@ impl Body {
             Species::FoilMetal => {
                 // FoilMetal never changes species
             }
-            Species::ElectrolyteAnion | Species::EC | Species::DMC => {
-                // Electrolyte anions and solvent molecules remain the same species
+            Species::Pf6Anion | Species::EC | Species::DMC => {
+                // PF6 anions and solvent molecules remain the same species
             }
         }
         
@@ -73,13 +73,13 @@ mod tests {
 
     #[test]
     fn apply_redox_updates_radius_on_species_change() {
-        let ion_radius = Species::LithiumIon.radius();
+        let ion_radius = Species::LithiumCation.radius();
         let metal_radius = Species::LithiumMetal.radius();
         
         // Test ion -> metal
-        let mut ion = Body::new(Vec2::zero(), Vec2::zero(), 1.0, ion_radius, 1.0, Species::LithiumIon);
+        let mut ion = Body::new(Vec2::zero(), Vec2::zero(), 1.0, ion_radius, 1.0, Species::LithiumCation);
         assert_eq!(ion.radius, ion_radius);
-        assert_eq!(ion.species, Species::LithiumIon);
+        assert_eq!(ion.species, Species::LithiumCation);
         
         // Add electron to make it become metal
         ion.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
@@ -97,13 +97,13 @@ mod tests {
         metal.electrons.clear();
         metal.apply_redox();
         
-        assert_eq!(metal.species, Species::LithiumIon);
+        assert_eq!(metal.species, Species::LithiumCation);
         assert_eq!(metal.radius, ion_radius);
     }
 
     #[test]
     fn apply_redox_respects_electron_sea_protection() {
-        let ion_radius = Species::LithiumIon.radius();
+        let ion_radius = Species::LithiumCation.radius();
         let metal_radius = Species::LithiumMetal.radius();
         
         // Test that surrounded metal resists oxidation
@@ -129,7 +129,7 @@ mod tests {
         // Apply redox - should convert to ion
         isolated_metal.apply_redox();
         
-        assert_eq!(isolated_metal.species, Species::LithiumIon, 
+        assert_eq!(isolated_metal.species, Species::LithiumCation, 
                    "Isolated metal with no electrons should oxidize to ion");
         assert_eq!(isolated_metal.radius, ion_radius);
     }

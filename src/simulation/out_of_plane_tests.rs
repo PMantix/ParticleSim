@@ -25,7 +25,7 @@ mod out_of_plane_tests {
             1.0,    // mass
             1.0,    // radius 
             0.0,    // charge
-            Species::LithiumIon,
+            Species::LithiumCation,
         );
         body.z = 1.0; // Start at z=1
         body.vz = 0.0;
@@ -126,7 +126,7 @@ mod out_of_plane_tests {
             1.0,    // mass
             1.0,    // radius
             0.0,    // charge
-            Species::LithiumIon,
+            Species::LithiumCation,
         );
         invalid_body.z = f32::NAN;
         invalid_body.vz = f32::INFINITY;

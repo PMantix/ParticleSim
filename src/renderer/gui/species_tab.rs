@@ -17,8 +17,8 @@ impl super::super::Renderer {
                 );
                 ui.selectable_value(
                     &mut self.selected_lj_species,
-                    Species::LithiumIon,
-                    "Lithium Ion",
+                    Species::LithiumCation,
+                    "Lithium Cation",
                 );
                 ui.selectable_value(
                     &mut self.selected_lj_species,
@@ -27,8 +27,8 @@ impl super::super::Renderer {
                 );
                 ui.selectable_value(
                     &mut self.selected_lj_species,
-                    Species::ElectrolyteAnion,
-                    "Electrolyte Anion",
+                    Species::Pf6Anion,
+                    "PF6 Anion",
                 );
                 ui.selectable_value(
                     &mut self.selected_lj_species,

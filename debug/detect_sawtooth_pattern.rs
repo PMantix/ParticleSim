@@ -23,7 +23,7 @@ fn main() {
             ),
             if i % 3 == 0 { 1.0 } else if i % 3 == 1 { -1.0 } else { 0.0 },
             1.0, 1.0,
-            if i % 2 == 0 { body::Species::LithiumIon } else { body::Species::ElectrolyteAnion },
+            if i % 2 == 0 { body::Species::LithiumCation } else { body::Species::Pf6Anion },
         );
         sim.bodies.push(body);
     }

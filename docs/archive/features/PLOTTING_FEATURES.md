@@ -85,10 +85,10 @@ Located in the main simulation window under "Data Analysis & Plotting":
 
 - **Open Plotting Window**: Access the full plotting control panel
 - **Quick Plot Buttons**: 
-  - **Li+ Population vs Time**: Real-time tracking of lithium ion count
+  - **Li+ Population vs Time**: Real-time tracking of lithium cation count
   - **Charge Distribution vs X**: Spatial charge analysis with axis labels
   - **Velocity Profile vs X**: X-velocity spatial distribution
-  - **All Species vs Time**: Creates separate plots for Li+, Li Metal, and Anions
+  - **All Species vs Time**: Creates separate plots for Li+, Li Metal, and PF6 anions
   - **Foil Current Analysis**: Current monitoring with time axis
   - **Electron Count vs X**: Average electron count spatial profile
 

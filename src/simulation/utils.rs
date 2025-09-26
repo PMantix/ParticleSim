@@ -51,14 +51,14 @@ pub fn compute_temperature(bodies: &[Body]) -> f32 {
     ke_per_particle / BOLTZMANN_CONSTANT
 }
 
-/// Compute temperature for "liquid" species: LithiumIon, ElectrolyteAnion, EC, DMC
+/// Compute temperature for "liquid" species: Lithium Cation, PF6 Anion, EC, DMC
 /// Excludes metals (LithiumMetal, FoilMetal) which may have constrained or collective behavior.
 pub fn compute_liquid_temperature(bodies: &[Body]) -> f32 {
     let mut total_mass = 0.0f32;
     let mut momentum = ultraviolet::Vec2::zero();
     let mut count = 0usize;
     for b in bodies.iter() {
-    if matches!(b.species, Species::LithiumIon | Species::ElectrolyteAnion | Species::EC | Species::DMC) {
+    if matches!(b.species, Species::LithiumCation | Species::Pf6Anion | Species::EC | Species::DMC) {
             total_mass += b.mass;
             momentum += b.vel * b.mass;
             count += 1;
@@ -68,7 +68,7 @@ pub fn compute_liquid_temperature(bodies: &[Body]) -> f32 {
     let com_vel = if total_mass > 0.0 { momentum / total_mass } else { ultraviolet::Vec2::zero() };
     let mut kinetic = 0.0f32;
     for b in bodies.iter() {
-    if matches!(b.species, Species::LithiumIon | Species::ElectrolyteAnion | Species::EC | Species::DMC) {
+    if matches!(b.species, Species::LithiumCation | Species::Pf6Anion | Species::EC | Species::DMC) {
             let rel_v = b.vel - com_vel;
             kinetic += 0.5 * b.mass * rel_v.mag_sq();
         }
@@ -86,7 +86,7 @@ pub fn initialize_liquid_velocities_to_temperature(bodies: &mut [Body], target_t
     // In simulation units: (1/2) m (vx^2 + vy^2) = T => each component variance = T / m
     for b in bodies.iter_mut() {
         match b.species {
-            Species::LithiumIon | Species::ElectrolyteAnion | Species::EC | Species::DMC => {
+            Species::LithiumCation | Species::Pf6Anion | Species::EC | Species::DMC => {
                 let sigma = (target_temp / b.mass).sqrt();
                 // Box-Muller
                 let r1: f32 = rng.random::<f32>().max(1e-12);

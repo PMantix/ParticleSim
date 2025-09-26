@@ -10,6 +10,6 @@ Key files:
 - `tests/` and `tests.rs` – unit tests (these require features that may not run in Codex).
 
 ## Species Groups
-- Liquid (thermostatted): `LithiumIon`, `ElectrolyteAnion`, `EC`, `DMC`
+- Liquid (thermostatted): `LithiumCation`, `Pf6Anion`, `EC`, `DMC`
 - Metals (not thermostatted): `LithiumMetal`, `FoilMetal`
 Only liquid species contribute to the liquid temperature metric and are candidates for velocity rescaling.

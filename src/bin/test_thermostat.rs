@@ -116,7 +116,7 @@ fn add_test_particles(sim: &mut Simulation) {
             1.0, // 1 amu mass
             1.0, // radius
             1.0, // charged
-            Species::LithiumIon,
+            Species::LithiumCation,
         );
         sim.bodies.push(body);
     }
@@ -124,7 +124,7 @@ fn add_test_particles(sim: &mut Simulation) {
     println!("Added {} total particles:", sim.bodies.len());
     println!("  - 50 EC particles");
     println!("  - 50 DMC particles"); 
-    println!("  - 10 LithiumIon particles");
+    println!("  - 10 Lithium Cation particles");
 }
 
 fn analyze_simulation_state(sim: &Simulation) {
@@ -140,7 +140,7 @@ fn analyze_simulation_state(sim: &Simulation) {
         match body.species {
             Species::EC => ec_count += 1,
             Species::DMC => dmc_count += 1,
-            Species::LithiumIon => ion_count += 1,
+            Species::LithiumCation => ion_count += 1,
             _ => other_count += 1,
         }
     }
@@ -178,7 +178,7 @@ fn calculate_total_temperature(bodies: &[Body]) -> f32 {
 
 fn calculate_liquid_temperature(bodies: &[Body]) -> f32 {
     let liquid_bodies: Vec<&Body> = bodies.iter()
-        .filter(|b| matches!(b.species, Species::LithiumIon | Species::ElectrolyteAnion | Species::EC | Species::DMC))
+        .filter(|b| matches!(b.species, Species::LithiumCation | Species::Pf6Anion | Species::EC | Species::DMC))
         .collect();
     
     if liquid_bodies.is_empty() { return 0.0; }

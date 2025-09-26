@@ -18,7 +18,7 @@ fn main() {
                 ultraviolet::Vec2::new(x, y),
                 ultraviolet::Vec2::new(0.1, 0.1),
                 1.0, 1.0, 1.0,
-                body::Species::LithiumIon,
+                body::Species::LithiumCation,
             );
             sim.bodies.push(body);
         }

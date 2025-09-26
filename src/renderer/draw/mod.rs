@@ -191,7 +191,7 @@ impl super::Renderer {
                     // Apply dark mode if enabled
                     if self.species_dark_mode_enabled {
                         match body.species {
-                            Species::LithiumMetal | Species::ElectrolyteAnion | Species::EC | Species::DMC => {
+                            Species::LithiumMetal | Species::Pf6Anion | Species::EC | Species::DMC => {
                                 let darkness_factor = 1.0 - self.species_dark_mode_strength;
                                 color[0] = (color[0] as f32 * darkness_factor) as u8;
                                 color[1] = (color[1] as f32 * darkness_factor) as u8;
@@ -252,7 +252,7 @@ impl super::Renderer {
                         }
                     }
                     
-                    if body.species == Species::LithiumIon {
+                    if body.species == Species::LithiumCation {
                         if body.surrounded_by_metal {
                             if self.show_metal_electron_deficiency {
                                 color = [192, 190, 190, 255];

@@ -25,7 +25,7 @@ for e in &mut self.electrons {
 
 ### Species-Specific Electron Counts
 - **Li+ ions**: 1 electron each (`LITHIUM_METAL_NEUTRAL_ELECTRONS = 1`)
-- **PF6- anions**: 0 electrons (`ELECTROLYTE_ANION_NEUTRAL_ELECTRONS = 0`)  
+- **PF6- anions**: 0 electrons (`PF6_ANION_NEUTRAL_ELECTRONS = 0`)
 - **EC molecules**: 1 electron each (`EC_NEUTRAL_ELECTRONS = 1`)
 - **DMC molecules**: 1 electron each (`DMC_NEUTRAL_ELECTRONS = 1`)
 

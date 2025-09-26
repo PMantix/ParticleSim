@@ -104,8 +104,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         for particles in random_particles {
             total_liquid_particles += particles.count;
             match particles.species.as_str() {
-                "LithiumIon" => li_count += particles.count,
-                "ElectrolyteAnion" => anion_count += particles.count,
+                "LithiumCation" => li_count += particles.count,
+                "Pf6Anion" => anion_count += particles.count,
                 "EC" => ec_count += particles.count,
                 "DMC" => dmc_count += particles.count,
                 _ => println!("Unknown species: {}", particles.species),
@@ -152,7 +152,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let ec_area = PI * ec_radius * ec_radius;
     let dmc_area = PI * dmc_radius * dmc_radius;
     
-    println!("Particle radii: Li⁺={:.2} Å, Anion={:.1} Å, EC={:.1} Å, DMC={:.1} Å", 
+    println!("Particle radii: Li⁺={:.2} Å, PF6 Anion={:.1} Å, EC={:.1} Å, DMC={:.1} Å", 
              li_radius, anion_radius, ec_radius, dmc_radius);
     
     let total_particle_area = li_count as f32 * li_area + anion_count as f32 * anion_area + 
@@ -260,12 +260,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("----------------------------------------");
     
     println!("Li⁺ count: {}", li_count);
-    println!("Anion count: {}", anion_count);
+    println!("PF6 Anion count: {}", anion_count);
     println!("EC count: {}", ec_count);
     println!("DMC count: {}", dmc_count);
     
     if anion_count > 0 {
-        println!("Li⁺:Anion ratio: {:.2}:1", li_count as f32 / anion_count as f32);
+        println!("Li⁺:PF6 Anion ratio: {:.2}:1", li_count as f32 / anion_count as f32);
     }
     if dmc_count > 0 {
         println!("EC:DMC ratio: {:.2}:1", ec_count as f32 / dmc_count as f32);
@@ -276,7 +276,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let ec_fraction = ec_count as f32 / total_liquid_particles as f32;
     let dmc_fraction = dmc_count as f32 / total_liquid_particles as f32;
     
-    println!("Mole fractions: Li⁺={:.3}, Anions={:.3}, EC={:.3}, DMC={:.3}", 
+    println!("Mole fractions: Li⁺={:.3}, PF6 Anions={:.3}, EC={:.3}, DMC={:.3}", 
              li_fraction, anion_fraction, ec_fraction, dmc_fraction);
     
     // Step 6: Assessment
@@ -307,7 +307,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Spacing/diameter: {:.1} (liquid)", spacing_diameter_ratio_liquid);
     
     if li_count != anion_count {
-        println!("⚠ CHARGE IMBALANCE: Li⁺ ≠ Anions");
+        println!("⚠ CHARGE IMBALANCE: Li⁺ ≠ PF6 Anions");
     }
     
     if spacing_diameter_ratio_liquid < 1.2 {

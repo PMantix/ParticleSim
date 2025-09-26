@@ -32,8 +32,8 @@ pub fn show_plotting_controls(
                 if ui.button("Li+ Population vs Time").clicked() {
                     let config = PlotConfig {
                         plot_type: PlotType::TimeSeries,
-                        quantity: Quantity::TotalSpeciesCount(Species::LithiumIon),
-                        title: "Lithium Ion Population".to_string(),
+                        quantity: Quantity::TotalSpeciesCount(Species::LithiumCation),
+                        title: "Lithium Cation Population".to_string(),
                         sampling_mode: SamplingMode::Continuous,
                         spatial_bins: 50,
                         time_window: 20.0,
@@ -72,11 +72,11 @@ pub fn show_plotting_controls(
                 
                 if ui.button("All Species vs Time").clicked() {
                     // Create plots for all species
-                    for species in [Species::LithiumIon, Species::LithiumMetal, Species::ElectrolyteAnion] {
+                    for species in [Species::LithiumCation, Species::LithiumMetal, Species::Pf6Anion] {
                         let species_name = match species {
-                            Species::LithiumIon => "Li+ Ions",
+                            Species::LithiumCation => "Li+ Cations",
                             Species::LithiumMetal => "Li Metal",
-                            Species::ElectrolyteAnion => "Anions",
+                            Species::Pf6Anion => "PF6 Anions",
                             _ => "Unknown",
                         };
                         let config = PlotConfig {
@@ -239,7 +239,7 @@ fn show_quantity_selector(ui: &mut egui::Ui, quantity: &mut Quantity, plot_type:
         // Reset to a safe default
         *quantity = match plot_type {
             PlotType::TimeSeries => {
-                Quantity::TotalSpeciesCount(Species::LithiumIon)
+                Quantity::TotalSpeciesCount(Species::LithiumCation)
             }
             _ => Quantity::Charge,
         };
@@ -254,9 +254,9 @@ fn show_quantity_selector(ui: &mut egui::Ui, quantity: &mut Quantity, plot_type:
             ui.selectable_value(quantity, Quantity::Velocity, "Velocity");
             
             // Species-related quantities
-            ui.selectable_value(quantity, Quantity::TotalSpeciesCount(Species::LithiumIon), "Li+ Count");
+            ui.selectable_value(quantity, Quantity::TotalSpeciesCount(Species::LithiumCation), "Li+ Cation Count");
             ui.selectable_value(quantity, Quantity::TotalSpeciesCount(Species::LithiumMetal), "Li Metal Count");
-            ui.selectable_value(quantity, Quantity::TotalSpeciesCount(Species::ElectrolyteAnion), "Anion Count");
+            ui.selectable_value(quantity, Quantity::TotalSpeciesCount(Species::Pf6Anion), "PF6 Anion Count");
             
             // Time series only quantities
             if matches!(plot_type, PlotType::TimeSeries) {

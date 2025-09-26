@@ -784,7 +784,7 @@ impl Simulation {
             let liquid_temp = crate::simulation::utils::compute_liquid_temperature(&self.bodies);
             if liquid_temp <= 1e-6 {
                 // Check if we actually have liquid species present
-                let has_liquid = self.bodies.iter().any(|b| matches!(b.species, crate::body::Species::LithiumIon | crate::body::Species::ElectrolyteAnion | crate::body::Species::EC | crate::body::Species::DMC));
+                let has_liquid = self.bodies.iter().any(|b| matches!(b.species, crate::body::Species::LithiumCation | crate::body::Species::Pf6Anion | crate::body::Species::EC | crate::body::Species::DMC));
                 if has_liquid {
                     crate::simulation::utils::initialize_liquid_velocities_to_temperature(&mut self.bodies, self.config.temperature);
                     #[cfg(feature = "thermostat_debug")]
@@ -840,7 +840,7 @@ impl Simulation {
         #[cfg(test)]
         // After all updates, print debug info for anions
         for (i, body) in self.bodies.iter().enumerate() {
-            if body.species == crate::body::Species::ElectrolyteAnion {
+            if body.species == crate::body::Species::Pf6Anion {
                 println!(
                     "[DEBUG] Step {}: Anion {} charge = {}, pos = {:?}, vel = {:?}",
                     self.frame, i, body.charge, body.pos, body.vel

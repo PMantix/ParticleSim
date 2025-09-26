@@ -96,14 +96,14 @@ current = 0.0
 
 # Random particles
 # Optimized counts: 0.35× scaling while preserving species ratios
-# Li:Anion = 1:1 (electroneutrality), EC:DMC = 1.26:1 (realistic mixture)
+# Li cation:PF6 anion = 1:1 (electroneutrality), EC:DMC = 1.26:1 (realistic mixture)
 [[particles.random]]
 count = 225
-species = "ElectrolyteAnion"
+species = "Pf6Anion"
 
 [[particles.random]]
 count = 225 
-species = "LithiumIon"
+species = "LithiumCation"
 
 [[particles.random]]
 count = 1685
@@ -130,10 +130,10 @@ species = "DMC"
 # x = 0.0
 # y = 0.0
 # radius = 20.0
-# species = "LithiumIon"
+# species = "LithiumCation"
 
 # [[particles.circles]]
 # x = 0.0
 # y = 210.0
 # radius = 20.0
-# species = "ElectrolyteAnion"
+# species = "Pf6Anion"

@@ -163,7 +163,7 @@ fn main() {
     let rec_ec = (current_ec * scale_up_factor).round() as i32;
     let rec_dmc = (current_dmc * scale_up_factor).round() as i32;
     
-    println!("New counts: Li⁺={}, Anions={}, EC={}, DMC={}", rec_li, rec_anion, rec_ec, rec_dmc);
+    println!("New counts: Li⁺={}, PF6 Anions={}, EC={}, DMC={}", rec_li, rec_anion, rec_ec, rec_dmc);
     
     // Check if this fits in domain
     let li_area = PI * li_radius * li_radius;

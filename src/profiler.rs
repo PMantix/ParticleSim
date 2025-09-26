@@ -162,7 +162,7 @@ mod profiling_impl {
             // Print simulation stats if provided
             if let Some(sim) = sim {
                 let total_particles = sim.bodies.len();
-                let num_ions = sim.bodies.iter().filter(|b| matches!(b.species, crate::body::Species::LithiumIon)).count();
+                let num_ions = sim.bodies.iter().filter(|b| matches!(b.species, crate::body::Species::LithiumCation)).count();
                 let num_metals = sim.bodies.iter().filter(|b| matches!(b.species, crate::body::Species::LithiumMetal | crate::body::Species::FoilMetal)).count();
                 let num_electrons: usize = sim.bodies.iter().map(|b| b.electrons.len()).sum();
                 let num_foils = sim.foils.len();

@@ -21,8 +21,8 @@ fn apply_li_collision_softness(
     let body_i = &sim.bodies[body_i_idx];
     let body_j = &sim.bodies[body_j_idx];
     // Only apply to Li+ ions
-    let i_is_li = matches!(body_i.species, Species::LithiumIon);
-    let j_is_li = matches!(body_j.species, Species::LithiumIon);
+    let i_is_li = matches!(body_i.species, Species::LithiumCation);
+    let j_is_li = matches!(body_j.species, Species::LithiumCation);
     if !i_is_li && !j_is_li {
         return vec_xy; // Neither is Li+, no change
     }

@@ -85,10 +85,10 @@ pub const LJ_CELL_DENSITY_THRESHOLD: f32 = 0.001;
 // ====================
 // Species/Body Parameters
 // ====================
-pub const LITHIUM_ION_THRESHOLD: f32 = 0.5; // Charge threshold for lithium ion/metal transition
+pub const LITHIUM_CATION_THRESHOLD: f32 = 0.5; // Charge threshold for lithium cation/metal transition
 pub const FOIL_NEUTRAL_ELECTRONS: usize = 1;
 pub const LITHIUM_METAL_NEUTRAL_ELECTRONS: usize = 1;
-pub const ELECTROLYTE_ANION_NEUTRAL_ELECTRONS: usize = 0;
+pub const PF6_ANION_NEUTRAL_ELECTRONS: usize = 0;
 pub const EC_NEUTRAL_ELECTRONS: usize = 1;
 pub const DMC_NEUTRAL_ELECTRONS: usize = 1;
 pub const FOIL_MAX_ELECTRONS: usize = 2; // Max electrons for foil metal

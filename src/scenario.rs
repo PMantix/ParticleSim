@@ -147,18 +147,18 @@ fn create_body_templates() -> BodyTemplates {
         ion_body: crate::body::Body::new(
             Vec2::zero(),
             Vec2::zero(),
-            Species::LithiumIon.mass(),
-            Species::LithiumIon.radius(),
+            Species::LithiumCation.mass(),
+            Species::LithiumCation.radius(),
             1.0,
-            Species::LithiumIon,
+            Species::LithiumCation,
         ),
         anion_body: crate::body::Body::new(
             Vec2::zero(),
             Vec2::zero(),
-            Species::ElectrolyteAnion.mass(),
-            Species::ElectrolyteAnion.radius(),
+            Species::Pf6Anion.mass(),
+            Species::Pf6Anion.radius(),
             -1.0,
-            Species::ElectrolyteAnion,
+            Species::Pf6Anion,
         ),
         foil_body: crate::body::Body::new(
             Vec2::zero(),
@@ -201,8 +201,8 @@ struct BodyTemplates {
 fn get_body_for_species(templates: &BodyTemplates, species: Species) -> crate::body::Body {
     match species {
         Species::LithiumMetal => templates.metal_body.clone(),
-        Species::LithiumIon => templates.ion_body.clone(),
-        Species::ElectrolyteAnion => templates.anion_body.clone(),
+        Species::LithiumCation => templates.ion_body.clone(),
+        Species::Pf6Anion => templates.anion_body.clone(),
         Species::FoilMetal => templates.foil_body.clone(),
         Species::EC => templates.ec_body.clone(),
         Species::DMC => templates.dmc_body.clone(),
@@ -234,18 +234,18 @@ pub fn load_hardcoded_scenario() -> Result<(), Box<dyn std::error::Error>> {
     let ion_body = crate::body::Body::new(
         Vec2::zero(),
         Vec2::zero(),
-        Species::LithiumIon.mass(),
-        Species::LithiumIon.radius(),
+        Species::LithiumCation.mass(),
+        Species::LithiumCation.radius(),
         1.0,
-        Species::LithiumIon,
+        Species::LithiumCation,
     );
     let anion_body = crate::body::Body::new(
         Vec2::zero(),
         Vec2::zero(),
-        Species::ElectrolyteAnion.mass(),
-        Species::ElectrolyteAnion.radius(),
+        Species::Pf6Anion.mass(),
+        Species::Pf6Anion.radius(),
         -1.0,
-        Species::ElectrolyteAnion,
+        Species::Pf6Anion,
     );
     
     // Send SimCommands to populate the simulation

@@ -120,10 +120,10 @@ impl Renderer {
     /// Check if a species is selected for density calculation based on UI checkboxes.
     pub fn is_species_selected_for_density(&self, species: &Species) -> bool {
         match species {
-            Species::LithiumIon => self.density_calc_lithium_ion,
+            Species::LithiumCation => self.density_calc_lithium_cation,
             Species::LithiumMetal => self.density_calc_lithium_metal,
             Species::FoilMetal => self.density_calc_foil_metal,
-            Species::ElectrolyteAnion => self.density_calc_electrolyte_anion,
+            Species::Pf6Anion => self.density_calc_pf6_anion,
             Species::EC => self.density_calc_ec,
             Species::DMC => self.density_calc_dmc,
         }
