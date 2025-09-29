@@ -11,10 +11,10 @@ use std::hash::Hash;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash, Serialize, Deserialize)]
 pub enum Species {
-    LithiumIon,
+    LithiumCation,
     LithiumMetal,
     FoilMetal, // NEW
-    ElectrolyteAnion,
+    Pf6Anion,
     EC,
     DMC,
 }
@@ -92,16 +92,16 @@ impl Body {
     pub fn update_species(&mut self) {
         if matches!(
             self.species,
-            Species::FoilMetal | Species::ElectrolyteAnion | Species::EC | Species::DMC
+            Species::FoilMetal | Species::Pf6Anion | Species::EC | Species::DMC
         ) {
-            // Don't auto-convert FoilMetal, Anions, or solvent molecules
+            // Don't auto-convert FoilMetal, PF6 anions, or solvent molecules
             return;
         }
         
         let old_species = self.species;
         
-        if self.charge > config::LITHIUM_ION_THRESHOLD {
-            self.species = Species::LithiumIon;
+        if self.charge > config::LITHIUM_CATION_THRESHOLD {
+            self.species = Species::LithiumCation;
         } else if self.charge <= 0.0 {
             self.species = Species::LithiumMetal;
         }
@@ -114,9 +114,9 @@ impl Body {
 
     pub fn neutral_electron_count(&self) -> usize {
         match self.species {
-            Species::LithiumMetal | Species::LithiumIon => crate::config::LITHIUM_METAL_NEUTRAL_ELECTRONS,
+            Species::LithiumMetal | Species::LithiumCation => crate::config::LITHIUM_METAL_NEUTRAL_ELECTRONS,
             Species::FoilMetal => crate::config::FOIL_NEUTRAL_ELECTRONS,
-            Species::ElectrolyteAnion => crate::config::ELECTROLYTE_ANION_NEUTRAL_ELECTRONS,
+            Species::Pf6Anion => crate::config::PF6_ANION_NEUTRAL_ELECTRONS,
             Species::EC => crate::config::EC_NEUTRAL_ELECTRONS,
             Species::DMC => crate::config::DMC_NEUTRAL_ELECTRONS,
         }
@@ -273,8 +273,8 @@ impl Species {
     pub fn surface_affinity(&self) -> f32 {
         use Species::*;
         match self {
-            LithiumIon => 2.0,        // Strong attraction to cathode
-            ElectrolyteAnion => 1.5,  // Moderate attraction to anode
+            LithiumCation => 2.0,     // Strong attraction to cathode
+            Pf6Anion => 1.5,          // Moderate attraction to anode
             EC | DMC => 0.5,          // Weak surface interaction (neutral solvents)
             LithiumMetal => 0.0,      // Already on surface
             FoilMetal => 0.0,         // Already on surface
@@ -286,14 +286,14 @@ impl Species {
         use Species::*;
         match (self, other) {
             // Ion-solvent solvation shells
-            (LithiumIon, EC) | (EC, LithiumIon) => 0.3,
-            (LithiumIon, DMC) | (DMC, LithiumIon) => 0.25,
-            (ElectrolyteAnion, EC) | (EC, ElectrolyteAnion) => 0.4,
-            (ElectrolyteAnion, DMC) | (DMC, ElectrolyteAnion) => 0.35,
+            (LithiumCation, EC) | (EC, LithiumCation) => 0.3,
+            (LithiumCation, DMC) | (DMC, LithiumCation) => 0.25,
+            (Pf6Anion, EC) | (EC, Pf6Anion) => 0.4,
+            (Pf6Anion, DMC) | (DMC, Pf6Anion) => 0.35,
             
             // Like-like interactions (layer separation)
-            (LithiumIon, LithiumIon) => 0.8,
-            (ElectrolyteAnion, ElectrolyteAnion) => 0.9,
+            (LithiumCation, LithiumCation) => 0.8,
+            (Pf6Anion, Pf6Anion) => 0.9,
             (EC, EC) => 0.6,
             (DMC, DMC) => 0.5,
             
@@ -311,10 +311,10 @@ impl Species {
         use Species::*;
         match (self, other) {
             // Strong ion-solvent interactions
-            (LithiumIon, EC) | (EC, LithiumIon) => 1.5,
-            (LithiumIon, DMC) | (DMC, LithiumIon) => 1.2,
-            (ElectrolyteAnion, EC) | (EC, ElectrolyteAnion) => 1.0,
-            (ElectrolyteAnion, DMC) | (DMC, ElectrolyteAnion) => 0.8,
+            (LithiumCation, EC) | (EC, LithiumCation) => 1.5,
+            (LithiumCation, DMC) | (DMC, LithiumCation) => 1.2,
+            (Pf6Anion, EC) | (EC, Pf6Anion) => 1.0,
+            (Pf6Anion, DMC) | (DMC, Pf6Anion) => 0.8,
             
             // Weaker solvent-solvent interactions
             (EC, DMC) | (DMC, EC) => 0.3,
@@ -322,9 +322,9 @@ impl Species {
             (DMC, DMC) => 0.3,
             
             // Ion-ion repulsion in z (want separation)
-            (LithiumIon, ElectrolyteAnion) | (ElectrolyteAnion, LithiumIon) => 0.2,
-            (LithiumIon, LithiumIon) => 0.1,
-            (ElectrolyteAnion, ElectrolyteAnion) => 0.1,
+            (LithiumCation, Pf6Anion) | (Pf6Anion, LithiumCation) => 0.2,
+            (LithiumCation, LithiumCation) => 0.1,
+            (Pf6Anion, Pf6Anion) => 0.1,
             
             // Metals don't participate in solvation
             (_, LithiumMetal) | (LithiumMetal, _) => 0.0,

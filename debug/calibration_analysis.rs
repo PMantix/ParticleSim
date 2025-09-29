@@ -17,7 +17,7 @@ fn main() {
     let total_particles = li_count + anion_count + ec_count + dmc_count;
     
     println!("Current domain: {}×{} Å = {:.0} Å²", current_width, current_height, current_area);
-    println!("Particle counts: Li⁺={}, Anions={}, EC={}, DMC={}", li_count, anion_count, ec_count, dmc_count);
+    println!("Particle counts: Li⁺={}, PF6 Anions={}, EC={}, DMC={}", li_count, anion_count, ec_count, dmc_count);
     println!("Total particles: {}", total_particles);
     println!("Current 2D density: {:.4} particles/Å²", total_particles / current_area);
     

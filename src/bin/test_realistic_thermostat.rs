@@ -121,15 +121,15 @@ fn add_representative_particles(sim: &mut Simulation, init_config: &InitConfig) 
     // Add some ions 
     for random_config in &init_config.particles.random {
         if let Ok(species) = random_config.to_species() {
-            if matches!(species, Species::LithiumIon | Species::ElectrolyteAnion) {
+            if matches!(species, Species::LithiumCation | Species::Pf6Anion) {
                 let count = (random_config.count / 10).max(10);
                 
                 for _ in 0..count {
                     let pos = Vec2::new(rng.random::<f32>() * 200.0 - 100.0, rng.random::<f32>() * 150.0 - 75.0);
                     let vel = thermal_velocity(&mut rng, 1.0, sim.config.temperature);
                     let charge = match species {
-                        Species::LithiumIon => 1.0,
-                        Species::ElectrolyteAnion => -1.0,
+                        Species::LithiumCation => 1.0,
+                        Species::Pf6Anion => -1.0,
                         _ => 0.0,
                     };
                     let body = Body::new(pos, vel, 1.0, 1.0, charge, species);
@@ -170,7 +170,7 @@ fn analyze_state(sim: &Simulation, step: u32) {
     let solvent_temp = calculate_solvent_temperature(&sim.bodies);
     let ec_count = sim.bodies.iter().filter(|b| matches!(b.species, Species::EC)).count();
     let dmc_count = sim.bodies.iter().filter(|b| matches!(b.species, Species::DMC)).count();
-    let li_count = sim.bodies.iter().filter(|b| matches!(b.species, Species::LithiumIon)).count();
+    let li_count = sim.bodies.iter().filter(|b| matches!(b.species, Species::LithiumCation)).count();
     let metal_count = sim.bodies.iter().filter(|b| matches!(b.species, Species::LithiumMetal)).count();
     
     println!("Step {} - Total: {}, EC: {}, DMC: {}, Li+: {}, Metal: {}", 

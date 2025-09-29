@@ -37,9 +37,9 @@ fn main() {
     let ec_area = PI * ec_radius * ec_radius;
     let dmc_area = PI * dmc_radius * dmc_radius;
     
-    println!("Particle radii: Li⁺={:.2} Å, Anion={:.1} Å, EC={:.1} Å, DMC={:.1} Å", 
+    println!("Particle radii: Li⁺={:.2} Å, PF6 Anion={:.1} Å, EC={:.1} Å, DMC={:.1} Å", 
              li_radius, anion_radius, ec_radius, dmc_radius);
-    println!("Particle areas: Li⁺={:.1} Å², Anion={:.1} Å², EC={:.1} Å², DMC={:.1} Å²", 
+    println!("Particle areas: Li⁺={:.1} Å², PF6 Anion={:.1} Å², EC={:.1} Å², DMC={:.1} Å²", 
              li_area, anion_area, ec_area, dmc_area);
     
     let total_particle_area = current_li * li_area + current_anion * anion_area + 
@@ -131,7 +131,7 @@ fn main() {
     let new_ec = (current_ec * optimal_scale / total_current * optimal_total_particles).round();
     let new_dmc = (current_dmc * optimal_scale / total_current * optimal_total_particles).round();
     
-    println!("New counts: Li⁺={:.0}, Anions={:.0}, EC={:.0}, DMC={:.0}", new_li, new_anion, new_ec, new_dmc);
+    println!("New counts: Li⁺={:.0}, PF6 Anions={:.0}, EC={:.0}, DMC={:.0}", new_li, new_anion, new_ec, new_dmc);
     
     // Check packing fraction
     let new_total_area = new_li * li_area + new_anion * anion_area + new_ec * ec_area + new_dmc * dmc_area;

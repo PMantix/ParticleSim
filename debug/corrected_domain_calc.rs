@@ -71,7 +71,7 @@ fn main() {
     let ec_radius = 3.0; // Å
     let dmc_radius = 2.5; // Å
     
-    println!("Liquid particles: Li⁺={}, Anions={}, EC={}, DMC={}", sim_li, sim_anion, sim_ec, sim_dmc);
+    println!("Liquid particles: Li⁺={}, PF6 Anions={}, EC={}, DMC={}", sim_li, sim_anion, sim_ec, sim_dmc);
     println!("Total liquid particles: {}", total_liquid_particles);
     
     let li_area = PI * li_radius * li_radius;

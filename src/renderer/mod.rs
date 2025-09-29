@@ -62,10 +62,10 @@ struct SplashParticle {
 #[derive(Clone, Debug, PartialEq)]
 pub enum DeleteOption {
     AllSpecies,
-    LithiumIon,
+    LithiumCation,
     LithiumMetal,
     FoilMetal,
-    ElectrolyteAnion,
+    Pf6Anion,
     EC,
     DMC,
 }
@@ -188,10 +188,10 @@ pub struct Renderer {
     pub show_fd_ions: bool,
 
     // 2D Domain Density Calculation - Species Selection
-    pub density_calc_lithium_ion: bool,
+    pub density_calc_lithium_cation: bool,
     pub density_calc_lithium_metal: bool,
     pub density_calc_foil_metal: bool,
-    pub density_calc_electrolyte_anion: bool,
+    pub density_calc_pf6_anion: bool,
     pub density_calc_ec: bool,
     pub density_calc_dmc: bool,
 
@@ -301,7 +301,7 @@ impl quarkstrom::Renderer for Renderer {
             scenario_radius: 1.0,
             scenario_x: 0.0,
             scenario_y: 0.0,
-            scenario_species: Species::LithiumIon,
+            scenario_species: Species::LithiumCation,
             scenario_width: 5.0,
             scenario_height: 5.0,
             scenario_random_count: 1,
@@ -320,7 +320,7 @@ impl quarkstrom::Renderer for Renderer {
             // Plotting UI defaults
             show_plotting_window: false,
             new_plot_type: PlotType::TimeSeries,
-            new_plot_quantity: Quantity::TotalSpeciesCount(Species::LithiumIon),
+            new_plot_quantity: Quantity::TotalSpeciesCount(Species::LithiumCation),
             new_plot_sampling_mode: SamplingMode::Continuous,
             new_plot_title: "New Plot".to_string(),
             new_plot_spatial_bins: 50,
@@ -342,10 +342,10 @@ impl quarkstrom::Renderer for Renderer {
             show_fd_ions: false,
 
             // 2D Domain Density Calculation - Species Selection (default to Li+ only)
-            density_calc_lithium_ion: true,
+            density_calc_lithium_cation: true,
             density_calc_lithium_metal: false,
             density_calc_foil_metal: false,
-            density_calc_electrolyte_anion: false,
+            density_calc_pf6_anion: false,
             density_calc_ec: false,
             density_calc_dmc: false,
 

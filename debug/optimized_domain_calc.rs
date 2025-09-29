@@ -20,10 +20,10 @@ fn main() {
     let ec_ratio = current_ec / current_total;
     let dmc_ratio = current_dmc / current_total;
     
-    println!("Current counts: Li⁺={}, Anions={}, EC={}, DMC={}", current_li, current_anion, current_ec, current_dmc);
+    println!("Current counts: Li⁺={}, PF6 Anions={}, EC={}, DMC={}", current_li, current_anion, current_ec, current_dmc);
     println!("Total particles: {}", current_total);
-    println!("Ratios: Li⁺={:.3}, Anions={:.3}, EC={:.3}, DMC={:.3}", li_ratio, anion_ratio, ec_ratio, dmc_ratio);
-    println!("Li:Anion = 1:1 (electroneutrality)");
+    println!("Ratios: Li⁺={:.3}, PF6 Anions={:.3}, EC={:.3}, DMC={:.3}", li_ratio, anion_ratio, ec_ratio, dmc_ratio);
+    println!("Li:PF6 Anion = 1:1 (electroneutrality)");
     println!("EC:DMC = {:.2}:1", current_ec / current_dmc);
     
     // Step 2: Target domain size (reasonable for GUI)
@@ -124,12 +124,12 @@ fn main() {
     let new_dmc = (optimal_total * dmc_ratio).round();
     let actual_total = new_li + new_anion + new_ec + new_dmc;
     
-    println!("New counts: Li⁺={}, Anions={}, EC={}, DMC={}", new_li, new_anion, new_ec, new_dmc);
+    println!("New counts: Li⁺={}, PF6 Anions={}, EC={}, DMC={}", new_li, new_anion, new_ec, new_dmc);
     println!("Actual total: {}", actual_total);
     println!("Scaling factor: {:.2}× (current → new)", actual_total / current_total);
     
     // Verify ratios maintained
-    println!("New ratios: Li⁺={:.3}, Anions={:.3}, EC={:.3}, DMC={:.3}", 
+    println!("New ratios: Li⁺={:.3}, PF6 Anions={:.3}, EC={:.3}, DMC={:.3}", 
              new_li/actual_total, new_anion/actual_total, new_ec/actual_total, new_dmc/actual_total);
     
     // Step 7: Final verification
@@ -163,5 +163,5 @@ fn main() {
     println!("Electrode positions: x = ±{}", electrode_positions);
     println!("Metal electrode: {}×{}", new_electrode_width, new_electrode_height);
     println!("Foil electrode: {}×{}", new_foil_width, new_electrode_height);
-    println!("Particle counts: Li⁺={}, Anions={}, EC={}, DMC={}", new_li, new_anion, new_ec, new_dmc);
+    println!("Particle counts: Li⁺={}, PF6 Anions={}, EC={}, DMC={}", new_li, new_anion, new_ec, new_dmc);
 }

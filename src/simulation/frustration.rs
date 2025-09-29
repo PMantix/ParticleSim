@@ -212,7 +212,7 @@ mod tests {
             1.0,
             1.0,
             1.0,
-            Species::LithiumIon,
+            Species::LithiumCation,
         );
         body.acc = Vec2::new(2.0, 0.0); // High acceleration but can't move
         

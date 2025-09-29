@@ -97,8 +97,8 @@ impl CircleConfig {
     pub fn to_species(&self) -> Result<Species, String> {
         match self.species.as_str() {
             "LithiumMetal" => Ok(Species::LithiumMetal),
-            "LithiumIon" => Ok(Species::LithiumIon),
-            "ElectrolyteAnion" => Ok(Species::ElectrolyteAnion),
+            "LithiumCation" => Ok(Species::LithiumCation),
+            "Pf6Anion" => Ok(Species::Pf6Anion),
             "FoilMetal" => Ok(Species::FoilMetal),
             "EC" => Ok(Species::EC),
             "DMC" => Ok(Species::DMC),
@@ -111,8 +111,8 @@ impl MetalRectangleConfig {
     pub fn to_species(&self) -> Result<Species, String> {
         match self.species.as_str() {
             "LithiumMetal" => Ok(Species::LithiumMetal),
-            "LithiumIon" => Ok(Species::LithiumIon),
-            "ElectrolyteAnion" => Ok(Species::ElectrolyteAnion),
+            "LithiumCation" => Ok(Species::LithiumCation),
+            "Pf6Anion" => Ok(Species::Pf6Anion),
             "FoilMetal" => Ok(Species::FoilMetal),
             "EC" => Ok(Species::EC),
             "DMC" => Ok(Species::DMC),
@@ -145,8 +145,8 @@ impl RandomConfig {
     pub fn to_species(&self) -> Result<Species, String> {
         match self.species.as_str() {
             "LithiumMetal" => Ok(Species::LithiumMetal),
-            "LithiumIon" => Ok(Species::LithiumIon),
-            "ElectrolyteAnion" => Ok(Species::ElectrolyteAnion),
+            "LithiumCation" => Ok(Species::LithiumCation),
+            "Pf6Anion" => Ok(Species::Pf6Anion),
             "FoilMetal" => Ok(Species::FoilMetal),
             "EC" => Ok(Species::EC),
             "DMC" => Ok(Species::DMC),

@@ -35,13 +35,13 @@ impl Simulation {
     let mut _anion_count = 0; // debug only
         for body in &self.bodies {
             match body.species {
-                Species::LithiumIon | Species::ElectrolyteAnion | Species::EC | Species::DMC => {
+                Species::LithiumCation | Species::Pf6Anion | Species::EC | Species::DMC => {
                     liquid_ke += 0.5 * body.mass * body.vel.mag_sq();
                     liquid_count += 1;
                     if body.species == Species::EC { _ec_count += 1; }
                     if body.species == Species::DMC { _dmc_count += 1; }
-                    if body.species == Species::LithiumIon { _li_count += 1; }
-                    if body.species == Species::ElectrolyteAnion { _anion_count += 1; }
+                    if body.species == Species::LithiumCation { _li_count += 1; }
+                    if body.species == Species::Pf6Anion { _anion_count += 1; }
                 }
                 _ => {} // Skip metals (LithiumMetal, FoilMetal)
             }
@@ -63,7 +63,7 @@ impl Simulation {
             let mut total_vel_mag = 0.0;
             let mut total_mass = 0.0;
             for body in &self.bodies {
-                if matches!(body.species, Species::LithiumIon | Species::ElectrolyteAnion | Species::EC | Species::DMC) {
+                if matches!(body.species, Species::LithiumCation | Species::Pf6Anion | Species::EC | Species::DMC) {
                     if debug_count < 5 {
                 let vel_mag = body.vel.mag();
                 let ke = 0.5 * body.mass * body.vel.mag_sq();
@@ -97,7 +97,7 @@ impl Simulation {
         // Scale velocities for liquid particles only using the safe scale
         for body in &mut self.bodies {
             match body.species {
-                Species::LithiumIon | Species::ElectrolyteAnion | Species::EC | Species::DMC => {
+                Species::LithiumCation | Species::Pf6Anion | Species::EC | Species::DMC => {
                     body.vel *= safe_scale;
                 }
                 _ => {} // Don't thermostat ions - they're electrostatically constrained
@@ -107,7 +107,7 @@ impl Simulation {
         let mut _new_liquid_ke = 0.0f32; // debug only
         for body in &self.bodies {
             match body.species {
-                Species::LithiumIon | Species::ElectrolyteAnion | Species::EC | Species::DMC => {
+                Species::LithiumCation | Species::Pf6Anion | Species::EC | Species::DMC => {
                     _new_liquid_ke += 0.5 * body.mass * body.vel.mag_sq();
                 }
                 _ => {}
