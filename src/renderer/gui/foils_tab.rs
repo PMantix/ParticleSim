@@ -330,7 +330,7 @@ impl super::super::Renderer {
                                     if ui.button("-").clicked() { dc_current -= 1.0; }
                                     if ui.button("+").clicked() { dc_current += 1.0; }
                                     if ui.button("0").clicked() { dc_current = 0.0; }
-                                    ui.add(egui::Slider::new(&mut dc_current, -100.0..=100.0).step_by(0.1));
+                                    ui.add(egui::Slider::new(&mut dc_current, -100.0..=100.0).step_by(0.01));
                                     
                                     if (dc_current - foil.dc_current).abs() > f32::EPSILON {
                                         SIM_COMMAND_SENDER
@@ -351,7 +351,7 @@ impl super::super::Renderer {
                                     if ui.button("-").clicked() { ac_current = (ac_current - 1.0).max(0.0); }
                                     if ui.button("+").clicked() { ac_current += 1.0; }
                                     if ui.button("0").clicked() { ac_current = 0.0; }
-                                    ui.add(egui::Slider::new(&mut ac_current, 0.0..=100.0).step_by(0.1));
+                                    ui.add(egui::Slider::new(&mut ac_current, 0.0..=100.0).step_by(0.01));
                                     
                                     if (ac_current - foil.ac_current).abs() > f32::EPSILON {
                                         SIM_COMMAND_SENDER
@@ -593,7 +593,7 @@ impl super::super::Renderer {
                         if ui.button("0").clicked() {
                             dc_current = 0.0;
                         }
-                        ui.add(egui::Slider::new(&mut dc_current, -500.0..=500.00).step_by(0.1));
+                        ui.add(egui::Slider::new(&mut dc_current, -500.0..=500.00).step_by(0.01));
                     });
                     if (dc_current - foil.dc_current).abs() > f32::EPSILON {
                         SIM_COMMAND_SENDER
@@ -620,7 +620,7 @@ impl super::super::Renderer {
                         if ui.button("0").clicked() {
                             ac_current = 0.0;
                         }
-                        ui.add(egui::Slider::new(&mut ac_current, 0.0..=500.00).step_by(0.1));
+                        ui.add(egui::Slider::new(&mut ac_current, 0.0..=500.00).step_by(0.01));
                     });
                     if (ac_current - foil.ac_current).abs() > f32::EPSILON {
                         SIM_COMMAND_SENDER
@@ -923,7 +923,7 @@ impl super::super::Renderer {
                         ui.add(
                             egui::DragValue::new(&mut dc_current)
                                 .prefix("DC: ")
-                                .speed(0.1),
+                                .speed(0.01),
                         );
 
                         // AC Current
@@ -931,7 +931,7 @@ impl super::super::Renderer {
                         ui.add(
                             egui::DragValue::new(&mut ac_current)
                                 .prefix("AC: ")
-                                .speed(0.1)
+                                .speed(0.01)
                                 .clamp_range(0.0..=500.0),
                         );
 

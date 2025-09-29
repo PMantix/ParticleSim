@@ -860,7 +860,7 @@ pub fn ui_switch_charging(ui: &mut egui::Ui, state: &mut SwitchUiState) {
                     let label_a = match rs.active.mode { Mode::Current => "Current (e/fs, signed)", Mode::Overpotential => "Target ratio" };
                     ui.horizontal(|ui| {
                         ui.label(label_a);
-                        if ui.add(egui::DragValue::new(&mut av).speed(0.1).clamp_range(-10_000.0..=10_000.0)).changed() {
+                        if ui.add(egui::DragValue::new(&mut av).speed(0.01).clamp_range(-10_000.0..=10_000.0)).changed() {
                             rs.active.value = av; changed = true;
                         }
                     });
@@ -880,7 +880,7 @@ pub fn ui_switch_charging(ui: &mut egui::Ui, state: &mut SwitchUiState) {
                     let label_i = match rs.inactive.mode { Mode::Current => "Current (e/fs, signed)", Mode::Overpotential => "Target ratio" };
                     ui.horizontal(|ui| {
                         ui.label(label_i);
-                        if ui.add(egui::DragValue::new(&mut iv).speed(0.1).clamp_range(-10_000.0..=10_000.0)).changed() {
+                        if ui.add(egui::DragValue::new(&mut iv).speed(0.01).clamp_range(-10_000.0..=10_000.0)).changed() {
                             rs.inactive.value = iv; changed = true;
                         }
                     });
@@ -977,7 +977,7 @@ pub fn ui_switch_charging(ui: &mut egui::Ui, state: &mut SwitchUiState) {
                     ui.horizontal(|ui| {
                         ui.label(label);
                         let mut value = setpoint.value;
-                        ui.add(egui::DragValue::new(&mut value).speed(0.1).clamp_range(-10_000.0..=10_000.0));
+                        ui.add(egui::DragValue::new(&mut value).speed(0.01).clamp_range(-10_000.0..=10_000.0));
                         if (value - setpoint.value).abs() > f64::EPSILON {
                             setpoint.value = value;
                             changed = true;
