@@ -207,7 +207,7 @@ impl Simulation {
         }
     }
 
-    fn apply_switch_step(&mut self, foil_pairs: (Vec<u64>, Vec<u64>), setpoint: &switch_charging::StepSetpoint) {
+    fn apply_switch_step_role_based(&mut self, foil_pairs: (Vec<u64>, Vec<u64>)) {
         let (pos_ids, neg_ids) = &foil_pairs;
         self.switch_active_pair = Some((pos_ids[0], neg_ids[0])); // For compatibility, store first pair
         
@@ -221,18 +221,15 @@ impl Simulation {
         
         // Determine active roles for this step
         let (pos_role, neg_role) = crate::switch_charging::roles_for_step(self.switch_scheduler.current_step());
-        let use_role = self.switch_config.use_role_setpoints;
 
         // Helper to apply a setpoint to a specific foil
-    let apply_setpoint_to_foil = |foil: &mut crate::body::foil::Foil, sp: &crate::switch_charging::StepSetpoint, _is_positive_group: bool| {
+        let apply_setpoint_to_foil = |foil: &mut crate::body::foil::Foil, sp: &crate::switch_charging::StepSetpoint, _is_positive_group: bool| {
             match sp.mode {
                 crate::switch_charging::Mode::Current => {
                     if foil.charging_mode != crate::body::foil::ChargingMode::Current {
                         foil.disable_overpotential_mode();
                     }
                     foil.charging_mode = crate::body::foil::ChargingMode::Current;
-                    // Positive group uses +value split, negative group uses -value split. Splitting handled outside when group-applied.
-                    // Here we assume caller passes per-foil current already split; we just set sign if needed.
                     foil.ac_current = 0.0;
                     foil.switch_hz = 0.0;
                     // dc_current will be set by caller for group split
@@ -248,84 +245,93 @@ impl Simulation {
             }
         };
 
-        // If using role-based setpoints, apply active for active roles and inactive for the other two roles
-        if use_role {
-            // Map role -> ids for convenience
-            let role_ids = |role: crate::switch_charging::Role| -> Vec<u64> { self.switch_config.foils_for_role(role).to_vec() };
-            let pos_ids_all = role_ids(pos_role);
-            let neg_ids_all = role_ids(neg_role);
-            let other_roles: [crate::switch_charging::Role; 2] = match (pos_role, neg_role) {
-                (crate::switch_charging::Role::PosA, crate::switch_charging::Role::NegA) => [crate::switch_charging::Role::PosB, crate::switch_charging::Role::NegB],
-                (crate::switch_charging::Role::PosB, crate::switch_charging::Role::NegB) => [crate::switch_charging::Role::PosA, crate::switch_charging::Role::NegA],
-                (crate::switch_charging::Role::PosB, crate::switch_charging::Role::NegA) => [crate::switch_charging::Role::PosA, crate::switch_charging::Role::NegB],
-                (crate::switch_charging::Role::PosA, crate::switch_charging::Role::NegB) => [crate::switch_charging::Role::PosB, crate::switch_charging::Role::NegA],
-                _ => [crate::switch_charging::Role::PosA, crate::switch_charging::Role::PosB], // Fallback (shouldn't occur)
-            };
+        // Map role -> ids for convenience
+        let role_ids = |role: crate::switch_charging::Role| -> Vec<u64> { self.switch_config.foils_for_role(role).to_vec() };
+        let pos_ids_all = role_ids(pos_role);
+        let neg_ids_all = role_ids(neg_role);
+        let other_roles: [crate::switch_charging::Role; 2] = match (pos_role, neg_role) {
+            (crate::switch_charging::Role::PosA, crate::switch_charging::Role::NegA) => [crate::switch_charging::Role::PosB, crate::switch_charging::Role::NegB],
+            (crate::switch_charging::Role::PosB, crate::switch_charging::Role::NegB) => [crate::switch_charging::Role::PosA, crate::switch_charging::Role::NegA],
+            (crate::switch_charging::Role::PosB, crate::switch_charging::Role::NegA) => [crate::switch_charging::Role::PosA, crate::switch_charging::Role::NegB],
+            (crate::switch_charging::Role::PosA, crate::switch_charging::Role::NegB) => [crate::switch_charging::Role::PosB, crate::switch_charging::Role::NegA],
+            _ => [crate::switch_charging::Role::PosA, crate::switch_charging::Role::PosB], // Fallback (shouldn't occur)
+        };
 
-            // Active: apply role.active
-            if let Some(rsp) = self.switch_config.role_setpoints.get(&pos_role) {
-                // Split current if in Current mode
-                if matches!(rsp.active.mode, crate::switch_charging::Mode::Current) {
-                    let per = rsp.active.value as f32 / (pos_ids_all.len().max(1) as f32);
-                    for id in &pos_ids_all {
-                        if let Some(f) = self.foils.iter_mut().find(|f| f.id == *id) {
-                            apply_setpoint_to_foil(f, &rsp.active, true);
-                            f.dc_current = per; // positive group +
-                        }
+        // Active: apply role.active
+        if let Some(rsp) = self.switch_config.role_setpoints.get(&pos_role) {
+            // Split current if in Current mode
+            if matches!(rsp.active.mode, crate::switch_charging::Mode::Current) {
+                let per = rsp.active.value as f32 / (pos_ids_all.len().max(1) as f32);
+                for id in &pos_ids_all {
+                    if let Some(f) = self.foils.iter_mut().find(|f| f.id == *id) {
+                        apply_setpoint_to_foil(f, &rsp.active, true);
+                        f.dc_current = per; // positive group +
                     }
-                } else {
-                    for id in &pos_ids_all {
-                        if let Some(f) = self.foils.iter_mut().find(|f| f.id == *id) {
-                            apply_setpoint_to_foil(f, &rsp.active, true);
-                        }
+                }
+            } else {
+                for id in &pos_ids_all {
+                    if let Some(f) = self.foils.iter_mut().find(|f| f.id == *id) {
+                        apply_setpoint_to_foil(f, &rsp.active, true);
                     }
                 }
             }
-            if let Some(rsp) = self.switch_config.role_setpoints.get(&neg_role) {
-                if matches!(rsp.active.mode, crate::switch_charging::Mode::Current) {
-                    let per = rsp.active.value as f32 / (neg_ids_all.len().max(1) as f32);
-                    for id in &neg_ids_all {
-                        if let Some(f) = self.foils.iter_mut().find(|f| f.id == *id) {
-                            apply_setpoint_to_foil(f, &rsp.active, false);
-                            f.dc_current = -per; // negative group -
-                        }
+        }
+        if let Some(rsp) = self.switch_config.role_setpoints.get(&neg_role) {
+            if matches!(rsp.active.mode, crate::switch_charging::Mode::Current) {
+                let per = rsp.active.value as f32 / (neg_ids_all.len().max(1) as f32);
+                for id in &neg_ids_all {
+                    if let Some(f) = self.foils.iter_mut().find(|f| f.id == *id) {
+                        apply_setpoint_to_foil(f, &rsp.active, false);
+                        f.dc_current = -per; // negative group -
                     }
-                } else {
-                    for id in &neg_ids_all {
-                        if let Some(f) = self.foils.iter_mut().find(|f| f.id == *id) {
-                            apply_setpoint_to_foil(f, &rsp.active, false);
-                        }
+                }
+            } else {
+                for id in &neg_ids_all {
+                    if let Some(f) = self.foils.iter_mut().find(|f| f.id == *id) {
+                        apply_setpoint_to_foil(f, &rsp.active, false);
                     }
                 }
             }
-
-            // Inactive: apply other_roles.inactive
-            for &role in &other_roles {
-                if let Some(rsp) = self.switch_config.role_setpoints.get(&role) {
-                    let ids = role_ids(role);
-                    if matches!(rsp.inactive.mode, crate::switch_charging::Mode::Current) {
-                        let per = rsp.inactive.value as f32 / (ids.len().max(1) as f32);
-                        // Sign: determine by role kind (Pos* => +, Neg* => -)
-                        let sign = match role { crate::switch_charging::Role::PosA | crate::switch_charging::Role::PosB => 1.0f32, _ => -1.0f32 };
-                        for id in ids {
-                            if let Some(f) = self.foils.iter_mut().find(|f| f.id == id) {
-                                apply_setpoint_to_foil(f, &rsp.inactive, matches!(role, crate::switch_charging::Role::PosA | crate::switch_charging::Role::PosB));
-                                f.dc_current = sign * per;
-                            }
-                        }
-                    } else {
-                        for id in ids {
-                            if let Some(f) = self.foils.iter_mut().find(|f| f.id == id) {
-                                apply_setpoint_to_foil(f, &rsp.inactive, matches!(role, crate::switch_charging::Role::PosA | crate::switch_charging::Role::PosB));
-                            }
-                        }
-                    }
-                }
-            }
-
-            return; // Done via role-based path
         }
 
+        // Inactive: apply other_roles.inactive
+        for &role in &other_roles {
+            if let Some(rsp) = self.switch_config.role_setpoints.get(&role) {
+                let ids = role_ids(role);
+                if matches!(rsp.inactive.mode, crate::switch_charging::Mode::Current) {
+                    let per = rsp.inactive.value as f32 / (ids.len().max(1) as f32);
+                    // Sign: determine by role kind (Pos* => +, Neg* => -)
+                    let sign = match role { crate::switch_charging::Role::PosA | crate::switch_charging::Role::PosB => 1.0f32, _ => -1.0f32 };
+                    for id in ids {
+                        if let Some(f) = self.foils.iter_mut().find(|f| f.id == id) {
+                            apply_setpoint_to_foil(f, &rsp.inactive, matches!(role, crate::switch_charging::Role::PosA | crate::switch_charging::Role::PosB));
+                            f.dc_current = sign * per;
+                        }
+                    }
+                } else {
+                    for id in ids {
+                        if let Some(f) = self.foils.iter_mut().find(|f| f.id == id) {
+                            apply_setpoint_to_foil(f, &rsp.inactive, matches!(role, crate::switch_charging::Role::PosA | crate::switch_charging::Role::PosB));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fn apply_switch_step(&mut self, foil_pairs: (Vec<u64>, Vec<u64>), setpoint: &switch_charging::StepSetpoint) {
+        let (pos_ids, neg_ids) = &foil_pairs;
+        self.switch_active_pair = Some((pos_ids[0], neg_ids[0])); // For compatibility, store first pair
+        
+        // Collect all foil IDs to avoid borrow conflicts
+        let all_foil_ids: Vec<u64> = self.switch_config.role_to_foil.values().flatten().copied().collect();
+        
+        // First, restore all snapshots
+        for &foil_id in &all_foil_ids {
+            self.restore_snapshot_for(foil_id);
+        }
+        
+        // Apply step setpoint to all foils (old behavior)
         match setpoint.mode {
             switch_charging::Mode::Current => {
                 // Divide current between foils in each group
@@ -355,6 +361,22 @@ impl Simulation {
                         foil.switch_hz = 0.0;
                     }
                 }
+                
+                // For inactive foils in Current mode, set them to overpotential neutralization
+                let active_ids: std::collections::HashSet<u64> = pos_ids.iter().chain(neg_ids.iter()).copied().collect();
+                for &foil_id in &all_foil_ids {
+                    if !active_ids.contains(&foil_id) {
+                        if let Some(foil) = self.foils.iter_mut().find(|f| f.id == foil_id) {
+                            // Neutralize inactive foils with overpotential 1.0
+                            if foil.charging_mode != crate::body::foil::ChargingMode::Overpotential {
+                                foil.enable_overpotential_mode(1.0);
+                            }
+                            if let Some(controller) = foil.overpotential_controller.as_mut() {
+                                controller.target_ratio = 1.0;
+                            }
+                        }
+                    }
+                }
             }
             switch_charging::Mode::Overpotential => {
                 // Apply same overpotential to all foils in each group
@@ -382,6 +404,21 @@ impl Simulation {
                         }
                     }
                 }
+                
+                // For inactive foils, also neutralize them
+                let active_ids: std::collections::HashSet<u64> = pos_ids.iter().chain(neg_ids.iter()).copied().collect();
+                for &foil_id in &all_foil_ids {
+                    if !active_ids.contains(&foil_id) {
+                        if let Some(foil) = self.foils.iter_mut().find(|f| f.id == foil_id) {
+                            if foil.charging_mode != crate::body::foil::ChargingMode::Overpotential {
+                                foil.enable_overpotential_mode(1.0);
+                            }
+                            if let Some(controller) = foil.overpotential_controller.as_mut() {
+                                controller.target_ratio = 1.0;
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -392,7 +429,12 @@ impl Simulation {
             return;
         }
         if let Some(((pos_ids, neg_ids), setpoint)) = self.switch_scheduler.on_tick(&self.switch_config) {
-            self.apply_switch_step((pos_ids, neg_ids), &setpoint);
+            // When using role-based setpoints, ignore the step setpoint completely
+            if self.switch_config.use_role_setpoints {
+                self.apply_switch_step_role_based((pos_ids, neg_ids));
+            } else {
+                self.apply_switch_step((pos_ids, neg_ids), &setpoint);
+            }
             self.send_switch_status(SwitchStatus::ActiveStep {
                 step_index: self.switch_scheduler.current_step(),
                 dwell_remaining: self.switch_scheduler.dwell_remaining(),
