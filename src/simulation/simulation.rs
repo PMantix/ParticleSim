@@ -219,33 +219,111 @@ impl Simulation {
             self.restore_snapshot_for(foil_id);
         }
         
-        // Set inactive foils to neutral values (not participating in current step)
-        for &foil_id in &all_foil_ids {
-            if !pos_ids.contains(&foil_id) && !neg_ids.contains(&foil_id) {
-                if let Some(foil) = self.foils.iter_mut().find(|f| f.id == foil_id) {
-                    match setpoint.mode {
-                        switch_charging::Mode::Current => {
-                            // Inactive foils get 0 current
-                            if foil.charging_mode != crate::body::foil::ChargingMode::Current {
-                                foil.disable_overpotential_mode();
-                            }
-                            foil.charging_mode = crate::body::foil::ChargingMode::Current;
-                            foil.dc_current = 0.0;
-                            foil.ac_current = 0.0;
-                            foil.switch_hz = 0.0;
+        // Determine active roles for this step
+        let (pos_role, neg_role) = crate::switch_charging::roles_for_step(self.switch_scheduler.current_step());
+        let use_role = self.switch_config.use_role_setpoints;
+
+        // Helper to apply a setpoint to a specific foil
+    let apply_setpoint_to_foil = |foil: &mut crate::body::foil::Foil, sp: &crate::switch_charging::StepSetpoint, _is_positive_group: bool| {
+            match sp.mode {
+                crate::switch_charging::Mode::Current => {
+                    if foil.charging_mode != crate::body::foil::ChargingMode::Current {
+                        foil.disable_overpotential_mode();
+                    }
+                    foil.charging_mode = crate::body::foil::ChargingMode::Current;
+                    // Positive group uses +value split, negative group uses -value split. Splitting handled outside when group-applied.
+                    // Here we assume caller passes per-foil current already split; we just set sign if needed.
+                    foil.ac_current = 0.0;
+                    foil.switch_hz = 0.0;
+                    // dc_current will be set by caller for group split
+                }
+                crate::switch_charging::Mode::Overpotential => {
+                    if foil.charging_mode != crate::body::foil::ChargingMode::Overpotential {
+                        foil.enable_overpotential_mode(1.0);
+                    }
+                    if let Some(controller) = foil.overpotential_controller.as_mut() {
+                        controller.target_ratio = sp.value as f32;
+                    }
+                }
+            }
+        };
+
+        // If using role-based setpoints, apply active for active roles and inactive for the other two roles
+        if use_role {
+            // Map role -> ids for convenience
+            let role_ids = |role: crate::switch_charging::Role| -> Vec<u64> { self.switch_config.foils_for_role(role).to_vec() };
+            let pos_ids_all = role_ids(pos_role);
+            let neg_ids_all = role_ids(neg_role);
+            let other_roles: [crate::switch_charging::Role; 2] = match (pos_role, neg_role) {
+                (crate::switch_charging::Role::PosA, crate::switch_charging::Role::NegA) => [crate::switch_charging::Role::PosB, crate::switch_charging::Role::NegB],
+                (crate::switch_charging::Role::PosB, crate::switch_charging::Role::NegB) => [crate::switch_charging::Role::PosA, crate::switch_charging::Role::NegA],
+                (crate::switch_charging::Role::PosB, crate::switch_charging::Role::NegA) => [crate::switch_charging::Role::PosA, crate::switch_charging::Role::NegB],
+                (crate::switch_charging::Role::PosA, crate::switch_charging::Role::NegB) => [crate::switch_charging::Role::PosB, crate::switch_charging::Role::NegA],
+                _ => [crate::switch_charging::Role::PosA, crate::switch_charging::Role::PosB], // Fallback (shouldn't occur)
+            };
+
+            // Active: apply role.active
+            if let Some(rsp) = self.switch_config.role_setpoints.get(&pos_role) {
+                // Split current if in Current mode
+                if matches!(rsp.active.mode, crate::switch_charging::Mode::Current) {
+                    let per = rsp.active.value as f32 / (pos_ids_all.len().max(1) as f32);
+                    for id in &pos_ids_all {
+                        if let Some(f) = self.foils.iter_mut().find(|f| f.id == *id) {
+                            apply_setpoint_to_foil(f, &rsp.active, true);
+                            f.dc_current = per; // positive group +
                         }
-                        switch_charging::Mode::Overpotential => {
-                            // Inactive foils get neutral overpotential (1.0 ratio)
-                            if foil.charging_mode != crate::body::foil::ChargingMode::Overpotential {
-                                foil.enable_overpotential_mode(1.0);
+                    }
+                } else {
+                    for id in &pos_ids_all {
+                        if let Some(f) = self.foils.iter_mut().find(|f| f.id == *id) {
+                            apply_setpoint_to_foil(f, &rsp.active, true);
+                        }
+                    }
+                }
+            }
+            if let Some(rsp) = self.switch_config.role_setpoints.get(&neg_role) {
+                if matches!(rsp.active.mode, crate::switch_charging::Mode::Current) {
+                    let per = rsp.active.value as f32 / (neg_ids_all.len().max(1) as f32);
+                    for id in &neg_ids_all {
+                        if let Some(f) = self.foils.iter_mut().find(|f| f.id == *id) {
+                            apply_setpoint_to_foil(f, &rsp.active, false);
+                            f.dc_current = -per; // negative group -
+                        }
+                    }
+                } else {
+                    for id in &neg_ids_all {
+                        if let Some(f) = self.foils.iter_mut().find(|f| f.id == *id) {
+                            apply_setpoint_to_foil(f, &rsp.active, false);
+                        }
+                    }
+                }
+            }
+
+            // Inactive: apply other_roles.inactive
+            for &role in &other_roles {
+                if let Some(rsp) = self.switch_config.role_setpoints.get(&role) {
+                    let ids = role_ids(role);
+                    if matches!(rsp.inactive.mode, crate::switch_charging::Mode::Current) {
+                        let per = rsp.inactive.value as f32 / (ids.len().max(1) as f32);
+                        // Sign: determine by role kind (Pos* => +, Neg* => -)
+                        let sign = match role { crate::switch_charging::Role::PosA | crate::switch_charging::Role::PosB => 1.0f32, _ => -1.0f32 };
+                        for id in ids {
+                            if let Some(f) = self.foils.iter_mut().find(|f| f.id == id) {
+                                apply_setpoint_to_foil(f, &rsp.inactive, matches!(role, crate::switch_charging::Role::PosA | crate::switch_charging::Role::PosB));
+                                f.dc_current = sign * per;
                             }
-                            if let Some(controller) = foil.overpotential_controller.as_mut() {
-                                controller.target_ratio = 1.0; // Neutral ratio
+                        }
+                    } else {
+                        for id in ids {
+                            if let Some(f) = self.foils.iter_mut().find(|f| f.id == id) {
+                                apply_setpoint_to_foil(f, &rsp.inactive, matches!(role, crate::switch_charging::Role::PosA | crate::switch_charging::Role::PosB));
                             }
                         }
                     }
                 }
             }
+
+            return; // Done via role-based path
         }
 
         match setpoint.mode {
@@ -1124,12 +1202,19 @@ impl Simulation {
         let mut rng = rand::rng();
 
         // Calculate proper foil electron ratios for overpotential charging foils
+        // PERFORMANCE: Only compute for masters with non-neutral targets to avoid heavy BFS on neutralizing foils
         let mut electron_ratios = std::collections::HashMap::new();
         for foil in &self.foils {
-            if matches!(
-                foil.charging_mode,
-                crate::body::foil::ChargingMode::Overpotential
-            ) {
+            if matches!(foil.charging_mode, crate::body::foil::ChargingMode::Overpotential) {
+                // Only masters (with controllers) need ratios; slaves use assigned currents.
+                // Skip neutralizing foils (target_ratio ≈ 1.0) to save work.
+                let needs_ratio = if let Some(ctrl) = &foil.overpotential_controller {
+                    (ctrl.target_ratio - 1.0).abs() > 1e-6
+                } else {
+                    false // Slave foils don't compute ratios
+                };
+                if !needs_ratio { continue; }
+
                 let ratio = self.calculate_foil_electron_ratio(foil);
                 electron_ratios.insert(foil.id, ratio);
             }
@@ -1144,7 +1229,11 @@ impl Simulation {
                 crate::body::foil::ChargingMode::Overpotential
             ) && self.foils[i].overpotential_controller.is_some()
             {
-                // Only master foils have controllers
+                // Only master foils have controllers; skip neutral target to save work
+                if let Some(ctrl) = &self.foils[i].overpotential_controller {
+                    if (ctrl.target_ratio - 1.0).abs() <= 1e-6 { continue; }
+                }
+
                 let foil_id = self.foils[i].id;
                 if let Some(actual_ratio) = electron_ratios.get(&foil_id).copied() {
                     let master_current =
@@ -1391,6 +1480,12 @@ impl Simulation {
             // Get the effective current for this foil (master PID output or slave assigned current)
             let foil_id = self.foils[i].id;
             let _actual_ratio = electron_ratios.get(&foil_id).copied(); // Keep for potential future use
+            // Skip if neutral target (saves work and avoids unnecessary random ops)
+            if let Some(ctrl) = &self.foils[i].overpotential_controller {
+                if (ctrl.target_ratio - 1.0).abs() <= 1e-6 {
+                    continue;
+                }
+            }
             let effective_current =
                 if let Some(controller) = &self.foils[i].overpotential_controller {
                     // Master foil - use PID output
