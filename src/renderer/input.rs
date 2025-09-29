@@ -178,10 +178,26 @@ impl super::Renderer {
                         let (pos, neg) = crate::switch_charging::roles_for_step(step);
                         pos_role = Some(pos.display().to_string());
                         neg_role = Some(neg.display().to_string());
-                        // Active setpoint per step from current UI config
-                        if let Some(sp) = self.switch_ui_state.config.step_setpoints.get(&step).cloned() {
-                            switch_mode = Some(match sp.mode { crate::switch_charging::Mode::Current => "Current".to_string(), crate::switch_charging::Mode::Overpotential => "Overpotential".to_string() });
-                            switch_value = Some(sp.value);
+                        
+                        // Get the active setpoint from the appropriate config mode
+                        if self.switch_ui_state.config.use_active_inactive_setpoints {
+                            // Use new step-based active/inactive setpoints (record the active setpoint)
+                            if let Some(sai) = self.switch_ui_state.config.step_active_inactive.get(&step) {
+                                switch_mode = Some(match sai.active.mode { 
+                                    crate::switch_charging::Mode::Current => "Current".to_string(), 
+                                    crate::switch_charging::Mode::Overpotential => "Overpotential".to_string() 
+                                });
+                                switch_value = Some(sai.active.value);
+                            }
+                        } else {
+                            // Use legacy step setpoints
+                            if let Some(sp) = self.switch_ui_state.config.step_setpoints.get(&step).cloned() {
+                                switch_mode = Some(match sp.mode { 
+                                    crate::switch_charging::Mode::Current => "Current".to_string(), 
+                                    crate::switch_charging::Mode::Overpotential => "Overpotential".to_string() 
+                                });
+                                switch_value = Some(sp.value);
+                            }
                         }
                     }
                     self.measurement_history.push(MeasurementRecord {

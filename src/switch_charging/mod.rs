@@ -83,12 +83,12 @@ impl Default for StepSetpoint {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-pub struct RoleSetpoints {
+pub struct StepActiveInactiveSetpoints {
     pub active: StepSetpoint,
     pub inactive: StepSetpoint,
 }
 
-impl Default for RoleSetpoints {
+impl Default for StepActiveInactiveSetpoints {
     fn default() -> Self {
         Self {
             active: StepSetpoint { mode: Mode::Overpotential, value: 0.9 },
@@ -105,10 +105,10 @@ pub struct SwitchChargingConfig {
     pub switch_rate_hz: f64,
     pub delta_steps: u32,
     pub step_setpoints: HashMap<u8, StepSetpoint>,
-    /// If true, use per-role Active/Inactive setpoints; otherwise use per-step setpoints
-    pub use_role_setpoints: bool,
-    /// Per-role setpoints for active vs inactive phases
-    pub role_setpoints: HashMap<Role, RoleSetpoints>,
+    /// If true, use per-step Active/Inactive setpoints; otherwise use legacy per-step setpoints
+    pub use_active_inactive_setpoints: bool,
+    /// Per-step setpoints for active vs inactive foils
+    pub step_active_inactive: HashMap<u8, StepActiveInactiveSetpoints>,
 }
 
 impl Default for SwitchChargingConfig {
@@ -124,11 +124,11 @@ impl Default for SwitchChargingConfig {
                 (2, StepSetpoint { mode: Mode::Overpotential, value: 0.9 }),
                 (3, StepSetpoint { mode: Mode::Overpotential, value: 0.9 }),
             ]),
-            use_role_setpoints: true,
-            role_setpoints: HashMap::new(),
+            use_active_inactive_setpoints: true,
+            step_active_inactive: HashMap::new(),
         };
         cfg.ensure_all_steps();
-        cfg.ensure_all_roles();
+        cfg.ensure_all_step_active_inactive();
         cfg.recompute_from_steps();
         cfg
     }
@@ -172,14 +172,14 @@ impl SwitchChargingConfig {
             }
         }
 
-        // Validate per-role setpoints if enabled (also ensure defaults exist)
-        for role in Role::ALL.iter() {
-            if !self.role_setpoints.contains_key(role) {
-                return Err(format!("Missing role setpoints for {}", role));
+        // Validate per-step active/inactive setpoints if enabled
+        for step in 0u8..4u8 {
+            if !self.step_active_inactive.contains_key(&step) {
+                return Err(format!("Missing active/inactive setpoints for step {}", step + 1));
             }
-            let rs = &self.role_setpoints[role];
-            if !rs.active.value.is_finite() || !rs.inactive.value.is_finite() {
-                return Err(format!("Role {} setpoints must be finite", role));
+            let sai = &self.step_active_inactive[&step];
+            if !sai.active.value.is_finite() || !sai.inactive.value.is_finite() {
+                return Err(format!("Step {} active/inactive setpoints must be finite", step + 1));
             }
         }
 
@@ -208,11 +208,11 @@ impl SwitchChargingConfig {
         }
     }
 
-    pub fn ensure_all_roles(&mut self) {
-        for role in Role::ALL.iter() {
-            self.role_setpoints
-                .entry(*role)
-                .or_insert_with(RoleSetpoints::default);
+    pub fn ensure_all_step_active_inactive(&mut self) {
+        for step in 0..4u8 {
+            self.step_active_inactive
+                .entry(step)
+                .or_insert_with(StepActiveInactiveSetpoints::default);
         }
     }
 }
@@ -544,6 +544,7 @@ impl SwitchUiState {
                     if !self.config_dirty {
                         self.config = cfg;
                         self.config.ensure_all_steps();
+                        self.config.ensure_all_step_active_inactive();
                         self.update_validation();
                     }
                     self.config_dirty = false;
@@ -590,7 +591,7 @@ impl SwitchUiState {
     pub fn send_update(&mut self) {
         let mut cfg = self.config.clone();
         cfg.ensure_all_steps();
-        cfg.ensure_all_roles();
+        cfg.ensure_all_step_active_inactive();
         self.send_control(SwitchControl::UpdateConfig(cfg));
         self.config_dirty = false;
     }
@@ -816,77 +817,96 @@ pub fn ui_switch_charging(ui: &mut egui::Ui, state: &mut SwitchUiState) {
     ui.separator();
 
     ui.group(|ui| {
-        ui.label("Role-Based Setpoints");
+        ui.label("Step Active/Inactive Setpoints");
 
-        // Toggle to use role-based setpoints
-        let mut use_role = state.config.use_role_setpoints;
-        if ui.checkbox(&mut use_role, "Use Active/Inactive per role").changed() {
-            state.config.use_role_setpoints = use_role;
+        // Toggle to use active/inactive setpoints
+        let mut use_active_inactive = state.config.use_active_inactive_setpoints;
+        if ui.checkbox(&mut use_active_inactive, "Use Active/Inactive per step").changed() {
+            state.config.use_active_inactive_setpoints = use_active_inactive;
             state.config_dirty = true;
             state.send_update();
         }
 
-        // Show editor grid for per-role setpoints
-        egui::Grid::new("role-setpoints-grid")
-            .num_columns(5)
+        ui.label("For each step, define what active foils and inactive foils should do:");
+
+        // Show editor grid for per-step active/inactive setpoints
+        egui::Grid::new("step-active-inactive-grid")
+            .num_columns(6)
             .spacing([8.0, 4.0])
             .striped(true)
             .show(ui, |ui| {
-                ui.heading("Role");
+                ui.heading("Step");
                 ui.heading("Active Mode");
                 ui.heading("Active Value");
                 ui.heading("Inactive Mode");
                 ui.heading("Inactive Value");
+                ui.heading("Info");
                 ui.end_row();
 
-                for role in Role::ALL.iter() {
-                    let mut rs = state.config.role_setpoints.get(role).cloned().unwrap_or_default();
+                for step in 0..4u8 {
+                    let (pos, neg) = roles_for_step(step);
+                    let mut sai = state.config.step_active_inactive.get(&step).cloned().unwrap_or_default();
                     let mut changed = false;
 
-                    ui.label(role.display());
+                    // Check if this is the currently active step
+                    let is_active_step = state.last_step_status.map(|(active_step, _)| active_step == step).unwrap_or(false);
+                    
+                    let step_label = if is_active_step {
+                        format!("▶ {}", step + 1)
+                    } else {
+                        format!("{}", step + 1)
+                    };
+                    
+                    ui.colored_label(
+                        if is_active_step { egui::Color32::WHITE } else { ui.style().visuals.text_color() },
+                        step_label
+                    );
 
                     // Active mode
-                    let amode_before = rs.active.mode;
-                    egui::ComboBox::from_id_source(format!("role-active-mode-{}", role.display()))
-                        .selected_text(match rs.active.mode { Mode::Current => "Current", Mode::Overpotential => "Overpotential" })
+                    let amode_before = sai.active.mode;
+                    egui::ComboBox::from_id_source(format!("step-active-mode-{}", step))
+                        .selected_text(match sai.active.mode { Mode::Current => "Current", Mode::Overpotential => "Overpotential" })
                         .show_ui(ui, |ui| {
-                            ui.selectable_value(&mut rs.active.mode, Mode::Current, "Current");
-                            ui.selectable_value(&mut rs.active.mode, Mode::Overpotential, "Overpotential");
+                            ui.selectable_value(&mut sai.active.mode, Mode::Current, "Current");
+                            ui.selectable_value(&mut sai.active.mode, Mode::Overpotential, "Overpotential");
                         });
-                    if rs.active.mode != amode_before { changed = true; }
+                    if sai.active.mode != amode_before { changed = true; }
 
                     // Active value
-                    let mut av = rs.active.value;
-                    let label_a = match rs.active.mode { Mode::Current => "Current (e/fs, signed)", Mode::Overpotential => "Target ratio" };
+                    let mut av = sai.active.value;
+                    let label_a = match sai.active.mode { Mode::Current => "Current (e/fs)", Mode::Overpotential => "Target ratio" };
                     ui.horizontal(|ui| {
                         ui.label(label_a);
                         if ui.add(egui::DragValue::new(&mut av).speed(0.01).clamp_range(-10_000.0..=10_000.0)).changed() {
-                            rs.active.value = av; changed = true;
+                            sai.active.value = av; changed = true;
                         }
                     });
 
                     // Inactive mode
-                    let imode_before = rs.inactive.mode;
-                    egui::ComboBox::from_id_source(format!("role-inactive-mode-{}", role.display()))
-                        .selected_text(match rs.inactive.mode { Mode::Current => "Current", Mode::Overpotential => "Overpotential" })
+                    let imode_before = sai.inactive.mode;
+                    egui::ComboBox::from_id_source(format!("step-inactive-mode-{}", step))
+                        .selected_text(match sai.inactive.mode { Mode::Current => "Current", Mode::Overpotential => "Overpotential" })
                         .show_ui(ui, |ui| {
-                            ui.selectable_value(&mut rs.inactive.mode, Mode::Current, "Current");
-                            ui.selectable_value(&mut rs.inactive.mode, Mode::Overpotential, "Overpotential");
+                            ui.selectable_value(&mut sai.inactive.mode, Mode::Current, "Current");
+                            ui.selectable_value(&mut sai.inactive.mode, Mode::Overpotential, "Overpotential");
                         });
-                    if rs.inactive.mode != imode_before { changed = true; }
+                    if sai.inactive.mode != imode_before { changed = true; }
 
                     // Inactive value
-                    let mut iv = rs.inactive.value;
-                    let label_i = match rs.inactive.mode { Mode::Current => "Current (e/fs, signed)", Mode::Overpotential => "Target ratio" };
+                    let mut iv = sai.inactive.value;
+                    let label_i = match sai.inactive.mode { Mode::Current => "Current (e/fs)", Mode::Overpotential => "Target ratio" };
                     ui.horizontal(|ui| {
                         ui.label(label_i);
                         if ui.add(egui::DragValue::new(&mut iv).speed(0.01).clamp_range(-10_000.0..=10_000.0)).changed() {
-                            rs.inactive.value = iv; changed = true;
+                            sai.inactive.value = iv; changed = true;
                         }
                     });
 
+                    // Info about which foils are active
+                    ui.label(format!("{} → {} (active)", pos.display(), neg.display()));
+
                     if changed {
-                        state.config.role_setpoints.insert(*role, rs);
+                        state.config.step_active_inactive.insert(step, sai);
                         state.config_dirty = true;
                         state.send_update();
                     }
