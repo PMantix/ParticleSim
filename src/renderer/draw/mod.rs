@@ -507,7 +507,7 @@ impl super::Renderer {
             let field_scale = 2.0;
             let color = [255, 0, 0, 255];
 
-            let half_view = Vec2::new(self.scale, self.scale);
+            let half_view = Vec2::new(self.scale * (width as f32 / height as f32), self.scale);
             let min = self.pos - half_view;
             let max = self.pos + half_view;
 
@@ -612,26 +612,44 @@ impl super::Renderer {
         ctx.draw_circle(cursor, point_radius, color);
 
         let diff = cursor - start;
-        let distance = diff.mag();
+        let mut distance = diff.mag();
         if distance < 1e-6 {
             return;
         }
 
-        let direction = diff / distance;
+        // If a direction is set, project the cursor onto that axis
+        let direction = if let Some(dir) = self.measurement_direction {
+            let unit = if dir.mag_sq() > 1e-12 { dir.normalized() } else { Vec2::new(1.0, 0.0) };
+            let proj_len = diff.dot(unit);
+            distance = proj_len.abs();
+            unit
+        } else {
+            diff / distance
+        };
+
         let perpendicular = Vec2::new(-direction.y, direction.x);
         let cross_half_length = 100.0 * distance.max(10.0).min(100.0);
 
+        // Crossbars at start and at the projected point along direction
         ctx.draw_line(
             start - perpendicular * cross_half_length,
             start + perpendicular * cross_half_length,
             color,
         );
+
+        let target_point = if self.measurement_direction.is_some() {
+            start + direction * (diff.dot(direction))
+        } else {
+            cursor
+        };
+
         ctx.draw_line(
-            cursor - perpendicular * cross_half_length,
-            cursor + perpendicular * cross_half_length,
+            target_point - perpendicular * cross_half_length,
+            target_point + perpendicular * cross_half_length,
             color,
         );
 
+        // Draw dashed line along the chosen axis from start to target
         let dash_length = 5.0;
         let gap_length = 3.0;
         let mut traveled = 0.0;

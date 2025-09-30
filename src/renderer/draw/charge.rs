@@ -8,7 +8,7 @@ impl Renderer {
         let grid_spacing = 5.0;
         let smoothing = 5.0;
 
-        let half_view = Vec2::new(self.scale, self.scale);
+    let half_view = Vec2::new(self.scale * (self.window_width as f32 / self.window_height as f32), self.scale);
         let min = self.pos - half_view;
         let max = self.pos + half_view;
 

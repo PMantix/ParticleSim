@@ -4,11 +4,14 @@ use egui::{Grid, RichText};
 impl super::super::Renderer {
     pub fn show_measurement_tab(&mut self, ui: &mut egui::Ui) {
         ui.heading("📏 Measurement Tool");
-        ui.label("Select a starting point and move the cursor in the simulation view to see live distances.");
+        ui.label("Select a starting point, then (optionally) define a direction. Live distances will be projected onto that direction if set.");
 
         ui.horizontal(|ui| {
             if ui.button("🎯 Select Start Point").clicked() {
                 self.measurement_selecting_start = true;
+                // Reset direction when selecting a new start
+                self.measurement_direction = None;
+                self.measurement_selecting_direction = false;
             }
 
             let copy_enabled = !self.measurement_history.is_empty();
@@ -30,11 +33,29 @@ impl super::super::Renderer {
                 ui.output_mut(|o| o.copied_text = csv);
                 ui.label(RichText::new("History copied to clipboard").italics());
             }
+
+            let clear_button = ui.add_enabled(copy_enabled, egui::Button::new("🧹 Clear History"));
+            if clear_button.clicked() {
+                self.measurement_history.clear();
+            }
+
+            let dir_enabled = self.measurement_start.is_some();
+            let dir_label = if self.measurement_direction.is_some() { "🧭 Redefine Direction" } else { "🧭 Define Direction" };
+            let dir_button = ui.add_enabled(dir_enabled, egui::Button::new(dir_label));
+            if dir_button.clicked() {
+                self.measurement_selecting_direction = true;
+            }
         });
 
         if self.measurement_selecting_start {
             ui.label(
                 RichText::new("Click in the simulation view to set the starting point.").italics(),
+            );
+        }
+
+        if self.measurement_selecting_direction {
+            ui.label(
+                RichText::new("Click in the simulation view to set the measurement direction (from the start point toward your click).").italics(),
             );
         }
 
@@ -51,7 +72,8 @@ impl super::super::Renderer {
 
         match self.current_measurement_distance() {
             Some(distance) => {
-                ui.label(format!("Current distance: {:.3}", distance));
+                let label = if self.measurement_direction.is_some() { "Projected distance" } else { "Current distance" };
+                ui.label(format!("{}: {:.3}", label, distance));
             }
             None => {
                 if self.measurement_start.is_some() {
@@ -67,6 +89,12 @@ impl super::super::Renderer {
                 "Current cursor: ({:.2}, {:.2})",
                 cursor.x, cursor.y
             ));
+        }
+
+        if let Some(dir) = self.measurement_direction {
+            ui.small(format!("Direction set: ({:.2}, {:.2}) — measurements are projected onto this axis.", dir.x, dir.y));
+        } else if self.measurement_start.is_some() {
+            ui.small("Tip: Define a direction to lock measurements to a single axis (use the button above).");
         }
 
         ui.small("Left-click in the simulation view to record a measurement. Right-click or switch tabs to exit measurement mode.");

@@ -216,6 +216,8 @@ pub struct Renderer {
     pub should_capture_next_frame: bool,
     pub measurement_start: Option<Vec2>,
     pub measurement_selecting_start: bool,
+    pub measurement_direction: Option<Vec2>,
+    pub measurement_selecting_direction: bool,
     pub measurement_history: Vec<MeasurementRecord>,
     pub measurement_cursor: Option<Vec2>,
     pub last_non_measurement_tab: GuiTab,
@@ -370,6 +372,8 @@ impl quarkstrom::Renderer for Renderer {
             should_capture_next_frame: false,
             measurement_start: None,
             measurement_selecting_start: false,
+            measurement_direction: None,
+            measurement_selecting_direction: false,
             measurement_history: Vec::new(),
             measurement_cursor: None,
             last_non_measurement_tab: GuiTab::Simulation,
@@ -439,10 +443,24 @@ impl Renderer {
 
     pub fn current_measurement_distance(&self) -> Option<f32> {
         if let (Some(start), Some(cursor)) = (self.measurement_start, self.measurement_cursor) {
-            Some((cursor - start).mag())
+            if let Some(dir) = self.measurement_direction {
+                let d = cursor - start;
+                let mag = if dir.mag() > 1e-9 { (d.dot(dir.normalized())).abs() } else { d.mag() };
+                Some(mag)
+            } else {
+                Some((cursor - start).mag())
+            }
         } else {
             None
         }
+    }
+
+    pub fn clear_measurement(&mut self) {
+        self.measurement_start = None;
+        self.measurement_direction = None;
+        self.measurement_selecting_start = false;
+        self.measurement_selecting_direction = false;
+        self.measurement_cursor = None;
     }
 
     fn update_splash_particles(

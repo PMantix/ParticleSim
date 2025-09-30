@@ -235,6 +235,30 @@ pub struct SimConfig {
     pub show_2d_domain_density: bool,
     pub show_field_vectors: bool, // NEW: show field vectors
     pub isoline_field_mode: IsolineFieldMode,
+    /// Number of isoline levels to plot
+    pub isoline_count: usize,
+    /// Target samples across the shorter viewport dimension for isoline fidelity
+    pub isoline_target_samples: usize,
+    /// Shift isoline percentile mapping up/down the sampled range [-0.5..0.5], applied after clipping
+    pub isoline_bias: f32,
+    /// Clip isoline percentile range by this margin on both ends [0.0..0.49]
+    pub isoline_clip_margin: f32,
+    /// Enable local refinement around cells that an isoline crosses (reduces boxy artifacts)
+    pub isoline_local_refine: bool,
+    /// Subdivision factor for local refinement (2 = 2x2 per cell)
+    pub isoline_local_refine_factor: usize,
+    /// Fraction of levels to refine centered around mid-range (1.0 = all levels)
+    pub isoline_local_refine_band: f32,
+    /// Strength of color deviation from white for isolines [0..1]
+    pub isoline_color_strength: f32,
+    /// Gamma on signed magnitude mapping for isoline color (perceptual control)
+    pub isoline_color_gamma: f32,
+    /// Draw translucent filled isobands between levels
+    pub isoline_filled: bool,
+    /// Alpha for filled isobands [0..255]
+    pub isoline_fill_alpha: u8,
+    /// Nonlinear distribution exponent for level percentiles (1.0 = linear; >1 pushes toward extremes)
+    pub isoline_distribution_gamma: f32,
     pub damping_base: f32,              // Add base damping factor
     pub show_lj_vs_coulomb_ratio: bool, // Show LJ/Coulomb force ratio debug overlay
     pub cell_list_density_threshold: f32,
@@ -294,6 +318,18 @@ impl Default for SimConfig {
             show_2d_domain_density: SHOW_2D_DOMAIN_DENSITY,
             show_field_vectors: SHOW_FIELD_VECTORS, // NEW
             isoline_field_mode: IsolineFieldMode::Total,
+            isoline_count: 12,
+            isoline_target_samples: 2,
+            isoline_bias: 0.0,
+            isoline_clip_margin: 0.035,
+            isoline_local_refine: true,
+            isoline_local_refine_factor: 4,
+            isoline_local_refine_band: 1.0,
+            isoline_color_strength: 0.4,
+            isoline_color_gamma: 1.0,
+            isoline_filled: false,
+            isoline_fill_alpha: 40,
+            isoline_distribution_gamma: 1.0,
             damping_base: 1.00,              // Default base damping
             show_lj_vs_coulomb_ratio: false, // Default off
             cell_list_density_threshold: LJ_CELL_DENSITY_THRESHOLD,

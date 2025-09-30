@@ -154,6 +154,7 @@ impl super::Renderer {
             if input.mouse_pressed(1) {
                 self.current_tab = self.last_non_measurement_tab;
                 self.measurement_selecting_start = false;
+                self.measurement_selecting_direction = false;
                 return;
             }
 
@@ -162,6 +163,24 @@ impl super::Renderer {
                     if let Some(pos) = self.measurement_cursor {
                         self.measurement_start = Some(pos);
                         self.measurement_selecting_start = false;
+                        // After choosing start, allow defining direction next if requested
+                    }
+                }
+            } else if self.measurement_selecting_direction {
+                // Define direction using a second click: vector from start to clicked point
+                if input.mouse_pressed(0) {
+                    if let (Some(start), Some(cursor)) = (self.measurement_start, self.measurement_cursor) {
+                        let dir = cursor - start;
+                        if dir.mag_sq() > 1e-12 {
+                            self.measurement_direction = Some(dir.normalized());
+                        } else {
+                            // Degenerate click: do not set, leave None
+                            self.measurement_direction = None;
+                        }
+                        self.measurement_selecting_direction = false;
+                    } else {
+                        // No start yet; ignore and disable direction mode
+                        self.measurement_selecting_direction = false;
                     }
                 }
             } else if input.mouse_pressed(0) {
@@ -217,6 +236,7 @@ impl super::Renderer {
         } else {
             self.measurement_cursor = None;
             self.measurement_selecting_start = false;
+            self.measurement_selecting_direction = false;
         }
 
         if input.mouse_pressed(1) {
