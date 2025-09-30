@@ -240,6 +240,8 @@ pub struct Renderer {
     // Dipole visualization
     pub show_dipoles: bool,
     pub dipole_scale: f32,
+    // Foils tab UI
+    pub foils_advanced_controls: bool,
 }
 
 impl quarkstrom::Renderer for Renderer {
@@ -392,6 +394,7 @@ impl quarkstrom::Renderer for Renderer {
             group_b_selected: Vec::new(),
             show_dipoles: false,
             dipole_scale: 1.0,
+            foils_advanced_controls: false,
         }
     }
 

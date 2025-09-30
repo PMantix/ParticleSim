@@ -4,6 +4,16 @@ impl super::super::Renderer {
     pub fn show_foils_tab(&mut self, ui: &mut egui::Ui) {
         ui.heading("🔋 Foil Controls");
 
+        // Advanced toggle
+        ui.horizontal(|ui| {
+            ui.checkbox(&mut self.foils_advanced_controls, "Show advanced per-foil current controls");
+            if self.foils_advanced_controls {
+                ui.small("(DC/AC controls per foil and quick multi-foil controls)");
+            }
+        });
+
+        ui.separator();
+
         // Foil Selection for Linking
         ui.group(|ui| {
             ui.label("🎯 Foil Selection for Linking");
@@ -54,6 +64,116 @@ impl super::super::Renderer {
         });
 
         ui.separator();
+
+        // Main current control for selected foil moved near top
+        if let Some(selected_id) = self.selected_particle_id {
+            let maybe_foil = {
+                let foils = FOILS.lock();
+                foils
+                    .iter()
+                    .find(|f| f.body_ids.contains(&selected_id))
+                    .cloned()
+            };
+            if let Some(foil) = maybe_foil {
+                ui.group(|ui| {
+                    ui.label("⚡ Current Controls (Selected Foil)");
+                    ui.label(format!("Configuring Foil {} (selected in simulation)", foil.id));
+
+                    // DC Current control
+                    let mut dc_current = foil.dc_current;
+                    ui.horizontal(|ui| {
+                        ui.label("DC Current:");
+                        if ui.button("-").clicked() { dc_current -= 1.0; }
+                        if ui.button("+").clicked() { dc_current += 1.0; }
+                        if ui.button("0").clicked() { dc_current = 0.0; }
+                        ui.add(egui::Slider::new(&mut dc_current, -500.0..=500.00).step_by(0.01));
+                    });
+                    if (dc_current - foil.dc_current).abs() > f32::EPSILON {
+                        SIM_COMMAND_SENDER
+                            .lock()
+                            .as_ref()
+                            .unwrap()
+                            .send(SimCommand::SetFoilDCCurrent { foil_id: foil.id, dc_current })
+                            .unwrap();
+                    }
+
+                    // AC Current control
+                    let mut ac_current = foil.ac_current;
+                    ui.horizontal(|ui| {
+                        ui.label("AC Amplitude:");
+                        if ui.button("-").clicked() { ac_current -= 1.0; }
+                        if ui.button("+").clicked() { ac_current += 1.0; }
+                        if ui.button("0").clicked() { ac_current = 0.0; }
+                        ui.add(egui::Slider::new(&mut ac_current, 0.0..=500.00).step_by(0.01));
+                    });
+                    if (ac_current - foil.ac_current).abs() > f32::EPSILON {
+                        SIM_COMMAND_SENDER
+                            .lock()
+                            .as_ref()
+                            .unwrap()
+                            .send(SimCommand::SetFoilACCurrent { foil_id: foil.id, ac_current })
+                            .unwrap();
+                    }
+
+                    let mut hz = foil.switch_hz;
+                    ui.horizontal(|ui| {
+                        ui.label("Switch Hz:");
+                        ui.add(egui::DragValue::new(&mut hz).speed(0.1));
+                    });
+                    if (hz - foil.switch_hz).abs() > f32::EPSILON {
+                        SIM_COMMAND_SENDER
+                            .lock()
+                            .as_ref()
+                            .unwrap()
+                            .send(SimCommand::SetFoilFrequency { foil_id: foil.id, switch_hz: hz })
+                            .unwrap();
+                    }
+
+                    ui.separator();
+
+                    // Charging Mode Control
+                    ui.group(|ui| {
+                        ui.label("⚡ Charging Mode");
+                        let current_mode = foil.charging_mode;
+                        let mut new_mode = current_mode;
+                        ui.horizontal(|ui| {
+                            ui.radio_value(&mut new_mode, crate::body::foil::ChargingMode::Current, "Direct Current");
+                            ui.radio_value(&mut new_mode, crate::body::foil::ChargingMode::Overpotential, "Overpotential");
+                        });
+                        if new_mode != current_mode {
+                            if new_mode == crate::body::foil::ChargingMode::Overpotential {
+                                SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::EnableOverpotentialMode { foil_id: foil.id, target_ratio: 1.2 }).unwrap();
+                            } else {
+                                SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::DisableOverpotentialMode { foil_id: foil.id }).unwrap();
+                            }
+                        }
+                        if foil.charging_mode == crate::body::foil::ChargingMode::Overpotential {
+                            if let Some(ref controller) = foil.overpotential_controller {
+                                ui.separator();
+                                ui.label("🎯 Overpotential Settings");
+                                let mut target_ratio = controller.target_ratio;
+                                ui.horizontal(|ui| {
+                                    ui.label("Target Electron Ratio:");
+                                    if ui.button("Cathodic").clicked() { target_ratio = 1.5; }
+                                    if ui.button("Neutral").clicked() { target_ratio = 1.0; }
+                                    if ui.button("Anodic").clicked() { target_ratio = 0.5; }
+                                    ui.add(egui::Slider::new(&mut target_ratio, 0.1..=2.0).step_by(0.01));
+                                });
+                                if (target_ratio - controller.target_ratio).abs() > f32::EPSILON {
+                                    SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(SimCommand::SetFoilOverpotentialTarget { foil_id: foil.id, target_ratio }).unwrap();
+                                }
+                                ui.horizontal(|ui| {
+                                    ui.label("PID Gains:");
+                                    ui.label(format!("P:{:.1} I:{:.1} D:{:.1}", controller.kp, controller.ki, controller.kd));
+                                });
+                            }
+                        }
+                    });
+                });
+
+                ui.separator();
+            }
+        }
 
         // Group Linking UI
         ui.group(|ui| {
@@ -229,10 +349,14 @@ impl super::super::Renderer {
 
         ui.separator();
 
-        // Individual Foil Controls (Always Visible)
+        // Individual Foil Controls (Advanced)
         ui.group(|ui| {
             ui.label("⚡ Individual Foil Controls");
-            
+            if !self.foils_advanced_controls {
+                ui.small("Hidden (enable 'advanced' above to edit per-foil DC/AC)");
+                return;
+            }
+
             let foils = FOILS.lock();
             if !foils.is_empty() {
                 egui::ScrollArea::vertical().max_height(400.0).show(ui, |ui| {
@@ -563,332 +687,8 @@ impl super::super::Renderer {
 
         ui.separator();
 
-        // Foil Current Controls for Selected Foil
-        if let Some(selected_id) = self.selected_particle_id {
-            let maybe_foil = {
-                let foils = FOILS.lock();
-                foils
-                    .iter()
-                    .find(|f| f.body_ids.contains(&selected_id))
-                    .cloned()
-            };
-            if let Some(foil) = maybe_foil {
-                ui.group(|ui| {
-                    ui.label("⚡ Current Controls");
-                    ui.label(format!(
-                        "Configuring Foil {} (selected in simulation)",
-                        foil.id
-                    ));
-
-                    // DC Current control
-                    let mut dc_current = foil.dc_current;
-                    ui.horizontal(|ui| {
-                        ui.label("DC Current:");
-                        if ui.button("-").clicked() {
-                            dc_current -= 1.0;
-                        }
-                        if ui.button("+").clicked() {
-                            dc_current += 1.0;
-                        }
-                        if ui.button("0").clicked() {
-                            dc_current = 0.0;
-                        }
-                        ui.add(egui::Slider::new(&mut dc_current, -500.0..=500.00).step_by(0.01));
-                    });
-                    if (dc_current - foil.dc_current).abs() > f32::EPSILON {
-                        SIM_COMMAND_SENDER
-                            .lock()
-                            .as_ref()
-                            .unwrap()
-                            .send(SimCommand::SetFoilDCCurrent {
-                                foil_id: foil.id,
-                                dc_current,
-                            })
-                            .unwrap();
-                    }
-
-                    // AC Current control
-                    let mut ac_current = foil.ac_current;
-                    ui.horizontal(|ui| {
-                        ui.label("AC Amplitude:");
-                        if ui.button("-").clicked() {
-                            ac_current -= 1.0;
-                        }
-                        if ui.button("+").clicked() {
-                            ac_current += 1.0;
-                        }
-                        if ui.button("0").clicked() {
-                            ac_current = 0.0;
-                        }
-                        ui.add(egui::Slider::new(&mut ac_current, 0.0..=500.00).step_by(0.01));
-                    });
-                    if (ac_current - foil.ac_current).abs() > f32::EPSILON {
-                        SIM_COMMAND_SENDER
-                            .lock()
-                            .as_ref()
-                            .unwrap()
-                            .send(SimCommand::SetFoilACCurrent {
-                                foil_id: foil.id,
-                                ac_current,
-                            })
-                            .unwrap();
-                    }
-
-                    let mut hz = foil.switch_hz;
-                    ui.horizontal(|ui| {
-                        ui.label("Switch Hz:");
-                        ui.add(egui::DragValue::new(&mut hz).speed(0.1));
-                    });
-                    if (hz - foil.switch_hz).abs() > f32::EPSILON {
-                        SIM_COMMAND_SENDER
-                            .lock()
-                            .as_ref()
-                            .unwrap()
-                            .send(SimCommand::SetFoilFrequency {
-                                foil_id: foil.id,
-                                switch_hz: hz,
-                            })
-                            .unwrap();
-                    }
-
-                    ui.separator();
-
-                    // Charging Mode Control
-                    ui.group(|ui| {
-                        ui.label("⚡ Charging Mode");
-                        
-                        let current_mode = foil.charging_mode;
-                        let mut new_mode = current_mode;
-                        
-                        ui.horizontal(|ui| {
-                            ui.radio_value(&mut new_mode, crate::body::foil::ChargingMode::Current, "Direct Current");
-                            ui.radio_value(&mut new_mode, crate::body::foil::ChargingMode::Overpotential, "Overpotential");
-                        });
-                        
-                        if new_mode != current_mode {
-                            if new_mode == crate::body::foil::ChargingMode::Overpotential {
-                                // Enable overpotential mode with default target ratio
-                                SIM_COMMAND_SENDER
-                                        .lock()
-                                        .as_ref()
-                                        .unwrap()
-                                        .send(SimCommand::EnableOverpotentialMode {
-                                            foil_id: foil.id,
-                                            target_ratio: 1.2, // Default to slightly cathodic to create initial error
-                                        })
-                                    .unwrap();
-                            } else {
-                                // Disable overpotential mode
-                                SIM_COMMAND_SENDER
-                                    .lock()
-                                    .as_ref()
-                                    .unwrap()
-                                    .send(SimCommand::DisableOverpotentialMode {
-                                        foil_id: foil.id,
-                                    })
-                                    .unwrap();
-                            }
-                        }
-                        
-                        // Overpotential controls (only show when in overpotential mode)
-                        if foil.charging_mode == crate::body::foil::ChargingMode::Overpotential {
-                            if let Some(ref controller) = foil.overpotential_controller {
-                                ui.separator();
-                                ui.label("🎯 Overpotential Settings");
-                                
-                                let mut target_ratio = controller.target_ratio;
-                                ui.horizontal(|ui| {
-                                    ui.label("Target Electron Ratio:");
-                                    if ui.button("Cathodic").clicked() {
-                                        target_ratio = 1.5;
-                                    }
-                                    if ui.button("Neutral").clicked() {
-                                        target_ratio = 1.0;
-                                    }
-                                    if ui.button("Anodic").clicked() {
-                                        target_ratio = 0.5;
-                                    }
-                                    ui.add(egui::Slider::new(&mut target_ratio, 0.1..=2.0).step_by(0.01));
-                                });
-                                
-                                if (target_ratio - controller.target_ratio).abs() > f32::EPSILON {
-                                    SIM_COMMAND_SENDER
-                                        .lock()
-                                        .as_ref()
-                                        .unwrap()
-                                        .send(SimCommand::SetFoilOverpotentialTarget {
-                                            foil_id: foil.id,
-                                            target_ratio,
-                                        })
-                                        .unwrap();
-                                }
-                                
-                                // Display controller status
-                                ui.horizontal(|ui| {
-                                    ui.label("PID Gains:");
-                                    ui.label(format!("P:{:.1} I:{:.1} D:{:.1}", controller.kp, controller.ki, controller.kd));
-                                });
-                            }
-                        }
-                    });
-                });
-
-                ui.separator();
-
-                // Foil Electron Ratio Display
-                ui.group(|ui| {
-                    ui.label("🔋 Foil Electron Ratio");
-                    
-                    // Update diagnostic periodically for real-time monitoring
-                    if let Some(diag) = &mut self.foil_electron_fraction_diagnostic {
-                        // Reconstruct quadtree from current node data for diagnostic calculation
-                        let mut temp_quadtree = crate::quadtree::Quadtree::new(1.0, 2.0, 1, 1024);
-                        temp_quadtree.nodes = self.quadtree.clone();
-                        
-                        // Recalculate every 0.5 fs to avoid performance issues
-                        let current_time = *SIM_TIME.lock();
-                        diag.calculate_if_needed(&self.bodies, &self.foils, &temp_quadtree, current_time, 0.5);
-                        
-                        if let Some(ratio) = diag.fractions.get(&foil.id) {
-                            ui.horizontal(|ui| {
-                                ui.label("Current ratio:");
-                                let ratio_color = if *ratio > 1.05 {
-                                    egui::Color32::LIGHT_BLUE  // Cathodic (electron-rich)
-                                } else if *ratio < 0.95 {
-                                    egui::Color32::LIGHT_RED   // Anodic (electron-poor)
-                                } else {
-                                    egui::Color32::WHITE       // Near neutral
-                                };
-                                ui.colored_label(ratio_color, format!("{:.3}", ratio));
-                                ui.label(if *ratio > 1.05 {
-                                    "(cathodic)"
-                                } else if *ratio < 0.95 {
-                                    "(anodic)"
-                                } else {
-                                    "(neutral)"
-                                });
-                            });
-                        } else {
-                            ui.label("❌ Ratio data not available");
-                        }
-                    } else {
-                        ui.label("❌ No diagnostic available");
-                    }
-                });
-
-                ui.separator();
-
-                // Current Waveform Plot
-                ui.group(|ui| {
-                    ui.label("📈 Current Waveform");
-                    use egui::plot::{Line, Plot, PlotPoints};
-                    let seconds = 5.0;
-                    let steps = 200;
-                    // Use actual simulation time and respect pause state
-                    let sim_time = *SIM_TIME.lock();
-                    let is_paused = PAUSED.load(std::sync::atomic::Ordering::Relaxed);
-                    let current_time = if is_paused {
-                        // When paused, freeze the time display
-                        sim_time
-                    } else {
-                        sim_time
-                    };
-                    let selected_ids = self.selected_foil_ids.clone();
-                    Plot::new("foil_wave_plot")
-                        .height(100.0)
-                        .allow_scroll(false)
-                        .allow_zoom(false)
-                        .show(ui, |plot_ui| {
-                            let colors = [
-                                egui::Color32::LIGHT_BLUE,
-                                egui::Color32::LIGHT_RED,
-                                egui::Color32::LIGHT_GREEN,
-                                egui::Color32::YELLOW,
-                            ];
-                            let foils = FOILS.lock();
-                            for (idx, fid) in selected_ids.iter().enumerate() {
-                                if let Some(f) = foils.iter().find(|f| f.id == *fid) {
-                                    let dt = seconds / steps as f32;
-                                    let mut points_vec: Vec<[f64; 2]> =
-                                        Vec::with_capacity(steps + 1);
-                                    for i in 0..=steps {
-                                        let t = i as f32 * dt;
-                                        let effective_current = if let Some(link_id) = f.link_id {
-                                            // For linked foils, determine if this is master or slave
-                                            let is_master = f.id < link_id;
-                                            if is_master {
-                                                // Master calculates from its own DC + AC components
-                                                let mut current = f.dc_current;
-                                                if f.switch_hz > 0.0 {
-                                                    let plot_time = current_time + t;
-                                                    let ac_component =
-                                                        if (plot_time * f.switch_hz) % 1.0 < 0.5 {
-                                                            f.ac_current
-                                                        } else {
-                                                            -f.ac_current
-                                                        };
-                                                    current += ac_component;
-                                                }
-                                                current
-                                            } else {
-                                                // Slave uses the propagated current value (but for plot, we need to calculate what it would be)
-                                                // Find the master foil to calculate its effective current
-                                                if let Some(master_foil) =
-                                                    foils.iter().find(|mf| mf.id == link_id)
-                                                {
-                                                    let mut master_current = master_foil.dc_current;
-                                                    if master_foil.switch_hz > 0.0 {
-                                                        let plot_time = current_time + t;
-                                                        let ac_component = if (plot_time
-                                                            * master_foil.switch_hz)
-                                                            % 1.0
-                                                            < 0.5
-                                                        {
-                                                            master_foil.ac_current
-                                                        } else {
-                                                            -master_foil.ac_current
-                                                        };
-                                                        master_current += ac_component;
-                                                    }
-                                                    // Apply link mode
-                                                    match master_foil.mode {
-                                                        crate::body::foil::LinkMode::Parallel => {
-                                                            master_current
-                                                        }
-                                                        crate::body::foil::LinkMode::Opposite => {
-                                                            -master_current
-                                                        }
-                                                    }
-                                                } else {
-                                                    f.dc_current // Fallback to DC current
-                                                }
-                                            }
-                                        } else {
-                                            // Non-linked foil
-                                            let mut current = f.dc_current;
-                                            if f.switch_hz > 0.0 {
-                                                let plot_time = current_time + t;
-                                                let ac_component =
-                                                    if (plot_time * f.switch_hz) % 1.0 < 0.5 {
-                                                        f.ac_current
-                                                    } else {
-                                                        -f.ac_current
-                                                    };
-                                                current += ac_component;
-                                            }
-                                            current
-                                        };
-                                        points_vec.push([t as f64, effective_current as f64]);
-                                    }
-                                    let points = PlotPoints::from(points_vec);
-                                    plot_ui
-                                        .line(Line::new(points).color(colors[idx % colors.len()]));
-                                }
-                            }
-                        });
-                });
-            }
-        } else {
+        // If no foil selected (top controls), show a small hint
+        if self.selected_particle_id.is_none() {
             ui.group(|ui| {
                 ui.label("� How to control foil currents:");
                 ui.label("• Select a foil particle in the simulation (Shift+Click)");
@@ -897,12 +697,16 @@ impl super::super::Renderer {
             });
         }
 
-        // Direct Current Controls for All Foils
+        // Direct Current Controls for All Foils (Advanced)
         ui.separator();
         let foils = FOILS.lock();
         if !foils.is_empty() {
             ui.group(|ui| {
                 ui.label("⚡ Quick Current Controls");
+                if !self.foils_advanced_controls {
+                    ui.small("Hidden (enable 'advanced' above to edit many foils at once)");
+                    return;
+                }
                 ui.label("Adjust any foil's current directly:");
 
                 for foil in foils.iter() {
