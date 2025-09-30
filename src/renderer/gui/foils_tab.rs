@@ -697,17 +697,13 @@ impl super::super::Renderer {
             });
         }
 
-        // Direct Current Controls for All Foils (Advanced)
+        // Direct Current Controls for All Foils
         ui.separator();
         let foils = FOILS.lock();
         if !foils.is_empty() {
             ui.group(|ui| {
                 ui.label("⚡ Quick Current Controls");
-                if !self.foils_advanced_controls {
-                    ui.small("Hidden (enable 'advanced' above to edit many foils at once)");
-                    return;
-                }
-                ui.label("Adjust any foil's current directly:");
+                ui.small("Adjust any foil's current directly:");
 
                 for foil in foils.iter() {
                     ui.horizontal(|ui| {
