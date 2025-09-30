@@ -486,7 +486,7 @@ impl super::super::Renderer {
                                             egui::Color32::LIGHT_RED   // Negative current (anodic)
                                         };
                                         
-                                        ui.colored_label(current_color, format!("Output: {:.2}A", controller.last_output_current));
+                                        ui.colored_label(current_color, format!("Output: {:.2} e/step", controller.last_output_current));
                                         
                                         // Current direction indicator
                                         if controller.last_output_current > 0.1 {

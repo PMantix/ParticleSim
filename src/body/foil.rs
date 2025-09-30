@@ -127,12 +127,13 @@ impl Foil {
         self.charging_mode = ChargingMode::Overpotential;
         self.overpotential_controller = Some(OverpotentialController {
             target_ratio,
-            kp: 10.0,           // Proportional gain - tunable
-            ki: 0.1,            // Integral gain - tunable  
-            kd: 0.5,            // Derivative gain - tunable
+            // Crisper defaults to improve response near small errors
+            kp: 20.0,           // Proportional gain - tunable
+            ki: 0.4,            // Integral gain - tunable  
+            kd: 0.2,            // Derivative gain - tunable
             integral_error: 0.0,
             previous_error: 0.0,
-            max_current: 100.0, // Maximum current limit - tunable
+            max_current: 500.0, // Maximum current limit - tunable
             last_output_current: 0.0,
             history: VecDeque::new(),
             max_history_size: 1000,

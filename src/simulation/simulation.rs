@@ -236,6 +236,8 @@ impl Simulation {
                     foil.charging_mode = crate::body::foil::ChargingMode::Current;
                     foil.ac_current = 0.0;
                     foil.switch_hz = 0.0;
+                    // Clear overpotential-related state to avoid residual effects when switching modes
+                    foil.slave_overpotential_current = 0.0;
                     // dc_current will be set by caller
                 }
                 crate::switch_charging::Mode::Overpotential => {
@@ -245,6 +247,10 @@ impl Simulation {
                     if let Some(controller) = foil.overpotential_controller.as_mut() {
                         controller.target_ratio = sp.value as f32;
                     }
+                    // Ensure no stale current drive remains when in overpotential control
+                    foil.dc_current = 0.0;
+                    foil.ac_current = 0.0;
+                    foil.switch_hz = 0.0;
                 }
             }
         };
@@ -254,21 +260,23 @@ impl Simulation {
         
         // Active foils (current step participants)
         if matches!(step_setpoints.active.mode, crate::switch_charging::Mode::Current) {
-            // Split current between positive and negative groups
-            let pos_current_per_foil = step_setpoints.active.value as f32 / pos_ids.len() as f32;
-            let neg_current_per_foil = step_setpoints.active.value as f32 / neg_ids.len() as f32;
-            
-            for &foil_id in pos_ids {
-                if let Some(foil) = self.foils.iter_mut().find(|f| f.id == foil_id) {
-                    apply_setpoint_to_foil(foil, &step_setpoints.active);
-                    foil.dc_current = pos_current_per_foil; // Positive group gets positive current
+            // Split current between positive and negative groups, guarding against empty groups
+            if !pos_ids.is_empty() {
+                let pos_current_per_foil = step_setpoints.active.value as f32 / pos_ids.len() as f32;
+                for &foil_id in pos_ids {
+                    if let Some(foil) = self.foils.iter_mut().find(|f| f.id == foil_id) {
+                        apply_setpoint_to_foil(foil, &step_setpoints.active);
+                        foil.dc_current = pos_current_per_foil; // Positive group gets positive current
+                    }
                 }
             }
-            
-            for &foil_id in neg_ids {
-                if let Some(foil) = self.foils.iter_mut().find(|f| f.id == foil_id) {
-                    apply_setpoint_to_foil(foil, &step_setpoints.active);
-                    foil.dc_current = -neg_current_per_foil; // Negative group gets negative current
+            if !neg_ids.is_empty() {
+                let neg_current_per_foil = step_setpoints.active.value as f32 / neg_ids.len() as f32;
+                for &foil_id in neg_ids {
+                    if let Some(foil) = self.foils.iter_mut().find(|f| f.id == foil_id) {
+                        apply_setpoint_to_foil(foil, &step_setpoints.active);
+                        foil.dc_current = -neg_current_per_foil; // Negative group gets negative current
+                    }
                 }
             }
         } else {
@@ -280,17 +288,40 @@ impl Simulation {
             }
         }
 
-        // Apply inactive setpoint to all other foils
-        for &foil_id in &all_foil_ids {
-            if !active_foil_ids.contains(&foil_id) {
+        // Apply per-step INACTIVE setpoints to foils belonging to steps that are NOT active
+        let mut applied_inactive: std::collections::HashSet<u64> = std::collections::HashSet::new();
+        for step in 0u8..4u8 {
+            if step == current_step { continue; }
+            // Fetch the inactive setpoint for this non-active step
+            let Some(sai_other) = self.switch_config.step_active_inactive.get(&step) else { continue; };
+            let (pos_role, neg_role) = crate::switch_charging::roles_for_step(step);
+            let pos_step_ids: Vec<u64> = self.switch_config.foils_for_role(pos_role).to_vec();
+            let neg_step_ids: Vec<u64> = self.switch_config.foils_for_role(neg_role).to_vec();
+
+            for &foil_id in pos_step_ids.iter().chain(neg_step_ids.iter()) {
+                if active_foil_ids.contains(&foil_id) { continue; }
+                if applied_inactive.contains(&foil_id) { continue; }
                 if let Some(foil) = self.foils.iter_mut().find(|f| f.id == foil_id) {
-                    apply_setpoint_to_foil(foil, &step_setpoints.inactive);
-                    
-                    // For inactive current mode, set current to the specified value
-                    if matches!(step_setpoints.inactive.mode, crate::switch_charging::Mode::Current) {
-                        foil.dc_current = step_setpoints.inactive.value as f32;
+                    apply_setpoint_to_foil(foil, &sai_other.inactive);
+                    if matches!(sai_other.inactive.mode, crate::switch_charging::Mode::Current) {
+                        foil.dc_current = sai_other.inactive.value as f32;
                     }
+                    applied_inactive.insert(foil_id);
                 }
+            }
+        }
+
+        // For any remaining foils not in the current step and not assigned to any step roles (or missed),
+        // apply the current step's INACTIVE as a fallback.
+        for &foil_id in &all_foil_ids {
+            if active_foil_ids.contains(&foil_id) { continue; }
+            if applied_inactive.contains(&foil_id) { continue; }
+            if let Some(foil) = self.foils.iter_mut().find(|f| f.id == foil_id) {
+                apply_setpoint_to_foil(foil, &step_setpoints.inactive);
+                if matches!(step_setpoints.inactive.mode, crate::switch_charging::Mode::Current) {
+                    foil.dc_current = step_setpoints.inactive.value as f32;
+                }
+                applied_inactive.insert(foil_id);
             }
         }
     }
@@ -547,8 +578,9 @@ impl Simulation {
             // NaN values detected at step start
         }
 
-        // Apply group linking constraints each frame (parallel within groups, opposite between groups)
-        if !(self.group_a.is_empty() && self.group_b.is_empty()) {
+    // Apply group linking constraints each frame (parallel within groups, opposite between groups)
+    // Skip when switch charging is running to avoid overriding active/inactive step controls
+    if self.switch_run_state != RunState::Running && !(self.group_a.is_empty() && self.group_b.is_empty()) {
             // Determine representatives (masters) for A and B, pick smallest id
             let master_a = self.group_a.iter().min().copied();
             let master_b = self.group_b.iter().min().copied();
@@ -578,23 +610,22 @@ impl Simulation {
                             let f = &mut self.foils[idx];
                             match master_mode {
                                 crate::body::foil::ChargingMode::Current => {
-                                    if f.charging_mode != crate::body::foil::ChargingMode::Current {
-                                        f.disable_overpotential_mode();
+                                    // Only sync current parameters if follower is also in Current mode
+                                    if f.charging_mode == crate::body::foil::ChargingMode::Current {
+                                        f.dc_current = m_dc;
+                                        f.ac_current = m_ac;
+                                        f.switch_hz = m_hz;
                                     }
-                                    f.charging_mode = crate::body::foil::ChargingMode::Current;
-                                    f.dc_current = m_dc;
-                                    f.ac_current = m_ac;
-                                    f.switch_hz = m_hz;
                                 }
                                 crate::body::foil::ChargingMode::Overpotential => {
-                                    if f.charging_mode != crate::body::foil::ChargingMode::Overpotential {
-                                        f.enable_overpotential_mode(1.0);
-                                    }
-                                    if let (Some((target, kp, ki, kd)), Some(dst)) = (m_ctrl, f.overpotential_controller.as_mut()) {
-                                        dst.target_ratio = target;
-                                        dst.kp = kp;
-                                        dst.ki = ki;
-                                        dst.kd = kd;
+                                    // Only sync controller params if follower is also Overpotential
+                                    if f.charging_mode == crate::body::foil::ChargingMode::Overpotential {
+                                        if let (Some((target, kp, ki, kd)), Some(dst)) = (m_ctrl, f.overpotential_controller.as_mut()) {
+                                            dst.target_ratio = target;
+                                            dst.kp = kp;
+                                            dst.ki = ki;
+                                            dst.kd = kd;
+                                        }
                                     }
                                 }
                             }
@@ -623,23 +654,20 @@ impl Simulation {
                             let f = &mut self.foils[idx];
                             match master_mode {
                                 crate::body::foil::ChargingMode::Current => {
-                                    if f.charging_mode != crate::body::foil::ChargingMode::Current {
-                                        f.disable_overpotential_mode();
+                                    if f.charging_mode == crate::body::foil::ChargingMode::Current {
+                                        f.dc_current = m_dc;
+                                        f.ac_current = m_ac;
+                                        f.switch_hz = m_hz;
                                     }
-                                    f.charging_mode = crate::body::foil::ChargingMode::Current;
-                                    f.dc_current = m_dc;
-                                    f.ac_current = m_ac;
-                                    f.switch_hz = m_hz;
                                 }
                                 crate::body::foil::ChargingMode::Overpotential => {
-                                    if f.charging_mode != crate::body::foil::ChargingMode::Overpotential {
-                                        f.enable_overpotential_mode(1.0);
-                                    }
-                                    if let (Some((target, kp, ki, kd)), Some(dst)) = (m_ctrl, f.overpotential_controller.as_mut()) {
-                                        dst.target_ratio = target;
-                                        dst.kp = kp;
-                                        dst.ki = ki;
-                                        dst.kd = kd;
+                                    if f.charging_mode == crate::body::foil::ChargingMode::Overpotential {
+                                        if let (Some((target, kp, ki, kd)), Some(dst)) = (m_ctrl, f.overpotential_controller.as_mut()) {
+                                            dst.target_ratio = target;
+                                            dst.kp = kp;
+                                            dst.ki = ki;
+                                            dst.kd = kd;
+                                        }
                                     }
                                 }
                             }
@@ -678,25 +706,9 @@ impl Simulation {
                             }
                         }
                     }
-                    // Mixed modes: prefer Current to dominate; force other group to Current with opposite DC
-                    (Some(crate::body::foil::ChargingMode::Current), Some(_)) => {
-                        if let (Some(a_idx), Some(b_idx)) = (index_of(&self.foils, ma), index_of(&self.foils, mb)) {
-                            self.foils[b_idx].disable_overpotential_mode();
-                            self.foils[b_idx].charging_mode = crate::body::foil::ChargingMode::Current;
-                            self.foils[b_idx].dc_current = -self.foils[a_idx].dc_current;
-                            self.foils[b_idx].ac_current = self.foils[a_idx].ac_current;
-                            self.foils[b_idx].switch_hz = self.foils[a_idx].switch_hz;
-                        }
-                    }
-                    (Some(_), Some(crate::body::foil::ChargingMode::Current)) => {
-                        if let (Some(a_idx), Some(b_idx)) = (index_of(&self.foils, ma), index_of(&self.foils, mb)) {
-                            self.foils[a_idx].disable_overpotential_mode();
-                            self.foils[a_idx].charging_mode = crate::body::foil::ChargingMode::Current;
-                            self.foils[a_idx].dc_current = -self.foils[b_idx].dc_current;
-                            self.foils[a_idx].ac_current = self.foils[b_idx].ac_current;
-                            self.foils[a_idx].switch_hz = self.foils[b_idx].switch_hz;
-                        }
-                    }
+                    // Mixed modes: leave as-is to respect manual selections
+                    (Some(crate::body::foil::ChargingMode::Current), Some(_)) => {}
+                    (Some(_), Some(crate::body::foil::ChargingMode::Current)) => {}
                     _ => {}
                 }
             }
@@ -721,16 +733,17 @@ impl Simulation {
                             let f = &mut self.foils[idx];
                             match master_mode {
                                 crate::body::foil::ChargingMode::Current => {
-                                    if f.charging_mode != crate::body::foil::ChargingMode::Current { f.disable_overpotential_mode(); }
-                                    f.charging_mode = crate::body::foil::ChargingMode::Current;
-                                    f.dc_current = m_dc;
-                                    f.ac_current = m_ac;
-                                    f.switch_hz = m_hz;
+                                    if f.charging_mode == crate::body::foil::ChargingMode::Current {
+                                        f.dc_current = m_dc;
+                                        f.ac_current = m_ac;
+                                        f.switch_hz = m_hz;
+                                    }
                                 }
                                 crate::body::foil::ChargingMode::Overpotential => {
-                                    if f.charging_mode != crate::body::foil::ChargingMode::Overpotential { f.enable_overpotential_mode(1.0); }
-                                    if let (Some((target, kp, ki, kd)), Some(dst)) = (m_ctrl, f.overpotential_controller.as_mut()) {
-                                        dst.target_ratio = target; dst.kp = kp; dst.ki = ki; dst.kd = kd;
+                                    if f.charging_mode == crate::body::foil::ChargingMode::Overpotential {
+                                        if let (Some((target, kp, ki, kd)), Some(dst)) = (m_ctrl, f.overpotential_controller.as_mut()) {
+                                            dst.target_ratio = target; dst.kp = kp; dst.ki = ki; dst.kd = kd;
+                                        }
                                     }
                                 }
                             }
@@ -757,16 +770,17 @@ impl Simulation {
                             let f = &mut self.foils[idx];
                             match master_mode {
                                 crate::body::foil::ChargingMode::Current => {
-                                    if f.charging_mode != crate::body::foil::ChargingMode::Current { f.disable_overpotential_mode(); }
-                                    f.charging_mode = crate::body::foil::ChargingMode::Current;
-                                    f.dc_current = m_dc;
-                                    f.ac_current = m_ac;
-                                    f.switch_hz = m_hz;
+                                    if f.charging_mode == crate::body::foil::ChargingMode::Current {
+                                        f.dc_current = m_dc;
+                                        f.ac_current = m_ac;
+                                        f.switch_hz = m_hz;
+                                    }
                                 }
                                 crate::body::foil::ChargingMode::Overpotential => {
-                                    if f.charging_mode != crate::body::foil::ChargingMode::Overpotential { f.enable_overpotential_mode(1.0); }
-                                    if let (Some((target, kp, ki, kd)), Some(dst)) = (m_ctrl, f.overpotential_controller.as_mut()) {
-                                        dst.target_ratio = target; dst.kp = kp; dst.ki = ki; dst.kd = kd;
+                                    if f.charging_mode == crate::body::foil::ChargingMode::Overpotential {
+                                        if let (Some((target, kp, ki, kd)), Some(dst)) = (m_ctrl, f.overpotential_controller.as_mut()) {
+                                            dst.target_ratio = target; dst.kp = kp; dst.ki = ki; dst.kd = kd;
+                                        }
                                     }
                                 }
                             }
@@ -1220,26 +1234,19 @@ impl Simulation {
         let mut rng = rand::rng();
 
         // Calculate proper foil electron ratios for overpotential charging foils
-        // PERFORMANCE: Only compute for masters with non-neutral targets to avoid heavy BFS on neutralizing foils
+        // Compute for master foils (with controllers) regardless of target, so neutral can still correct
         let mut electron_ratios = std::collections::HashMap::new();
         for foil in &self.foils {
-            if matches!(foil.charging_mode, crate::body::foil::ChargingMode::Overpotential) {
-                // Only masters (with controllers) need ratios; slaves use assigned currents.
-                // Skip neutralizing foils (target_ratio ≈ 1.0) to save work.
-                let needs_ratio = if let Some(ctrl) = &foil.overpotential_controller {
-                    (ctrl.target_ratio - 1.0).abs() > 1e-6
-                } else {
-                    false // Slave foils don't compute ratios
-                };
-                if !needs_ratio { continue; }
-
+            if matches!(foil.charging_mode, crate::body::foil::ChargingMode::Overpotential)
+                && foil.overpotential_controller.is_some()
+            {
                 let ratio = self.calculate_foil_electron_ratio(foil);
                 electron_ratios.insert(foil.id, ratio);
             }
         }
 
         // Handle overpotential master-slave relationships
-        // First pass: compute PID outputs for master foils ONLY
+        // First pass: compute PID outputs for master foils ONLY (including neutral targets)
         let mut master_outputs = std::collections::HashMap::new();
         for i in 0..self.foils.len() {
             if matches!(
@@ -1247,11 +1254,6 @@ impl Simulation {
                 crate::body::foil::ChargingMode::Overpotential
             ) && self.foils[i].overpotential_controller.is_some()
             {
-                // Only master foils have controllers; skip neutral target to save work
-                if let Some(ctrl) = &self.foils[i].overpotential_controller {
-                    if (ctrl.target_ratio - 1.0).abs() <= 1e-6 { continue; }
-                }
-
                 let foil_id = self.foils[i].id;
                 if let Some(actual_ratio) = electron_ratios.get(&foil_id).copied() {
                     let master_current =
@@ -1287,7 +1289,6 @@ impl Simulation {
 
         // DIRECT ELECTRON MANIPULATION for overpotential mode (bypasses current-based system)
         self.process_overpotential_direct_electron_control(
-            dt,
             &electron_ratios,
             &mut rng,
             recipients,
@@ -1481,7 +1482,6 @@ impl Simulation {
     /// Direct electron manipulation for overpotential mode - bypasses current-based accumulator system
     fn process_overpotential_direct_electron_control(
         &mut self,
-        dt: f32,
         electron_ratios: &std::collections::HashMap<u64, f32>,
         rng: &mut rand::rngs::ThreadRng,
         recipients: &mut [bool],
@@ -1498,12 +1498,6 @@ impl Simulation {
             // Get the effective current for this foil (master PID output or slave assigned current)
             let foil_id = self.foils[i].id;
             let _actual_ratio = electron_ratios.get(&foil_id).copied(); // Keep for potential future use
-            // Skip if neutral target (saves work and avoids unnecessary random ops)
-            if let Some(ctrl) = &self.foils[i].overpotential_controller {
-                if (ctrl.target_ratio - 1.0).abs() <= 1e-6 {
-                    continue;
-                }
-            }
             let effective_current =
                 if let Some(controller) = &self.foils[i].overpotential_controller {
                     // Master foil - use PID output
@@ -1513,9 +1507,9 @@ impl Simulation {
                     self.foils[i].slave_overpotential_current
                 };
 
-            // Convert current to electron transfer rate
-            // Positive current = add electrons, negative current = remove electrons
-            let electron_transfer_rate = effective_current * dt;
+            // Interpret controller output as electrons-per-step for responsiveness
+            // Positive value = add electrons, negative = remove electrons
+            let electron_transfer_rate = effective_current;
 
             // Direct electron manipulation - no accumulator, no charge conservation constraints
             if electron_transfer_rate > 0.0 {

@@ -91,7 +91,9 @@ pub struct StepActiveInactiveSetpoints {
 impl Default for StepActiveInactiveSetpoints {
     fn default() -> Self {
         Self {
-            active: StepSetpoint { mode: Mode::Overpotential, value: 0.9 },
+            // Default to active foils using Current mode at -0.02 e/fs (as per preferred settings)
+            active: StepSetpoint { mode: Mode::Current, value: -0.02 },
+            // Inactive foils use Overpotential with neutral target ratio 1.0
             inactive: StepSetpoint { mode: Mode::Overpotential, value: 1.0 },
         }
     }
@@ -117,12 +119,15 @@ impl Default for SwitchChargingConfig {
             role_to_foil: HashMap::new(),
             sim_dt_s: default_sim_dt_s(),
             switch_rate_hz: 1.0,
-            delta_steps: 10000,
+            // Default dwell of 1000 simulation steps per half-cycle
+            delta_steps: 1000,
             step_setpoints: HashMap::from([
-                (0, StepSetpoint { mode: Mode::Overpotential, value: 0.9 }),
-                (1, StepSetpoint { mode: Mode::Overpotential, value: 0.9 }),
-                (2, StepSetpoint { mode: Mode::Overpotential, value: 0.9 }),
-                (3, StepSetpoint { mode: Mode::Overpotential, value: 0.9 }),
+                // Legacy per-step setpoints (unused when use_active_inactive_setpoints=true)
+                // Keep consistent with the preferred active setpoint: Current -0.02
+                (0, StepSetpoint { mode: Mode::Current, value: -0.02 }),
+                (1, StepSetpoint { mode: Mode::Current, value: -0.02 }),
+                (2, StepSetpoint { mode: Mode::Current, value: -0.02 }),
+                (3, StepSetpoint { mode: Mode::Current, value: -0.02 }),
             ]),
             use_active_inactive_setpoints: true,
             step_active_inactive: HashMap::new(),
@@ -365,10 +370,7 @@ impl SwitchScheduler {
         let (positive, negative) = roles_for_step(step);
         let pos_ids = cfg.foils_for_role(positive).to_vec();
         let neg_ids = cfg.foils_for_role(negative).to_vec();
-        
-        if pos_ids.is_empty() || neg_ids.is_empty() {
-            return None;
-        }
+        // Allow tick to proceed even if one side is empty; inactive logic will still apply to others
         
         let setpoint = cfg.step_setpoints.get(&step)?.clone();
 
@@ -493,6 +495,9 @@ impl SwitchUiState {
             })
             .collect();
         self.available_foils.sort_by_key(|entry| entry.id);
+
+        // If no electrode assignments yet and we have enough foils, apply sensible defaults
+        self.maybe_apply_default_assignments();
     }
 
     pub fn consume_selected_foil(&mut self, selected: Option<FoilId>) {
@@ -671,6 +676,35 @@ impl SwitchUiState {
 
     fn update_validation(&mut self) {
         self.validation_error = self.config.validate().err();
+    }
+
+    /// If no roles have been assigned yet, auto-assign defaults to match preferred layout:
+    /// +A: 2nd foil, +B: 4th foil, -A: 3rd foil, -B: 1st (and 5th if present)
+    fn maybe_apply_default_assignments(&mut self) {
+        // Only run if there are no assignments at all and at least 4 foils are available
+        let any_assigned = Role::ALL.iter().any(|r| !self.config.foils_for_role(*r).is_empty());
+        if any_assigned { return; }
+        if self.available_foils.len() < 4 { return; }
+
+        let ids: Vec<FoilId> = self.available_foils.iter().map(|f| f.id).collect();
+
+        // Helper to add if index exists
+        let mut add_idx = |role: Role, idx: usize| {
+            if idx < ids.len() {
+                self.add_foil_to_role(role, ids[idx]);
+            }
+        };
+
+        // Apply mapping
+        add_idx(Role::PosA, 1); // +A: 2nd foil
+        add_idx(Role::PosB, 3); // +B: 4th foil
+        add_idx(Role::NegA, 2); // -A: 3rd foil
+        add_idx(Role::NegB, 0); // -B: 1st foil
+        if ids.len() >= 5 { add_idx(Role::NegB, 4); } // -B also gets 5th foil if present
+
+        if self.validation_error.is_none() {
+            self.status_message = Some("Default electrode assignments applied".into());
+        }
     }
 }
 
@@ -913,6 +947,63 @@ pub fn ui_switch_charging(ui: &mut egui::Ui, state: &mut SwitchUiState) {
                     ui.end_row();
                 }
             });
+    });
+
+    // Summary table: which inactive settings are applied when a step is not active
+    ui.separator();
+    ui.group(|ui| {
+        ui.label("Inactive Settings Summary (for non-active steps)");
+        let active_step = state
+            .last_step_status
+            .map(|(s, _)| s)
+            .unwrap_or(0);
+
+        egui::Grid::new("inactive-summary-grid")
+            .num_columns(5)
+            .spacing([8.0, 4.0])
+            .striped(true)
+            .show(ui, |ui| {
+                ui.heading("Step");
+                ui.heading("Roles");
+                ui.heading("Inactive Mode");
+                ui.heading("Inactive Value");
+                ui.heading("Applied When");
+                ui.end_row();
+
+                for step in 0..4u8 {
+                    let (pos, neg) = roles_for_step(step);
+                    let sai = state
+                        .config
+                        .step_active_inactive
+                        .get(&step)
+                        .cloned()
+                        .unwrap_or_default();
+                    let is_active = step == active_step;
+                    let when_text = if is_active {
+                        "Active now (inactive not applied)".to_string()
+                    } else {
+                        "When this step is inactive".to_string()
+                    };
+
+                    // Step label with indicator
+                    let step_label = if is_active {
+                        format!("▶ {}", step + 1)
+                    } else {
+                        format!("{}", step + 1)
+                    };
+                    ui.label(step_label);
+
+                    // Roles impacted by this step's inactive settings
+                    ui.label(format!("{} and {}", pos.display(), neg.display()));
+
+                    // Inactive mode/value
+                    ui.label(match sai.inactive.mode { Mode::Current => "Current", Mode::Overpotential => "Overpotential" });
+                    ui.label(format!("{:.4}", sai.inactive.value));
+                    ui.label(when_text);
+                    ui.end_row();
+                }
+            });
+        ui.small("Foils assigned to a step use that step's Inactive settings whenever the step is not currently active.");
     });
 
     ui.separator();
