@@ -33,6 +33,10 @@ impl super::Renderer {
         
         self.settings_window_open ^= input.key_pressed(VirtualKeyCode::E);
 
+        let scaled_mouse_pos = input
+            .mouse()
+            .map(|(mx, my)| (mx * self.scale_factor, my * self.scale_factor));
+
         if input.key_pressed(VirtualKeyCode::Space) {
             // Check if we're in playback mode
             let playback_status = crate::renderer::state::PLAYBACK_STATUS.lock();
@@ -66,7 +70,7 @@ impl super::Renderer {
         }
 
         // Camera zoom and pan
-        if let Some((mx, my)) = input.mouse() {
+        if let Some((mx, my)) = scaled_mouse_pos {
             // Scroll steps to double/halve the scale
             let steps = 5.0;
             // Modify input
@@ -97,9 +101,9 @@ impl super::Renderer {
 
         // Screen capture region selection handling
         if self.is_selecting_region {
-            if let Some((mx, my)) = input.mouse() {
+            if let Some((mx, my)) = scaled_mouse_pos {
                 let screen_pos = Vec2::new(mx, my);
-                
+
                 if input.mouse_pressed(0) {
                     // Start selection on mouse press
                     self.selection_start = Some(screen_pos);
@@ -125,8 +129,10 @@ impl super::Renderer {
             // Normal input handling when not selecting region
             // Camera grab
             if input.mouse_held(2) {
-                let (mdx, mdy) = input.mouse_diff();
-                // Mouse diff coordinates are also in logical pixels
+                let (raw_mdx, raw_mdy) = input.mouse_diff();
+                let mdx = raw_mdx * self.scale_factor;
+                let mdy = raw_mdy * self.scale_factor;
+                // Mouse diff coordinates are provided in logical pixels; convert to physical units
                 self.pos.x -= mdx / height as f32 * self.scale * 2.0;
                 self.pos.y += mdy / height as f32 * self.scale * 2.0;
             }
@@ -138,8 +144,8 @@ impl super::Renderer {
 
         // Mouse to world conversion
         let world_mouse = || -> Vec2 {
-            let (mx, my) = input.mouse().unwrap_or_default();
-            // Mouse coordinates are already in logical pixels, don't scale by DPI
+            let (mx, my) = scaled_mouse_pos.unwrap_or((0.0, 0.0));
+            // Mouse coordinates are stored in physical pixels after scaling by DPI
             let mut mouse = Vec2::new(mx, my);
             mouse *= 2.0 / height as f32;
             mouse.y -= 1.0;
@@ -149,7 +155,7 @@ impl super::Renderer {
         };
 
         if self.current_tab == GuiTab::Measurement {
-            self.measurement_cursor = input.mouse().map(|_| world_mouse());
+            self.measurement_cursor = scaled_mouse_pos.map(|_| world_mouse());
 
             if input.mouse_pressed(1) {
                 self.current_tab = self.last_non_measurement_tab;
