@@ -302,11 +302,16 @@ pub struct SimConfig {
     /// Dipole interaction model for EC/DMC
     #[serde(default)]
     pub dipole_model: DipoleModel,
+
+    /// Version number incremented whenever config changes (for clone detection)
+    #[serde(skip)]
+    pub config_version: u64,
 }
 
 impl Default for SimConfig {
     fn default() -> Self {
         Self {
+            config_version: 0,
             hop_rate_k0: HOP_RATE_K0,
             hop_transfer_coeff: HOP_TRANSFER_COEFF,
             hop_activation_energy: HOP_ACTIVATION_ENERGY,

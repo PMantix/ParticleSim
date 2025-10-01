@@ -130,6 +130,7 @@ pub struct Renderer {
     selected_pid_foil_id: Option<u64>, // For PID graph foil selection
     switch_ui_state: switch_charging::SwitchUiState,
     sim_config: SimConfig,
+    cached_config_version: u64,
     /// Local copy of the simulation frame for time-based visualizations
     frame: usize,
     playback_cursor: usize,
@@ -296,6 +297,7 @@ impl quarkstrom::Renderer for Renderer {
             selected_pid_foil_id: None, // Initialize PID graph foil selection to None
             switch_ui_state: switch_charging::SwitchUiState::new(),
             sim_config: crate::config::LJ_CONFIG.lock().clone(),
+            cached_config_version: 0,
             frame: 0,
             playback_cursor: 0,
             playback_speed: 1.0,
@@ -415,7 +417,9 @@ impl quarkstrom::Renderer for Renderer {
     }
     fn gui(&mut self, ctx: &quarkstrom::egui::Context) {
         self.show_gui(ctx);
-        // After GUI update, write changes to global config
+        // After GUI update, write changes to global config and increment version
+        self.sim_config.config_version += 1;
+        self.cached_config_version = self.sim_config.config_version;
         *crate::config::LJ_CONFIG.lock() = self.sim_config.clone();
     }
 }

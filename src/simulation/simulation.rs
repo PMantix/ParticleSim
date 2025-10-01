@@ -59,6 +59,8 @@ pub struct Simulation {
     // Foil group linking (parallel within group, opposite between groups)
     pub group_a: std::collections::HashSet<u64>,
     pub group_b: std::collections::HashSet<u64>,
+    // Pre-allocated temporary set for switch-charging inactive foil tracking
+    temp_inactive_set: std::collections::HashSet<u64>,
 }
 
 impl Simulation {
@@ -109,6 +111,7 @@ impl Simulation {
             thermostat_bootstrapped: false,
             group_a: std::collections::HashSet::new(),
             group_b: std::collections::HashSet::new(),
+            temp_inactive_set: std::collections::HashSet::new(),
         };
         sim.initialize_history();
         sim
@@ -221,17 +224,18 @@ impl Simulation {
         
         // Resolve active/inactive setpoints (global vs per-step)
         let current_step = self.switch_scheduler.current_step();
-        let (active_sp, inactive_sp) = if self.switch_config.use_global_active_inactive {
-            (self.switch_config.global_active.clone(), self.switch_config.global_inactive.clone())
-        } else {
-            match self.switch_config.step_active_inactive.get(&current_step).cloned() {
-                Some(sai) => (sai.active, sai.inactive),
-                None => {
-                    eprintln!("Warning: No active/inactive setpoints found for step {}", current_step);
-                    return;
+        let (active_sp, inactive_sp): (&crate::switch_charging::StepSetpoint, &crate::switch_charging::StepSetpoint) = 
+            if self.switch_config.use_global_active_inactive {
+                (&self.switch_config.global_active, &self.switch_config.global_inactive)
+            } else {
+                match self.switch_config.step_active_inactive.get(&current_step) {
+                    Some(sai) => (&sai.active, &sai.inactive),
+                    None => {
+                        eprintln!("Warning: No active/inactive setpoints found for step {}", current_step);
+                        return;
+                    }
                 }
-            }
-        };
+            };
 
         // Helper to apply a setpoint to a specific foil
         let apply_setpoint_to_foil = |foil: &mut crate::body::foil::Foil, sp: &crate::switch_charging::StepSetpoint| {
@@ -306,7 +310,8 @@ impl Simulation {
         }
 
         // Apply per-step INACTIVE setpoints to foils belonging to steps that are NOT active
-        let mut applied_inactive: std::collections::HashSet<u64> = std::collections::HashSet::new();
+        self.temp_inactive_set.clear();
+        let applied_inactive = &mut self.temp_inactive_set;
         for step in 0u8..4u8 {
             if step == current_step { continue; }
             // Fetch the inactive setpoint for this non-active step
@@ -316,8 +321,8 @@ impl Simulation {
                 if let Some(sai_other) = self.switch_config.step_active_inactive.get(&step) { (sai_other.inactive.mode, sai_other.inactive.value) } else { continue } 
             };
             let (pos_role, neg_role) = crate::switch_charging::roles_for_step(step);
-            let pos_step_ids: Vec<u64> = self.switch_config.foils_for_role(pos_role).to_vec();
-            let neg_step_ids: Vec<u64> = self.switch_config.foils_for_role(neg_role).to_vec();
+            let pos_step_ids = self.switch_config.foils_for_role(pos_role);
+            let neg_step_ids = self.switch_config.foils_for_role(neg_role);
 
             for &foil_id in pos_step_ids.iter().chain(neg_step_ids.iter()) {
                 if active_foil_ids.contains(&foil_id) { continue; }
@@ -483,7 +488,12 @@ impl Simulation {
     pub fn step(&mut self) {
         profile_scope!("simulation_step");
         // Sync config from global LJ_CONFIG (updated by GUI)
-        self.config = crate::config::LJ_CONFIG.lock().clone();
+        let global_config = crate::config::LJ_CONFIG.lock();
+        if global_config.config_version != self.config.config_version {
+            self.config = global_config.clone();
+        } else {
+            drop(global_config); // Release lock early
+        }
 
         let mag = *FIELD_MAGNITUDE.lock();
         let theta = (*FIELD_DIRECTION.lock()).to_radians();

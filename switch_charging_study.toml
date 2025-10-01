@@ -1,0 +1,306 @@
+study_name = "Switch Charging Study"
+base_scenario = "starting_point"
+run_duration_fs = 15000.0
+measurement_interval_fs = 1000.0
+
+[[measurements]]
+x = 0.0
+y = -40.0
+direction = "left"
+width_ang = 70.0
+label = "Position_1"
+
+[[measurements]]
+x = 0.0
+y = -20.0
+direction = "left"
+width_ang = 70.0
+label = "Position_2"
+
+[[measurements]]
+x = 0.0
+y = 0.0
+direction = "left"
+width_ang = 70.0
+label = "Position_3"
+
+[[measurements]]
+x = 0.0
+y = 20.0
+direction = "left"
+width_ang = 70.0
+label = "Position_4"
+
+[[measurements]]
+x = 0.0
+y = 40.0
+direction = "left"
+width_ang = 70.0
+label = "Position_5"
+
+[[test_cases]]
+case_id = "CONV_OP0.7"
+mode = "Conventional"
+overpotential = 0.7
+group_a_foils = [
+    1,
+    3,
+    5,
+]
+group_b_foils = [
+    2,
+    4,
+]
+
+[[test_cases]]
+case_id = "CONV_OP0.8"
+mode = "Conventional"
+overpotential = 0.8
+group_a_foils = [
+    1,
+    3,
+    5,
+]
+group_b_foils = [
+    2,
+    4,
+]
+
+[[test_cases]]
+case_id = "CONV_OP0.9"
+mode = "Conventional"
+overpotential = 0.9
+group_a_foils = [
+    1,
+    3,
+    5,
+]
+group_b_foils = [
+    2,
+    4,
+]
+
+[[test_cases]]
+case_id = "SWITCH_OP0.7_FREQ500"
+mode = "SwitchCharging"
+overpotential = 1.4
+switching_frequency_steps = 500
+group_a_foils = [
+    1,
+    3,
+    5,
+]
+group_b_foils = [
+    2,
+    4,
+]
+
+[[test_cases]]
+case_id = "SWITCH_OP0.7_FREQ750"
+mode = "SwitchCharging"
+overpotential = 1.4
+switching_frequency_steps = 750
+group_a_foils = [
+    1,
+    3,
+    5,
+]
+group_b_foils = [
+    2,
+    4,
+]
+
+[[test_cases]]
+case_id = "SWITCH_OP0.7_FREQ1000"
+mode = "SwitchCharging"
+overpotential = 1.4
+switching_frequency_steps = 1000
+group_a_foils = [
+    1,
+    3,
+    5,
+]
+group_b_foils = [
+    2,
+    4,
+]
+
+[[test_cases]]
+case_id = "SWITCH_OP0.7_FREQ1250"
+mode = "SwitchCharging"
+overpotential = 1.4
+switching_frequency_steps = 1250
+group_a_foils = [
+    1,
+    3,
+    5,
+]
+group_b_foils = [
+    2,
+    4,
+]
+
+[[test_cases]]
+case_id = "SWITCH_OP0.7_FREQ1500"
+mode = "SwitchCharging"
+overpotential = 1.4
+switching_frequency_steps = 1500
+group_a_foils = [
+    1,
+    3,
+    5,
+]
+group_b_foils = [
+    2,
+    4,
+]
+
+[[test_cases]]
+case_id = "SWITCH_OP0.8_FREQ500"
+mode = "SwitchCharging"
+overpotential = 1.6
+switching_frequency_steps = 500
+group_a_foils = [
+    1,
+    3,
+    5,
+]
+group_b_foils = [
+    2,
+    4,
+]
+
+[[test_cases]]
+case_id = "SWITCH_OP0.8_FREQ750"
+mode = "SwitchCharging"
+overpotential = 1.6
+switching_frequency_steps = 750
+group_a_foils = [
+    1,
+    3,
+    5,
+]
+group_b_foils = [
+    2,
+    4,
+]
+
+[[test_cases]]
+case_id = "SWITCH_OP0.8_FREQ1000"
+mode = "SwitchCharging"
+overpotential = 1.6
+switching_frequency_steps = 1000
+group_a_foils = [
+    1,
+    3,
+    5,
+]
+group_b_foils = [
+    2,
+    4,
+]
+
+[[test_cases]]
+case_id = "SWITCH_OP0.8_FREQ1250"
+mode = "SwitchCharging"
+overpotential = 1.6
+switching_frequency_steps = 1250
+group_a_foils = [
+    1,
+    3,
+    5,
+]
+group_b_foils = [
+    2,
+    4,
+]
+
+[[test_cases]]
+case_id = "SWITCH_OP0.8_FREQ1500"
+mode = "SwitchCharging"
+overpotential = 1.6
+switching_frequency_steps = 1500
+group_a_foils = [
+    1,
+    3,
+    5,
+]
+group_b_foils = [
+    2,
+    4,
+]
+
+[[test_cases]]
+case_id = "SWITCH_OP0.9_FREQ500"
+mode = "SwitchCharging"
+overpotential = 1.8
+switching_frequency_steps = 500
+group_a_foils = [
+    1,
+    3,
+    5,
+]
+group_b_foils = [
+    2,
+    4,
+]
+
+[[test_cases]]
+case_id = "SWITCH_OP0.9_FREQ750"
+mode = "SwitchCharging"
+overpotential = 1.8
+switching_frequency_steps = 750
+group_a_foils = [
+    1,
+    3,
+    5,
+]
+group_b_foils = [
+    2,
+    4,
+]
+
+[[test_cases]]
+case_id = "SWITCH_OP0.9_FREQ1000"
+mode = "SwitchCharging"
+overpotential = 1.8
+switching_frequency_steps = 1000
+group_a_foils = [
+    1,
+    3,
+    5,
+]
+group_b_foils = [
+    2,
+    4,
+]
+
+[[test_cases]]
+case_id = "SWITCH_OP0.9_FREQ1250"
+mode = "SwitchCharging"
+overpotential = 1.8
+switching_frequency_steps = 1250
+group_a_foils = [
+    1,
+    3,
+    5,
+]
+group_b_foils = [
+    2,
+    4,
+]
+
+[[test_cases]]
+case_id = "SWITCH_OP0.9_FREQ1500"
+mode = "SwitchCharging"
+overpotential = 1.8
+switching_frequency_steps = 1500
+group_a_foils = [
+    1,
+    3,
+    5,
+]
+group_b_foils = [
+    2,
+    4,
+]
