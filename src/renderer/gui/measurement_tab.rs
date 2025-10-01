@@ -36,6 +36,7 @@ impl super::super::Renderer {
 
             let clear_button = ui.add_enabled(copy_enabled, egui::Button::new("🧹 Clear History"));
             if clear_button.clicked() {
+                self.clear_measurement();
                 self.measurement_history.clear();
             }
 

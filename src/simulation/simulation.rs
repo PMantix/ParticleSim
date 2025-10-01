@@ -219,11 +219,18 @@ impl Simulation {
             self.restore_snapshot_for(foil_id);
         }
         
-        // Get the current step's active/inactive setpoints
+        // Resolve active/inactive setpoints (global vs per-step)
         let current_step = self.switch_scheduler.current_step();
-        let Some(step_setpoints) = self.switch_config.step_active_inactive.get(&current_step) else {
-            eprintln!("Warning: No active/inactive setpoints found for step {}", current_step);
-            return;
+        let (active_sp, inactive_sp) = if self.switch_config.use_global_active_inactive {
+            (self.switch_config.global_active.clone(), self.switch_config.global_inactive.clone())
+        } else {
+            match self.switch_config.step_active_inactive.get(&current_step).cloned() {
+                Some(sai) => (sai.active, sai.inactive),
+                None => {
+                    eprintln!("Warning: No active/inactive setpoints found for step {}", current_step);
+                    return;
+                }
+            }
         };
 
         // Helper to apply a setpoint to a specific foil
@@ -259,31 +266,41 @@ impl Simulation {
         let active_foil_ids: std::collections::HashSet<u64> = pos_ids.iter().chain(neg_ids.iter()).copied().collect();
         
         // Active foils (current step participants)
-        if matches!(step_setpoints.active.mode, crate::switch_charging::Mode::Current) {
+        if matches!(active_sp.mode, crate::switch_charging::Mode::Current) {
             // Split current between positive and negative groups, guarding against empty groups
             if !pos_ids.is_empty() {
-                let pos_current_per_foil = step_setpoints.active.value as f32 / pos_ids.len() as f32;
+                let pos_current_per_foil = active_sp.value as f32 / pos_ids.len() as f32;
                 for &foil_id in pos_ids {
                     if let Some(foil) = self.foils.iter_mut().find(|f| f.id == foil_id) {
-                        apply_setpoint_to_foil(foil, &step_setpoints.active);
+                        apply_setpoint_to_foil(foil, &active_sp);
                         foil.dc_current = pos_current_per_foil; // Positive group gets positive current
                     }
                 }
             }
             if !neg_ids.is_empty() {
-                let neg_current_per_foil = step_setpoints.active.value as f32 / neg_ids.len() as f32;
+                let neg_current_per_foil = active_sp.value as f32 / neg_ids.len() as f32;
                 for &foil_id in neg_ids {
                     if let Some(foil) = self.foils.iter_mut().find(|f| f.id == foil_id) {
-                        apply_setpoint_to_foil(foil, &step_setpoints.active);
+                        apply_setpoint_to_foil(foil, &active_sp);
                         foil.dc_current = -neg_current_per_foil; // Negative group gets negative current
                     }
                 }
             }
         } else {
             // Overpotential mode - apply to all active foils
-            for &foil_id in &active_foil_ids {
+            // Positive group gets target V; negative group gets complementary (2.0 - V)
+            let v_pos = active_sp.value as f32;
+            let v_neg = (2.0 - active_sp.value) as f32;
+            for &foil_id in pos_ids {
                 if let Some(foil) = self.foils.iter_mut().find(|f| f.id == foil_id) {
-                    apply_setpoint_to_foil(foil, &step_setpoints.active);
+                    apply_setpoint_to_foil(foil, &active_sp);
+                    if let Some(ctrl) = foil.overpotential_controller.as_mut() { ctrl.target_ratio = v_pos; }
+                }
+            }
+            for &foil_id in neg_ids {
+                if let Some(foil) = self.foils.iter_mut().find(|f| f.id == foil_id) {
+                    apply_setpoint_to_foil(foil, &active_sp);
+                    if let Some(ctrl) = foil.overpotential_controller.as_mut() { ctrl.target_ratio = v_neg; }
                 }
             }
         }
@@ -293,7 +310,11 @@ impl Simulation {
         for step in 0u8..4u8 {
             if step == current_step { continue; }
             // Fetch the inactive setpoint for this non-active step
-            let Some(sai_other) = self.switch_config.step_active_inactive.get(&step) else { continue; };
+            let (inactive_mode, inactive_value) = if self.switch_config.use_global_active_inactive {
+                (inactive_sp.mode, inactive_sp.value)
+            } else {
+                if let Some(sai_other) = self.switch_config.step_active_inactive.get(&step) { (sai_other.inactive.mode, sai_other.inactive.value) } else { continue } 
+            };
             let (pos_role, neg_role) = crate::switch_charging::roles_for_step(step);
             let pos_step_ids: Vec<u64> = self.switch_config.foils_for_role(pos_role).to_vec();
             let neg_step_ids: Vec<u64> = self.switch_config.foils_for_role(neg_role).to_vec();
@@ -302,9 +323,10 @@ impl Simulation {
                 if active_foil_ids.contains(&foil_id) { continue; }
                 if applied_inactive.contains(&foil_id) { continue; }
                 if let Some(foil) = self.foils.iter_mut().find(|f| f.id == foil_id) {
-                    apply_setpoint_to_foil(foil, &sai_other.inactive);
-                    if matches!(sai_other.inactive.mode, crate::switch_charging::Mode::Current) {
-                        foil.dc_current = sai_other.inactive.value as f32;
+                    let sp = crate::switch_charging::StepSetpoint { mode: inactive_mode, value: inactive_value };
+                    apply_setpoint_to_foil(foil, &sp);
+                    if matches!(inactive_mode, crate::switch_charging::Mode::Current) {
+                        foil.dc_current = inactive_value as f32;
                     }
                     applied_inactive.insert(foil_id);
                 }
@@ -317,9 +339,10 @@ impl Simulation {
             if active_foil_ids.contains(&foil_id) { continue; }
             if applied_inactive.contains(&foil_id) { continue; }
             if let Some(foil) = self.foils.iter_mut().find(|f| f.id == foil_id) {
-                apply_setpoint_to_foil(foil, &step_setpoints.inactive);
-                if matches!(step_setpoints.inactive.mode, crate::switch_charging::Mode::Current) {
-                    foil.dc_current = step_setpoints.inactive.value as f32;
+                let sp = crate::switch_charging::StepSetpoint { mode: inactive_sp.mode, value: inactive_sp.value };
+                apply_setpoint_to_foil(foil, &sp);
+                if matches!(inactive_sp.mode, crate::switch_charging::Mode::Current) {
+                    foil.dc_current = inactive_sp.value as f32;
                 }
                 applied_inactive.insert(foil_id);
             }

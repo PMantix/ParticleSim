@@ -20,11 +20,15 @@ fn apply_li_collision_softness(
 ) -> Vec2 {
     let body_i = &sim.bodies[body_i_idx];
     let body_j = &sim.bodies[body_j_idx];
-    // Only apply to Li+ ions
-    let i_is_li = matches!(body_i.species, Species::LithiumIon);
-    let j_is_li = matches!(body_j.species, Species::LithiumIon);
-    if !i_is_li && !j_is_li {
-        return vec_xy; // Neither is Li+, no change
+    // Determine which species are enabled for soft collisions
+    let allow_li = sim.config.soft_collision_lithium_ion;
+    let allow_an = sim.config.soft_collision_anion;
+    let i_is_li = allow_li && matches!(body_i.species, Species::LithiumIon);
+    let j_is_li = allow_li && matches!(body_j.species, Species::LithiumIon);
+    let i_is_an = allow_an && matches!(body_i.species, Species::ElectrolyteAnion);
+    let j_is_an = allow_an && matches!(body_j.species, Species::ElectrolyteAnion);
+    if !(i_is_li || j_is_li || i_is_an || j_is_an) {
+        return vec_xy; // Neither body is a softened species
     }
     let s = sim.config.li_collision_softness.clamp(0.0, 1.0);
     // Scale down correction: 0 => unchanged; 1 => fully suppressed (not recommended)

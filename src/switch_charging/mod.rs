@@ -111,6 +111,12 @@ pub struct SwitchChargingConfig {
     pub use_active_inactive_setpoints: bool,
     /// Per-step setpoints for active vs inactive foils
     pub step_active_inactive: HashMap<u8, StepActiveInactiveSetpoints>,
+    /// If true, apply the same Active/Inactive setpoints to every step (ignores per-step values)
+    pub use_global_active_inactive: bool,
+    /// Global Active setpoint applied to the active foils regardless of step when `use_global_active_inactive` is true
+    pub global_active: StepSetpoint,
+    /// Global Inactive setpoint applied to the non-active foils regardless of step when `use_global_active_inactive` is true
+    pub global_inactive: StepSetpoint,
 }
 
 impl Default for SwitchChargingConfig {
@@ -131,6 +137,9 @@ impl Default for SwitchChargingConfig {
             ]),
             use_active_inactive_setpoints: true,
             step_active_inactive: HashMap::new(),
+            use_global_active_inactive: true,
+            global_active: StepSetpoint { mode: Mode::Current, value: -0.02 },
+            global_inactive: StepSetpoint { mode: Mode::Overpotential, value: 1.0 },
         };
         cfg.ensure_all_steps();
         cfg.ensure_all_step_active_inactive();
@@ -178,13 +187,21 @@ impl SwitchChargingConfig {
         }
 
         // Validate per-step active/inactive setpoints if enabled
-        for step in 0u8..4u8 {
-            if !self.step_active_inactive.contains_key(&step) {
-                return Err(format!("Missing active/inactive setpoints for step {}", step + 1));
-            }
-            let sai = &self.step_active_inactive[&step];
-            if !sai.active.value.is_finite() || !sai.inactive.value.is_finite() {
-                return Err(format!("Step {} active/inactive setpoints must be finite", step + 1));
+        if self.use_active_inactive_setpoints {
+            if self.use_global_active_inactive {
+                if !self.global_active.value.is_finite() || !self.global_inactive.value.is_finite() {
+                    return Err("Global active/inactive setpoints must be finite".into());
+                }
+            } else {
+                for step in 0u8..4u8 {
+                    if !self.step_active_inactive.contains_key(&step) {
+                        return Err(format!("Missing active/inactive setpoints for step {}", step + 1));
+                    }
+                    let sai = &self.step_active_inactive[&step];
+                    if !sai.active.value.is_finite() || !sai.inactive.value.is_finite() {
+                        return Err(format!("Step {} active/inactive setpoints must be finite", step + 1));
+                    }
+                }
             }
         }
 
@@ -861,14 +878,67 @@ pub fn ui_switch_charging(ui: &mut egui::Ui, state: &mut SwitchUiState) {
             state.send_update();
         }
 
+        // Global override toggle and editors
+        if state.config.use_active_inactive_setpoints {
+            let mut use_global = state.config.use_global_active_inactive;
+            if ui.checkbox(&mut use_global, "Apply same Active/Inactive to all steps").on_hover_text("When enabled, the Active and Inactive setpoints below will be applied to every step.").changed() {
+                state.config.use_global_active_inactive = use_global;
+                state.config_dirty = true;
+                state.send_update();
+            }
+
+            if state.config.use_global_active_inactive {
+                ui.separator();
+                ui.label("Global Active/Inactive Setpoints (applied to every step)");
+                ui.horizontal(|ui| {
+                    ui.label("Active mode:");
+                    let prev = state.config.global_active.mode;
+                    egui::ComboBox::from_id_source("global-active-mode")
+                        .selected_text(match state.config.global_active.mode { Mode::Current => "Current", Mode::Overpotential => "Overpotential" })
+                        .show_ui(ui, |ui| {
+                            ui.selectable_value(&mut state.config.global_active.mode, Mode::Current, "Current");
+                            ui.selectable_value(&mut state.config.global_active.mode, Mode::Overpotential, "Overpotential");
+                        });
+                    if state.config.global_active.mode != prev { state.config_dirty = true; }
+                    let label = match state.config.global_active.mode { Mode::Current => "Current (e/fs)", Mode::Overpotential => "Target ratio" };
+                    let mut v = state.config.global_active.value;
+                    ui.label(label);
+                    if ui.add(egui::DragValue::new(&mut v).speed(0.01).clamp_range(-10_000.0..=10_000.0)).changed() {
+                        state.config.global_active.value = v; state.config_dirty = true;
+                    }
+                });
+                ui.horizontal(|ui| {
+                    ui.label("Inactive mode:");
+                    let prev = state.config.global_inactive.mode;
+                    egui::ComboBox::from_id_source("global-inactive-mode")
+                        .selected_text(match state.config.global_inactive.mode { Mode::Current => "Current", Mode::Overpotential => "Overpotential" })
+                        .show_ui(ui, |ui| {
+                            ui.selectable_value(&mut state.config.global_inactive.mode, Mode::Current, "Current");
+                            ui.selectable_value(&mut state.config.global_inactive.mode, Mode::Overpotential, "Overpotential");
+                        });
+                    if state.config.global_inactive.mode != prev { state.config_dirty = true; }
+                    let label = match state.config.global_inactive.mode { Mode::Current => "Current (e/fs)", Mode::Overpotential => "Target ratio" };
+                    let mut v = state.config.global_inactive.value;
+                    ui.label(label);
+                    if ui.add(egui::DragValue::new(&mut v).speed(0.01).clamp_range(-10_000.0..=10_000.0)).changed() {
+                        state.config.global_inactive.value = v; state.config_dirty = true;
+                    }
+                });
+                if state.config_dirty { state.send_update(); }
+            }
+        }
+
         ui.label("For each step, define what active foils and inactive foils should do:");
 
         // Show editor grid for per-step active/inactive setpoints
-        egui::Grid::new("step-active-inactive-grid")
+        let grid = egui::Grid::new("step-active-inactive-grid")
             .num_columns(6)
             .spacing([8.0, 4.0])
             .striped(true)
-            .show(ui, |ui| {
+            ;
+        let show_grid = !state.config.use_global_active_inactive || !state.config.use_active_inactive_setpoints;
+        if show_grid {
+            grid.show(ui, |ui| {
                 ui.heading("Step");
                 ui.heading("Active Mode");
                 ui.heading("Active Value");
@@ -947,6 +1017,9 @@ pub fn ui_switch_charging(ui: &mut egui::Ui, state: &mut SwitchUiState) {
                     ui.end_row();
                 }
             });
+        } else {
+            ui.small("Global Active/Inactive is enabled; per-step editors are hidden.");
+        }
     });
 
     // Summary table: which inactive settings are applied when a step is not active
@@ -972,12 +1045,16 @@ pub fn ui_switch_charging(ui: &mut egui::Ui, state: &mut SwitchUiState) {
 
                 for step in 0..4u8 {
                     let (pos, neg) = roles_for_step(step);
-                    let sai = state
-                        .config
-                        .step_active_inactive
-                        .get(&step)
-                        .cloned()
-                        .unwrap_or_default();
+                    let sai = if state.config.use_active_inactive_setpoints && state.config.use_global_active_inactive {
+                        StepActiveInactiveSetpoints { active: state.config.global_active.clone(), inactive: state.config.global_inactive.clone() }
+                    } else {
+                        state
+                            .config
+                            .step_active_inactive
+                            .get(&step)
+                            .cloned()
+                            .unwrap_or_default()
+                    };
                     let is_active = step == active_step;
                     let when_text = if is_active {
                         "Active now (inactive not applied)".to_string()
@@ -1010,11 +1087,15 @@ pub fn ui_switch_charging(ui: &mut egui::Ui, state: &mut SwitchUiState) {
 
     ui.group(|ui| {
         ui.label("Step Setpoints");
-        egui::Grid::new("switch-steps-grid")
-            .num_columns(3)
-            .spacing([8.0, 4.0])
-            .striped(true)
-            .show(ui, |ui| {
+        if state.config.use_active_inactive_setpoints {
+            ui.small("Note: This legacy per-step setpoint table is ignored while 'Use Active/Inactive per step' is enabled.");
+        }
+        ui.add_enabled_ui(!state.config.use_active_inactive_setpoints, |ui| {
+            egui::Grid::new("switch-steps-grid")
+                .num_columns(3)
+                .spacing([8.0, 4.0])
+                .striped(true)
+                .show(ui, |ui| {
                 ui.heading("Step");
                 ui.heading("Mode");
                 ui.heading("Setpoint");
@@ -1101,6 +1182,7 @@ pub fn ui_switch_charging(ui: &mut egui::Ui, state: &mut SwitchUiState) {
                     ui.end_row();
                 }
             });
+        });
     });
 
     ui.separator();

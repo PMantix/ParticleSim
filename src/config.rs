@@ -117,7 +117,7 @@ pub const SURROUND_CHECK_INTERVAL: usize = 10;
 
 /// Number of frames of history preserved for playback controls
 /// Simple ring buffer approach - much faster than compressed deltas
-pub const PLAYBACK_HISTORY_FRAMES: usize = 5000;
+pub const PLAYBACK_HISTORY_FRAMES: usize = 10000;
 
 // ====================
 // Simulation Parameters
@@ -281,6 +281,10 @@ pub struct SimConfig {
 
     // Li+ collision softness (simple, force-independent)
     pub li_collision_softness: f32,
+    /// Enable soft-collision scaling for Li+ ions
+    pub soft_collision_lithium_ion: bool,
+    /// Enable soft-collision scaling for electrolyte anions
+    pub soft_collision_anion: bool,
 
     // Induced external field from foil charging
     /// Gain mapping foil drive (current or overpotential) to induced |E|
@@ -347,6 +351,8 @@ impl Default for SimConfig {
 
             // Li+ collision softness (simple)
             li_collision_softness: LI_COLLISION_SOFTNESS,
+            soft_collision_lithium_ion: true,
+            soft_collision_anion: false,
 
             // Induced external field defaults (disabled by default via zero gain)
             induced_field_gain: 0.0,

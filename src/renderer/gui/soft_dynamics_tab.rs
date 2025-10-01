@@ -3,7 +3,7 @@ use quarkstrom::egui::{RichText, Color32};
 
 impl super::super::Renderer {
     pub fn show_soft_dynamics_tab(&mut self, ui: &mut egui::Ui) {
-        ui.heading(" Li+ Collision Softness");
+    ui.heading(" Soft Collisions");
         ui.separator();
 
         // Status display
@@ -29,11 +29,27 @@ impl super::super::Renderer {
             ui.label(RichText::new(" Controls").strong());
             ui.separator();
 
+            // Species toggles
+            ui.horizontal(|ui| {
+                let mut li = self.sim_config.soft_collision_lithium_ion;
+                if ui.checkbox(&mut li, "Li+ (cations)").changed() {
+                    self.sim_config.soft_collision_lithium_ion = li;
+                    let mut global_config = crate::config::LJ_CONFIG.lock();
+                    global_config.soft_collision_lithium_ion = li;
+                }
+                let mut an = self.sim_config.soft_collision_anion;
+                if ui.checkbox(&mut an, "Anions").changed() {
+                    self.sim_config.soft_collision_anion = an;
+                    let mut global_config = crate::config::LJ_CONFIG.lock();
+                    global_config.soft_collision_anion = an;
+                }
+            });
+
             // Single softness slider
             if ui
                 .add(
                     egui::Slider::new(&mut self.sim_config.li_collision_softness, 0.0..=1.0)
-                        .text("Li+ Collision Softness")
+                        .text("Collision Softness Factor")
                         .step_by(0.01),
                 )
                 .changed()
@@ -55,8 +71,7 @@ impl super::super::Renderer {
             ui.label(RichText::new(" ℹ How it Works").strong());
             ui.separator();
 
-            ui.label("Applies a simple multiplicative reduction to collision corrections for pairs involving Li+ ions.");
-            ui.label("Other species are unaffected. No dependence on electric force magnitude.");
+            ui.label("Applies a simple multiplicative reduction to collision corrections for selected species pairs (currently Li+ and Anions). No dependence on electric force magnitude.");
         });
     }
 }
