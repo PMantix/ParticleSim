@@ -6,39 +6,63 @@ This repository contains a modular, parallelized particle simulation for large-s
 
 ## Features
 
-- **Barnes-Hut Quadtree**: Efficient spatial partitioning for O(N log N) force calculations.
-- **Parallel Simulation**: Utilizes Rayon for multi-threading across the available CPU cores.
-- **Explicit Electron Dynamics**:  
-  - Lithium metal particles include explicit valence electrons that can drift and hop between particles.
-  - Electrons polarize in response to local electric fields, providing realistic charge separation visualization.
-  - Butler-Volmer kinetics for electron transfer between species (configurable).
-- **Accurate Redox Transitions & Charge Conservation**:  
-  - Lithium ions (Li⁺) and lithium metal (Li) dynamically update their species based on electron count.
-  - Electron hopping with strict conservation rules and distance-dependent rates.
-- **Real-time Data Analysis & Plotting**:
-  - **Time Series Plots**: Track species populations, foil currents, and electron hop rates over time.
-  - **Spatial Profile Plots**: Analyze charge distribution, velocity profiles, and electron counts along X or Y axes.
-  - **Full Domain Binning**: Spatial plots always span the entire simulation domain (-350 to +350), regardless of particle locations.
-  - **Data Export**: Export plot data in CSV, JSON, or TSV formats for external analysis.
-- **Interactive GUI**:  
-  - Real-time visualization and controls via [quarkstrom](https://github.com/DeadlockCode/quarkstrom).
-  - **Manual Step Button**: Step the simulation forward by one timestep for precise debugging.
-  - Particle selection with detailed diagnostics printed to console.
-  - Adjustable visualization overlays (velocity vectors, electron deficiency, etc.).
-  - **Screen Capture**: Periodic screenshot recording with customizable regions and intervals for creating animations and documentation.
+### Core Physics
+- **Barnes-Hut Quadtree**: Efficient spatial partitioning for O(N log N) force calculations
+- **Parallel Simulation**: Rayon-based multi-threading across available CPU cores
+- **Explicit Electron Dynamics**:
+  - Lithium metal particles include explicit valence electrons that drift and hop
+  - Electrons polarize in response to local electric fields
+  - Butler-Volmer kinetics for inter-species electron transfer
+- **Accurate Redox Transitions**: Li⁺/Li species transitions with strict charge conservation
+- **Polar Solvents**: EC and DMC with bound electrons and polarization forces
+- **Optional 2.5D Out-of-Plane**: Particles can temporarily move vertically to bypass 2D crowding
+
+### Electrochemical Control
+- **Switch-Charging System** (NEW):
+  - 4-step cyclic switching between foil pairs for symmetric charging
+  - **Global or per-step setpoints**: Configure once or customize each step
+  - **Current mode**: Direct electron injection (e/fs) with sign polarity
+  - **Overpotential mode**: PID voltage control with complementary targets (V and 2−V)
+  - JSON import/export for configuration sharing
+  - Real-time step monitoring and configuration validation
 - **Foil Electrodes**:
-  - Configurable foil structures that can apply electric currents to drive electrochemical reactions.
-  - Real-time current monitoring and analysis.
-- **Polar Solvents**:
-  - Ethylene carbonate (EC) and dimethyl carbonate (DMC) are modeled as neutral molecules with a bound electron.
-  - A polarization force is applied between the displaced electron and the molecular center, enabling solvent shells around lithium ions without Lennard-Jones attraction.
-- **Optional 2.5D Out-of-Plane Flex**: Ions and anions can temporarily move in an abstract vertical direction to bypass 2D crowding near electrodes. The feature preserves bulk behavior and is disabled by default.
-- **State Management**:
-  - Save and load simulation states for reproducible experiments.
-  - Pre-configured scenarios for quick setup.
-- **Configurable Physics**:  
-  - Adjustable Lennard-Jones parameters per species, electron hopping rates, and Butler-Volmer coefficients. Each species can enable or disable LJ forces to model either "metal-like" cohesion or "liquid-like" behavior.
-  - Domain bounds, timestep settings, and force cutoffs can be modified at runtime.
+  - Configurable structures that apply electric currents
+  - Group linking (parallel or opposite modes)
+  - Real-time current and overpotential monitoring
+
+### Collision Dynamics
+- **Soft Collision System** (NEW):
+  - Per-species toggles for collision softness (default: Li⁺ only)
+  - Anion soft collisions configurable independently
+  - Softness factor scales correction forces (0.0 = hard, 1.0 = very soft)
+
+### Visualization & Analysis
+- **Advanced Field Visualization** (ENHANCED):
+  - **Isoline controls**: Count, fidelity, adaptive refinement near crossings
+  - **Percentile clipping**: Dynamic range with bias and margin adjustments
+  - **Filled isobands**: Translucent bands between levels
+  - **Nonlinear distribution**: Gamma warp for perceptual level spacing
+  - **Color mapping**: Strength and gamma controls for contrast
+- **Measurement Tool** (NEW):
+  - Directional projection mode: Define an axis for aligned measurements
+  - History recording with switch-charging metadata
+  - CSV export with simulation context
+- **Real-time Data Plotting**:
+  - Time series plots (species populations, currents, hop rates)
+  - Spatial profile plots (charge, velocity, field distributions)
+  - Full domain binning regardless of particle locations
+  - Export in CSV, JSON, or TSV formats
+- **Interactive GUI**:
+  - Manual step-by-step execution for debugging
+  - Particle selection with detailed diagnostics
+  - Screen capture with customizable regions
+  - Playback controls with history scrubbing
+
+### Workflow & Configuration
+- **State Management**: Save/load simulation states for reproducible experiments
+- **Scenario Presets**: Quick setup with pre-configured arrangements
+- **Configurable Physics**: Runtime adjustment of LJ parameters, hopping rates, Butler-Volmer coefficients
+- **Domain Control**: Adjustable bounds, timestep, force cutoffs
 
 ## Units
 
@@ -79,18 +103,35 @@ guidelines.
 - **E**: Toggle settings menu
 
 ### GUI Features
-- **Plotting System**: Create real-time plots of simulation data
+- **Switch-Charging Tab**: Complete electrode control system
+  - Electrode role assignments (+A, +B, -A, -B)
+  - Global or per-step active/inactive setpoints
+  - Current and overpotential modes
+  - Real-time step indicators and dwell counters
+  - JSON configuration import/export
+- **Measurement Tab**: Precision distance tracking
+  - Select start point and define directional axis
+  - Live distance projection onto defined direction
+  - History recording with switch-charging metadata
+  - CSV export with simulation time and step context
+- **Visualization Tab**: Advanced rendering controls
+  - Isoline count, fidelity, and adaptive refinement
+  - Filled isobands with alpha blending
+  - Percentile clipping with bias and margin
+  - Color strength and gamma for perceptual tuning
+- **Soft Dynamics Tab**: Collision behavior tuning
+  - Per-species toggles (Li⁺, anions)
+  - Softness factor slider (0.0 = hard, 1.0 = very soft)
+- **Plotting System**: Real-time data analysis
   - Time series plots for species populations and currents
   - Spatial profile plots for charge and velocity distributions
-  - Export data in multiple formats (CSV, JSON, TSV)
-- **Screen Capture**: Record simulation screenshots for animations and documentation
+  - Export data in CSV, JSON, or TSV formats
+- **Screen Capture**: Animation and documentation support
   - Periodic automatic capture with configurable intervals
-  - Custom region selection for focused recording
-  - Manual capture for specific moments
-  - PNG output with timestamp-based naming
+  - Custom region selection and timestamp-based naming
 - **Scenario Controls**: Quick setup with predefined particle arrangements
-- **State Management**: Save and load simulation configurations
-- **Manual Stepping**: Advance simulation one timestep at a time for debugging
+- **State Management**: Save and load complete simulation configurations
+- **Manual Stepping**: Frame-by-frame execution for debugging
 
 ---
 
