@@ -23,20 +23,33 @@ impl super::super::Renderer {
             }
             
             ui.horizontal(|ui| {
-                if ui.button("� Refresh Configs").on_hover_text("Scan workspace for manual_measurements_*.toml files").clicked() {
-                    // Find available configs in current directory
+                if ui.button("� Refresh Configs").on_hover_text("Scan measurement_configs/ (and root for legacy) for manual_measurements_*.toml files").clicked() {
+                    // Prefer files under measurement_configs/, but include legacy root-level files
                     let mut found = Vec::new();
-                    if let Ok(entries) = std::fs::read_dir(".") {
-                        for entry in entries.flatten() {
-                            let path = entry.path();
-                            if let Some(name) = path.file_name().and_then(|s| s.to_str()) {
-                                if name.starts_with("manual_measurements_") && name.ends_with(".toml") {
-                                    found.push(name.to_string());
+
+                    // Helper to scan a directory
+                    let mut scan_dir = |dir: &str| {
+                        if let Ok(entries) = std::fs::read_dir(dir) {
+                            for entry in entries.flatten() {
+                                let path = entry.path();
+                                if path.is_file() {
+                                    if let Some(name) = path.file_name().and_then(|s| s.to_str()) {
+                                        if name.starts_with("manual_measurements_") && name.ends_with(".toml") {
+                                            // Store relative path for display and selection
+                                            let display = if dir == "." { name.to_string() } else { format!("{}/{}", dir, name) };
+                                            found.push(display);
+                                        }
+                                    }
                                 }
                             }
                         }
-                    }
+                    };
+
+                    scan_dir("measurement_configs");
+                    scan_dir("."); // legacy root
+
                     found.sort();
+                    found.dedup();
                     self.available_measurement_configs = found;
                 }
 
@@ -68,9 +81,11 @@ impl super::super::Renderer {
 
                 ui.separator();
 
-                if ui.button("�💾 Save Config").clicked() {
+                if ui.button("� Save Config").clicked() {
                     let config_name = self.manual_measurement_ui_config.name.replace(" ", "_");
-                    let path = format!("manual_measurements_{}.toml", config_name);
+                    // Ensure target directory exists
+                    let _ = std::fs::create_dir_all("measurement_configs");
+                    let path = format!("measurement_configs/manual_measurements_{}.toml", config_name);
                     match self.manual_measurement_ui_config.to_file(&path) {
                         Ok(_) => println!("✓ Saved manual measurement config to: {}", path),
                         Err(e) => eprintln!("✗ Failed to save config: {}", e),
@@ -78,17 +93,26 @@ impl super::super::Renderer {
                 }
                 
                 if ui.button("📂 Load Config").clicked() {
-                    // TODO: Add file picker - for now use default name
-                    let path = "manual_measurements.toml";
-                    match ManualMeasurementConfig::from_file(path) {
-                        Ok(config) => {
-                            self.manual_measurement_ui_config = config;
-                            self.manual_measurement_recorder = None; // Reset recorder with new config
-                            println!("✓ Loaded manual measurement config from: {}", path);
+                    // Try new location first, then fall back to legacy root name
+                    let candidates = [
+                        "measurement_configs/manual_measurements.toml",
+                        "manual_measurements.toml",
+                    ];
+                    let mut loaded = false;
+                    for path in &candidates {
+                        match ManualMeasurementConfig::from_file(path) {
+                            Ok(config) => {
+                                self.manual_measurement_ui_config = config;
+                                self.manual_measurement_recorder = None; // Reset recorder with new config
+                                println!("✓ Loaded manual measurement config from: {}", path);
+                                loaded = true;
+                                break;
+                            }
+                            Err(_) => {}
                         }
-                        Err(e) => {
-                            eprintln!("✗ Failed to load config: {}", e);
-                        }
+                    }
+                    if !loaded {
+                        eprintln!("✗ Failed to load config: looked in measurement_configs/ and root");
                     }
                 }
             });

@@ -1,0 +1,75 @@
+name = "eight_offset"
+interval_fs = 500.0
+output_file = "manual_measurements.csv"
+
+[[points]]
+x = -35.0
+y = -150.0
+height = 50.0
+width = 70.0
+direction = "left"
+label = "Foil3_Y-180"
+
+[[points]]
+x = -35.0
+y = -80.0
+height = 50.0
+width = 70.0
+direction = "left"
+label = "Foil3_Y-90"
+
+[[points]]
+x = -35.0
+y = 0.0
+height = 50.0
+width = 70.0
+direction = "left"
+label = "Foil3_Y0"
+
+[[points]]
+x = -35.0
+y = 80.0
+height = 50.0
+width = 70.0
+direction = "left"
+label = "Foil3_Y+90"
+
+[[points]]
+x = -35.0
+y = 150.0
+height = 50.0
+width = 70.0
+direction = "left"
+label = "Foil3_Y+180"
+
+[[points]]
+x = -35.0
+y = 130.0
+height = 50.0
+width = 70.0
+direction = "left"
+label = "Measurement_6"
+
+[[points]]
+x = -35.0
+y = -130.0
+height = 50.0
+width = 70.0
+direction = "left"
+label = "Measurement_7"
+
+[[points]]
+x = -35.0
+y = -40.0
+height = 50.0
+width = 70.0
+direction = "left"
+label = "Measurement_8"
+
+[[points]]
+x = -35.0
+y = 40.0
+height = 50.0
+width = 70.0
+direction = "left"
+label = "Measurement_9"
