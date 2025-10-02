@@ -18,6 +18,8 @@ mod app;
 mod units;
 mod scenario;
 mod switch_charging;
+mod doe;
+mod manual_measurement;
 
 #[cfg(feature = "profiling")]
 use once_cell::sync::Lazy;

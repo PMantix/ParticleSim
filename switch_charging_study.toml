@@ -5,43 +5,43 @@ measurement_interval_fs = 1000.0
 
 [[measurements]]
 x = 0.0
-y = -40.0
+y = -180.0
 direction = "left"
 width_ang = 70.0
-label = "Position_1"
+label = "Foil3_Y-180"
 
 [[measurements]]
 x = 0.0
-y = -20.0
+y = -90.0
 direction = "left"
 width_ang = 70.0
-label = "Position_2"
+label = "Foil3_Y-90"
 
 [[measurements]]
 x = 0.0
 y = 0.0
 direction = "left"
 width_ang = 70.0
-label = "Position_3"
+label = "Foil3_Y0"
 
 [[measurements]]
 x = 0.0
-y = 20.0
+y = 90.0
 direction = "left"
 width_ang = 70.0
-label = "Position_4"
+label = "Foil3_Y+90"
 
 [[measurements]]
 x = 0.0
-y = 40.0
+y = 180.0
 direction = "left"
 width_ang = 70.0
-label = "Position_5"
+label = "Foil3_Y+180"
 
 [[test_cases]]
 case_id = "CONV_OP0.7"
 mode = "Conventional"
-overpotential = 0.7
+overpotential = 1.3
 group_a_foils = [
     1,
     3,

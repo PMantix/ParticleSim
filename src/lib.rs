@@ -18,6 +18,7 @@ pub mod commands;
 pub mod scenario;
 pub mod switch_charging;
 pub mod doe;
+pub mod manual_measurement;
 
 pub mod app;
 

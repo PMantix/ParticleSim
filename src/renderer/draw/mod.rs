@@ -543,6 +543,12 @@ impl super::Renderer {
             }
         }
 
+        // Draw DOE measurement visualization
+        self.update_and_draw_doe_measurements(ctx);
+        
+        // Draw manual measurement visualization
+        self.draw_manual_measurements(ctx);
+
         // Draw screen capture region selection
         if self.is_selecting_region {
             if let (Some(start), Some(end)) = (self.selection_start, self.selection_end) {
@@ -658,6 +664,234 @@ impl super::Renderer {
             let dash_end = start + direction * (traveled + dash_length).min(distance);
             ctx.draw_line(dash_start, dash_end, dash_color);
             traveled += dash_length + gap_length;
+        }
+    }
+
+    /// Load DOE measurement configuration from switch_charging_study.toml
+    pub fn load_doe_measurement_config(&mut self) {
+        self.doe_measurement_config = Some("switch_charging_study.toml".to_string());
+        println!("✓ Loaded DOE measurement config");
+    }
+
+    /// Update DOE measurement visualization (call during draw)
+    pub fn update_and_draw_doe_measurements(&mut self, ctx: &mut quarkstrom::RenderContext) {
+        if !self.show_doe_measurements || self.doe_measurement_config.is_none() {
+            return;
+        }
+
+        // Load config and extract measurement points
+        use crate::doe::DoeConfig;
+        let measurement_points = match DoeConfig::from_file("switch_charging_study.toml") {
+            Ok(config) => config.measurements,
+            Err(_) => {
+                return; // Silently fail if config can't be loaded
+            }
+        };
+
+        // Measure current edges
+        self.doe_last_edges.clear();
+        
+        for point in &measurement_points {
+            // Calculate measurement region bounds
+            // Use 50Å vertical height for independent regions
+            // width_ang defines maximum horizontal search distance
+            let vertical_height = 50.0;  // Independent regions with 50Å height
+            let half_height = vertical_height / 2.0;  // ±25Å
+            let (x_min, x_max, y_min, y_max) = match point.direction.as_str() {
+                "left" => (
+                    point.x - point.width_ang,  // Scan up to width_ang to the left
+                    point.x,
+                    point.y - half_height,      // ±25Å vertically centered at point.y
+                    point.y + half_height,
+                ),
+                "right" => (
+                    point.x,
+                    point.x + point.width_ang,  // Scan up to width_ang to the right
+                    point.y - half_height,      // ±25Å vertically centered at point.y
+                    point.y + half_height,
+                ),
+                "up" => (
+                    point.x - half_height,      // ±25Å horizontally centered at point.x
+                    point.x + half_height,
+                    point.y,
+                    point.y + point.width_ang,  // Scan upward
+                ),
+                "down" => (
+                    point.x - half_height,      // ±25Å horizontally centered at point.x
+                    point.x + half_height,
+                    point.y - point.width_ang,  // Scan downward
+                    point.y,
+                ),
+                _ => (point.x - point.width_ang/2.0, point.x + point.width_ang/2.0, point.y - half_height, point.y + half_height),
+            };
+
+            // Draw measurement region as yellow semi-transparent rectangle
+            let top_left = Vec2::new(x_min, y_max);
+            let size = Vec2::new(x_max - x_min, y_min - y_max); // Note: y is inverted
+            ctx.draw_rect(top_left, size, [255, 255, 0, 40]);
+            
+            // Draw region outline
+            ctx.draw_line(Vec2::new(x_min, y_min), Vec2::new(x_max, y_min), [255, 255, 0, 180]);
+            ctx.draw_line(Vec2::new(x_max, y_min), Vec2::new(x_max, y_max), [255, 255, 0, 180]);
+            ctx.draw_line(Vec2::new(x_max, y_max), Vec2::new(x_min, y_max), [255, 255, 0, 180]);
+            ctx.draw_line(Vec2::new(x_min, y_max), Vec2::new(x_min, y_min), [255, 255, 0, 180]);
+
+            // Find lithium metal particles in region
+            // Simple approach: find all Li metal in measurement window, report furthest
+            // The quadtree is used by simulation for spatial queries already
+            let mut li_metal_positions = Vec::new();
+            let mut li_ion_count = 0;
+            
+            for body in &self.bodies {
+                let pos = body.pos;
+                
+                if pos.x >= x_min && pos.x <= x_max && pos.y >= y_min && pos.y <= y_max {
+                    match body.species {
+                        Species::LithiumMetal => {
+                            li_metal_positions.push(pos);
+                        }
+                        Species::LithiumIon => {
+                            li_ion_count += 1;
+                        }
+                        _ => {}
+                    }
+                }
+            }
+
+            // Find leading edge
+            if !li_metal_positions.is_empty() {
+                let edge_position = match point.direction.as_str() {
+                    "left" => {
+                        let min_x = li_metal_positions.iter()
+                            .map(|p| p.x)
+                            .min_by(|a, b| a.partial_cmp(b).unwrap())
+                            .unwrap();
+                        
+                        // Find the actual particle at this position
+                        let edge_pos = li_metal_positions.iter()
+                            .find(|p| (p.x - min_x).abs() < 0.001)
+                            .copied()
+                            .unwrap_or(Vec2::new(min_x, point.y));
+                        
+                        // Draw green circle at leading edge
+                        ctx.draw_circle(edge_pos, 3.0, [0, 255, 0, 200]);
+                        // Draw line from edge to reference point
+                        ctx.draw_line(edge_pos, Vec2::new(point.x, point.y), [0, 255, 0, 150]);
+                        
+                        min_x
+                    }
+                    "right" => {
+                        let max_x = li_metal_positions.iter()
+                            .map(|p| p.x)
+                            .max_by(|a, b| a.partial_cmp(b).unwrap())
+                            .unwrap();
+                        
+                        let edge_pos = li_metal_positions.iter()
+                            .find(|p| (p.x - max_x).abs() < 0.001)
+                            .copied()
+                            .unwrap_or(Vec2::new(max_x, point.y));
+                        
+                        ctx.draw_circle(edge_pos, 3.0, [0, 255, 0, 200]);
+                        ctx.draw_line(edge_pos, Vec2::new(point.x, point.y), [0, 255, 0, 150]);
+                        
+                        max_x
+                    }
+                    "up" => {
+                        let max_y = li_metal_positions.iter()
+                            .map(|p| p.y)
+                            .max_by(|a, b| a.partial_cmp(b).unwrap())
+                            .unwrap();
+                        
+                        let edge_pos = li_metal_positions.iter()
+                            .find(|p| (p.y - max_y).abs() < 0.001)
+                            .copied()
+                            .unwrap_or(Vec2::new(point.x, max_y));
+                        
+                        ctx.draw_circle(edge_pos, 3.0, [0, 255, 0, 200]);
+                        ctx.draw_line(edge_pos, Vec2::new(point.x, point.y), [0, 255, 0, 150]);
+                        
+                        max_y
+                    }
+                    "down" => {
+                        let min_y = li_metal_positions.iter()
+                            .map(|p| p.y)
+                            .min_by(|a, b| a.partial_cmp(b).unwrap())
+                            .unwrap();
+                        
+                        let edge_pos = li_metal_positions.iter()
+                            .find(|p| (p.y - min_y).abs() < 0.001)
+                            .copied()
+                            .unwrap_or(Vec2::new(point.x, min_y));
+                        
+                        ctx.draw_circle(edge_pos, 3.0, [0, 255, 0, 200]);
+                        ctx.draw_line(edge_pos, Vec2::new(point.x, point.y), [0, 255, 0, 150]);
+                        
+                        min_y
+                    }
+                    _ => point.x,
+                };
+
+                self.doe_last_edges.push((
+                    point.label.clone(),
+                    edge_position,
+                    li_metal_positions.len(),
+                    li_ion_count,
+                ));
+            } else {
+                self.doe_last_edges.push((
+                    point.label.clone(),
+                    point.x,
+                    0,
+                    li_ion_count,
+                ));
+            }
+        }
+    }
+
+    fn draw_manual_measurements(&mut self, ctx: &mut quarkstrom::RenderContext) {
+        if !self.show_manual_measurements {
+            return;
+        }
+
+        // Get measurement config from UI
+        let measurement_points = &self.manual_measurement_ui_config.points;
+        
+        // Pull latest measurement results from shared state
+        self.manual_measurement_last_results = crate::renderer::state::MANUAL_MEASUREMENT_RESULTS.lock().clone();
+        
+        for (point_idx, point) in measurement_points.iter().enumerate() {
+            // Calculate measurement region bounds - box is always centered at (x, y)
+            let half_width = point.width / 2.0;
+            let half_height = point.height / 2.0;
+            
+            let x_min = point.x - half_width;
+            let x_max = point.x + half_width;
+            let y_min = point.y - half_height;
+            let y_max = point.y + half_height;
+
+            // Draw measurement region as cyan semi-transparent rectangle (no separate outline)
+            // Use the same min/max style call used elsewhere to avoid Y-inversion confusion
+            let rect_min = Vec2::new(x_min, y_min);
+            let rect_max = Vec2::new(x_max, y_max);
+            ctx.draw_rect(rect_min, rect_max, [0, 255, 255, 40]);
+
+            // Draw label near the region
+            // (Label drawing would require text rendering - skip for now or add later)
+
+            // If we have measurement results, draw the leading edge
+            if let Some(result) = self.manual_measurement_last_results.get(point_idx) {
+                // Draw marker at edge position
+                let edge_pos = match point.direction.as_str() {
+                    "left" | "right" => Vec2::new(result.edge_position, point.y),
+                    "up" | "down" => Vec2::new(point.x, result.edge_position),
+                    _ => Vec2::new(result.edge_position, point.y),
+                };
+                
+                // Draw magenta circle at leading edge (different from DOE green)
+                ctx.draw_circle(edge_pos, 3.0, [255, 0, 255, 200]);
+                // Draw line from edge to reference point
+                ctx.draw_line(edge_pos, Vec2::new(point.x, point.y), [255, 0, 255, 150]);
+            }
         }
     }
 }

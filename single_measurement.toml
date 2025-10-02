@@ -1,0 +1,13 @@
+# Single Measurement Point Configuration
+name = "Single Test Measurement"
+interval_fs = 1000.0
+output_file = "single_measurement.csv"
+
+# Single measurement point for testing
+[[points]]
+x = -200.0
+y = 50.0
+height = 50.0
+width = 70.0
+direction = "right"
+label = "Test_Point"

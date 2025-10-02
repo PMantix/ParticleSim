@@ -11,6 +11,7 @@ use crate::plotting::{PlotType, PlottingSystem, Quantity, SamplingMode};
 use crate::quadtree::Node;
 use crate::renderer::state::{SimCommand, SIM_COMMAND_SENDER};
 use crate::switch_charging;
+use crate::manual_measurement::{ManualMeasurementConfig, ManualMeasurementRecorder, MeasurementResult};
 use quarkstrom::egui::{self, Color32, Pos2, Vec2 as EVec2};
 use quarkstrom::winit_input_helper::WinitInputHelper;
 use std::collections::HashMap;
@@ -243,6 +244,16 @@ pub struct Renderer {
     pub dipole_scale: f32,
     // Foils tab UI
     pub foils_advanced_controls: bool,
+    // DOE measurement visualization
+    pub show_doe_measurements: bool,
+    pub doe_measurement_config: Option<String>, // Store config file path
+    pub doe_last_edges: Vec<(String, f32, usize, usize)>, // (label, edge_pos, li_metal_count, li_ion_count)
+    // Manual measurement system
+    pub manual_measurement_recorder: Option<ManualMeasurementRecorder>,
+    pub manual_measurement_last_results: Vec<MeasurementResult>,
+    pub manual_measurement_ui_config: ManualMeasurementConfig,
+    pub manual_measurement_selected_point: usize,
+    pub show_manual_measurements: bool,
 }
 
 impl quarkstrom::Renderer for Renderer {
@@ -397,6 +408,14 @@ impl quarkstrom::Renderer for Renderer {
             show_dipoles: false,
             dipole_scale: 1.0,
             foils_advanced_controls: false,
+            show_doe_measurements: false,
+            doe_measurement_config: None,
+            doe_last_edges: Vec::new(),
+            manual_measurement_recorder: None,
+            manual_measurement_last_results: Vec::new(),
+            manual_measurement_ui_config: ManualMeasurementConfig::default(),
+            manual_measurement_selected_point: 0,
+            show_manual_measurements: false,
         }
     }
 

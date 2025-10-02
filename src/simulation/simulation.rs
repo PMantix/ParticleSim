@@ -7,6 +7,7 @@ use super::history::PlaybackController;
 use super::compressed_history::CompressedHistorySystem;
 use crate::body::foil::LinkMode;
 use crate::config;
+use crate::manual_measurement::{ManualMeasurementConfig, ManualMeasurementRecorder};
 use crate::profile_scope;
 use crate::renderer::state::{
     COLLISION_PASSES, FIELD_DIRECTION, FIELD_MAGNITUDE, SIM_TIME, TIMESTEP,
@@ -61,6 +62,8 @@ pub struct Simulation {
     pub group_b: std::collections::HashSet<u64>,
     // Pre-allocated temporary set for switch-charging inactive foil tracking
     temp_inactive_set: std::collections::HashSet<u64>,
+    // Manual measurement recorder for auto-recording measurements to CSV
+    pub manual_measurement_recorder: Option<ManualMeasurementRecorder>,
 }
 
 impl Simulation {
@@ -112,6 +115,7 @@ impl Simulation {
             group_a: std::collections::HashSet::new(),
             group_b: std::collections::HashSet::new(),
             temp_inactive_set: std::collections::HashSet::new(),
+            manual_measurement_recorder: None,
         };
         sim.initialize_history();
         sim
@@ -208,6 +212,28 @@ impl Simulation {
         for foil_id in ids {
             self.restore_snapshot_for(foil_id);
         }
+    }
+
+    // Manual measurement control methods
+    pub fn start_manual_measurement(&mut self, config: ManualMeasurementConfig) {
+        let mut recorder = ManualMeasurementRecorder::new(config);
+        let simulation_time_fs = self.frame as f32 * self.dt;
+        match recorder.start_recording(simulation_time_fs) {
+            Ok(_) => {
+                println!("✓ Started manual measurement recording");
+                self.manual_measurement_recorder = Some(recorder);
+            }
+            Err(e) => {
+                eprintln!("✗ Failed to start manual measurement recording: {}", e);
+            }
+        }
+    }
+
+    pub fn stop_manual_measurement(&mut self) {
+        if let Some(recorder) = &mut self.manual_measurement_recorder {
+            recorder.stop_recording();
+        }
+        self.manual_measurement_recorder = None;
     }
 
     fn apply_switch_step_active_inactive(&mut self, foil_pairs: (Vec<u64>, Vec<u64>)) {
@@ -973,6 +999,16 @@ impl Simulation {
         }
 
         self.frame += 1;
+        
+        // Update manual measurement recorder
+        if let Some(recorder) = &mut self.manual_measurement_recorder {
+            let simulation_time_fs = self.frame as f32 * self.dt;
+            let results = recorder.update(&self.bodies, self.frame, simulation_time_fs);
+            if !results.is_empty() {
+                // Update shared state for GUI display
+                *crate::renderer::state::MANUAL_MEASUREMENT_RESULTS.lock() = results;
+            }
+        }
         
         // Capture history with lightweight ring buffer approach
         // Only capture every 10 frames and keep limited history for good performance

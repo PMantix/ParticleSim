@@ -517,6 +517,12 @@ pub fn handle_command(cmd: SimCommand, simulation: &mut Simulation) {
             *crate::renderer::state::SIM_TIME.lock() = 0.0;
             state_changed = true;
         }
+        SimCommand::StartManualMeasurement { config } => {
+            simulation.start_manual_measurement(config);
+        }
+        SimCommand::StopManualMeasurement => {
+            simulation.stop_manual_measurement();
+        }
     }
 
     if state_changed {

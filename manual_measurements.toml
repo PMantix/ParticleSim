@@ -1,0 +1,47 @@
+# Manual Measurement Configuration
+# This file defines measurement points for automated recording during simulation
+
+name = "Example Measurement"
+interval_fs = 1000.0  # Measure every 1000 fs (1 ps)
+output_file = "manual_measurements.csv"
+
+# Measurement point at foil 3 (center), measuring leftward growth
+[[points]]
+x = 0.0
+y = -180.0
+height = 50.0
+width = 70.0
+direction = "left"
+label = "Foil3_Y-180"
+
+[[points]]
+x = 0.0
+y = -90.0
+height = 50.0
+width = 70.0
+direction = "left"
+label = "Foil3_Y-90"
+
+[[points]]
+x = 0.0
+y = 0.0
+height = 50.0
+width = 70.0
+direction = "left"
+label = "Foil3_Y0"
+
+[[points]]
+x = 0.0
+y = 90.0
+height = 50.0
+width = 70.0
+direction = "left"
+label = "Foil3_Y+90"
+
+[[points]]
+x = 0.0
+y = 180.0
+height = 50.0
+width = 70.0
+direction = "left"
+label = "Foil3_Y+180"

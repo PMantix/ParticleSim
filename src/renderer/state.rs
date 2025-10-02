@@ -4,6 +4,7 @@ use std::sync::atomic::AtomicBool;
 use std::sync::mpsc::Sender;
 
 use crate::body::foil::{Foil, LinkMode};
+use crate::manual_measurement::{ManualMeasurementConfig, MeasurementResult};
 use crate::body::Body;
 use crate::config;
 use crate::quadtree::Node;
@@ -237,7 +238,16 @@ pub enum SimCommand {
     PlaybackResumeLive,
     PlaybackResumeFromCurrent,
     ResetTime,
+    // Manual measurement commands
+    StartManualMeasurement {
+        config: ManualMeasurementConfig,
+    },
+    StopManualMeasurement,
 }
 
 pub static SIM_COMMAND_SENDER: Lazy<Mutex<Option<Sender<SimCommand>>>> =
     Lazy::new(|| Mutex::new(None));
+
+// Manual measurement recorder shared state - stores latest measurements
+pub static MANUAL_MEASUREMENT_RESULTS: Lazy<Mutex<Vec<MeasurementResult>>> =
+    Lazy::new(|| Mutex::new(Vec::new()));
