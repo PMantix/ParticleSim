@@ -1,7 +1,16 @@
 /// CLI tool for running Design of Experiments (DOE) cases
-use particle_sim::doe::{DoeConfig, DoeRunner};
+#[cfg(feature = "doe")]
+use particle_sim::doe::config::DoeConfig;
+#[cfg(feature = "doe")]
+use particle_sim::doe::runner::DoeRunner;
 use std::env;
 
+#[cfg(not(feature = "doe"))]
+fn main() {
+    println!("This binary requires the 'doe' feature. Example: cargo run --release --features doe --bin doe_runner generate switch_charging_study.toml");
+}
+
+#[cfg(feature = "doe")]
 fn main() {
     let args: Vec<String> = env::args().collect();
     

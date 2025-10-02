@@ -1,9 +1,18 @@
 /// Debug tool to verify DOE measurement accuracy
 /// Loads a scenario, performs measurements, and prints detailed results
-use particle_sim::doe::DoeConfig;
+#[cfg(feature = "doe")]
+use particle_sim::doe::config::DoeConfig;
+#[cfg(feature = "doe")]
 use particle_sim::simulation::Simulation;
+#[cfg(feature = "doe")]
 use particle_sim::body::Species;
 
+#[cfg(not(feature = "doe"))]
+fn main() {
+    eprintln!("This binary requires the 'doe' feature: cargo run --features doe --bin debug_measurements");
+}
+
+#[cfg(feature = "doe")]
 fn main() {
     println!("\n╔══════════════════════════════════════════════════════════╗");
     println!("║  DOE Measurement Debug Tool                            ║");

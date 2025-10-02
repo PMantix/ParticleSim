@@ -674,176 +674,182 @@ impl super::Renderer {
     }
 
     /// Update DOE measurement visualization (call during draw)
-    pub fn update_and_draw_doe_measurements(&mut self, ctx: &mut quarkstrom::RenderContext) {
+    pub fn update_and_draw_doe_measurements(&mut self, _ctx: &mut quarkstrom::RenderContext) {
         if !self.show_doe_measurements || self.doe_measurement_config.is_none() {
             return;
         }
-
-        // Load config and extract measurement points
-        use crate::doe::DoeConfig;
-        let measurement_points = match DoeConfig::from_file("switch_charging_study.toml") {
-            Ok(config) => config.measurements,
-            Err(_) => {
-                return; // Silently fail if config can't be loaded
-            }
-        };
-
-        // Measure current edges
-        self.doe_last_edges.clear();
-        
-        for point in &measurement_points {
-            // Calculate measurement region bounds
-            // Use 50Å vertical height for independent regions
-            // width_ang defines maximum horizontal search distance
-            let vertical_height = 50.0;  // Independent regions with 50Å height
-            let half_height = vertical_height / 2.0;  // ±25Å
-            let (x_min, x_max, y_min, y_max) = match point.direction.as_str() {
-                "left" => (
-                    point.x - point.width_ang,  // Scan up to width_ang to the left
-                    point.x,
-                    point.y - half_height,      // ±25Å vertically centered at point.y
-                    point.y + half_height,
-                ),
-                "right" => (
-                    point.x,
-                    point.x + point.width_ang,  // Scan up to width_ang to the right
-                    point.y - half_height,      // ±25Å vertically centered at point.y
-                    point.y + half_height,
-                ),
-                "up" => (
-                    point.x - half_height,      // ±25Å horizontally centered at point.x
-                    point.x + half_height,
-                    point.y,
-                    point.y + point.width_ang,  // Scan upward
-                ),
-                "down" => (
-                    point.x - half_height,      // ±25Å horizontally centered at point.x
-                    point.x + half_height,
-                    point.y - point.width_ang,  // Scan downward
-                    point.y,
-                ),
-                _ => (point.x - point.width_ang/2.0, point.x + point.width_ang/2.0, point.y - half_height, point.y + half_height),
+        // If DOE feature is disabled, skip this visualization entirely
+        #[cfg(not(feature = "doe"))]
+        {
+            return;
+        }
+        #[cfg(feature = "doe")]
+        {
+            use crate::doe::config::DoeConfig;
+            let measurement_points = match DoeConfig::from_file("switch_charging_study.toml") {
+                Ok(config) => config.measurements,
+                Err(_) => {
+                    return; // Silently fail if config can't be loaded
+                }
             };
 
-            // Draw measurement region as yellow semi-transparent rectangle
-            let top_left = Vec2::new(x_min, y_max);
-            let size = Vec2::new(x_max - x_min, y_min - y_max); // Note: y is inverted
-            ctx.draw_rect(top_left, size, [255, 255, 0, 40]);
+            // Measure current edges
+            self.doe_last_edges.clear();
             
-            // Draw region outline
-            ctx.draw_line(Vec2::new(x_min, y_min), Vec2::new(x_max, y_min), [255, 255, 0, 180]);
-            ctx.draw_line(Vec2::new(x_max, y_min), Vec2::new(x_max, y_max), [255, 255, 0, 180]);
-            ctx.draw_line(Vec2::new(x_max, y_max), Vec2::new(x_min, y_max), [255, 255, 0, 180]);
-            ctx.draw_line(Vec2::new(x_min, y_max), Vec2::new(x_min, y_min), [255, 255, 0, 180]);
-
-            // Find lithium metal particles in region
-            // Simple approach: find all Li metal in measurement window, report furthest
-            // The quadtree is used by simulation for spatial queries already
-            let mut li_metal_positions = Vec::new();
-            let mut li_ion_count = 0;
-            
-            for body in &self.bodies {
-                let pos = body.pos;
-                
-                if pos.x >= x_min && pos.x <= x_max && pos.y >= y_min && pos.y <= y_max {
-                    match body.species {
-                        Species::LithiumMetal => {
-                            li_metal_positions.push(pos);
-                        }
-                        Species::LithiumIon => {
-                            li_ion_count += 1;
-                        }
-                        _ => {}
-                    }
-                }
-            }
-
-            // Find leading edge
-            if !li_metal_positions.is_empty() {
-                let edge_position = match point.direction.as_str() {
-                    "left" => {
-                        let min_x = li_metal_positions.iter()
-                            .map(|p| p.x)
-                            .min_by(|a, b| a.partial_cmp(b).unwrap())
-                            .unwrap();
-                        
-                        // Find the actual particle at this position
-                        let edge_pos = li_metal_positions.iter()
-                            .find(|p| (p.x - min_x).abs() < 0.001)
-                            .copied()
-                            .unwrap_or(Vec2::new(min_x, point.y));
-                        
-                        // Draw green circle at leading edge
-                        ctx.draw_circle(edge_pos, 3.0, [0, 255, 0, 200]);
-                        // Draw line from edge to reference point
-                        ctx.draw_line(edge_pos, Vec2::new(point.x, point.y), [0, 255, 0, 150]);
-                        
-                        min_x
-                    }
-                    "right" => {
-                        let max_x = li_metal_positions.iter()
-                            .map(|p| p.x)
-                            .max_by(|a, b| a.partial_cmp(b).unwrap())
-                            .unwrap();
-                        
-                        let edge_pos = li_metal_positions.iter()
-                            .find(|p| (p.x - max_x).abs() < 0.001)
-                            .copied()
-                            .unwrap_or(Vec2::new(max_x, point.y));
-                        
-                        ctx.draw_circle(edge_pos, 3.0, [0, 255, 0, 200]);
-                        ctx.draw_line(edge_pos, Vec2::new(point.x, point.y), [0, 255, 0, 150]);
-                        
-                        max_x
-                    }
-                    "up" => {
-                        let max_y = li_metal_positions.iter()
-                            .map(|p| p.y)
-                            .max_by(|a, b| a.partial_cmp(b).unwrap())
-                            .unwrap();
-                        
-                        let edge_pos = li_metal_positions.iter()
-                            .find(|p| (p.y - max_y).abs() < 0.001)
-                            .copied()
-                            .unwrap_or(Vec2::new(point.x, max_y));
-                        
-                        ctx.draw_circle(edge_pos, 3.0, [0, 255, 0, 200]);
-                        ctx.draw_line(edge_pos, Vec2::new(point.x, point.y), [0, 255, 0, 150]);
-                        
-                        max_y
-                    }
-                    "down" => {
-                        let min_y = li_metal_positions.iter()
-                            .map(|p| p.y)
-                            .min_by(|a, b| a.partial_cmp(b).unwrap())
-                            .unwrap();
-                        
-                        let edge_pos = li_metal_positions.iter()
-                            .find(|p| (p.y - min_y).abs() < 0.001)
-                            .copied()
-                            .unwrap_or(Vec2::new(point.x, min_y));
-                        
-                        ctx.draw_circle(edge_pos, 3.0, [0, 255, 0, 200]);
-                        ctx.draw_line(edge_pos, Vec2::new(point.x, point.y), [0, 255, 0, 150]);
-                        
-                        min_y
-                    }
-                    _ => point.x,
+            for point in &measurement_points {
+                // Calculate measurement region bounds
+                // Use 50Å vertical height for independent regions
+                // width_ang defines maximum horizontal search distance
+                let vertical_height = 50.0;  // Independent regions with 50Å height
+                let half_height = vertical_height / 2.0;  // ±25Å
+                let (x_min, x_max, y_min, y_max) = match point.direction.as_str() {
+                    "left" => (
+                        point.x - point.width_ang,  // Scan up to width_ang to the left
+                        point.x,
+                        point.y - half_height,      // ±25Å vertically centered at point.y
+                        point.y + half_height,
+                    ),
+                    "right" => (
+                        point.x,
+                        point.x + point.width_ang,  // Scan up to width_ang to the right
+                        point.y - half_height,      // ±25Å vertically centered at point.y
+                        point.y + half_height,
+                    ),
+                    "up" => (
+                        point.x - half_height,      // ±25Å horizontally centered at point.x
+                        point.x + half_height,
+                        point.y,
+                        point.y + point.width_ang,  // Scan upward
+                    ),
+                    "down" => (
+                        point.x - half_height,      // ±25Å horizontally centered at point.x
+                        point.x + half_height,
+                        point.y - point.width_ang,  // Scan downward
+                        point.y,
+                    ),
+                    _ => (point.x - point.width_ang/2.0, point.x + point.width_ang/2.0, point.y - half_height, point.y + half_height),
                 };
 
-                self.doe_last_edges.push((
-                    point.label.clone(),
-                    edge_position,
-                    li_metal_positions.len(),
-                    li_ion_count,
-                ));
-            } else {
-                self.doe_last_edges.push((
-                    point.label.clone(),
-                    point.x,
-                    0,
-                    li_ion_count,
-                ));
+                // Draw measurement region as yellow semi-transparent rectangle
+                let top_left = Vec2::new(x_min, y_max);
+                let size = Vec2::new(x_max - x_min, y_min - y_max); // Note: y is inverted
+                _ctx.draw_rect(top_left, size, [255, 255, 0, 40]);
+                
+                // Draw region outline
+                _ctx.draw_line(Vec2::new(x_min, y_min), Vec2::new(x_max, y_min), [255, 255, 0, 180]);
+                _ctx.draw_line(Vec2::new(x_max, y_min), Vec2::new(x_max, y_max), [255, 255, 0, 180]);
+                _ctx.draw_line(Vec2::new(x_max, y_max), Vec2::new(x_min, y_max), [255, 255, 0, 180]);
+                _ctx.draw_line(Vec2::new(x_min, y_max), Vec2::new(x_min, y_min), [255, 255, 0, 180]);
+
+                // Find lithium metal particles in region
+                // Simple approach: find all Li metal in measurement window, report furthest
+                // The quadtree is used by simulation for spatial queries already
+                let mut li_metal_positions = Vec::new();
+                let mut li_ion_count = 0;
+                
+                for body in &self.bodies {
+                    let pos = body.pos;
+                    
+                    if pos.x >= x_min && pos.x <= x_max && pos.y >= y_min && pos.y <= y_max {
+                        match body.species {
+                            Species::LithiumMetal => {
+                                li_metal_positions.push(pos);
+                            }
+                            Species::LithiumIon => {
+                                li_ion_count += 1;
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+
+                // Find leading edge
+                if !li_metal_positions.is_empty() {
+                    let edge_position = match point.direction.as_str() {
+                        "left" => {
+                            let min_x = li_metal_positions.iter()
+                                .map(|p| p.x)
+                                .min_by(|a, b| a.partial_cmp(b).unwrap())
+                                .unwrap();
+                            
+                            // Find the actual particle at this position
+                            let edge_pos = li_metal_positions.iter()
+                                .find(|p| (p.x - min_x).abs() < 0.001)
+                                .copied()
+                                .unwrap_or(Vec2::new(min_x, point.y));
+                            
+                            // Draw green circle at leading edge
+                            _ctx.draw_circle(edge_pos, 3.0, [0, 255, 0, 200]);
+                            // Draw line from edge to reference point
+                            _ctx.draw_line(edge_pos, Vec2::new(point.x, point.y), [0, 255, 0, 150]);
+                            
+                            min_x
+                        }
+                        "right" => {
+                            let max_x = li_metal_positions.iter()
+                                .map(|p| p.x)
+                                .max_by(|a, b| a.partial_cmp(b).unwrap())
+                                .unwrap();
+                            
+                            let edge_pos = li_metal_positions.iter()
+                                .find(|p| (p.x - max_x).abs() < 0.001)
+                                .copied()
+                                .unwrap_or(Vec2::new(max_x, point.y));
+                            
+                            _ctx.draw_circle(edge_pos, 3.0, [0, 255, 0, 200]);
+                            _ctx.draw_line(edge_pos, Vec2::new(point.x, point.y), [0, 255, 0, 150]);
+                            
+                            max_x
+                        }
+                        "up" => {
+                            let max_y = li_metal_positions.iter()
+                                .map(|p| p.y)
+                                .max_by(|a, b| a.partial_cmp(b).unwrap())
+                                .unwrap();
+                            
+                            let edge_pos = li_metal_positions.iter()
+                                .find(|p| (p.y - max_y).abs() < 0.001)
+                                .copied()
+                                .unwrap_or(Vec2::new(point.x, max_y));
+                            
+                            _ctx.draw_circle(edge_pos, 3.0, [0, 255, 0, 200]);
+                            _ctx.draw_line(edge_pos, Vec2::new(point.x, point.y), [0, 255, 0, 150]);
+                            
+                            max_y
+                        }
+                        "down" => {
+                            let min_y = li_metal_positions.iter()
+                                .map(|p| p.y)
+                                .min_by(|a, b| a.partial_cmp(b).unwrap())
+                                .unwrap();
+                            
+                            let edge_pos = li_metal_positions.iter()
+                                .find(|p| (p.y - min_y).abs() < 0.001)
+                                .copied()
+                                .unwrap_or(Vec2::new(point.x, min_y));
+                            
+                            _ctx.draw_circle(edge_pos, 3.0, [0, 255, 0, 200]);
+                            _ctx.draw_line(edge_pos, Vec2::new(point.x, point.y), [0, 255, 0, 150]);
+                            
+                            min_y
+                        }
+                        _ => point.x,
+                    };
+
+                    self.doe_last_edges.push((
+                        point.label.clone(),
+                        edge_position,
+                        li_metal_positions.len(),
+                        li_ion_count,
+                    ));
+                } else {
+                    self.doe_last_edges.push((
+                        point.label.clone(),
+                        point.x,
+                        0,
+                        li_ion_count,
+                    ));
+                }
             }
         }
     }

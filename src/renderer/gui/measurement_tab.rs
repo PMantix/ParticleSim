@@ -217,6 +217,7 @@ impl super::super::Renderer {
                                         height: box_height,
                                         direction: dir.clone(),
                                         label,
+                                        host_foil_id: Some(foil_id),
                                     };
                                     new_points.push(point);
                                 }
@@ -251,6 +252,9 @@ impl super::super::Renderer {
                                 ui.label(format!("({:.1}, {:.1})", point.x, point.y));
                                 ui.label(format!("{}×{} Å", point.width, point.height));
                                 ui.label(&point.direction);
+                                if let Some(fid) = point.host_foil_id {
+                                    ui.label(format!("host foil: {}", fid));
+                                }
                                 
                                 if ui.small_button("�").clicked() {
                                     point_to_delete = Some(idx);

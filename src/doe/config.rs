@@ -69,6 +69,7 @@ pub enum ChargingMode {
     SwitchCharging,
 }
 
+#[cfg(feature = "doe")]
 impl DoeConfig {
     /// Generate a full factorial DOE for switch-charging study
     pub fn generate_switch_charging_doe(

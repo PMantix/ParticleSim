@@ -1003,7 +1003,7 @@ impl Simulation {
         // Update manual measurement recorder
         if let Some(recorder) = &mut self.manual_measurement_recorder {
             let simulation_time_fs = self.frame as f32 * self.dt;
-            let results = recorder.update(&self.bodies, self.frame, simulation_time_fs);
+            let results = recorder.update(&self.bodies, &self.foils, &self.quadtree, self.frame, simulation_time_fs);
             if !results.is_empty() {
                 // Update shared state for GUI display
                 *crate::renderer::state::MANUAL_MEASUREMENT_RESULTS.lock() = results;

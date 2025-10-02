@@ -11,6 +11,10 @@ commands = [
     "build --release"
 ]
 
+[lib]
+name = "particle_sim"
+path = "src/lib.rs"
+
 [[bin]]
 name = "particle_sim"
 path = "src/main.rs"
@@ -67,6 +71,15 @@ path = "debug/toml_density_analysis.rs"
 name = "debug_field_alignment_scaling"
 path = "debug/debug_field_alignment_scaling.rs"
 
+[[bin]]
+name = "doe_runner"
+path = "src/bin/doe_runner.rs"
+required-features = ["doe"]
+
+[[bin]]
+name = "debug_measurements"
+path = "src/bin/debug_measurements.rs"
+
 [dependencies]
 quarkstrom = { path = "../quarkstrom/quarkstrom" }
 
@@ -121,3 +134,4 @@ profiling = []
 debug_quadtree = []
 thermostat_debug = []
 command_debug = []
+doe = []

@@ -7,6 +7,10 @@
 //! - Control when recording starts/stops manually
 
 use crate::body::{Body, Species};
+use crate::body::foil::Foil;
+use crate::quadtree::Quadtree;
+use std::collections::{HashMap, HashSet, VecDeque};
+use crate::species::get_species_props;
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::Write;
@@ -26,6 +30,10 @@ pub struct ManualMeasurementPoint {
     pub direction: String,
     /// Label for this measurement point
     pub label: String,
+    /// Host foil ID this point measures relative to (if known). When present, connectivity
+    /// is computed with respect to this foil instead of using a nearest-foil heuristic.
+    #[serde(default)]
+    pub host_foil_id: Option<u64>,
 }
 
 impl Default for ManualMeasurementPoint {
@@ -37,6 +45,7 @@ impl Default for ManualMeasurementPoint {
             width: 70.0,
             direction: "left".to_string(),
             label: "Measurement_1".to_string(),
+            host_foil_id: None,
         }
     }
 }
@@ -107,22 +116,6 @@ impl ManualMeasurementRecorder {
         }
     }
 
-    pub fn config(&self) -> &ManualMeasurementConfig {
-        &self.config
-    }
-
-    pub fn config_mut(&mut self) -> &mut ManualMeasurementConfig {
-        &mut self.config
-    }
-
-    pub fn is_recording(&self) -> bool {
-        self.is_recording
-    }
-
-    pub fn measurement_count(&self) -> usize {
-        self.measurement_count
-    }
-
     /// Start recording measurements to CSV
     pub fn start_recording(&mut self, simulation_time_fs: f32) -> Result<(), Box<dyn std::error::Error>> {
         if self.is_recording {
@@ -164,7 +157,7 @@ impl ManualMeasurementRecorder {
     }
 
     /// Update and potentially record measurements
-    pub fn update(&mut self, bodies: &[Body], frame: usize, simulation_time_fs: f32) -> Vec<MeasurementResult> {
+    pub fn update(&mut self, bodies: &[Body], foils: &[Foil], quadtree: &Quadtree, frame: usize, simulation_time_fs: f32) -> Vec<MeasurementResult> {
         let mut results = Vec::new();
 
         // Check if it's time to measure
@@ -177,9 +170,39 @@ impl ManualMeasurementRecorder {
         if should_measure {
             self.last_measurement_time = simulation_time_fs;
 
+            // Cache connectivity per host foil to avoid repeated BFS
+            let mut connected_by_foil: HashMap<u64, HashSet<usize>> = HashMap::new();
+            let id_to_index: HashMap<u64, usize> = bodies.iter().enumerate().map(|(i, b)| (b.id, i)).collect();
+
             // Perform measurements at each point
             for point in &self.config.points {
-                let result = self.measure_at_point(bodies, point);
+                // Determine host foil: prefer explicit host_foil_id if present, else fallback to nearest foil
+                let mut host_foil_id: Option<u64> = point.host_foil_id;
+                if host_foil_id.is_none() {
+                    let mut best_dist_sq = f32::INFINITY;
+                    for foil in foils {
+                        for bid in &foil.body_ids {
+                            if let Some(&idx) = id_to_index.get(bid) {
+                                let d = bodies[idx].pos - ultraviolet::Vec2::new(point.x, point.y);
+                                let dsq = d.mag_sq();
+                                if dsq < best_dist_sq {
+                                    best_dist_sq = dsq;
+                                    host_foil_id = Some(foil.id);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Compute or reuse connected set for the host foil
+                if let Some(fid) = host_foil_id {
+                    if !connected_by_foil.contains_key(&fid) {
+                        let connected = bfs_connected_metals_for_foil(fid, bodies, foils, quadtree, &id_to_index);
+                        connected_by_foil.insert(fid, connected);
+                    }
+                }
+
+                let result = self.measure_at_point_connected(bodies, point, host_foil_id, connected_by_foil.get(&host_foil_id.unwrap_or(0)));
                 results.push(result);
             }
 
@@ -271,11 +294,145 @@ impl ManualMeasurementRecorder {
         }
     }
 
-    /// Get the last measurement results without waiting for interval
-    pub fn get_current_measurements(&self, bodies: &[Body]) -> Vec<MeasurementResult> {
-        self.config.points
-            .iter()
-            .map(|point| self.measure_at_point(bodies, point))
-            .collect()
+
+    /// Measure using only metals connected to the selected host foil if provided
+    fn measure_at_point_connected(
+        &self,
+        bodies: &[Body],
+        point: &ManualMeasurementPoint,
+        host_foil_id: Option<u64>,
+        connected_set_opt: Option<&HashSet<usize>>,
+    ) -> MeasurementResult {
+        // Fallback to basic measurement if we have no host foil context
+        if host_foil_id.is_none() || connected_set_opt.is_none() {
+            return self.measure_at_point(bodies, point);
+        }
+
+        let connected_set = connected_set_opt.unwrap();
+
+        // Define region as before
+        let half_width = point.width / 2.0;
+        let half_height = point.height / 2.0;
+        let (x_min, x_max) = match point.direction.as_str() {
+            "left" => (point.x - point.width, point.x),
+            "right" => (point.x, point.x + point.width),
+            _ => (point.x - half_width, point.x + half_width),
+        };
+        let (y_min, y_max) = match point.direction.as_str() {
+            "up" => (point.y, point.y + point.height),
+            "down" => (point.y - point.height, point.y),
+            _ => (point.y - half_height, point.y + half_height),
+        };
+
+        let mut li_metal_positions = Vec::new();
+        let mut li_ion_count = 0;
+
+        for (idx, body) in bodies.iter().enumerate() {
+            let pos = body.pos;
+            if pos.x >= x_min && pos.x <= x_max && pos.y >= y_min && pos.y <= y_max {
+                match body.species {
+                    Species::LithiumMetal => {
+                        // Only include if connected to host foil
+                        if connected_set.contains(&idx) {
+                            li_metal_positions.push(pos);
+                        }
+                    }
+                    Species::LithiumIon => {
+                        li_ion_count += 1;
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        let edge_position = if li_metal_positions.is_empty() {
+            point.x
+        } else {
+            match point.direction.as_str() {
+                "left" => li_metal_positions.iter().map(|p| p.x).min_by(|a,b| a.partial_cmp(b).unwrap()).unwrap_or(point.x),
+                "right" => li_metal_positions.iter().map(|p| p.x).max_by(|a,b| a.partial_cmp(b).unwrap()).unwrap_or(point.x),
+                "up" => li_metal_positions.iter().map(|p| p.y).max_by(|a,b| a.partial_cmp(b).unwrap()).unwrap_or(point.y),
+                "down" => li_metal_positions.iter().map(|p| p.y).min_by(|a,b| a.partial_cmp(b).unwrap()).unwrap_or(point.y),
+                _ => point.x,
+            }
+        };
+
+        MeasurementResult {
+            label: point.label.clone(),
+            edge_position,
+            li_metal_count: li_metal_positions.len(),
+            li_ion_count,
+        }
     }
+}
+
+/// Compute set of indices of metal bodies connected to the specified foil via contact connections.
+fn bfs_connected_metals_for_foil(
+    foil_id: u64,
+    bodies: &[Body],
+    foils: &[Foil],
+    quadtree: &Quadtree,
+    id_to_index: &HashMap<u64, usize>,
+) -> HashSet<usize> {
+    let mut visited: HashSet<usize> = HashSet::new();
+    let mut queue: VecDeque<usize> = VecDeque::new();
+
+    // Seed queue with foil bodies
+    let host_foil = if let Some(foil) = foils.iter().find(|f| f.id == foil_id) {
+        foil
+    } else {
+        return visited; // No such foil
+    };
+
+    // Build a fast lookup set of indices for host foil bodies (to prevent cross-foil traversal)
+    let mut host_foil_indices: HashSet<usize> = HashSet::new();
+    for bid in &host_foil.body_ids {
+        if let Some(&idx) = id_to_index.get(bid) {
+            host_foil_indices.insert(idx);
+        }
+    }
+    for &idx in &host_foil_indices {
+        visited.insert(idx);
+        queue.push_back(idx);
+    }
+
+    while let Some(idx) = queue.pop_front() {
+        let body = &bodies[idx];
+        // Allow a small gap less than one metal diameter to still count as connected.
+        let li_props = get_species_props(Species::LithiumMetal);
+        let foil_props = get_species_props(Species::FoilMetal);
+        let metal_diameter = 2.0 * li_props.radius;
+
+        // Increase neighbor search radius to accommodate this relaxed threshold
+        let max_nb_r = foil_props.radius.max(li_props.radius);
+        let search_radius = body.radius + max_nb_r + metal_diameter + 0.1;
+        let neighbors = quadtree.find_neighbors_within(bodies, idx, search_radius);
+        for &n_idx in &neighbors {
+            if visited.contains(&n_idx) { continue; }
+            let nb = &bodies[n_idx];
+            // Only hop through metals; FoilMetal must belong to the host foil
+            match nb.species {
+                Species::LithiumMetal => {
+                    // Relaxed contact check: allow a gap < one metal diameter
+                    let threshold = (body.radius + nb.radius) + metal_diameter;
+                    if (body.pos - nb.pos).mag() <= threshold {
+                        visited.insert(n_idx);
+                        queue.push_back(n_idx);
+                    }
+                }
+                Species::FoilMetal => {
+                    // Only traverse foil nodes that are part of the host foil
+                    if !host_foil_indices.contains(&n_idx) { continue; }
+                    let threshold = (body.radius + nb.radius) + metal_diameter;
+                    if (body.pos - nb.pos).mag() <= threshold {
+                        visited.insert(n_idx);
+                        queue.push_back(n_idx);
+                    }
+                }
+                _ => { /* do not traverse through non-metals */ }
+            }
+        }
+    }
+
+    visited
 }

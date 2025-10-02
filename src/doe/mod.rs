@@ -6,11 +6,12 @@
 /// - Automatically perform measurements at specified locations
 /// - Export results for statistical analysis
 
+#[cfg(feature = "doe")]
 pub mod config;
+#[cfg(feature = "doe")]
 pub mod runner;
+#[cfg(feature = "doe")]
 pub mod measurement;
+#[cfg(feature = "doe")]
 pub mod export;
 
-pub use config::{DoeConfig, TestCase, ChargingMode, MeasurementPoint};
-pub use runner::DoeRunner;
-pub use export::export_results_to_csv;
