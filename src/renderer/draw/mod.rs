@@ -860,14 +860,20 @@ impl super::Renderer {
         self.manual_measurement_last_results = crate::renderer::state::MANUAL_MEASUREMENT_RESULTS.lock().clone();
         
         for (point_idx, point) in measurement_points.iter().enumerate() {
-            // Calculate measurement region bounds - box is always centered at (x, y)
+            // Calculate measurement region bounds - directional asymmetric extent from center
             let half_width = point.width / 2.0;
             let half_height = point.height / 2.0;
             
-            let x_min = point.x - half_width;
-            let x_max = point.x + half_width;
-            let y_min = point.y - half_height;
-            let y_max = point.y + half_height;
+            let (x_min, x_max) = match point.direction.as_str() {
+                "left" => (point.x - point.width, point.x),
+                "right" => (point.x, point.x + point.width),
+                _ => (point.x - half_width, point.x + half_width),
+            };
+            let (y_min, y_max) = match point.direction.as_str() {
+                "up" => (point.y, point.y + point.height),
+                "down" => (point.y - point.height, point.y),
+                _ => (point.y - half_height, point.y + half_height),
+            };
 
             // Draw measurement region as cyan semi-transparent rectangle (no separate outline)
             // Use the same min/max style call used elsewhere to avoid Y-inversion confusion

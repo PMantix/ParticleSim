@@ -57,35 +57,40 @@ impl AutoMeasurement {
         time_fs: f32,
     ) -> MeasurementSample {
         // Define measurement region based on point and direction
+        // Use 50Å vertical height for independent regions
+        // width_ang defines maximum horizontal search distance
+        let vertical_height = 50.0;  // Independent regions with 50Å height
+        let half_height = vertical_height / 2.0;  // ±25Å
         let (x_min, x_max, y_min, y_max) = match point.direction.as_str() {
             "left" => (
-                point.x - point.width_ang,
+                point.x - point.width_ang,  // Scan up to width_ang to the left
                 point.x,
-                point.y - 5.0, // Small vertical tolerance
-                point.y + 5.0,
+                point.y - half_height,      // ±25Å vertically centered at point.y
+                point.y + half_height,
             ),
             "right" => (
                 point.x,
-                point.x + point.width_ang,
-                point.y - 5.0,
-                point.y + 5.0,
+                point.x + point.width_ang,  // Scan up to width_ang to the right
+                point.y - half_height,      // ±25Å vertically centered at point.y
+                point.y + half_height,
             ),
             "up" => (
-                point.x - 5.0,
-                point.x + 5.0,
+                point.x - half_height,      // ±25Å horizontally centered at point.x
+                point.x + half_height,
                 point.y,
-                point.y + point.width_ang,
+                point.y + point.width_ang,  // Scan upward
             ),
             "down" => (
-                point.x - 5.0,
-                point.x + 5.0,
-                point.y - point.width_ang,
+                point.x - half_height,      // ±25Å horizontally centered at point.x
+                point.x + half_height,
+                point.y - point.width_ang,  // Scan downward
                 point.y,
             ),
-            _ => (point.x - point.width_ang/2.0, point.x + point.width_ang/2.0, point.y - 5.0, point.y + 5.0),
+            _ => (point.x - point.width_ang/2.0, point.x + point.width_ang/2.0, point.y - half_height, point.y + half_height),
         };
         
         // Find lithium metal particles in the measurement region
+        // Simple approach: report furthest metal particle in window
         let mut lithium_metal_bodies = Vec::new();
         let mut lithium_ion_count = 0;
         let mut total_charge = 0.0;
@@ -109,7 +114,7 @@ impl AutoMeasurement {
             }
         }
         
-        // Find leading edge position (furthest from foil in measurement direction)
+        // Find leading edge position (furthest CONNECTED metal from foil in measurement direction)
         let edge_position = if !lithium_metal_bodies.is_empty() {
             match point.direction.as_str() {
                 "left" => lithium_metal_bodies.iter()
@@ -131,7 +136,7 @@ impl AutoMeasurement {
                 _ => point.x,
             }
         } else {
-            point.x // No metal detected, return reference position
+            point.x // No connected metal detected, return reference position
         };
         
         MeasurementSample {

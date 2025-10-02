@@ -254,6 +254,14 @@ pub struct Renderer {
     pub manual_measurement_ui_config: ManualMeasurementConfig,
     pub manual_measurement_selected_point: usize,
     pub show_manual_measurements: bool,
+    // Manual measurement helper UI state
+    pub available_measurement_configs: Vec<String>,
+    pub selected_measurement_config: Option<String>,
+    // Generator settings for auto-creating measurement points from a foil
+    pub gen_selected_foil: Option<u64>,
+    pub gen_direction: String, // "left" or "right"
+    pub gen_max_length: f32,
+    pub gen_point_count: usize,
 }
 
 impl quarkstrom::Renderer for Renderer {
@@ -416,6 +424,12 @@ impl quarkstrom::Renderer for Renderer {
             manual_measurement_ui_config: ManualMeasurementConfig::default(),
             manual_measurement_selected_point: 0,
             show_manual_measurements: false,
+            available_measurement_configs: Vec::new(),
+            selected_measurement_config: None,
+            gen_selected_foil: None,
+            gen_direction: "left".to_string(),
+            gen_max_length: 70.0,
+            gen_point_count: 1,
         }
     }
 

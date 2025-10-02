@@ -136,11 +136,10 @@ impl ManualMeasurementRecorder {
         let path = format!("doe_results/{}", self.config.output_file);
         let mut file = File::create(&path)?;
 
-        // Write header
+        // Write header: only frame, time_fs, and edge columns per request
         write!(file, "frame,time_fs")?;
         for point in &self.config.points {
-            write!(file, ",{}_edge,{}_li_metal,{}_li_ion", 
-                point.label, point.label, point.label)?;
+            write!(file, ",{}_edge", point.label)?;
         }
         writeln!(file)?;
 
@@ -189,10 +188,7 @@ impl ManualMeasurementRecorder {
                 if let Some(file) = &mut self.csv_file {
                     let _ = write!(file, "{},{}", frame, simulation_time_fs);
                     for result in &results {
-                        let _ = write!(file, ",{},{},{}", 
-                            result.edge_position, 
-                            result.li_metal_count, 
-                            result.li_ion_count);
+                        let _ = write!(file, ",{}", result.edge_position);
                     }
                     let _ = writeln!(file);
                     let _ = file.flush();
@@ -210,11 +206,18 @@ impl ManualMeasurementRecorder {
         let half_width = point.width / 2.0;
         let half_height = point.height / 2.0;
 
-        // Measurement box is always centered at (x, y)
-        let x_min = point.x - half_width;
-        let x_max = point.x + half_width;
-        let y_min = point.y - half_height;
-        let y_max = point.y + half_height;
+        // Measurement box: for left/right, width represents max length from center toward the direction
+        // For up/down, height represents max length from center toward that direction
+        let (x_min, x_max) = match point.direction.as_str() {
+            "left" => (point.x - point.width, point.x),
+            "right" => (point.x, point.x + point.width),
+            _ => (point.x - half_width, point.x + half_width),
+        };
+        let (y_min, y_max) = match point.direction.as_str() {
+            "up" => (point.y, point.y + point.height),
+            "down" => (point.y - point.height, point.y),
+            _ => (point.y - half_height, point.y + half_height),
+        };
 
         // Collect particles in region
         let mut li_metal_positions = Vec::new();

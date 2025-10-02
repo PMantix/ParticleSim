@@ -23,7 +23,52 @@ impl super::super::Renderer {
             }
             
             ui.horizontal(|ui| {
-                if ui.button("💾 Save Config").clicked() {
+                if ui.button("� Refresh Configs").on_hover_text("Scan workspace for manual_measurements_*.toml files").clicked() {
+                    // Find available configs in current directory
+                    let mut found = Vec::new();
+                    if let Ok(entries) = std::fs::read_dir(".") {
+                        for entry in entries.flatten() {
+                            let path = entry.path();
+                            if let Some(name) = path.file_name().and_then(|s| s.to_str()) {
+                                if name.starts_with("manual_measurements_") && name.ends_with(".toml") {
+                                    found.push(name.to_string());
+                                }
+                            }
+                        }
+                    }
+                    found.sort();
+                    self.available_measurement_configs = found;
+                }
+
+                ui.separator();
+
+                egui::ComboBox::from_id_source("available_measurement_configs")
+                    .selected_text(self.selected_measurement_config.clone().unwrap_or_else(|| "Select config".into()))
+                    .show_ui(ui, |ui| {
+                        for fname in &self.available_measurement_configs {
+                            if ui.selectable_label(self.selected_measurement_config.as_deref() == Some(fname.as_str()), fname).clicked() {
+                                self.selected_measurement_config = Some(fname.clone());
+                            }
+                        }
+                    });
+
+                if ui.add_enabled(self.selected_measurement_config.is_some(), egui::Button::new("📂 Load Selected")).clicked() {
+                    if let Some(fname) = &self.selected_measurement_config {
+                        match ManualMeasurementConfig::from_file(fname) {
+                            Ok(config) => {
+                                self.manual_measurement_ui_config = config;
+                                self.manual_measurement_recorder = None;
+                                self.show_manual_measurements = true;
+                                println!("✓ Loaded manual measurement config from: {}", fname);
+                            }
+                            Err(e) => eprintln!("✗ Failed to load {}: {}", fname, e),
+                        }
+                    }
+                }
+
+                ui.separator();
+
+                if ui.button("�💾 Save Config").clicked() {
                     let config_name = self.manual_measurement_ui_config.name.replace(" ", "_");
                     let path = format!("manual_measurements_{}.toml", config_name);
                     match self.manual_measurement_ui_config.to_file(&path) {
@@ -72,6 +117,92 @@ impl super::super::Renderer {
             
             ui.separator();
             ui.label("Measurement Points:");
+
+            // Generator for evenly distributed measurement points along a foil
+            ui.collapsing("⚙️ Generate points from foil", |ui| {
+                // Choose foil by ID
+                ui.horizontal(|ui| {
+                    ui.label("Foil:");
+                    // Build a simple list of foil IDs
+                    let foil_ids: Vec<u64> = self.foils.iter().map(|f| f.id).collect();
+                    let current = self.gen_selected_foil;
+                    egui::ComboBox::from_id_source("gen_foil_combo")
+                        .selected_text(current.map(|id| format!("Foil {}", id)).unwrap_or_else(|| "Select Foil".into()))
+                        .show_ui(ui, |ui| {
+                            for id in foil_ids {
+                                let sel = Some(id) == self.gen_selected_foil;
+                                if ui.selectable_label(sel, format!("Foil {}", id)).clicked() {
+                                    self.gen_selected_foil = Some(id);
+                                }
+                            }
+                        });
+                });
+
+                ui.horizontal(|ui| {
+                    ui.label("Direction:");
+                    egui::ComboBox::from_id_source("gen_dir_combo")
+                        .selected_text(self.gen_direction.clone())
+                        .show_ui(ui, |ui| {
+                            ui.selectable_value(&mut self.gen_direction, "left".into(), "left");
+                            ui.selectable_value(&mut self.gen_direction, "right".into(), "right");
+                        });
+                });
+
+                ui.horizontal(|ui| {
+                    ui.label("Max length (Å):");
+                    ui.add(egui::DragValue::new(&mut self.gen_max_length).speed(1.0).clamp_range(10.0..=1000.0));
+                    ui.label("Point count:");
+                    ui.add(egui::DragValue::new(&mut self.gen_point_count).speed(1.0).clamp_range(1..=20));
+                });
+
+                if ui.add_enabled(self.gen_selected_foil.is_some(), egui::Button::new("Generate")).clicked() {
+                    if let Some(foil_id) = self.gen_selected_foil {
+                        // Build points based on foil's Y span and center X
+                        if let Some(foil) = self.foils.iter().find(|f| f.id == foil_id) {
+                            // Compute foil bounds from its bodies
+                            let mut y_min = f32::INFINITY;
+                            let mut y_max = f32::NEG_INFINITY;
+                            let mut x_center_acc = 0.0f32;
+                            let mut count = 0usize;
+                            for b in &self.bodies {
+                                if foil.body_ids.contains(&b.id) {
+                                    y_min = y_min.min(b.pos.y);
+                                    y_max = y_max.max(b.pos.y);
+                                    x_center_acc += b.pos.x;
+                                    count += 1;
+                                }
+                            }
+                            if count > 0 && y_max.is_finite() && y_min.is_finite() {
+                                let x_center = x_center_acc / count as f32;
+                                let foil_height = y_max - y_min;
+                                let bins = self.gen_point_count.max(1) as f32;
+                                let bin_height = foil_height / bins;
+                                let box_height = bin_height * 0.9; // 90% to avoid overlap
+                                let width = self.gen_max_length;   // extend left/right from center by this length
+                                let dir = self.gen_direction.clone();
+
+                                let mut new_points = Vec::new();
+                                for i in 0..self.gen_point_count.max(1) {
+                                    let i_f = i as f32 + 0.5; // center of bin
+                                    let y_center = y_min + i_f * bin_height;
+                                    let label = format!("Foil{}_Ybin{}", foil_id, i + 1);
+                                    let point = ManualMeasurementPoint {
+                                        x: x_center,
+                                        y: y_center,
+                                        width,
+                                        height: box_height,
+                                        direction: dir.clone(),
+                                        label,
+                                    };
+                                    new_points.push(point);
+                                }
+                                self.manual_measurement_ui_config.points = new_points;
+                                self.show_manual_measurements = true;
+                            }
+                        }
+                    }
+                }
+            });
             
             // List of measurement points
             let mut point_to_delete = None;

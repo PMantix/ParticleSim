@@ -8,3 +8,6 @@ captures/
 debug/*.exe
 debug/*.pdb
 debug/*.dll
+
+# Simulation outputs
+doe_results/*.csv
