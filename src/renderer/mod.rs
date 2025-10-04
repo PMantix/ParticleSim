@@ -266,9 +266,6 @@ pub struct Renderer {
 
 impl quarkstrom::Renderer for Renderer {
     fn new() -> Self {
-        // Set PAUSED to true before initializing the renderer
-        crate::renderer::state::PAUSED.store(true, std::sync::atomic::Ordering::Relaxed);
-
         let char_size = 16.0;
         let splash_art_width = SPLASH_ART
             .iter()
@@ -403,7 +400,7 @@ impl quarkstrom::Renderer for Renderer {
             measurement_history: Vec::new(),
             measurement_cursor: None,
             last_non_measurement_tab: GuiTab::Simulation,
-            show_splash: false, // Skip splash screen on startup
+            show_splash: true,
             splash_chars,
             splash_particles,
             pop_effects: Vec::new(),
