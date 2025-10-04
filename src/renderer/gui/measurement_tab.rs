@@ -136,6 +136,19 @@ impl super::super::Renderer {
                     .speed(100.0)
                     .clamp_range(100.0..=100000.0));
             });
+
+            ui.horizontal(|ui| {
+                ui.label("Auto-pause at frame:");
+                let mut enabled = self.manual_measurement_ui_config.auto_pause_frame.is_some();
+                ui.checkbox(&mut enabled, "");
+                if enabled {
+                    let mut frame = self.manual_measurement_ui_config.auto_pause_frame.unwrap_or(10000);
+                    ui.add(egui::DragValue::new(&mut frame).speed(100.0).clamp_range(1..=1000000));
+                    self.manual_measurement_ui_config.auto_pause_frame = Some(frame);
+                } else {
+                    self.manual_measurement_ui_config.auto_pause_frame = None;
+                }
+            });
             
             ui.checkbox(&mut self.show_manual_measurements, "Show measurement regions in simulation");
             
@@ -223,6 +236,22 @@ impl super::super::Renderer {
                                 }
                                 self.manual_measurement_ui_config.points = new_points;
                                 self.show_manual_measurements = true;
+
+                                // Auto-deduce filename and start recording immediately
+                                let switch_running = self.switch_ui_state.run_state == crate::switch_charging::RunState::Running;
+                                let filename = crate::manual_measurement_filename::build_measurement_filename(
+                                    switch_running,
+                                    &self.switch_ui_state.config,
+                                );
+                                self.manual_measurement_ui_config.output_file = filename;
+
+                                // Send start recording command
+                                if let Some(tx) = crate::renderer::state::SIM_COMMAND_SENDER.lock().as_ref() {
+                                    let _ = tx.send(crate::renderer::state::SimCommand::StartManualMeasurement {
+                                        config: self.manual_measurement_ui_config.clone(),
+                                    });
+                                    println!("✓ Auto-started measurement recording after generate");
+                                }
                             }
                         }
                     }

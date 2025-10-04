@@ -40,8 +40,11 @@ impl super::Renderer {
         egui::Window::new("Particle Simulation Controls")
             .default_width(500.0)
             .default_height(650.0)
+            .default_pos(egui::Pos2::new(10.0, 10.0))
             .resizable(true)
             .open(&mut settings_open)
+            .default_open(true) // Start open
+            .collapsible(true)
             .show(ctx, |ui| {
                 // Status header - always visible
                 self.show_status_header(ui);

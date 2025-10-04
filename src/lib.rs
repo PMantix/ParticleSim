@@ -19,6 +19,7 @@ pub mod scenario;
 pub mod switch_charging;
 pub mod doe;
 pub mod manual_measurement;
+pub mod manual_measurement_filename;
 
 pub mod app;
 

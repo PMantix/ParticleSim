@@ -1008,6 +1008,14 @@ impl Simulation {
                 // Update shared state for GUI display
                 *crate::renderer::state::MANUAL_MEASUREMENT_RESULTS.lock() = results;
             }
+
+            // Check for auto-pause at target frame
+            if let Some(target_frame) = recorder.config().auto_pause_frame {
+                if self.frame >= target_frame {
+                    println!("✓ Auto-pause triggered at frame {} (target: {})", self.frame, target_frame);
+                    crate::renderer::state::PAUSED.store(true, std::sync::atomic::Ordering::Relaxed);
+                }
+            }
         }
         
         // Capture history with lightweight ring buffer approach

@@ -20,6 +20,7 @@ mod scenario;
 mod switch_charging;
 mod doe;
 mod manual_measurement;
+mod manual_measurement_filename;
 
 #[cfg(feature = "profiling")]
 use once_cell::sync::Lazy;
