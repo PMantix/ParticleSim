@@ -24,7 +24,10 @@ pub fn run() {
         .unwrap();
 
     let config = quarkstrom::Config {
-        window_mode: quarkstrom::WindowMode::Fullscreen,
+        window_mode: quarkstrom::WindowMode::Windowed(
+            crate::config::WINDOW_WIDTH,
+            crate::config::WINDOW_HEIGHT,
+        ),
     };
 
     let (tx, rx) = channel();
