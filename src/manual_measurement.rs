@@ -60,9 +60,9 @@ pub struct ManualMeasurementConfig {
     pub interval_fs: f32,
     /// Output CSV file name (relative to doe_results/)
     pub output_file: String,
-    /// Optionally auto-pause simulation when this frame count is reached (None = no auto-pause)
+    /// Optionally auto-pause simulation when this time (in femtoseconds) is reached (None = no auto-pause)
     #[serde(default)]
-    pub auto_pause_frame: Option<usize>,
+    pub auto_pause_time_fs: Option<f32>,
 }
 
 impl Default for ManualMeasurementConfig {
@@ -72,7 +72,7 @@ impl Default for ManualMeasurementConfig {
             points: vec![ManualMeasurementPoint::default()],
             interval_fs: 1000.0,
             output_file: "manual_measurements.csv".to_string(),
-            auto_pause_frame: None,
+            auto_pause_time_fs: None,
         }
     }
 }

@@ -138,15 +138,15 @@ impl super::super::Renderer {
             });
 
             ui.horizontal(|ui| {
-                ui.label("Auto-pause at frame:");
-                let mut enabled = self.manual_measurement_ui_config.auto_pause_frame.is_some();
+                ui.label("Auto-pause at time (fs):");
+                let mut enabled = self.manual_measurement_ui_config.auto_pause_time_fs.is_some();
                 ui.checkbox(&mut enabled, "");
                 if enabled {
-                    let mut frame = self.manual_measurement_ui_config.auto_pause_frame.unwrap_or(10000);
-                    ui.add(egui::DragValue::new(&mut frame).speed(100.0).clamp_range(1..=1000000));
-                    self.manual_measurement_ui_config.auto_pause_frame = Some(frame);
+                    let mut time_fs = self.manual_measurement_ui_config.auto_pause_time_fs.unwrap_or(1_000_000.0);
+                    ui.add(egui::DragValue::new(&mut time_fs).speed(1000.0).clamp_range(1000.0..=100_000_000.0));
+                    self.manual_measurement_ui_config.auto_pause_time_fs = Some(time_fs);
                 } else {
-                    self.manual_measurement_ui_config.auto_pause_frame = None;
+                    self.manual_measurement_ui_config.auto_pause_time_fs = None;
                 }
             });
             
