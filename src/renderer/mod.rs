@@ -244,10 +244,6 @@ pub struct Renderer {
     pub dipole_scale: f32,
     // Foils tab UI
     pub foils_advanced_controls: bool,
-    // DOE measurement visualization
-    pub show_doe_measurements: bool,
-    pub doe_measurement_config: Option<String>, // Store config file path
-    pub doe_last_edges: Vec<(String, f32, usize, usize)>, // (label, edge_pos, li_metal_count, li_ion_count)
     // Manual measurement system
     pub manual_measurement_recorder: Option<ManualMeasurementRecorder>,
     pub manual_measurement_last_results: Vec<MeasurementResult>,
@@ -414,11 +410,8 @@ impl quarkstrom::Renderer for Renderer {
             group_a_selected: Vec::new(),
             group_b_selected: Vec::new(),
             show_dipoles: false,
-            dipole_scale: 1.0,
+            dipole_scale: 20.0,
             foils_advanced_controls: false,
-            show_doe_measurements: false,
-            doe_measurement_config: None,
-            doe_last_edges: Vec::new(),
             manual_measurement_recorder: None,
             manual_measurement_last_results: Vec::new(),
             manual_measurement_ui_config: ManualMeasurementConfig::default(),

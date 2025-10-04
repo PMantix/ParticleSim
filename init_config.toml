@@ -112,28 +112,3 @@ species = "EC"
 [[particles.random]]
 count = 2072
 species = "DMC"
-
-# Legacy circle configurations (commented out)
-# [[particles.circles]]
-# x = -210.0
-# y = 0.0
-# radius = 20.0
-# species = "LithiumMetal"
-
-# [[particles.circles]]
-# x = 210.0
-# y = 0.0
-# radius = 20.0
-# species = "LithiumMetal"
-
-# [[particles.circles]]
-# x = 0.0
-# y = 0.0
-# radius = 20.0
-# species = "LithiumIon"
-
-# [[particles.circles]]
-# x = 0.0
-# y = 210.0
-# radius = 20.0
-# species = "ElectrolyteAnion"
