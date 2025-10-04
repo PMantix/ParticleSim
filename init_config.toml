@@ -106,11 +106,11 @@ count = 225
 species = "LithiumIon"
 
 [[particles.random]]
-count = 1685
+count = 2949
 species = "EC"
 
 [[particles.random]]
-count = 1336
+count = 2072
 species = "DMC"
 
 # Legacy circle configurations (commented out)

@@ -177,39 +177,5 @@ impl super::super::Renderer {
         });
 
         ui.separator();
-
-        // DOE Measurement Visualization
-        ui.group(|ui| {
-            ui.label("📏 DOE Measurement Visualization");
-            ui.checkbox(&mut self.show_doe_measurements, "Show Measurement Regions")
-                .on_hover_text("Display DOE measurement regions and detected edges from switch_charging_study.toml");
-            
-            if self.show_doe_measurements {
-                if self.doe_measurement_config.is_none() {
-                    if ui.button("Load DOE Config").clicked() {
-                        self.load_doe_measurement_config();
-                    }
-                } else {
-                    ui.label("✓ Config loaded: switch_charging_study.toml");
-                    if ui.button("Disable Visualization").clicked() {
-                        self.doe_measurement_config = None;
-                        self.doe_last_edges.clear();
-                    }
-                }
-                
-                if !self.doe_last_edges.is_empty() {
-                    ui.separator();
-                    ui.label("Last Measured Edges:");
-                    for (label, edge_pos, li_metal, li_ion) in &self.doe_last_edges {
-                        ui.horizontal(|ui| {
-                            ui.label(format!("{}: ", label));
-                            ui.label(format!("Edge={:.2}Å", edge_pos));
-                            ui.label(format!("LiMetal={}", li_metal));
-                            ui.label(format!("LiIon={}", li_ion));
-                        });
-                    }
-                }
-            }
-        });
     }
 }
