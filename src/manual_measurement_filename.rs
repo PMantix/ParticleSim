@@ -2,11 +2,13 @@
 use crate::switch_charging::{Mode, SwitchChargingConfig};
 
 /// Compute a standard measurement filename based on experiment context:
-/// Format: "Measurement_[A]_[B]_[C].csv"
+/// Format (CONV mode): "Measurement_CONV_[B]_[C].csv"
+/// Format (SWITCH mode): "Measurement_SWITCH_[B]_[C]_[D].csv"
 /// where:
 /// - A is charging_mode: "CONV" (conventional / no switching) or "SWITCH" (switching controls active)
 /// - B is control_mode: "CC" (current control) or "OP" (overpotential control)
 /// - C is current magnitude: "0p04" or "1p3" (replace '.' with 'p')
+/// - D is steps per half cycle (only for SWITCH mode): "750" or "1000"
 pub fn build_measurement_filename(
     switch_running: bool,
     switch_config: &SwitchChargingConfig,
@@ -51,5 +53,12 @@ pub fn build_measurement_filename(
     // Format the value: replace '.' with 'p'
     let value_str = format!("{:.2}", value).replace('.', "p");
 
-    format!("Measurement_{}_{}_{}.csv", charging_mode_str, control_mode_str, value_str)
+    // Build filename: include delta_steps only for SWITCH mode
+    if switch_running {
+        format!("Measurement_{}_{}_{}_{}.csv", 
+            charging_mode_str, control_mode_str, value_str, switch_config.delta_steps)
+    } else {
+        format!("Measurement_{}_{}_{}.csv", 
+            charging_mode_str, control_mode_str, value_str)
+    }
 }
