@@ -1,4 +1,5 @@
 // Tests for foil mass and inertia
+#![cfg(any(test, feature = "unit_tests"))]
 #[cfg(test)]
 mod foil_mass_and_inertia {
     use crate::body::Body;

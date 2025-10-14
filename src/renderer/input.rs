@@ -26,9 +26,10 @@ impl super::Renderer {
             }
             return;
         }
-        // Check if window dimensions changed and verify capture region if needed
+        // Update window dimensions on resize
         if width != self.window_width || height != self.window_height {
-            self.verify_capture_region_after_resize(width, height);
+            self.window_width = width;
+            self.window_height = height;
         }
         
         self.settings_window_open ^= input.key_pressed(VirtualKeyCode::E);
@@ -95,46 +96,15 @@ impl super::Renderer {
             }
         }
 
-        // Screen capture region selection handling
-        if self.is_selecting_region {
-            if let Some((mx, my)) = input.mouse() {
-                let screen_pos = Vec2::new(mx, my);
-                
-                if input.mouse_pressed(0) {
-                    // Start selection on mouse press
-                    self.selection_start = Some(screen_pos);
-                    self.selection_end = Some(screen_pos);
-                    println!("Region selection: Started at ({:.0}, {:.0})", screen_pos.x, screen_pos.y);
-                } else if input.mouse_held(0) && self.selection_start.is_some() {
-                    // Update selection continuously while dragging
-                    self.selection_end = Some(screen_pos);
-                } else if input.mouse_released(0) && self.selection_start.is_some() {
-                    // Finish selection on mouse release
-                    self.selection_end = Some(screen_pos);
-                    println!("Region selection: Finished at ({:.0}, {:.0})", screen_pos.x, screen_pos.y);
-                    self.finish_region_selection(width, height);
-                }
-                
-                // Cancel selection with right click or escape
-                if input.mouse_pressed(1) || input.key_pressed(VirtualKeyCode::Escape) {
-                    self.cancel_region_selection();
-                    println!("Region selection cancelled");
-                }
-            }
-        } else {
-            // Normal input handling when not selecting region
-            // Camera grab
-            if input.mouse_held(2) {
-                let (mdx, mdy) = input.mouse_diff();
-                // Mouse diff coordinates are also in logical pixels
-                self.pos.x -= mdx / height as f32 * self.scale * 2.0;
-                self.pos.y += mdy / height as f32 * self.scale * 2.0;
-            }
+        // Camera grab
+        if input.mouse_held(2) {
+            let (mdx, mdy) = input.mouse_diff();
+            // Mouse diff coordinates are also in logical pixels
+            self.pos.x -= mdx / height as f32 * self.scale * 2.0;
+            self.pos.y += mdy / height as f32 * self.scale * 2.0;
         }
 
-        // Handle screen capture timing
-        let current_time = *crate::renderer::state::SIM_TIME.lock();
-        self.handle_screen_capture(current_time, width, height);
+    // Screen capture removed
 
         // Mouse to world conversion
         let world_mouse = || -> Vec2 {

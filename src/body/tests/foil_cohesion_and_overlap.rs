@@ -1,4 +1,5 @@
 // Tests for foil overlapping indices and cohesion
+#![cfg(any(test, feature = "unit_tests"))]
 #[cfg(test)]
 mod foil_cohesion_and_overlap {
     use crate::body::{Body, Species, Electron};

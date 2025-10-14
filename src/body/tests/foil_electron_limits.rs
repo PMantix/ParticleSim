@@ -1,4 +1,5 @@
 // Tests for foil electron limits and default electron count
+#![cfg(any(test, feature = "unit_tests"))]
 #[cfg(test)]
 mod foil_electron_limits {
     use crate::body::{Body, Species, Electron};

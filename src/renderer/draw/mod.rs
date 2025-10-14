@@ -546,57 +546,7 @@ impl super::Renderer {
         // Draw manual measurement visualization
         self.draw_manual_measurements(ctx);
 
-        // Draw screen capture region selection
-        if self.is_selecting_region {
-            if let (Some(start), Some(end)) = (self.selection_start, self.selection_end) {
-                // Convert screen coordinates to world coordinates for drawing
-                let world_start = self.screen_to_world(start, width, height);
-                let world_end = self.screen_to_world(end, width, height);
-                
-                // Draw red rectangle outline only (no fill)
-                let min_x = world_start.x.min(world_end.x);
-                let max_x = world_start.x.max(world_end.x);
-                let min_y = world_start.y.min(world_end.y);
-                let max_y = world_start.y.max(world_end.y);
-                
-                let top_left = Vec2::new(min_x, max_y);
-                let top_right = Vec2::new(max_x, max_y);
-                let bottom_right = Vec2::new(max_x, min_y);
-                let bottom_left = Vec2::new(min_x, min_y);
-                
-                // Draw rectangle outline in red (no fill)
-                let red = [255, 0, 0, 255];
-                ctx.draw_line(top_left, top_right, red);
-                ctx.draw_line(top_right, bottom_right, red);
-                ctx.draw_line(bottom_right, bottom_left, red);
-                ctx.draw_line(bottom_left, top_left, red);
-            }
-        }
-
-        // Draw the saved capture region if one exists
-        if let Some((ratio_start, ratio_end)) = self.capture_region_ratio {
-            let start_screen = Vec2::new(ratio_start.x * width as f32, ratio_start.y * height as f32);
-            let end_screen = Vec2::new(ratio_end.x * width as f32, ratio_end.y * height as f32);
-            let world_start = self.screen_to_world(start_screen, width, height);
-            let world_end = self.screen_to_world(end_screen, width, height);
-
-            let min_x = world_start.x.min(world_end.x);
-            let max_x = world_start.x.max(world_end.x);
-            let min_y = world_start.y.min(world_end.y);
-            let max_y = world_start.y.max(world_end.y);
-            
-            let top_left = Vec2::new(min_x, max_y);
-            let top_right = Vec2::new(max_x, max_y);
-            let bottom_right = Vec2::new(max_x, min_y);
-            let bottom_left = Vec2::new(min_x, min_y);
-            
-            // Draw rectangle outline in blue with some transparency
-            let blue = [0, 128, 255, 128];
-            ctx.draw_line(top_left, top_right, blue);
-            ctx.draw_line(top_right, bottom_right, blue);
-            ctx.draw_line(bottom_right, bottom_left, blue);
-            ctx.draw_line(bottom_left, top_left, blue);
-        }
+        // Screen capture overlays removed
     }
 }
 

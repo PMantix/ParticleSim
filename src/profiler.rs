@@ -67,7 +67,6 @@ mod profiling_impl {
                 // Renderer
                 ("gui_update", "renderer/gui"),
                 ("draw_particles", "renderer/draw"),
-                ("screen_capture", "renderer/"),
                 ("input_handling", "renderer/"),
                 
                 // File I/O

@@ -1,3 +1,4 @@
+#![cfg(any(test, feature = "unit_tests"))]
 use super::*;
 use crate::body::{Body, Species};
 use crate::simulation::out_of_plane::apply_out_of_plane;

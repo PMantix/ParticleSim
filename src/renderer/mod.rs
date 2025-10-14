@@ -1,7 +1,6 @@
 pub mod draw;
 pub mod gui;
 pub mod input;
-pub mod screen_capture;
 pub mod state;
 
 use crate::body::{foil::Foil, Body, Species};
@@ -97,7 +96,6 @@ pub enum GuiTab {
     Analysis,
     Debug,
     Diagnostics,
-    ScreenCapture,
     SoftDynamics,
 }
 
@@ -204,18 +202,7 @@ pub struct Renderer {
     pub electrolyte_molarity: f32,
     pub electrolyte_total_particles: usize,
 
-    // Screen capture functionality
-    pub screen_capture_enabled: bool,
-    pub capture_interval: f32, // seconds between captures
-    pub last_capture_time: f32,
-    pub capture_folder: String,
-    pub selection_start: Option<Vec2>, // for drag selection
-    pub selection_end: Option<Vec2>,
-    pub capture_region: Option<(Vec2, Vec2)>, // (top_left, bottom_right) in world space
-    pub capture_region_ratio: Option<(Vec2, Vec2)>,
-    pub is_selecting_region: bool,
-    pub capture_counter: usize,
-    pub should_capture_next_frame: bool,
+    // (screen capture feature removed)
     pub measurement_start: Option<Vec2>,
     pub measurement_selecting_start: bool,
     pub measurement_direction: Option<Vec2>,
@@ -377,18 +364,6 @@ impl quarkstrom::Renderer for Renderer {
             electrolyte_molarity: 1.0,         // 1M default
             electrolyte_total_particles: 1000, // 1000 particles default
 
-            // Screen capture defaults
-            screen_capture_enabled: false,
-            capture_interval: 1.0, // 1 second between captures
-            last_capture_time: 0.0,
-            capture_folder: "captures".to_string(),
-            selection_start: None,
-            selection_end: None,
-            capture_region: None,
-            capture_region_ratio: None,
-            is_selecting_region: false,
-            capture_counter: 0,
-            should_capture_next_frame: false,
             measurement_start: None,
             measurement_selecting_start: false,
             measurement_direction: None,

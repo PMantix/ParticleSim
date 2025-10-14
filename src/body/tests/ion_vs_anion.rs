@@ -1,3 +1,4 @@
+#![cfg(any(test, feature = "unit_tests"))]
 #[cfg(test)]
 mod ion_vs_anion {
     use crate::body::{Body, Species, Electron};

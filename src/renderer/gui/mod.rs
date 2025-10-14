@@ -17,7 +17,6 @@ pub mod measurement_tab;
 pub mod physics_tab;
 pub mod pid_controller;
 pub mod scenario_tab;
-pub mod screen_capture_tab;
 pub mod simulation_tab;
 pub mod soft_dynamics_tab;
 pub mod species_tab;
@@ -108,11 +107,6 @@ impl super::Renderer {
                     ui.horizontal(|ui| {
                         ui.selectable_value(
                             &mut self.current_tab,
-                            super::GuiTab::ScreenCapture,
-                            "📷 Screen Capture",
-                        );
-                        ui.selectable_value(
-                            &mut self.current_tab,
                             super::GuiTab::Measurement,
                             "📏 Measurement",
                         );
@@ -159,7 +153,6 @@ impl super::Renderer {
                         super::GuiTab::Analysis => self.show_analysis_tab(ui),
                         super::GuiTab::Debug => self.show_debug_tab(ui),
                         super::GuiTab::Diagnostics => self.show_diagnostics_tab(ui),
-                        super::GuiTab::ScreenCapture => self.show_screen_capture_tab(ui),
                         super::GuiTab::SoftDynamics => self.show_soft_dynamics_tab(ui),
                     });
             });

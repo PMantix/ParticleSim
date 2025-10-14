@@ -22,54 +22,67 @@ path = "src/main.rs"
 [[bin]]
 name = "debug_out_of_plane"
 path = "debug/debug_out_of_plane.rs"
+required-features = ["debug_bins"]
 
 [[bin]]
 name = "verify_config"
 path = "debug/verify_config.rs"
+required-features = ["debug_bins"]
 
 [[bin]]
 name = "minimal_test"
 path = "debug/minimal_test.rs"
+required-features = ["debug_bins"]
 
 [[bin]]
 name = "diagnose_slowdown"
 path = "debug/diagnose_slowdown.rs"
+required-features = ["debug_bins"]
 
 [[bin]]
 name = "test_history_isolation"
 path = "debug/test_history_isolation.rs"
+required-features = ["debug_bins"]
 
 [[bin]]
 name = "analyze_history_growth"
 path = "debug/analyze_history_growth.rs"
+required-features = ["debug_bins"]
 
 [[bin]]
 name = "debug_graphics"
 path = "debug/debug_graphics.rs"
+required-features = ["debug_bins"]
 
 [[bin]]
 name = "pinpoint_bottleneck"
 path = "debug/pinpoint_bottleneck.rs"
+required-features = ["debug_bins"]
 
 [[bin]]
 name = "reproduce_gui_slowdown"
 path = "debug/reproduce_gui_slowdown.rs"
+required-features = ["debug_bins"]
 
 [[bin]]
 name = "test_user_scenarios"
 path = "debug/test_user_scenarios.rs"
+required-features = ["debug_bins"]
 
 [[bin]]
 name = "detect_sawtooth_pattern"
 path = "debug/detect_sawtooth_pattern.rs"
+required-features = ["debug_bins"]
 
 [[bin]]
 name = "toml_density_analysis"
 path = "debug/toml_density_analysis.rs"
+required-features = ["debug_bins"]
 
 [[bin]]
 name = "debug_field_alignment_scaling"
 path = "debug/debug_field_alignment_scaling.rs"
+required-features = ["debug_bins"]
 
 [[bin]]
 name = "doe_runner"
@@ -79,6 +92,7 @@ required-features = ["doe"]
 [[bin]]
 name = "debug_measurements"
 path = "src/bin/debug_measurements.rs"
+required-features = ["debug_bins"]
 
 [dependencies]
 quarkstrom = { path = "../quarkstrom/quarkstrom" }
@@ -98,10 +112,7 @@ toml = "0.8"
 flate2 = { version = "1.1" }
 bincode = "1.3"
 
-# Screen capture dependencies
-chrono = { version = "0.4.38", features = ["serde"] }
-image = "0.25.2"
-screenshots = "0.7.3"
+ # Screen capture dependencies removed
 
 # Additional dependencies  
 rayon = "1.10.0"
@@ -112,9 +123,7 @@ rand_distr = "0.4"
 smallvec = { version = "1.10.0", features = ["serde"] }
 
 # Windows API for window position detection
-[target.'cfg(windows)'.dependencies]
-winapi = { version = "0.3", features = ["winuser", "processthreadsapi", "handleapi", "wingdi"] }
-screenshots = "0.7"
+#[target.'cfg(windows)'.dependencies]
 
 # For dependency management
 [build-dependencies]
@@ -135,3 +144,5 @@ debug_quadtree = []
 thermostat_debug = []
 command_debug = []
 doe = []
+unit_tests = []
+debug_bins = []

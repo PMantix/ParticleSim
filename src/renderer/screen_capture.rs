@@ -1,3 +1,4 @@
+#![cfg(feature = "screen_capture")]
 use crate::renderer::Renderer;
 use ultraviolet::Vec2;
 use std::fs;
