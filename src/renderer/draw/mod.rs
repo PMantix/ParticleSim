@@ -66,6 +66,81 @@ impl super::Renderer {
                         temp_quadtree.nodes = self.quadtree.clone();
                         diag.calculate(&self.bodies, &temp_quadtree);
                     }
+
+                    // Periodic CSV logging of Solvation State
+                    if self.solvation_csv_enabled {
+                        let current_time = *crate::renderer::state::SIM_TIME.lock();
+                        let due = current_time - self.solvation_csv_last_write_fs >= self.solvation_csv_interval_fs;
+                        if due {
+                            // Ensure directory exists
+                            let _ = std::fs::create_dir_all("doe_results");
+                            let path = if self.solvation_csv_filename.contains('/') || self.solvation_csv_filename.contains('\\') {
+                                // If user provided a path, write as-is
+                                self.solvation_csv_filename.clone()
+                            } else {
+                                format!("doe_results/{}", self.solvation_csv_filename)
+                            };
+                            // Ensure header exists (prepend if file exists without header on first write)
+                            use std::io::{Write, BufRead, BufReader};
+                            let mut need_header = false;
+                            match std::fs::metadata(&path) {
+                                Ok(meta) => {
+                                    if meta.len() == 0 {
+                                        need_header = true;
+                                    } else if !self.solvation_csv_wrote_header {
+                                        // Check first line for header
+                                        if let Ok(f) = std::fs::File::open(&path) {
+                                            let mut reader = BufReader::new(f);
+                                            let mut first_line = String::new();
+                                            let _ = reader.read_line(&mut first_line);
+                                            if !first_line.starts_with("time_fs,") {
+                                                // Prepend header by rewriting file
+                                                if let Ok(contents) = std::fs::read_to_string(&path) {
+                                                    if let Ok(mut out) = std::fs::OpenOptions::new().write(true).truncate(true).open(&path) {
+                                                        let _ = writeln!(out, "time_fs,CIP,SIP,S2IP,FD");
+                                                        let _ = write!(out, "{}", contents);
+                                                        let _ = out.flush();
+                                                        self.solvation_csv_wrote_header = true;
+                                                    }
+                                                }
+                                            } else {
+                                                self.solvation_csv_wrote_header = true;
+                                            }
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    // File doesn't exist yet; will be created and header written
+                                    need_header = true;
+                                }
+                            }
+
+                            // Open in append mode and write header if needed, then data row
+                            match std::fs::OpenOptions::new().create(true).append(true).open(&path) {
+                                Ok(mut file) => {
+                                    if need_header {
+                                        let _ = writeln!(file, "time_fs,CIP,SIP,S2IP,FD");
+                                        self.solvation_csv_wrote_header = true;
+                                    }
+                                    let _ = writeln!(
+                                        file,
+                                        "{:.6},{:.6},{:.6},{:.6},{:.6}",
+                                        current_time,
+                                        diag.cip_fraction,
+                                        diag.sip_fraction,
+                                        diag.s2ip_fraction,
+                                        diag.fd_fraction
+                                    );
+                                    let _ = file.flush();
+                                    self.solvation_csv_last_write_fs = current_time;
+                                }
+                                Err(e) => {
+                                    eprintln!("✗ Failed to write solvation CSV ({}): {}", path, e);
+                                    self.solvation_csv_last_write_fs = current_time;
+                                }
+                            }
+                        }
+                    }
                 }
             }
             if let Some(body) = self.confirmed_bodies.take() {

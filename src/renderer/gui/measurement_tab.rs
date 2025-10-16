@@ -4,6 +4,51 @@ use crate::manual_measurement::{ManualMeasurementConfig, ManualMeasurementPoint}
 
 impl super::super::Renderer {
     pub fn show_measurement_tab(&mut self, ui: &mut egui::Ui) {
+        // Solvation State section (moved from Diagnostics)
+        ui.collapsing("🧪 Solvation State", |ui| {
+            if let Some(diag) = &self.solvation_diagnostic {
+                // Temperature and coordination metrics removed per request
+                ui.separator();
+                ui.label("Solvation distribution:");
+                ui.label(format!(
+                    "CIP: {:.3}\nSIP: {:.3}\nS2IP: {:.3}\nFD: {:.3}",
+                    diag.cip_fraction, diag.sip_fraction, diag.s2ip_fraction, diag.fd_fraction
+                ));
+
+                ui.separator();
+                ui.label("🔍 Visual Overlays:");
+                ui.horizontal(|ui| {
+                    ui.checkbox(&mut self.show_cip_ions, "Show CIP");
+                    ui.checkbox(&mut self.show_sip_ions, "Show SIP");
+                });
+                ui.horizontal(|ui| {
+                    ui.checkbox(&mut self.show_s2ip_ions, "Show S2IP");
+                    ui.checkbox(&mut self.show_fd_ions, "Show FD");
+                });
+
+                ui.separator();
+                ui.label("🗂️ CSV Logging:");
+                ui.horizontal(|ui| {
+                    ui.checkbox(&mut self.solvation_csv_enabled, "Enable logging");
+                    ui.label("Interval (fs):");
+                    ui.add(egui::DragValue::new(&mut self.solvation_csv_interval_fs).speed(100.0).clamp_range(10.0..=1_000_000.0));
+                });
+                ui.horizontal(|ui| {
+                    ui.label("Filename:");
+                    ui.text_edit_singleline(&mut self.solvation_csv_filename);
+                });
+                if self.solvation_csv_enabled {
+                    let current_time = *crate::renderer::state::SIM_TIME.lock();
+                    let next_due = (self.solvation_csv_last_write_fs + self.solvation_csv_interval_fs) - current_time;
+                    if next_due.is_finite() {
+                        ui.small(format!("Next write in: {:.1} fs", next_due.max(0.0)));
+                    }
+                }
+            } else {
+                ui.label("❌ No diagnostic data available.");
+            }
+        });
+
         // Manual Measurement System Section
         ui.collapsing("🎯 Auto-Recording Measurements", |ui| {
             ui.label("Set up measurement points that automatically record to CSV at regular intervals.");
@@ -382,15 +427,11 @@ impl super::super::Renderer {
                     .show(ui, |ui| {
                         ui.label("Label");
                         ui.label("Edge (Å)");
-                        ui.label("Li Metal");
-                        ui.label("Li Ion");
                         ui.end_row();
                         
                         for result in &self.manual_measurement_last_results {
                             ui.label(&result.label);
                             ui.label(format!("{:.2}", result.edge_position));
-                            ui.label(format!("{}", result.li_metal_count));
-                            ui.label(format!("{}", result.li_ion_count));
                             ui.end_row();
                         }
                     });

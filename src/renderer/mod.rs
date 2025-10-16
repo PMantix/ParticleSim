@@ -187,6 +187,13 @@ pub struct Renderer {
     pub show_s2ip_ions: bool,
     pub show_fd_ions: bool,
 
+    // Solvation CSV logging controls
+    pub solvation_csv_enabled: bool,
+    pub solvation_csv_interval_fs: f32,
+    pub solvation_csv_filename: String,
+    pub solvation_csv_last_write_fs: f32,
+    pub solvation_csv_wrote_header: bool,
+
     // 2D Domain Density Calculation - Species Selection
     pub density_calc_lithium_ion: bool,
     pub density_calc_lithium_metal: bool,
@@ -348,6 +355,13 @@ impl quarkstrom::Renderer for Renderer {
             show_sip_ions: false,
             show_s2ip_ions: false,
             show_fd_ions: false,
+
+            // Solvation CSV logging defaults
+            solvation_csv_enabled: false,
+            solvation_csv_interval_fs: 1000.0,
+            solvation_csv_filename: "solvation_state.csv".to_string(),
+            solvation_csv_last_write_fs: -1_000_000.0,
+            solvation_csv_wrote_header: false,
 
             // 2D Domain Density Calculation - Species Selection (default to Li+ only)
             density_calc_lithium_ion: true,
