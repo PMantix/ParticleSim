@@ -23,9 +23,34 @@ impl super::super::Renderer {
         match self.charging_ui_mode {
             super::super::ChargingUiMode::Conventional => {
                 ui.label("Conventional mode groups foils into anodes and cathodes with parallel linkage within groups and opposite behavior between them.");
-                ui.add_space(4.0);
-                // Placeholder: We will embed preset + compact controls in the next steps.
-                ui.monospace("Coming next: Apply Conventional Preset (Anodes: 1,3,5 | Cathodes: 2,4) and group-level controls.");
+                ui.add_space(8.0);
+
+                ui.group(|ui| {
+                    ui.label("Preset groups:");
+                    ui.small("Anodes (Group A): 1, 3, 5 | Cathodes (Group B): 2, 4");
+                    ui.horizontal(|ui| {
+                        if ui.button("Apply Conventional Preset").clicked() {
+                            // Determine which preset IDs actually exist in the current sim
+                            let foils = crate::renderer::state::FOILS.lock();
+                            let have: std::collections::HashSet<u64> = foils.iter().map(|f| f.id).collect();
+                            let mut group_a: Vec<u64> = [1_u64, 3, 5].into_iter().filter(|id| have.contains(id)).collect();
+                            let mut group_b: Vec<u64> = [2_u64, 4].into_iter().filter(|id| have.contains(id)).collect();
+                            group_a.sort_unstable();
+                            group_b.sort_unstable();
+                            if let Some(tx) = crate::renderer::state::SIM_COMMAND_SENDER.lock().as_ref() {
+                                let _ = tx.send(crate::renderer::state::SimCommand::SetFoilGroups { group_a, group_b });
+                            }
+                        }
+                        if ui.button("Clear Groups").clicked() {
+                            if let Some(tx) = crate::renderer::state::SIM_COMMAND_SENDER.lock().as_ref() {
+                                let _ = tx.send(crate::renderer::state::SimCommand::ClearFoilGroups);
+                            }
+                        }
+                    });
+                });
+
+                ui.add_space(8.0);
+                ui.label("Group controls (coming next): unified setpoint/target with mirroring.");
             }
             super::super::ChargingUiMode::SwitchCharging => {
                 ui.label("Switch Charging mode uses step-based role assignments (Anode/ Cathode A/B) and run control.");
