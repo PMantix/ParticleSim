@@ -1130,41 +1130,50 @@ impl Simulation {
 
     /// Calculate the proper foil electron ratio (same as diagnostic)
     /// This is the ratio of actual electrons to neutral electron count in the foil network
-    /// OPTIMIZED: Uses spatial data structures for efficient neighbor finding instead of O(N²) nested loops
+    /// OPTIMIZED: Uses spatial data structures and index-based BFS to avoid O(N) id scans
     fn calculate_foil_electron_ratio(&self, foil: &crate::body::foil::Foil) -> f32 {
-        let mut total_electrons = 0;
-        let mut total_neutral = 0;
+        let mut total_electrons = 0usize;
+        let mut total_neutral = 0usize;
 
-        // Use BFS with spatial queries for optimization
-        let mut visited = std::collections::HashSet::new();
-        let mut queue = std::collections::VecDeque::new();
+        // Build a local id->index map to avoid repeated linear scans
+        // Note: We keep this local to avoid mutability on self; for further speed,
+        // consider caching once per step if many foils use this path.
+        let id_to_index: std::collections::HashMap<u64, usize> = self
+            .bodies
+            .iter()
+            .enumerate()
+            .map(|(i, b)| (b.id, i))
+            .collect();
 
-        // Start from all foil bodies
+        // Use BFS with indices for optimization
+        let mut visited_idx: std::collections::HashSet<usize> = std::collections::HashSet::new();
+        let mut queue: std::collections::VecDeque<usize> = std::collections::VecDeque::new();
+
+        // Seed the queue with all bodies belonging to this foil
         for &body_id in &foil.body_ids {
-            if let Some(body) = self.bodies.iter().find(|b| b.id == body_id) {
-                if !visited.contains(&body.id) {
-                    queue.push_back(body);
-                    visited.insert(body.id);
+            if let Some(&idx) = id_to_index.get(&body_id) {
+                if visited_idx.insert(idx) {
+                    queue.push_back(idx);
                 }
             }
         }
 
+        if queue.is_empty() {
+            return 1.0; // No bodies -> neutral
+        }
+
         let use_cell = self.use_cell_list();
 
-        // BFS to find all connected metal bodies using spatial data structures
-        while let Some(body) = queue.pop_front() {
+        // BFS to find all connected metal bodies using spatial queries
+        while let Some(body_index) = queue.pop_front() {
+            if body_index >= self.bodies.len() { continue; }
+            let body = &self.bodies[body_index];
+
             // Count electrons in this body
             total_electrons += body.electrons.len();
             total_neutral += body.neutral_electron_count();
 
-            // Find body index for spatial query
-            let body_index = if let Some(idx) = self.bodies.iter().position(|b| b.id == body.id) {
-                idx
-            } else {
-                continue; // Skip if body not found
-            };
-
-            // Find connected neighbors using spatial data structures (O(log N) instead of O(N))
+            // Find connected neighbors using spatial data structures
             let connection_radius = body.radius * 2.2; // Search radius for connected bodies
             let nearby_indices = if use_cell {
                 self.cell_list
@@ -1176,14 +1185,8 @@ impl Simulation {
 
             // Check each nearby body for connection
             for &other_idx in &nearby_indices {
-                if other_idx >= self.bodies.len() {
-                    continue; // Skip invalid indices
-                }
+                if other_idx >= self.bodies.len() { continue; }
                 let other_body = &self.bodies[other_idx];
-
-                if visited.contains(&other_body.id) {
-                    continue;
-                }
 
                 // Only consider metal bodies
                 if !matches!(
@@ -1196,24 +1199,22 @@ impl Simulation {
                 // Check if actually connected (precise distance check)
                 let threshold = (body.radius + other_body.radius) * 1.1;
                 if (body.pos - other_body.pos).mag() <= threshold {
-                    visited.insert(other_body.id);
-                    queue.push_back(other_body);
+                    if visited_idx.insert(other_idx) {
+                        queue.push_back(other_idx);
+                    }
                 }
             }
         }
 
         if total_neutral > 0 {
             let ratio = total_electrons as f32 / total_neutral as f32;
-
             // Debug output occasionally
             if rand::random::<f32>() < 0.001 {
-                // 0.1% chance
                 println!(
                     "Foil {} electron ratio: {:.3} (electrons: {}, neutral: {})",
                     foil.id, ratio, total_electrons, total_neutral
                 );
             }
-
             ratio
         } else {
             1.0 // Neutral if no reference
@@ -1558,6 +1559,102 @@ impl Simulation {
         false
     }
 
+    // Fast index-based helpers to avoid O(N) id scans. Only used on hot overpotential path.
+    #[inline]
+    fn foil_can_add_idxmap(
+        &self,
+        idx: usize,
+        id_to_index: &std::collections::HashMap<u64, usize>,
+    ) -> bool {
+        let foil = &self.foils[idx];
+        for &id in &foil.body_ids {
+            if let Some(&bi) = id_to_index.get(&id) {
+                if bi < self.bodies.len() {
+                    let b = &self.bodies[bi];
+                    if b.species == Species::FoilMetal
+                        && b.electrons.len() < crate::config::FOIL_MAX_ELECTRONS
+                    {
+                        return true;
+                    }
+                }
+            }
+        }
+        false
+    }
+
+    #[inline]
+    fn foil_can_remove_idxmap(
+        &self,
+        idx: usize,
+        id_to_index: &std::collections::HashMap<u64, usize>,
+    ) -> bool {
+        let foil = &self.foils[idx];
+        for &id in &foil.body_ids {
+            if let Some(&bi) = id_to_index.get(&id) {
+                if bi < self.bodies.len() {
+                    let b = &self.bodies[bi];
+                    if b.species == Species::FoilMetal && !b.electrons.is_empty() {
+                        return true;
+                    }
+                }
+            }
+        }
+        false
+    }
+
+    #[inline]
+    fn try_add_electron_idxmap(
+        &mut self,
+        idx: usize,
+        rng: &mut rand::rngs::ThreadRng,
+        recipients: &mut [bool],
+        id_to_index: &std::collections::HashMap<u64, usize>,
+    ) -> bool {
+        let foil = &mut self.foils[idx];
+        if let Some(&id) = foil.body_ids.as_slice().choose(rng) {
+            if let Some(&body_idx) = id_to_index.get(&id) {
+                if body_idx < self.bodies.len() {
+                    let body = &mut self.bodies[body_idx];
+                    if body.species == Species::FoilMetal
+                        && body.electrons.len() < crate::config::FOIL_MAX_ELECTRONS
+                    {
+                        body.electrons.push(Electron {
+                            rel_pos: Vec2::zero(),
+                            vel: Vec2::zero(),
+                        });
+                        recipients[body_idx] = true;
+                        return true;
+                    }
+                }
+            }
+        }
+        false
+    }
+
+    #[inline]
+    fn try_remove_electron_idxmap(
+        &mut self,
+        idx: usize,
+        rng: &mut rand::rngs::ThreadRng,
+        recipients: &mut [bool],
+        id_to_index: &std::collections::HashMap<u64, usize>,
+    ) -> bool {
+        let foil = &mut self.foils[idx];
+        if let Some(&id) = foil.body_ids.as_slice().choose(rng) {
+            if let Some(&body_idx) = id_to_index.get(&id) {
+                if body_idx < self.bodies.len() {
+                    let body = &mut self.bodies[body_idx];
+                    if body.species == Species::FoilMetal && !body.electrons.is_empty() {
+                        body.electrons.pop();
+                        recipients[body_idx] = true;
+                        return true;
+                    }
+                }
+            }
+        }
+        false
+    }
+
     /// Direct electron manipulation for overpotential mode - bypasses current-based accumulator system
     fn process_overpotential_direct_electron_control(
         &mut self,
@@ -1565,6 +1662,14 @@ impl Simulation {
         rng: &mut rand::rngs::ThreadRng,
         recipients: &mut [bool],
     ) {
+        // Build a single id->index map for this hot path
+        let id_to_index: std::collections::HashMap<u64, usize> = self
+            .bodies
+            .iter()
+            .enumerate()
+            .map(|(i, b)| (b.id, i))
+            .collect();
+
         // Process each overpotential foil individually for direct electron control
         for i in 0..self.foils.len() {
             if !matches!(
@@ -1598,15 +1703,15 @@ impl Simulation {
 
                 // Add whole electrons
                 for _ in 0..num_electrons_to_add {
-                    if self.foil_can_add(i) {
-                        self.try_add_electron(i, rng, recipients);
+                    if self.foil_can_add_idxmap(i, &id_to_index) {
+                        self.try_add_electron_idxmap(i, rng, recipients, &id_to_index);
                     }
                 }
 
                 // Handle fractional electron with probability
                 if rand::random::<f32>() < fractional_part {
-                    if self.foil_can_add(i) {
-                        self.try_add_electron(i, rng, recipients);
+                    if self.foil_can_add_idxmap(i, &id_to_index) {
+                        self.try_add_electron_idxmap(i, rng, recipients, &id_to_index);
                     }
                 }
             } else if electron_transfer_rate < 0.0 {
@@ -1616,15 +1721,15 @@ impl Simulation {
 
                 // Remove whole electrons
                 for _ in 0..num_electrons_to_remove {
-                    if self.foil_can_remove(i) {
-                        self.try_remove_electron(i, rng, recipients);
+                    if self.foil_can_remove_idxmap(i, &id_to_index) {
+                        self.try_remove_electron_idxmap(i, rng, recipients, &id_to_index);
                     }
                 }
 
                 // Handle fractional electron with probability
                 if rand::random::<f32>() < fractional_part {
-                    if self.foil_can_remove(i) {
-                        self.try_remove_electron(i, rng, recipients);
+                    if self.foil_can_remove_idxmap(i, &id_to_index) {
+                        self.try_remove_electron_idxmap(i, rng, recipients, &id_to_index);
                     }
                 }
             }
