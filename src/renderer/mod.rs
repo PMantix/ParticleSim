@@ -10,7 +10,7 @@ use crate::plotting::{PlotType, PlottingSystem, Quantity, SamplingMode};
 use crate::quadtree::Node;
 use crate::renderer::state::{SimCommand, SIM_COMMAND_SENDER};
 use crate::switch_charging;
-use crate::manual_measurement::{ManualMeasurementConfig, ManualMeasurementRecorder, MeasurementResult};
+use crate::manual_measurement::{ManualMeasurementConfig, MeasurementResult};
 use quarkstrom::egui::{self, Color32, Pos2, Vec2 as EVec2};
 use quarkstrom::winit_input_helper::WinitInputHelper;
 use std::collections::HashMap;

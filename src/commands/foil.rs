@@ -112,7 +112,7 @@ pub fn handle_set_foil_frequency(simulation: &mut Simulation, foil_id: u64, swit
         .foils
         .iter()
         .find(|f| f.id == foil_id)
-        .and_then(|foil| foil.link_id.map(|link_id| link_id));
+    .and_then(|foil| foil.link_id);
 
     if let Some(foil) = simulation
         .foils
@@ -168,7 +168,7 @@ pub fn handle_enable_overpotential_mode(simulation: &mut Simulation, foil_id: u6
         .foils
         .iter()
         .find(|f| f.id == foil_id)
-        .and_then(|foil| foil.link_id.map(|link_id| (link_id, foil.mode)));
+    .and_then(|foil| foil.link_id.map(|link_id| (link_id, foil.mode)));
 
     // Enable overpotential mode on the primary foil (this becomes the master)
     if let Some(foil) = simulation.foils.iter_mut().find(|f| f.id == foil_id) {
@@ -190,7 +190,7 @@ pub fn handle_disable_overpotential_mode(simulation: &mut Simulation, foil_id: u
         .foils
         .iter()
         .find(|f| f.id == foil_id)
-        .and_then(|foil| foil.link_id.map(|link_id| link_id));
+    .and_then(|foil| foil.link_id);
 
     // Disable overpotential mode on the primary foil
     if let Some(foil) = simulation.foils.iter_mut().find(|f| f.id == foil_id) {
@@ -211,7 +211,7 @@ pub fn handle_set_overpotential_target(simulation: &mut Simulation, foil_id: u64
         .foils
         .iter()
         .find(|f| f.id == foil_id)
-        .and_then(|foil| foil.link_id.map(|link_id| (link_id, foil.mode)));
+    .and_then(|foil| foil.link_id.map(|link_id| (link_id, foil.mode)));
 
     // Set target on primary foil
     if let Some(foil) = simulation.foils.iter_mut().find(|f| f.id == foil_id) {
@@ -240,7 +240,7 @@ pub fn handle_set_pid_gains(simulation: &mut Simulation, foil_id: u64, kp: f32, 
         .foils
         .iter()
         .find(|f| f.id == foil_id)
-        .and_then(|foil| foil.link_id.map(|link_id| link_id));
+    .and_then(|foil| foil.link_id);
 
     // Set PID gains on primary foil
     if let Some(foil) = simulation.foils.iter_mut().find(|f| f.id == foil_id) {

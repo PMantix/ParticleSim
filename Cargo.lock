@@ -1480,7 +1480,7 @@ checksum = "6448add382c60bbbc64f9dab41309a12ec530c05191601042f911356ac09758c"
 
 [[package]]
 name = "particle_sim"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "bincode",
  "broccoli",

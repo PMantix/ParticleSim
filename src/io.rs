@@ -296,8 +296,7 @@ fn parse_saved_scenario_bytes(bytes: &[u8]) -> std::io::Result<SavedScenario> {
             ui: SavedUiState::default(),
         });
     }
-    Err(std::io::Error::new(
-        std::io::ErrorKind::Other,
+    Err(std::io::Error::other(
         "failed to parse saved scenario: not valid JSON or binary format",
     ))
 }
@@ -308,17 +307,14 @@ fn current_ui_state() -> SavedUiState {
         .lock()
         .clone()
         .unwrap_or_else(|| "Conventional".to_string());
-    let is_over = rstate::PERSIST_UI_CONV_IS_OVER
-        .lock()
-        .clone()
+    let is_over = (*rstate::PERSIST_UI_CONV_IS_OVER
+        .lock())
         .unwrap_or(false);
-    let current = rstate::PERSIST_UI_CONV_CURRENT
-        .lock()
-        .clone()
+    let current = (*rstate::PERSIST_UI_CONV_CURRENT
+        .lock())
         .unwrap_or(default_conv_current());
-    let target = rstate::PERSIST_UI_CONV_TARGET
-        .lock()
-        .clone()
+    let target = (*rstate::PERSIST_UI_CONV_TARGET
+        .lock())
         .unwrap_or(default_conv_target());
     let foil_enabled = rstate::FOIL_METRICS_ENABLED.load(std::sync::atomic::Ordering::Relaxed);
     let foil_override = rstate::FOIL_METRICS_FILENAME_OVERRIDE.lock().clone();

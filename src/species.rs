@@ -177,7 +177,7 @@ pub fn get_species_props(species: Species) -> SpeciesProps {
         }
     }
     // Fall back to default properties
-    SPECIES_PROPERTIES.get(&species).copied().unwrap_or_else(|| {
+    SPECIES_PROPERTIES.get(&species).copied().unwrap_or({
         // Fallback if species not found
         SpeciesProps {
             mass: 1.0,

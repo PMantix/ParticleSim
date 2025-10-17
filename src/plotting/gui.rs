@@ -130,7 +130,7 @@ pub fn show_plotting_controls(
                     let window_ids: Vec<String> = plotting_system.windows.keys().cloned().collect();
                     for window_id in window_ids {
                         if let Some(window) = plotting_system.windows.get(&window_id) {
-                            let button_text = format!("{} ({})", window.config.title, format!("{:?}", window.config.plot_type));
+                            let button_text = format!("{} ({:?})", window.config.title, window.config.plot_type);
                             if ui.button(button_text).clicked() {
                                 // Toggle window visibility
                                 if let Some(window) = plotting_system.windows.get_mut(&window_id) {

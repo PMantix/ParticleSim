@@ -14,7 +14,6 @@ use crate::species::get_species_props;
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::Write;
-use std::path::Path;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ManualMeasurementPoint {
@@ -77,28 +76,12 @@ impl Default for ManualMeasurementConfig {
     }
 }
 
-impl ManualMeasurementConfig {
-    /// Load configuration from TOML file
-    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self, Box<dyn std::error::Error>> {
-        let content = std::fs::read_to_string(path)?;
-        let config: Self = toml::from_str(&content)?;
-        Ok(config)
-    }
-
-    /// Save configuration to TOML file
-    pub fn to_file<P: AsRef<Path>>(&self, path: P) -> Result<(), Box<dyn std::error::Error>> {
-        let toml_string = toml::to_string_pretty(self)?;
-        std::fs::write(path, toml_string)?;
-        Ok(())
-    }
-}
+// Removed file IO helpers from ManualMeasurementConfig (unused)
 
 #[derive(Debug, Clone)]
 pub struct MeasurementResult {
     pub label: String,
     pub edge_position: f32,
-    pub li_metal_count: usize,
-    pub li_ion_count: usize,
 }
 
 pub struct ManualMeasurementRecorder {
@@ -137,16 +120,10 @@ impl ManualMeasurementRecorder {
         let path = format!("doe_results/{}", self.config.output_file);
         let mut file = File::create(&path)?;
 
-        // Write header with labels for each point and metrics
+        // Write header with labels for each point (edge only)
         write!(file, "frame,time_fs")?;
         for point in &self.config.points {
             write!(file, ",{}_edge", point.label)?;
-        }
-        for point in &self.config.points {
-            write!(file, ",{}_li_metal", point.label)?;
-        }
-        for point in &self.config.points {
-            write!(file, ",{}_li_ion", point.label)?;
         }
         writeln!(file)?;
 
@@ -210,23 +187,20 @@ impl ManualMeasurementRecorder {
 
                 // Compute or reuse connected set for the host foil
                 if let Some(fid) = host_foil_id {
-                    if !connected_by_foil.contains_key(&fid) {
-                        let connected = bfs_connected_metals_for_foil(fid, bodies, foils, quadtree, &id_to_index);
-                        connected_by_foil.insert(fid, connected);
-                    }
+                    connected_by_foil.entry(fid).or_insert_with(|| {
+                        bfs_connected_metals_for_foil(fid, bodies, foils, quadtree, &id_to_index)
+                    });
                 }
 
                 let result = self.measure_at_point_connected(bodies, point, host_foil_id, connected_by_foil.get(&host_foil_id.unwrap_or(0)));
                 results.push(result);
             }
 
-            // Write to CSV if recording
+            // Write to CSV if recording (edge only)
             if self.is_recording {
                 if let Some(file) = &mut self.csv_file {
                     let _ = write!(file, "{},{}", frame, simulation_time_fs);
                     for result in &results { let _ = write!(file, ",{}", result.edge_position); }
-                    for result in &results { let _ = write!(file, ",{}", result.li_metal_count); }
-                    for result in &results { let _ = write!(file, ",{}", result.li_ion_count); }
                     let _ = writeln!(file);
                     let _ = file.flush();
                     self.measurement_count += 1;
@@ -257,8 +231,7 @@ impl ManualMeasurementRecorder {
         };
 
         // Collect particles in region
-        let mut li_metal_positions = Vec::new();
-        let mut li_ion_count = 0;
+    let mut li_metal_positions = Vec::new();
 
         for body in bodies {
             let pos = body.pos;
@@ -266,9 +239,6 @@ impl ManualMeasurementRecorder {
                 match body.species {
                     Species::LithiumMetal => {
                         li_metal_positions.push(pos);
-                    }
-                    Species::LithiumIon => {
-                        li_ion_count += 1;
                     }
                     _ => {}
                 }
@@ -300,12 +270,7 @@ impl ManualMeasurementRecorder {
             }
         };
 
-        MeasurementResult {
-            label: point.label.clone(),
-            edge_position,
-            li_metal_count: li_metal_positions.len(),
-            li_ion_count,
-        }
+        MeasurementResult { label: point.label.clone(), edge_position }
     }
 
 
@@ -338,8 +303,7 @@ impl ManualMeasurementRecorder {
             _ => (point.y - half_height, point.y + half_height),
         };
 
-        let mut li_metal_positions = Vec::new();
-        let mut li_ion_count = 0;
+    let mut li_metal_positions = Vec::new();
 
         for (idx, body) in bodies.iter().enumerate() {
             let pos = body.pos;
@@ -350,9 +314,6 @@ impl ManualMeasurementRecorder {
                         if connected_set.contains(&idx) {
                             li_metal_positions.push(pos);
                         }
-                    }
-                    Species::LithiumIon => {
-                        li_ion_count += 1;
                     }
                     _ => {}
                 }
@@ -371,12 +332,7 @@ impl ManualMeasurementRecorder {
             }
         };
 
-        MeasurementResult {
-            label: point.label.clone(),
-            edge_position,
-            li_metal_count: li_metal_positions.len(),
-            li_ion_count,
-        }
+        MeasurementResult { label: point.label.clone(), edge_position }
     }
 }
 

@@ -50,7 +50,7 @@ fn export_csv(data: &PlotData) -> Result<String, String> {
         content.push_str(&format!("# {}: {}\n", key, value));
     }
     
-    content.push_str("\n");
+    content.push('\n');
     
     // Data header
     match data.config.plot_type {

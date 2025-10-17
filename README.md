@@ -58,6 +58,12 @@ This repository contains a modular, parallelized particle simulation for large-s
   - Screen capture with customizable regions
   - Playback controls with history scrubbing
 
+#### Measurements & CSV Logging (Updated)
+- Point-based CSV: records only the leading-edge position per measurement point. One row per timestep: `frame,time_fs,<label1>_edge,<label2>_edge,...`. Auto-named as `Point-based_*` under `doe_results/`.
+- Foil-based CSV: one row per timestep with grouped columns for each foil (ordered by foil ID): `mode_f<ID>`, `setpoint_f<ID>`, `actual_ratio_f<ID>`, `delta_electrons_f<ID>`, `li_metal_count_f<ID>`. “Actual ratio” matches the foil electron ratio from the charging tab. Field toggles in the Measurements UI control which groups are populated.
+- Time-based CSV: domain-wide solvation fractions (CIP, SIP, S2IP, FD) plus charging context (mode and setpoint/current). Auto-named as `Time-based_*` under `doe_results/`.
+- All three CSV toggles live in the Measurements section and default to enabled. Filenames auto-name consistently and can be overridden in the UI.
+
 ### Workflow & Configuration
 - **State Management**: Save/load simulation states for reproducible experiments
 - **Scenario Presets**: Quick setup with pre-configured arrangements
@@ -109,11 +115,13 @@ guidelines.
   - Current and overpotential modes
   - Real-time step indicators and dwell counters
   - JSON configuration import/export
-- **Measurement Tab**: Precision distance tracking
+- **Measurement Tab**: Precision distance tracking and CSV controls
   - Select start point and define directional axis
   - Live distance projection onto defined direction
   - History recording with switch-charging metadata
   - CSV export with simulation time and step context
+  - Consolidated CSV controls: Enable Time-based / Foil-based / Point-based, with auto-named files
+  - Editing the set of points auto-restarts Point-based recording to keep the CSV header in sync
 - **Visualization Tab**: Advanced rendering controls
   - Isoline count, fidelity, and adaptive refinement
   - Filled isobands with alpha blending

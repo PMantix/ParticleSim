@@ -51,16 +51,11 @@ impl fmt::Display for Role {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum Mode {
+    #[default]
     Current,
     Overpotential,
-}
-
-impl Default for Mode {
-    fn default() -> Self {
-        Mode::Current
-    }
 }
 
 impl Mode {
@@ -226,7 +221,7 @@ impl SwitchChargingConfig {
         for step in 0..4u8 {
             self.step_setpoints
                 .entry(step)
-                .or_insert_with(StepSetpoint::default);
+                .or_default();
         }
     }
 
@@ -234,7 +229,7 @@ impl SwitchChargingConfig {
         for step in 0..4u8 {
             self.step_active_inactive
                 .entry(step)
-                .or_insert_with(StepActiveInactiveSetpoints::default);
+                .or_default();
         }
     }
 }
@@ -248,17 +243,12 @@ pub fn roles_for_step(step_index: u8) -> (Role, Role) {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum RunState {
+    #[default]
     Idle,
     Running,
     Paused,
-}
-
-impl Default for RunState {
-    fn default() -> Self {
-        RunState::Idle
-    }
 }
 
 #[derive(Clone, Debug)]
@@ -322,21 +312,11 @@ pub fn take_ui_handles() -> Option<UiHandles> {
     UI_HANDLES.lock().unwrap().take()
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct SwitchScheduler {
     pub current_step: u8,
     pub steps_left: u32,
     pub armed: bool,
-}
-
-impl Default for SwitchScheduler {
-    fn default() -> Self {
-        Self {
-            current_step: 0,
-            steps_left: 0,
-            armed: false,
-        }
-    }
 }
 
 impl SwitchScheduler {
@@ -363,9 +343,7 @@ impl SwitchScheduler {
             self.armed = false;
             return;
         }
-        if self.steps_left == 0 && self.armed {
-            self.steps_left = cfg.delta_steps;
-        } else if self.steps_left > cfg.delta_steps {
+        if (self.steps_left == 0 && self.armed) || self.steps_left > cfg.delta_steps {
             self.steps_left = cfg.delta_steps;
         }
     }

@@ -213,7 +213,7 @@ pub fn handle_command(cmd: SimCommand, simulation: &mut Simulation) {
                 .foils
                 .iter()
                 .find(|f| f.id == foil_id)
-                .and_then(|foil| foil.link_id.map(|link_id| link_id));
+                .and_then(|foil| foil.link_id);
             if let Some(foil) = simulation.foils.iter_mut().find(|f| f.id == foil_id) {
                 foil.ac_current = ac_current;
                 mark_dirty(simulation);
@@ -230,7 +230,7 @@ pub fn handle_command(cmd: SimCommand, simulation: &mut Simulation) {
                 .foils
                 .iter()
                 .find(|f| f.id == foil_id)
-                .and_then(|foil| foil.link_id.map(|link_id| link_id));
+                .and_then(|foil| foil.link_id);
             if let Some(foil) = simulation.foils.iter_mut().find(|f| f.id == foil_id) {
                 foil.switch_hz = switch_hz;
                 mark_dirty(simulation);
@@ -279,7 +279,7 @@ pub fn handle_command(cmd: SimCommand, simulation: &mut Simulation) {
                 .foils
                 .iter()
                 .find(|f| f.id == foil_id)
-                .and_then(|foil| foil.link_id.map(|link_id| link_id));
+                .and_then(|foil| foil.link_id);
 
             if let Some(foil) = simulation.foils.iter_mut().find(|f| f.id == foil_id) {
                 foil.disable_overpotential_mode();
