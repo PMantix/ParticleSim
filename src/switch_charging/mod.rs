@@ -749,6 +749,34 @@ pub fn ui_switch_charging(ui: &mut egui::Ui, state: &mut SwitchUiState) {
                 dwell
             ));
         }
+
+        // Controls moved to top next to runtime state
+        ui.separator();
+        let run_enabled = state.validation_error.is_none();
+        if ui
+            .add_enabled(
+                run_enabled && state.run_state != RunState::Running,
+                egui::Button::new("▶ Run"),
+            )
+            .clicked()
+        {
+            state.start();
+        }
+        if ui
+            .add_enabled(
+                state.run_state == RunState::Running,
+                egui::Button::new("⏸ Pause"),
+            )
+            .clicked()
+        {
+            state.pause();
+        }
+        if ui.button("⏹ Stop").clicked() {
+            state.stop();
+        }
+        if ui.button("💾 Apply Config").clicked() {
+            state.send_update();
+        }
     });
 
     if let Some(msg) = &state.status_message {
@@ -1187,35 +1215,7 @@ pub fn ui_switch_charging(ui: &mut egui::Ui, state: &mut SwitchUiState) {
 
     ui.separator();
 
-    ui.horizontal(|ui| {
-        let run_enabled = state.validation_error.is_none();
-        if ui
-            .add_enabled(
-                run_enabled && state.run_state != RunState::Running,
-                egui::Button::new("▶ Run"),
-            )
-            .clicked()
-        {
-            state.start();
-        }
-        if ui
-            .add_enabled(
-                state.run_state == RunState::Running,
-                egui::Button::new("⏸ Pause"),
-            )
-            .clicked()
-        {
-            state.pause();
-        }
-        if ui.button("⏹ Stop").clicked() {
-            state.stop();
-        }
-        if ui.button("💾 Apply Config").clicked() {
-            state.send_update();
-        }
-    });
-
-    ui.separator();
+    // Controls are now shown at the top; separator removed here
 
     ui.group(|ui| {
         ui.label("Import / Export Configuration");

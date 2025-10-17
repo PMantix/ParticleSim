@@ -137,10 +137,16 @@ impl ManualMeasurementRecorder {
         let path = format!("doe_results/{}", self.config.output_file);
         let mut file = File::create(&path)?;
 
-        // Write header: only frame, time_fs, and edge columns per request
+        // Write header with labels for each point and metrics
         write!(file, "frame,time_fs")?;
         for point in &self.config.points {
             write!(file, ",{}_edge", point.label)?;
+        }
+        for point in &self.config.points {
+            write!(file, ",{}_li_metal", point.label)?;
+        }
+        for point in &self.config.points {
+            write!(file, ",{}_li_ion", point.label)?;
         }
         writeln!(file)?;
 
@@ -218,9 +224,9 @@ impl ManualMeasurementRecorder {
             if self.is_recording {
                 if let Some(file) = &mut self.csv_file {
                     let _ = write!(file, "{},{}", frame, simulation_time_fs);
-                    for result in &results {
-                        let _ = write!(file, ",{}", result.edge_position);
-                    }
+                    for result in &results { let _ = write!(file, ",{}", result.edge_position); }
+                    for result in &results { let _ = write!(file, ",{}", result.li_metal_count); }
+                    for result in &results { let _ = write!(file, ",{}", result.li_ion_count); }
                     let _ = writeln!(file);
                     let _ = file.flush();
                     self.measurement_count += 1;

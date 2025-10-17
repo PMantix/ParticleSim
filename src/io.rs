@@ -35,6 +35,11 @@ pub struct SimulationState {
     /// Switching charging step at the time of capture (0..3). None if not running.
     #[serde(default)]
     pub switch_step: Option<u8>,
+    /// Conventional grouping: Group A and Group B memberships
+    #[serde(default)]
+    pub group_a: Vec<u64>,
+    #[serde(default)]
+    pub group_b: Vec<u64>,
 }
 
 fn default_domain_width() -> f32 {
@@ -78,7 +83,26 @@ pub struct SavedScenario {
     pub history_cursor: usize,
     #[serde(default = "default_history_capacity")]
     pub history_capacity: usize,
+    /// Persisted UI preferences so the GUI restores controls on load
+    #[serde(default)]
+    pub ui: SavedUiState,
 }
+
+#[derive(Clone, Serialize, Deserialize, Default)]
+pub struct SavedUiState {
+    /// "Conventional" or "SwitchCharging"
+    #[serde(default)]
+    pub charging_mode: String,
+    #[serde(default)]
+    pub conventional_is_overpotential: bool,
+    #[serde(default = "default_conv_current")]
+    pub conventional_current_setpoint: f32,
+    #[serde(default = "default_conv_target")]
+    pub conventional_target_ratio: f32,
+}
+
+fn default_conv_current() -> f32 { 0.05 }
+fn default_conv_target() -> f32 { 1.2 }
 
 impl SimulationState {
     pub fn from_simulation(sim: &Simulation) -> Self {
@@ -96,6 +120,8 @@ impl SimulationState {
             dt: sim.dt,
             last_thermostat_time: sim.last_thermostat_time,
             switch_step: Some(sim.switch_scheduler.current_step()),
+            group_a: sim.group_a.iter().copied().collect(),
+            group_b: sim.group_b.iter().copied().collect(),
         }
     }
 
@@ -126,6 +152,12 @@ impl SimulationState {
         *crate::renderer::state::TIMESTEP.lock() = self.dt;
         *crate::renderer::state::SIM_TIME.lock() = self.sim_time;
 
+        // Restore conventional groups
+        sim.group_a.clear();
+        sim.group_b.clear();
+        for id in self.group_a { sim.group_a.insert(id); }
+        for id in self.group_b { if !sim.group_a.contains(&id) { sim.group_b.insert(id); } }
+
         sim.quadtree.build(&mut sim.bodies);
         sim.cell_list.rebuild(&sim.bodies);
         sim.rewound_flags.resize(sim.bodies.len(), false);
@@ -149,6 +181,7 @@ pub fn save_state<P: AsRef<Path>>(path: P, sim: &Simulation) -> std::io::Result<
             history: sim.simple_history.iter().cloned().collect(),
             history_cursor: sim.history_cursor,
             history_capacity: sim.history_capacity,
+            ui: current_ui_state(),
         }
     } else {
         SavedScenario {
@@ -156,6 +189,7 @@ pub fn save_state<P: AsRef<Path>>(path: P, sim: &Simulation) -> std::io::Result<
             history: Vec::new(),
             history_cursor: 0,
             history_capacity: sim.history_capacity,
+            ui: current_ui_state(),
         }
     };
     // Write to a temporary file first to avoid truncation on crash/interruption
@@ -234,6 +268,7 @@ fn parse_saved_scenario_bytes(bytes: &[u8]) -> std::io::Result<SavedScenario> {
             history: Vec::new(),
             history_cursor: 0,
             history_capacity: default_history_capacity(),
+            ui: SavedUiState::default(),
         });
     }
     // Try binary (bincode) SavedScenario
@@ -247,12 +282,39 @@ fn parse_saved_scenario_bytes(bytes: &[u8]) -> std::io::Result<SavedScenario> {
             history: Vec::new(),
             history_cursor: 0,
             history_capacity: default_history_capacity(),
+            ui: SavedUiState::default(),
         });
     }
     Err(std::io::Error::new(
         std::io::ErrorKind::Other,
         "failed to parse saved scenario: not valid JSON or binary format",
     ))
+}
+
+fn current_ui_state() -> SavedUiState {
+    use crate::renderer::state as rstate;
+    let mode = rstate::PERSIST_UI_CHARGING_MODE
+        .lock()
+        .clone()
+        .unwrap_or_else(|| "Conventional".to_string());
+    let is_over = rstate::PERSIST_UI_CONV_IS_OVER
+        .lock()
+        .clone()
+        .unwrap_or(false);
+    let current = rstate::PERSIST_UI_CONV_CURRENT
+        .lock()
+        .clone()
+        .unwrap_or(default_conv_current());
+    let target = rstate::PERSIST_UI_CONV_TARGET
+        .lock()
+        .clone()
+        .unwrap_or(default_conv_target());
+    SavedUiState {
+        charging_mode: mode,
+        conventional_is_overpotential: is_over,
+        conventional_current_setpoint: current,
+        conventional_target_ratio: target,
+    }
 }
 
 fn maybe_decompress_gzip(data: &[u8]) -> std::io::Result<Option<Vec<u8>>> {

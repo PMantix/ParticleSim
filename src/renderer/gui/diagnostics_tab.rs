@@ -81,45 +81,7 @@ impl super::super::Renderer {
 
         ui.separator();
 
-        // Solvation diagnostic
-        ui.group(|ui| {
-            ui.label("🧪 Solvation State");
-            if let Some(diag) = &self.solvation_diagnostic {
-                ui.horizontal(|ui| {
-                    ui.label("Temperature:");
-                    ui.label(format!("{:.3}", diag.temperature));
-                });
-                ui.horizontal(|ui| {
-                    ui.label("Avg Li coordination:");
-                    ui.label(format!("{:.2}", diag.avg_li_coordination));
-                });
-                ui.horizontal(|ui| {
-                    ui.label("Avg anion coordination:");
-                    ui.label(format!("{:.2}", diag.avg_anion_coordination));
-                });
-                ui.separator();
-                ui.label("Solvation distribution:");
-                ui.label(format!(
-                    "CIP: {:.3}\nSIP: {:.3}\nS2IP: {:.3}\nFD: {:.3}",
-                    diag.cip_fraction, diag.sip_fraction, diag.s2ip_fraction, diag.fd_fraction
-                ));
-                
-                ui.separator();
-                ui.label("🔍 Visual Overlays:");
-                ui.horizontal(|ui| {
-                    ui.checkbox(&mut self.show_cip_ions, "Show CIP");
-                    ui.checkbox(&mut self.show_sip_ions, "Show SIP");
-                });
-                ui.horizontal(|ui| {
-                    ui.checkbox(&mut self.show_s2ip_ions, "Show S2IP");
-                    ui.checkbox(&mut self.show_fd_ions, "Show FD");
-                });
-            } else {
-                ui.label("❌ No diagnostic data available.");
-            }
-        });
-
-        ui.separator();
+        // Solvation State UI moved to Measurement tab
 
         // Additional diagnostic information
         ui.group(|ui| {

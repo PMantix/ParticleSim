@@ -376,6 +376,37 @@ pub fn handle_command(cmd: SimCommand, simulation: &mut Simulation) {
             simulation.group_b.clear();
             mark_dirty(simulation);
         }
+        SimCommand::ConventionalSetCurrent { current } => {
+            // Apply to ALL foils in groups: A gets +current, B gets -current
+            for id in simulation.group_a.iter().copied() {
+                if let Some(f) = simulation.foils.iter_mut().find(|f| f.id == id) {
+                    f.charging_mode = crate::body::foil::ChargingMode::Current;
+                    f.dc_current = current;
+                }
+            }
+            for id in simulation.group_b.iter().copied() {
+                if let Some(f) = simulation.foils.iter_mut().find(|f| f.id == id) {
+                    f.charging_mode = crate::body::foil::ChargingMode::Current;
+                    f.dc_current = -current;
+                }
+            }
+            mark_dirty(simulation);
+        }
+        SimCommand::ConventionalSetOverpotential { target_ratio } => {
+            // Apply to ALL foils in groups: A gets target_ratio, B gets (2 - target)
+            for id in simulation.group_a.iter().copied() {
+                if let Some(f) = simulation.foils.iter_mut().find(|f| f.id == id) {
+                    f.enable_overpotential_mode(target_ratio);
+                }
+            }
+            let b_target = 2.0 - target_ratio;
+            for id in simulation.group_b.iter().copied() {
+                if let Some(f) = simulation.foils.iter_mut().find(|f| f.id == id) {
+                    f.enable_overpotential_mode(b_target);
+                }
+            }
+            mark_dirty(simulation);
+        }
         SimCommand::LinkFoils { a, b, mode } => {
             let a_idx = simulation.foils.iter().position(|f| f.id == a);
             let b_idx = simulation.foils.iter().position(|f| f.id == b);

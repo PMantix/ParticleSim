@@ -2,7 +2,6 @@
 // Calculates coordination numbers and solvation state distribution
 
 use crate::body::{Body, Species};
-use crate::simulation::compute_temperature;
 use crate::quadtree::Quadtree;
 use crate::profile_scope;
 
@@ -15,9 +14,6 @@ fn distance_3d(body1: &Body, body2: &Body) -> f32 {
 }
 
 pub struct SolvationDiagnostic {
-    pub temperature: f32,
-    pub avg_li_coordination: f32,
-    pub avg_anion_coordination: f32,
     pub cip_fraction: f32,
     pub sip_fraction: f32,
     pub s2ip_fraction: f32,
@@ -38,9 +34,6 @@ pub struct SolvationDiagnostic {
 impl SolvationDiagnostic {
     pub fn new() -> Self {
         Self {
-            temperature: 0.0,
-            avg_li_coordination: 0.0,
-            avg_anion_coordination: 0.0,
             cip_fraction: 0.0,
             sip_fraction: 0.0,
             s2ip_fraction: 0.0,
@@ -65,10 +58,7 @@ impl SolvationDiagnostic {
         const ANION_SHELL_FACTOR: f32 = 2.5;  // Smaller shell for larger anions
         const CONTACT_BUFFER: f32 = 0.1;
 
-        let mut li_coord_total = 0usize;
-        let mut an_coord_total = 0usize;
-        let mut li_count = 0usize;
-        let mut anion_count = 0usize;
+    // Coordination counts removed for performance (no longer reported)
 
         // Clear previous ion ID lists
         self.cip_ion_ids.clear();
@@ -93,7 +83,6 @@ impl SolvationDiagnostic {
                         continue;
                     }
                     
-                    li_count += 1;
                     let li_shell = body.radius * CATION_SHELL_FACTOR;
                     
                     // Use quadtree to find nearby particles instead of linear search
@@ -110,7 +99,6 @@ impl SolvationDiagnostic {
                         .collect();
                     
                     let li_solvents = li_solvent_ids.len();
-                    li_coord_total += li_solvents;
 
                     // Find nearest anion using quadtree - search in expanding radius
                     let max_search_radius = body.radius + bodies.iter()
@@ -143,7 +131,6 @@ impl SolvationDiagnostic {
                                 .collect();
                             
                             let an_solvents = an_solvent_ids.len();
-                            an_coord_total += an_solvents;
 
                             let contact_cutoff = body.radius + bodies[j].radius + CONTACT_BUFFER;
                             if dist < contact_cutoff {
@@ -164,23 +151,12 @@ impl SolvationDiagnostic {
                     }
                 }
                 Species::ElectrolyteAnion => {
-                    anion_count += 1;
-                    let an_shell = body.radius * ANION_SHELL_FACTOR;
-                    
-                    // Use quadtree for anion coordination number calculation
-                    let nearby_indices = quadtree.find_neighbors_within(bodies, i, an_shell);
-                    let solvents = nearby_indices.iter()
-                        .filter(|&&idx| matches!(bodies[idx].species, Species::EC | Species::DMC))
-                        .count();
-                    an_coord_total += solvents;
+                    let _an_shell = body.radius * ANION_SHELL_FACTOR;
+                    // Skipping anion coordination calculation (not used)
                 }
                 Species::LithiumMetal | Species::FoilMetal | Species::EC | Species::DMC => {}
             }
         }
-
-        self.temperature = compute_temperature(bodies);
-        self.avg_li_coordination = if li_count > 0 { li_coord_total as f32 / li_count as f32 } else { 0.0 };
-        self.avg_anion_coordination = if anion_count > 0 { an_coord_total as f32 / anion_count as f32 } else { 0.0 };
 
         let total_ions = self.cip_ion_ids.len() + self.sip_ion_ids.len() + self.s2ip_ion_ids.len() + self.fd_ion_ids.len();
         if total_ions > 0 {

@@ -1443,6 +1443,8 @@ impl From<&LightSnapshot> for SimulationState {
             domain_height: light.domain_height,
             domain_depth: light.domain_depth,
             switch_step: None,
+            group_a: Vec::new(),
+            group_b: Vec::new(),
         }
     }
 }

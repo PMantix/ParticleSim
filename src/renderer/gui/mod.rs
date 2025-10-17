@@ -1,18 +1,17 @@
 use super::state::*;
-use crate::body::foil::LinkMode;
 use crate::body::Electron;
 use crate::body::Species;
 use crate::config::IsolineFieldMode;
 use crate::profile_scope;
 use crate::renderer::Body;
-use crate::switch_charging;
+//use crate::switch_charging; // legacy UI is now embedded in Charging tab
 use quarkstrom::egui::{self, Vec2 as EVec2};
 use ultraviolet::Vec2;
 
 pub mod analysis_tab;
 pub mod debug_tab;
 pub mod diagnostics_tab;
-pub mod foils_tab;
+pub mod charging_tab;
 pub mod measurement_tab;
 pub mod physics_tab;
 pub mod pid_controller;
@@ -27,6 +26,8 @@ pub use scenario_tab::make_body_with_species;
 impl super::Renderer {
     pub fn show_gui(&mut self, ctx: &quarkstrom::egui::Context) {
         profile_scope!("gui_update");
+        // Apply any persisted UI updates (e.g., after loading a scenario)
+        self.sync_persisted_ui();
         if self.show_splash {
             self.show_splash_screen(ctx);
             return;
@@ -84,9 +85,10 @@ impl super::Renderer {
                         );
                         ui.selectable_value(
                             &mut self.current_tab,
-                            super::GuiTab::Foils,
-                            "🔋 Foils",
+                            super::GuiTab::Charging,
+                            "⚡ Charging",
                         );
+                        // Foils tab removed (merged into Charging workflows)
                         ui.selectable_value(
                             &mut self.current_tab,
                             super::GuiTab::Analysis,
@@ -110,11 +112,7 @@ impl super::Renderer {
                             super::GuiTab::Measurement,
                             "📏 Measurement",
                         );
-                        ui.selectable_value(
-                            &mut self.current_tab,
-                            super::GuiTab::SwitchCharging,
-                            "🔁 Switch Charging",
-                        );
+                        // Switch Charging tab removed (embedded under Charging)
                         ui.selectable_value(
                             &mut self.current_tab,
                             super::GuiTab::SoftDynamics,
@@ -145,10 +143,8 @@ impl super::Renderer {
                         super::GuiTab::Species => self.show_species_tab(ui),
                         super::GuiTab::Physics => self.show_physics_tab(ui),
                         super::GuiTab::Scenario => self.show_scenario_tab(ui),
-                        super::GuiTab::Foils => self.show_foils_tab(ui),
-                        super::GuiTab::SwitchCharging => {
-                            switch_charging::ui_switch_charging(ui, &mut self.switch_ui_state)
-                        }
+                        super::GuiTab::Charging => self.show_charging_tab(ui),
+                        // Removed tabs routed here previously are no longer used
                         super::GuiTab::Measurement => self.show_measurement_tab(ui),
                         super::GuiTab::Analysis => self.show_analysis_tab(ui),
                         super::GuiTab::Debug => self.show_debug_tab(ui),
@@ -337,6 +333,41 @@ impl super::Renderer {
             if status.is_playing {
                 ui.separator();
                 ui.label(format!("Speed: {:.1}×", status.speed));
+            }
+        });
+
+        // Charging mode indicator row
+        ui.horizontal(|ui| {
+            ui.label("Charging:");
+            // If in playback, prefer historical context
+            match status.mode {
+                PlaybackModeStatus::HistoryPaused | PlaybackModeStatus::HistoryPlaying => {
+                    let step_opt = *crate::renderer::state::SWITCH_STEP.lock();
+                    if let Some(s) = step_opt {
+                        ui.colored_label(egui::Color32::LIGHT_BLUE, format!("Switch Charging (History) • Step {}", s + 1));
+                    } else {
+                        ui.colored_label(egui::Color32::LIGHT_BLUE, "Conventional (History)");
+                    }
+                }
+                PlaybackModeStatus::Live => {
+                    match self.charging_ui_mode {
+                        super::ChargingUiMode::Conventional | super::ChargingUiMode::Advanced => {
+                            let label = if matches!(self.charging_ui_mode, super::ChargingUiMode::Advanced) { "Advanced" } else { "Conventional" };
+                            ui.colored_label(egui::Color32::LIGHT_GREEN, label);
+                            let mode_str = if self.conventional_is_overpotential { "Overpotential" } else { "Current" };
+                            ui.separator();
+                            ui.small(format!("Group control: {}", mode_str));
+                        }
+                        super::ChargingUiMode::SwitchCharging => {
+                            let (label, color) = match self.switch_ui_state.run_state {
+                                crate::switch_charging::RunState::Idle => ("Switch Charging (Idle)", egui::Color32::LIGHT_GRAY),
+                                crate::switch_charging::RunState::Running => ("Switch Charging (Running)", egui::Color32::LIGHT_GREEN),
+                                crate::switch_charging::RunState::Paused => ("Switch Charging (Paused)", egui::Color32::YELLOW),
+                            };
+                            ui.colored_label(color, label);
+                        }
+                    }
+                }
             }
         });
     }

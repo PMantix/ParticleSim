@@ -91,9 +91,21 @@ impl Default for PlaybackStatus {
 pub static PLAYBACK_STATUS: Lazy<Mutex<PlaybackStatus>> =
     Lazy::new(|| Mutex::new(PlaybackStatus::default()));
 
+// Persisted UI controls (optional) so saves/loads can restore GUI selections
+pub static PERSIST_UI_CHARGING_MODE: Lazy<Mutex<Option<String>>> =
+    Lazy::new(|| Mutex::new(None)); // "Conventional" | "SwitchCharging"
+pub static PERSIST_UI_CONV_IS_OVER: Lazy<Mutex<Option<bool>>> =
+    Lazy::new(|| Mutex::new(None));
+pub static PERSIST_UI_CONV_CURRENT: Lazy<Mutex<Option<f32>>> =
+    Lazy::new(|| Mutex::new(None));
+pub static PERSIST_UI_CONV_TARGET: Lazy<Mutex<Option<f32>>> =
+    Lazy::new(|| Mutex::new(None));
+// When true, Renderer should sync persisted UI values once (typically after load)
+pub static PERSIST_UI_DIRTY: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(false));
+
 // PID Graph state
 pub static SHOW_PID_GRAPH: Lazy<AtomicBool> = Lazy::new(|| AtomicBool::new(false));
-pub static PID_GRAPH_HISTORY_SIZE: Lazy<Mutex<usize>> = Lazy::new(|| Mutex::new(1000));
+//pub static PID_GRAPH_HISTORY_SIZE: Lazy<Mutex<usize>> = Lazy::new(|| Mutex::new(1000));
 
 //Simulation commands
 // These are used to send commands to the simulation thread from the GUI thread
@@ -199,6 +211,13 @@ pub enum SimCommand {
         group_b: Vec<u64>,
     },
     ClearFoilGroups,
+    // Conventional grouped controls
+    ConventionalSetCurrent {
+        current: f32,
+    },
+    ConventionalSetOverpotential {
+        target_ratio: f32,
+    },
     SaveState {
         path: String,
     },

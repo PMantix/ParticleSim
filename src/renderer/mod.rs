@@ -90,8 +90,7 @@ pub enum GuiTab {
     Species,
     Physics,
     Scenario,
-    Foils,
-    SwitchCharging,
+    Charging,
     Measurement,
     Analysis,
     Debug,
@@ -102,6 +101,19 @@ pub enum GuiTab {
 impl Default for GuiTab {
     fn default() -> Self {
         GuiTab::Simulation
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ChargingUiMode {
+    Conventional,
+    SwitchCharging,
+    Advanced,
+}
+
+impl Default for ChargingUiMode {
+    fn default() -> Self {
+        ChargingUiMode::Conventional
     }
 }
 
@@ -177,6 +189,8 @@ pub struct Renderer {
     pub selected_delete_option: DeleteOption,
     // Current GUI tab
     pub current_tab: GuiTab,
+    // Unified charging UI mode selection
+    pub charging_ui_mode: ChargingUiMode,
     pub transference_number_diagnostic: Option<TransferenceNumberDiagnostic>,
     pub foil_electron_fraction_diagnostic: Option<FoilElectronFractionDiagnostic>,
     pub solvation_diagnostic: Option<crate::diagnostics::SolvationDiagnostic>,
@@ -186,6 +200,13 @@ pub struct Renderer {
     pub show_sip_ions: bool,
     pub show_s2ip_ions: bool,
     pub show_fd_ions: bool,
+
+    // Solvation CSV logging controls
+    pub solvation_csv_enabled: bool,
+    pub solvation_csv_interval_fs: f32,
+    pub solvation_csv_filename: String,
+    pub solvation_csv_last_write_fs: f32,
+    pub solvation_csv_wrote_header: bool,
 
     // 2D Domain Density Calculation - Species Selection
     pub density_calc_lithium_ion: bool,
@@ -223,14 +244,13 @@ pub struct Renderer {
     // Mouse interaction
     last_mouse_pos: Option<EVec2>,
     mouse_velocity: EVec2,
-    // Foil group linking selections
-    group_a_selected: Vec<u64>,
-    group_b_selected: Vec<u64>,
+    // Conventional grouped control UI state
+    pub conventional_is_overpotential: bool,
+    pub conventional_current_setpoint: f32,
+    pub conventional_target_ratio: f32,
     // Dipole visualization
     pub show_dipoles: bool,
     pub dipole_scale: f32,
-    // Foils tab UI
-    pub foils_advanced_controls: bool,
     // Manual measurement system
     pub manual_measurement_recorder: Option<ManualMeasurementRecorder>,
     pub manual_measurement_last_results: Vec<MeasurementResult>,
@@ -275,6 +295,29 @@ impl quarkstrom::Renderer for Renderer {
             chars
         };
         let splash_particles = Vec::new(); // Initialize empty, will be created on first update
+        // Pull any persisted UI defaults if present
+        let persisted_mode = crate::renderer::state::PERSIST_UI_CHARGING_MODE
+            .lock()
+            .clone()
+            .unwrap_or_else(|| "Conventional".to_string());
+        let init_mode = match persisted_mode.as_str() {
+            "SwitchCharging" => ChargingUiMode::SwitchCharging,
+            "Advanced" => ChargingUiMode::Advanced,
+            _ => ChargingUiMode::Conventional,
+        };
+        let init_conv_is_over = crate::renderer::state::PERSIST_UI_CONV_IS_OVER
+            .lock()
+            .clone()
+            .unwrap_or(false);
+        let init_conv_current = crate::renderer::state::PERSIST_UI_CONV_CURRENT
+            .lock()
+            .clone()
+            .unwrap_or(0.05);
+        let init_conv_target = crate::renderer::state::PERSIST_UI_CONV_TARGET
+            .lock()
+            .clone()
+            .unwrap_or(1.2);
+
         Self {
             pos: Vec2::zero(),
             scale: 500.0,
@@ -339,6 +382,7 @@ impl quarkstrom::Renderer for Renderer {
             selected_lj_species: Species::LithiumMetal, // Default to LithiumMetal for LJ editing
             selected_delete_option: DeleteOption::AllSpecies, // Default to All Species
             current_tab: GuiTab::default(),             // Default to Simulation tab
+            charging_ui_mode: init_mode,
             transference_number_diagnostic: Some(TransferenceNumberDiagnostic::new()),
             foil_electron_fraction_diagnostic: Some(FoilElectronFractionDiagnostic::new()),
             solvation_diagnostic: Some(crate::diagnostics::SolvationDiagnostic::new()),
@@ -348,6 +392,13 @@ impl quarkstrom::Renderer for Renderer {
             show_sip_ions: false,
             show_s2ip_ions: false,
             show_fd_ions: false,
+
+            // Solvation CSV logging defaults
+            solvation_csv_enabled: false,
+            solvation_csv_interval_fs: 1000.0,
+            solvation_csv_filename: "solvation_state.csv".to_string(),
+            solvation_csv_last_write_fs: -1_000_000.0,
+            solvation_csv_wrote_header: false,
 
             // 2D Domain Density Calculation - Species Selection (default to Li+ only)
             density_calc_lithium_ion: true,
@@ -382,11 +433,11 @@ impl quarkstrom::Renderer for Renderer {
             char_size,
             last_mouse_pos: None,
             mouse_velocity: EVec2::new(0.0, 0.0),
-            group_a_selected: Vec::new(),
-            group_b_selected: Vec::new(),
+            conventional_is_overpotential: init_conv_is_over,
+            conventional_current_setpoint: init_conv_current,
+            conventional_target_ratio: init_conv_target,
             show_dipoles: false,
             dipole_scale: 20.0,
-            foils_advanced_controls: false,
             manual_measurement_recorder: None,
             manual_measurement_last_results: Vec::new(),
             manual_measurement_ui_config: ManualMeasurementConfig::default(),
@@ -426,6 +477,44 @@ impl quarkstrom::Renderer for Renderer {
 }
 
 impl Renderer {
+    /// Sync persisted UI values (set by load_state) into the live Renderer fields
+    pub fn sync_persisted_ui(&mut self) {
+        if !*crate::renderer::state::PERSIST_UI_DIRTY.lock() { return; }
+        *crate::renderer::state::PERSIST_UI_DIRTY.lock() = false;
+        // Charging mode
+        if let Some(mode) = crate::renderer::state::PERSIST_UI_CHARGING_MODE.lock().clone() {
+            let desired = match mode.as_str() {
+                "SwitchCharging" => ChargingUiMode::SwitchCharging,
+                _ => ChargingUiMode::Conventional,
+            };
+            if self.charging_ui_mode != desired {
+                // Apply guardrails consistent with the UI when changing modes
+                match desired {
+                    ChargingUiMode::Conventional | ChargingUiMode::Advanced => {
+                        if self.switch_ui_state.run_state != crate::switch_charging::RunState::Idle {
+                            self.switch_ui_state.stop();
+                        }
+                    }
+                    ChargingUiMode::SwitchCharging => {
+                        if let Some(tx) = SIM_COMMAND_SENDER.lock().as_ref() {
+                            let _ = tx.send(SimCommand::ClearFoilGroups);
+                        }
+                    }
+                }
+                self.charging_ui_mode = desired;
+            }
+        }
+        // Conventional controls
+        if let Some(is_over) = *crate::renderer::state::PERSIST_UI_CONV_IS_OVER.lock() {
+            self.conventional_is_overpotential = is_over;
+        }
+        if let Some(curr) = *crate::renderer::state::PERSIST_UI_CONV_CURRENT.lock() {
+            self.conventional_current_setpoint = curr;
+        }
+        if let Some(tgt) = *crate::renderer::state::PERSIST_UI_CONV_TARGET.lock() {
+            self.conventional_target_ratio = tgt;
+        }
+    }
     fn available_scenarios() -> Vec<String> {
         let mut list = vec!["Default".to_string()];
         if let Ok(entries) = fs::read_dir("saved_state") {
