@@ -1053,6 +1053,8 @@ impl Simulation {
             domain_height: self.domain_height,
             domain_depth: self.domain_depth,
             switch_step: Some(self.switch_scheduler.current_step()),
+            group_a: self.group_a.iter().copied().collect(),
+            group_b: self.group_b.iter().copied().collect(),
         };
         
         // Add to ring buffer with capacity limit

@@ -248,6 +248,10 @@ pub struct Renderer {
     // Foil group linking selections
     group_a_selected: Vec<u64>,
     group_b_selected: Vec<u64>,
+    // Conventional grouped control UI state
+    pub conventional_is_overpotential: bool,
+    pub conventional_current_setpoint: f32,
+    pub conventional_target_ratio: f32,
     // Dipole visualization
     pub show_dipoles: bool,
     pub dipole_scale: f32,
@@ -297,6 +301,28 @@ impl quarkstrom::Renderer for Renderer {
             chars
         };
         let splash_particles = Vec::new(); // Initialize empty, will be created on first update
+        // Pull any persisted UI defaults if present
+        let persisted_mode = crate::renderer::state::PERSIST_UI_CHARGING_MODE
+            .lock()
+            .clone()
+            .unwrap_or_else(|| "Conventional".to_string());
+        let init_mode = match persisted_mode.as_str() {
+            "SwitchCharging" => ChargingUiMode::SwitchCharging,
+            _ => ChargingUiMode::Conventional,
+        };
+        let init_conv_is_over = crate::renderer::state::PERSIST_UI_CONV_IS_OVER
+            .lock()
+            .clone()
+            .unwrap_or(false);
+        let init_conv_current = crate::renderer::state::PERSIST_UI_CONV_CURRENT
+            .lock()
+            .clone()
+            .unwrap_or(0.05);
+        let init_conv_target = crate::renderer::state::PERSIST_UI_CONV_TARGET
+            .lock()
+            .clone()
+            .unwrap_or(1.2);
+
         Self {
             pos: Vec2::zero(),
             scale: 500.0,
@@ -361,7 +387,7 @@ impl quarkstrom::Renderer for Renderer {
             selected_lj_species: Species::LithiumMetal, // Default to LithiumMetal for LJ editing
             selected_delete_option: DeleteOption::AllSpecies, // Default to All Species
             current_tab: GuiTab::default(),             // Default to Simulation tab
-            charging_ui_mode: ChargingUiMode::Conventional,
+            charging_ui_mode: init_mode,
             transference_number_diagnostic: Some(TransferenceNumberDiagnostic::new()),
             foil_electron_fraction_diagnostic: Some(FoilElectronFractionDiagnostic::new()),
             solvation_diagnostic: Some(crate::diagnostics::SolvationDiagnostic::new()),
@@ -414,6 +440,9 @@ impl quarkstrom::Renderer for Renderer {
             mouse_velocity: EVec2::new(0.0, 0.0),
             group_a_selected: Vec::new(),
             group_b_selected: Vec::new(),
+            conventional_is_overpotential: init_conv_is_over,
+            conventional_current_setpoint: init_conv_current,
+            conventional_target_ratio: init_conv_target,
             show_dipoles: false,
             dipole_scale: 20.0,
             foils_advanced_controls: false,

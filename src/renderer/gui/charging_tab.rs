@@ -13,8 +13,26 @@ impl super::super::Renderer {
             ui.radio_value(&mut mode, super::super::ChargingUiMode::Conventional, "Conventional");
             ui.radio_value(&mut mode, super::super::ChargingUiMode::SwitchCharging, "Switch Charging");
             if mode != self.charging_ui_mode {
-                // For now, just set it. Guardrails/transitions will come in later steps.
+                match mode {
+                    super::super::ChargingUiMode::Conventional => {
+                        // Stop switch charging if it is not idle
+                        if self.switch_ui_state.run_state != crate::switch_charging::RunState::Idle {
+                            self.switch_ui_state.stop();
+                        }
+                    }
+                    super::super::ChargingUiMode::SwitchCharging => {
+                        // Clear conventional groups to avoid conflicts
+                        if let Some(tx) = crate::renderer::state::SIM_COMMAND_SENDER.lock().as_ref() {
+                            let _ = tx.send(crate::renderer::state::SimCommand::ClearFoilGroups);
+                        }
+                    }
+                }
                 self.charging_ui_mode = mode;
+                // Persist selection for save
+                *crate::renderer::state::PERSIST_UI_CHARGING_MODE.lock() = Some(match self.charging_ui_mode {
+                    super::super::ChargingUiMode::Conventional => "Conventional".to_string(),
+                    super::super::ChargingUiMode::SwitchCharging => "SwitchCharging".to_string(),
+                });
             }
         });
 
@@ -50,7 +68,47 @@ impl super::super::Renderer {
                 });
 
                 ui.add_space(8.0);
-                ui.label("Group controls (coming next): unified setpoint/target with mirroring.");
+                ui.group(|ui| {
+                    ui.label("Grouped controls:");
+                    let mut mode_over = self.conventional_is_overpotential;
+                    ui.horizontal(|ui| {
+                        ui.label("Control mode:");
+                        ui.radio_value(&mut mode_over, false, "Current");
+                        ui.radio_value(&mut mode_over, true, "Overpotential");
+                    });
+                    self.conventional_is_overpotential = mode_over;
+                    *crate::renderer::state::PERSIST_UI_CONV_IS_OVER.lock() = Some(mode_over);
+
+                    if mode_over {
+                        let mut target = self.conventional_target_ratio;
+                        ui.horizontal(|ui| {
+                            ui.label("Target ratio (A side):");
+                            ui.add(egui::DragValue::new(&mut target).speed(0.01).clamp_range(0.0..=2.0));
+                            if ui.button("Apply to groups").clicked() {
+                                if let Some(tx) = crate::renderer::state::SIM_COMMAND_SENDER.lock().as_ref() {
+                                    let _ = tx.send(crate::renderer::state::SimCommand::ConventionalSetOverpotential { target_ratio: target });
+                                }
+                            }
+                        });
+                        self.conventional_target_ratio = target;
+                        *crate::renderer::state::PERSIST_UI_CONV_TARGET.lock() = Some(target);
+                        ui.small("Group B receives complementary target (2 - target)");
+                    } else {
+                        let mut current = self.conventional_current_setpoint;
+                        ui.horizontal(|ui| {
+                            ui.label("DC current (A side):");
+                            ui.add(egui::DragValue::new(&mut current).speed(0.001).clamp_range(-10_000.0..=10_000.0));
+                            if ui.button("Apply to groups").clicked() {
+                                if let Some(tx) = crate::renderer::state::SIM_COMMAND_SENDER.lock().as_ref() {
+                                    let _ = tx.send(crate::renderer::state::SimCommand::ConventionalSetCurrent { current });
+                                }
+                            }
+                        });
+                        self.conventional_current_setpoint = current;
+                        *crate::renderer::state::PERSIST_UI_CONV_CURRENT.lock() = Some(current);
+                        ui.small("Group B receives opposite current (-current)");
+                    }
+                });
             }
             super::super::ChargingUiMode::SwitchCharging => {
                 ui.label("Switch Charging mode uses step-based role assignments (Anode/ Cathode A/B) and run control.");

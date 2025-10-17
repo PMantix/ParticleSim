@@ -268,7 +268,17 @@ impl Simulation {
             history,
             history_cursor,
             history_capacity,
+            ui,
         } = saved;
+
+        // Apply persisted UI selections to global statics so the GUI restores controls
+        {
+            use crate::renderer::state as rstate;
+            *rstate::PERSIST_UI_CHARGING_MODE.lock() = Some(ui.charging_mode.clone());
+            *rstate::PERSIST_UI_CONV_IS_OVER.lock() = Some(ui.conventional_is_overpotential);
+            *rstate::PERSIST_UI_CONV_CURRENT.lock() = Some(ui.conventional_current_setpoint);
+            *rstate::PERSIST_UI_CONV_TARGET.lock() = Some(ui.conventional_target_ratio);
+        }
 
         let snapshot = SimulationSnapshot::from_state(current);
         snapshot.apply(self);
