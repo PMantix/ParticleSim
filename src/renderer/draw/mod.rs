@@ -75,10 +75,20 @@ impl super::Renderer {
                             // Ensure directory exists
                             let _ = std::fs::create_dir_all("doe_results");
                             let path = if self.solvation_csv_filename.contains('/') || self.solvation_csv_filename.contains('\\') {
-                                // If user provided a path, write as-is
                                 self.solvation_csv_filename.clone()
                             } else {
-                                format!("doe_results/{}", self.solvation_csv_filename)
+                                // Build a consistent Time-based filename if none is set
+                                let switch_running = self.switch_ui_state.run_state == crate::switch_charging::RunState::Running;
+                                let auto_measure_name = crate::manual_measurement_filename::build_measurement_filename(
+                                    switch_running,
+                                    &self.switch_ui_state.config,
+                                );
+                                let time_auto = if let Some(stripped) = auto_measure_name.strip_prefix("Measurement_") {
+                                    format!("Time-based_{}", stripped)
+                                } else {
+                                    format!("Time-based_{}", auto_measure_name)
+                                };
+                                format!("doe_results/{}", if self.solvation_csv_filename.is_empty() { time_auto } else { self.solvation_csv_filename.clone() })
                             };
                             // Ensure header exists (prepend if file exists without header on first write)
                             use std::io::{Write, BufRead, BufReader};
@@ -97,7 +107,7 @@ impl super::Renderer {
                                                 // Prepend header by rewriting file
                                                 if let Ok(contents) = std::fs::read_to_string(&path) {
                                                     if let Ok(mut out) = std::fs::OpenOptions::new().write(true).truncate(true).open(&path) {
-                                                        let _ = writeln!(out, "time_fs,CIP,SIP,S2IP,FD");
+                                                        let _ = writeln!(out, "time_fs,mode,setpoint_or_current,CIP,SIP,S2IP,FD");
                                                         let _ = write!(out, "{}", contents);
                                                         let _ = out.flush();
                                                         self.solvation_csv_wrote_header = true;
@@ -115,17 +125,70 @@ impl super::Renderer {
                                 }
                             }
 
-                            // Open in append mode and write header if needed, then data row
+                            // Open in append mode and write header if needed, then data row (include charging info)
                             match std::fs::OpenOptions::new().create(true).append(true).open(&path) {
                                 Ok(mut file) => {
                                     if need_header {
-                                        let _ = writeln!(file, "time_fs,CIP,SIP,S2IP,FD");
+                                        let _ = writeln!(file, "time_fs,mode,setpoint_or_current,CIP,SIP,S2IP,FD");
                                         self.solvation_csv_wrote_header = true;
                                     }
+                                    // Determine charging mode and setpoint/current for consistency
+                                    let (mode_str, set_value) = match self.charging_ui_mode {
+                                        super::ChargingUiMode::Conventional | super::ChargingUiMode::Advanced => {
+                                            if self.conventional_is_overpotential {
+                                                ("OP", self.conventional_target_ratio as f64)
+                                            } else {
+                                                ("CC", self.conventional_current_setpoint as f64)
+                                            }
+                                        }
+                                        super::ChargingUiMode::SwitchCharging => {
+                                            // Derive the active setpoint based on config and current step
+                                            use crate::switch_charging::{Mode, StepSetpoint};
+                                            let cfg = &self.switch_ui_state.config;
+                                            // Prefer global active/inactive setpoints when enabled
+                                            let chosen: StepSetpoint = if cfg.use_active_inactive_setpoints {
+                                                if cfg.use_global_active_inactive {
+                                                    cfg.global_active.clone()
+                                                } else {
+                                                    let step_opt = *crate::renderer::state::SWITCH_STEP.lock();
+                                                    if let Some(step) = step_opt {
+                                                        if let Some(sai) = cfg.step_active_inactive.get(&step) {
+                                                            sai.active.clone()
+                                                        } else if let Some(sai0) = cfg.step_active_inactive.get(&0) {
+                                                            sai0.active.clone()
+                                                        } else {
+                                                            cfg.global_active.clone()
+                                                        }
+                                                    } else {
+                                                        // If no current step known, fall back to step 0 or global
+                                                        if let Some(sai0) = cfg.step_active_inactive.get(&0) {
+                                                            sai0.active.clone()
+                                                        } else {
+                                                            cfg.global_active.clone()
+                                                        }
+                                                    }
+                                                }
+                                            } else {
+                                                // Legacy per-step setpoints
+                                                let step_opt = *crate::renderer::state::SWITCH_STEP.lock();
+                                                if let Some(step) = step_opt {
+                                                    cfg.step_setpoints.get(&step).cloned()
+                                                        .or_else(|| cfg.step_setpoints.get(&0).cloned())
+                                                        .unwrap_or_default()
+                                                } else {
+                                                    cfg.step_setpoints.get(&0).cloned().unwrap_or_default()
+                                                }
+                                            };
+                                            let mode_str = match chosen.mode { Mode::Current => "CC", Mode::Overpotential => "OP" };
+                                            (mode_str, chosen.value)
+                                        }
+                                    };
                                     let _ = writeln!(
                                         file,
-                                        "{:.6},{:.6},{:.6},{:.6},{:.6}",
+                                        "{:.6},{},{:.6},{:.6},{:.6},{:.6},{:.6}",
                                         current_time,
+                                        mode_str,
+                                        set_value,
                                         diag.cip_fraction,
                                         diag.sip_fraction,
                                         diag.s2ip_fraction,

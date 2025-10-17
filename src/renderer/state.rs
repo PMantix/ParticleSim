@@ -270,3 +270,22 @@ pub static SIM_COMMAND_SENDER: Lazy<Mutex<Option<Sender<SimCommand>>>> =
 // Manual measurement recorder shared state - stores latest measurements
 pub static MANUAL_MEASUREMENT_RESULTS: Lazy<Mutex<Vec<MeasurementResult>>> =
     Lazy::new(|| Mutex::new(Vec::new()));
+
+// Foil metrics logging global controls (GUI -> Simulation bridge)
+pub static FOIL_METRICS_ENABLED: Lazy<AtomicBool> = Lazy::new(|| AtomicBool::new(true));
+pub static FOIL_METRICS_FILENAME_OVERRIDE: Lazy<Mutex<Option<String>>> =
+    Lazy::new(|| Mutex::new(None));
+pub static FOIL_METRICS_USE_SEPARATE_INTERVAL: Lazy<AtomicBool> =
+    Lazy::new(|| AtomicBool::new(false));
+pub static FOIL_METRICS_INTERVAL_FS: Lazy<Mutex<f32>> =
+    Lazy::new(|| Mutex::new(1000.0));
+
+// Foil metrics field selection
+pub static FOIL_METRICS_INCLUDE_SETPOINT: Lazy<std::sync::atomic::AtomicBool> =
+    Lazy::new(|| std::sync::atomic::AtomicBool::new(true));
+pub static FOIL_METRICS_INCLUDE_ACTUAL_RATIO: Lazy<std::sync::atomic::AtomicBool> =
+    Lazy::new(|| std::sync::atomic::AtomicBool::new(true));
+pub static FOIL_METRICS_INCLUDE_DELTA_ELECTRONS: Lazy<std::sync::atomic::AtomicBool> =
+    Lazy::new(|| std::sync::atomic::AtomicBool::new(true));
+pub static FOIL_METRICS_INCLUDE_LI_METAL: Lazy<std::sync::atomic::AtomicBool> =
+    Lazy::new(|| std::sync::atomic::AtomicBool::new(true));

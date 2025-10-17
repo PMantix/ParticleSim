@@ -95,6 +95,9 @@ pub struct Foil {
     pub overpotential_controller: Option<OverpotentialController>,
     /// Slave overpotential current for linked foils
     pub slave_overpotential_current: f32,
+    /// Signed count of electrons added (positive) or removed (negative) since last measurement
+    #[serde(skip)]
+    pub electron_delta_since_measure: i32,
 }
 
 impl Foil {
@@ -119,6 +122,7 @@ impl Foil {
             charging_mode: ChargingMode::Current, // Default to current control
             overpotential_controller: None,       // No overpotential controller by default
             slave_overpotential_current: 0.0,    // Initialize slave current to zero
+            electron_delta_since_measure: 0,
         }
     }
 

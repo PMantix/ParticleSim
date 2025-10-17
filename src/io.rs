@@ -99,10 +99,21 @@ pub struct SavedUiState {
     pub conventional_current_setpoint: f32,
     #[serde(default = "default_conv_target")]
     pub conventional_target_ratio: f32,
+    #[serde(default = "default_foil_metrics_enabled")]
+    pub foil_metrics_enabled: bool,
+    #[serde(default)]
+    pub foil_metrics_filename_override: Option<String>,
+    #[serde(default = "default_foil_metrics_use_separate_interval")]
+    pub foil_metrics_use_separate_interval: bool,
+    #[serde(default = "default_foil_metrics_interval_fs")]
+    pub foil_metrics_interval_fs: f32,
 }
 
 fn default_conv_current() -> f32 { 0.05 }
 fn default_conv_target() -> f32 { 1.2 }
+fn default_foil_metrics_enabled() -> bool { true }
+fn default_foil_metrics_use_separate_interval() -> bool { false }
+fn default_foil_metrics_interval_fs() -> f32 { 1000.0 }
 
 impl SimulationState {
     pub fn from_simulation(sim: &Simulation) -> Self {
@@ -309,11 +320,19 @@ fn current_ui_state() -> SavedUiState {
         .lock()
         .clone()
         .unwrap_or(default_conv_target());
+    let foil_enabled = rstate::FOIL_METRICS_ENABLED.load(std::sync::atomic::Ordering::Relaxed);
+    let foil_override = rstate::FOIL_METRICS_FILENAME_OVERRIDE.lock().clone();
+    let foil_sep = rstate::FOIL_METRICS_USE_SEPARATE_INTERVAL.load(std::sync::atomic::Ordering::Relaxed);
+    let foil_interval = *rstate::FOIL_METRICS_INTERVAL_FS.lock();
     SavedUiState {
         charging_mode: mode,
         conventional_is_overpotential: is_over,
         conventional_current_setpoint: current,
         conventional_target_ratio: target,
+        foil_metrics_enabled: foil_enabled,
+        foil_metrics_filename_override: foil_override,
+        foil_metrics_use_separate_interval: foil_sep,
+        foil_metrics_interval_fs: foil_interval,
     }
 }
 

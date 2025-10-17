@@ -24,6 +24,18 @@
 				"$rustc"
 			],
 			"group": "build"
+		},
+		{
+			"label": "cargo check (merge)",
+			"type": "shell",
+			"command": "cargo",
+			"args": [
+				"check"
+			],
+			"problemMatcher": [
+				"$rustc"
+			],
+			"group": "build"
 		}
 	]
 }

@@ -1420,6 +1420,7 @@ impl From<&LightFoil> for Foil {
             charging_mode: light.charging_mode.clone(),
             overpotential_controller,
             slave_overpotential_current: light.slave_overpotential_current,
+            electron_delta_since_measure: 0,
         }
     }
 }

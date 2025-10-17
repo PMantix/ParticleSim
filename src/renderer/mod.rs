@@ -252,19 +252,24 @@ pub struct Renderer {
     pub show_dipoles: bool,
     pub dipole_scale: f32,
     // Manual measurement system
-    pub manual_measurement_recorder: Option<ManualMeasurementRecorder>,
+    //pub manual_measurement_recorder: Option<ManualMeasurementRecorder>,
     pub manual_measurement_last_results: Vec<MeasurementResult>,
     pub manual_measurement_ui_config: ManualMeasurementConfig,
     pub manual_measurement_selected_point: usize,
     pub show_manual_measurements: bool,
+    pub points_csv_enabled: bool,
+    pub points_csv_armed: bool,
     // Manual measurement helper UI state
-    pub available_measurement_configs: Vec<String>,
-    pub selected_measurement_config: Option<String>,
+    //pub available_measurement_configs: Vec<String>,
+    //pub selected_measurement_config: Option<String>,
     // Generator settings for auto-creating measurement points from a foil
     pub gen_selected_foil: Option<u64>,
     pub gen_direction: String, // "left" or "right"
     pub gen_max_length: f32,
     pub gen_point_count: usize,
+    // Foil metrics logging UI state
+    pub foil_metrics_enabled: bool,
+    pub foil_metrics_filename_override: String,
 }
 
 impl quarkstrom::Renderer for Renderer {
@@ -317,6 +322,21 @@ impl quarkstrom::Renderer for Renderer {
             .lock()
             .clone()
             .unwrap_or(1.2);
+
+        // Build initial auto names for CSVs using the same naming scheme as Foil-based
+        let sample_switch_cfg = crate::switch_charging::SwitchChargingConfig::default();
+        let switch_running = false; // Renderer starts idle
+        let auto_measure_name = crate::manual_measurement_filename::build_measurement_filename(
+            switch_running,
+            &sample_switch_cfg,
+        );
+        let point_auto = if let Some(stripped) = auto_measure_name.strip_prefix("Measurement_") {
+            format!("Point-based_{}", stripped)
+        } else {
+            format!("Point-based_{}", auto_measure_name)
+        };
+        let mut mm_cfg = ManualMeasurementConfig::default();
+        mm_cfg.output_file = point_auto.clone();
 
         Self {
             pos: Vec2::zero(),
@@ -394,9 +414,10 @@ impl quarkstrom::Renderer for Renderer {
             show_fd_ions: false,
 
             // Solvation CSV logging defaults
-            solvation_csv_enabled: false,
+            solvation_csv_enabled: true,
             solvation_csv_interval_fs: 1000.0,
-            solvation_csv_filename: "solvation_state.csv".to_string(),
+            // Empty means: use auto Time-based_* naming derived from current settings
+            solvation_csv_filename: String::new(),
             solvation_csv_last_write_fs: -1_000_000.0,
             solvation_csv_wrote_header: false,
 
@@ -438,17 +459,22 @@ impl quarkstrom::Renderer for Renderer {
             conventional_target_ratio: init_conv_target,
             show_dipoles: false,
             dipole_scale: 20.0,
-            manual_measurement_recorder: None,
+            //manual_measurement_recorder: None,
             manual_measurement_last_results: Vec::new(),
-            manual_measurement_ui_config: ManualMeasurementConfig::default(),
+            manual_measurement_ui_config: mm_cfg,
             manual_measurement_selected_point: 0,
             show_manual_measurements: false,
-            available_measurement_configs: Vec::new(),
-            selected_measurement_config: None,
-            gen_selected_foil: None,
-            gen_direction: "left".to_string(),
+            points_csv_enabled: true,
+            points_csv_armed: false,
+    // Foil metrics logging UI state
+    foil_metrics_enabled: true,
+    foil_metrics_filename_override: String::new(),
+            //available_measurement_configs: Vec::new(),
+            //selected_measurement_config: None,
+            gen_selected_foil: Some(3),
+            gen_direction: "right".to_string(),
             gen_max_length: 70.0,
-            gen_point_count: 1,
+            gen_point_count: 7,
         }
     }
 

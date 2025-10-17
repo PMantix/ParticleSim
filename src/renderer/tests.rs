@@ -21,6 +21,7 @@ mod tests {
             charging_mode: crate::body::foil::ChargingMode::Current,
             overpotential_controller: None,
             slave_overpotential_current: 0.0,
+            electron_delta_since_measure: 0,
         });
         r.selected_foil_ids.push(1);
 

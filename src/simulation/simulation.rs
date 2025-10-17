@@ -25,6 +25,8 @@ use rand::prelude::*; // Import all prelude traits for rand 0.9+
 use rayon::prelude::*;
 use std::collections::{HashMap, HashSet};
 use ultraviolet::Vec2;
+use std::fs::File;
+use std::io::Write; // for writeln! and flush on File
 
 /// The main simulation state and logic for the particle system.
 pub struct Simulation {
@@ -64,6 +66,8 @@ pub struct Simulation {
     temp_inactive_set: std::collections::HashSet<u64>,
     // Manual measurement recorder for auto-recording measurements to CSV
     pub manual_measurement_recorder: Option<ManualMeasurementRecorder>,
+    // Foil metrics CSV writer state (written when manual measurements occur)
+    foil_metrics_csv: Option<File>,
 }
 
 impl Simulation {
@@ -116,6 +120,7 @@ impl Simulation {
             group_b: std::collections::HashSet::new(),
             temp_inactive_set: std::collections::HashSet::new(),
             manual_measurement_recorder: None,
+            foil_metrics_csv: None,
         };
         sim.initialize_history();
         sim
@@ -1001,12 +1006,14 @@ impl Simulation {
         self.frame += 1;
         
         // Update manual measurement recorder
+        let mut wrote_measurements = false;
+        let simulation_time_fs = self.frame as f32 * self.dt;
         if let Some(recorder) = &mut self.manual_measurement_recorder {
-            let simulation_time_fs = self.frame as f32 * self.dt;
             let results = recorder.update(&self.bodies, &self.foils, &self.quadtree, self.frame, simulation_time_fs);
             if !results.is_empty() {
                 // Update shared state for GUI display
                 *crate::renderer::state::MANUAL_MEASUREMENT_RESULTS.lock() = results;
+                wrote_measurements = true;
             }
 
             // Check for auto-pause at target time
@@ -1016,6 +1023,10 @@ impl Simulation {
                     crate::renderer::state::PAUSED.store(true, std::sync::atomic::Ordering::Relaxed);
                 }
             }
+        }
+        // Also write foil metrics at the same cadence, after recorder borrow ends
+        if wrote_measurements {
+            self.write_foil_metrics_if_due(self.frame, simulation_time_fs);
         }
         
         // Capture history with lightweight ring buffer approach
@@ -1120,6 +1131,192 @@ impl Simulation {
                 body.vel.y = -body.vel.y;
             }
         });
+    }
+
+    /// Build default foil metrics filename based on existing measurement naming (swap prefix to Foil_)
+    fn foil_metrics_filename(&self) -> String {
+        // If GUI provided an override, use it
+        if let Some(name) = crate::renderer::state::FOIL_METRICS_FILENAME_OVERRIDE.lock().clone() {
+            return name;
+        }
+        // Else build based on measurement naming to stay consistent
+        let switch_running = matches!(self.switch_run_state, RunState::Running);
+        let measurement_name = crate::manual_measurement_filename::build_measurement_filename(
+            switch_running,
+            &self.switch_config,
+        );
+        if let Some(stripped) = measurement_name.strip_prefix("Measurement_") {
+            format!("Foil-based_{}", stripped)
+        } else {
+            format!("Foil-based_{}", measurement_name)
+        }
+    }
+
+    /// Ensure foil metrics CSV file is open, creating with header if needed
+    fn ensure_foil_metrics_csv_open(&mut self) {
+        if self.foil_metrics_csv.is_some() { return; }
+        let filename = self.foil_metrics_filename();
+        // Create doe_results if needed
+        let _ = std::fs::create_dir_all("doe_results");
+        let path = format!("doe_results/{}", filename);
+        match File::create(&path) {
+            Ok(mut f) => {
+                // Header: single row per timestep (wide format), grouped by field across foils
+                // Columns: frame,time_fs, then for each group [mode_f<ID>...], [setpoint_f<ID>...], [actual_ratio_f<ID>...], [delta_electrons_f<ID>...], [li_metal_count_f<ID>...]
+                // Note: we always include all groups in the header; field toggles control values (may be blank) to keep column stability.
+                let mut foil_ids: Vec<u64> = self.foils.iter().map(|f| f.id).collect();
+                foil_ids.sort_unstable();
+                let mut header = String::from("frame,time_fs");
+                // Modes
+                for id in &foil_ids { header.push_str(&format!(",mode_f{}", id)); }
+                // Setpoints
+                for id in &foil_ids { header.push_str(&format!(",setpoint_f{}", id)); }
+                // Actual ratios
+                for id in &foil_ids { header.push_str(&format!(",actual_ratio_f{}", id)); }
+                // Delta electrons
+                for id in &foil_ids { header.push_str(&format!(",delta_electrons_f{}", id)); }
+                // Li metal counts
+                for id in &foil_ids { header.push_str(&format!(",li_metal_count_f{}", id)); }
+                let _ = writeln!(f, "{}", header);
+                let _ = f.flush();
+                self.foil_metrics_csv = Some(f);
+                println!("✓ Started foil metrics recording to: {}", path);
+            }
+            Err(e) => {
+                eprintln!("✗ Failed to open foil metrics CSV: {}", e);
+            }
+        }
+    }
+
+    /// Compute Li metal count attached to a foil via connectivity (shares logic with ratio calc)
+    fn li_metal_count_for_foil(&self, foil: &crate::body::foil::Foil) -> usize {
+        // Build id->index map
+        let id_to_index: std::collections::HashMap<u64, usize> = self
+            .bodies
+            .iter()
+            .enumerate()
+            .map(|(i, b)| (b.id, i))
+            .collect();
+
+        let mut visited_idx: std::collections::HashSet<usize> = std::collections::HashSet::new();
+        let mut queue: std::collections::VecDeque<usize> = std::collections::VecDeque::new();
+        for &body_id in &foil.body_ids {
+            if let Some(&idx) = id_to_index.get(&body_id) {
+                if visited_idx.insert(idx) { queue.push_back(idx); }
+            }
+        }
+        if queue.is_empty() { return 0; }
+
+        let use_cell = self.use_cell_list();
+        let mut li_metal_count = 0usize;
+        while let Some(body_index) = queue.pop_front() {
+            if body_index >= self.bodies.len() { continue; }
+            let body = &self.bodies[body_index];
+
+            if matches!(body.species, crate::body::Species::LithiumMetal) {
+                li_metal_count += 1;
+            }
+
+            let connection_radius = body.radius * 2.2;
+            let nearby_indices = if use_cell {
+                self.cell_list.find_neighbors_within(&self.bodies, body_index, connection_radius)
+            } else {
+                self.quadtree.find_neighbors_within(&self.bodies, body_index, connection_radius)
+            };
+            for &other_idx in &nearby_indices {
+                if other_idx >= self.bodies.len() { continue; }
+                let other_body = &self.bodies[other_idx];
+                if !matches!(
+                    other_body.species,
+                    crate::body::Species::LithiumMetal | crate::body::Species::FoilMetal
+                ) {
+                    continue;
+                }
+                let threshold = (body.radius + other_body.radius) * 1.1;
+                if (body.pos - other_body.pos).mag() <= threshold {
+                    if visited_idx.insert(other_idx) { queue.push_back(other_idx); }
+                }
+            }
+        }
+        li_metal_count
+    }
+
+    /// Write foil metrics in wide CSV format (single row per timestep) when manual measurement cadence fires
+    fn write_foil_metrics_if_due(&mut self, frame: usize, time_fs: f32) {
+        // Only write when recorder exists to align with its cadence
+        if self.manual_measurement_recorder.is_none() { return; }
+        if !crate::renderer::state::FOIL_METRICS_ENABLED.load(std::sync::atomic::Ordering::Relaxed) {
+            return; // Disabled via GUI
+        }
+        // Precompute electron ratios for all foils (matches charging tab display)
+        let mut ratio_map: std::collections::HashMap<u64, f32> = std::collections::HashMap::new();
+        for foil in &self.foils {
+            let ratio = self.calculate_foil_electron_ratio(foil);
+            ratio_map.insert(foil.id, ratio);
+        }
+
+        // Build snapshot first to avoid borrow conflicts
+        struct Row { idx: usize, foil_id: u64, mode_str: &'static str, setpoint: f32, actual_ratio: f32, delta_e: i32, li_metal_count: usize }
+        let include_li = crate::renderer::state::FOIL_METRICS_INCLUDE_LI_METAL
+            .load(std::sync::atomic::Ordering::Relaxed);
+        let mut rows: Vec<Row> = Vec::with_capacity(self.foils.len());
+        for (i, foil) in self.foils.iter().enumerate() {
+            let (mode_str, setpoint_val) = match foil.charging_mode {
+                crate::body::foil::ChargingMode::Current => ("CC", foil.dc_current),
+                crate::body::foil::ChargingMode::Overpotential => {
+                    let target = foil
+                        .overpotential_controller
+                        .as_ref()
+                        .map(|c| c.target_ratio)
+                        .unwrap_or(1.0);
+                    ("OP", target)
+                }
+            };
+            let actual_ratio = ratio_map.get(&foil.id).copied().unwrap_or(1.0);
+            let delta_e = foil.electron_delta_since_measure;
+            let li_metal_count = if include_li { self.li_metal_count_for_foil(foil) } else { 0 };
+            rows.push(Row { idx: i, foil_id: foil.id, mode_str, setpoint: setpoint_val, actual_ratio, delta_e, li_metal_count });
+        }
+
+        // Write a single wide row
+        self.ensure_foil_metrics_csv_open();
+        if let Some(file) = &mut self.foil_metrics_csv {
+            // Sort by foil id to match header order
+            let mut rows_sorted: Vec<&Row> = rows.iter().collect();
+            rows_sorted.sort_by_key(|r| r.foil_id);
+
+            let include_set = crate::renderer::state::FOIL_METRICS_INCLUDE_SETPOINT
+                .load(std::sync::atomic::Ordering::Relaxed);
+            let include_act = crate::renderer::state::FOIL_METRICS_INCLUDE_ACTUAL_RATIO
+                .load(std::sync::atomic::Ordering::Relaxed);
+            let include_del = crate::renderer::state::FOIL_METRICS_INCLUDE_DELTA_ELECTRONS
+                .load(std::sync::atomic::Ordering::Relaxed);
+            let include_li = crate::renderer::state::FOIL_METRICS_INCLUDE_LI_METAL
+                .load(std::sync::atomic::Ordering::Relaxed);
+
+            // Start with frame and time
+            let mut line = format!("{},{}", frame, time_fs);
+            // Modes
+            for r in &rows_sorted { line.push_str(&format!(",{}", r.mode_str)); }
+            // Setpoints (conditional values)
+            for r in &rows_sorted { if include_set { line.push_str(&format!(",{:.6}", r.setpoint)); } else { line.push_str(","); } }
+            // Actual ratios
+            for r in &rows_sorted { if include_act { line.push_str(&format!(",{:.6}", r.actual_ratio)); } else { line.push_str(","); } }
+            // Delta electrons
+            for r in &rows_sorted { if include_del { line.push_str(&format!(",{}", r.delta_e)); } else { line.push_str(","); } }
+            // Li metal counts
+            for r in &rows_sorted { if include_li { line.push_str(&format!(",{}", r.li_metal_count)); } else { line.push_str(","); } }
+
+            let _ = writeln!(file, "{}", line);
+            let _ = file.flush();
+        }
+
+        // Reset deltas after writing
+        for r in &rows {
+            if let Some(f) = self.foils.get_mut(r.idx) {
+                f.electron_delta_since_measure = 0;
+            }
+        }
     }
 
     pub fn use_cell_list(&self) -> bool {
@@ -1528,6 +1725,8 @@ impl Simulation {
                         vel: Vec2::zero(),
                     });
                     recipients[body_idx] = true;
+                    // Track signed electron change since last measurement
+                    foil.electron_delta_since_measure += 1;
                     return true;
                 }
             }
@@ -1552,6 +1751,8 @@ impl Simulation {
                 if !body.electrons.is_empty() {
                     body.electrons.pop();
                     recipients[body_idx] = true;
+                    // Track signed electron change since last measurement
+                    foil.electron_delta_since_measure -= 1;
                     return true;
                 }
             }
@@ -1623,6 +1824,8 @@ impl Simulation {
                             vel: Vec2::zero(),
                         });
                         recipients[body_idx] = true;
+                        // Track signed electron change since last measurement
+                        foil.electron_delta_since_measure += 1;
                         return true;
                     }
                 }
@@ -1647,6 +1850,8 @@ impl Simulation {
                     if body.species == Species::FoilMetal && !body.electrons.is_empty() {
                         body.electrons.pop();
                         recipients[body_idx] = true;
+                        // Track signed electron change since last measurement
+                        foil.electron_delta_since_measure -= 1;
                         return true;
                     }
                 }
