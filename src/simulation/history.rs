@@ -278,6 +278,7 @@ impl Simulation {
             *rstate::PERSIST_UI_CONV_IS_OVER.lock() = Some(ui.conventional_is_overpotential);
             *rstate::PERSIST_UI_CONV_CURRENT.lock() = Some(ui.conventional_current_setpoint);
             *rstate::PERSIST_UI_CONV_TARGET.lock() = Some(ui.conventional_target_ratio);
+            *rstate::PERSIST_UI_DIRTY.lock() = true;
         }
 
         let snapshot = SimulationSnapshot::from_state(current);

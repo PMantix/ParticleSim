@@ -100,10 +100,12 @@ pub static PERSIST_UI_CONV_CURRENT: Lazy<Mutex<Option<f32>>> =
     Lazy::new(|| Mutex::new(None));
 pub static PERSIST_UI_CONV_TARGET: Lazy<Mutex<Option<f32>>> =
     Lazy::new(|| Mutex::new(None));
+// When true, Renderer should sync persisted UI values once (typically after load)
+pub static PERSIST_UI_DIRTY: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(false));
 
 // PID Graph state
 pub static SHOW_PID_GRAPH: Lazy<AtomicBool> = Lazy::new(|| AtomicBool::new(false));
-pub static PID_GRAPH_HISTORY_SIZE: Lazy<Mutex<usize>> = Lazy::new(|| Mutex::new(1000));
+//pub static PID_GRAPH_HISTORY_SIZE: Lazy<Mutex<usize>> = Lazy::new(|| Mutex::new(1000));
 
 //Simulation commands
 // These are used to send commands to the simulation thread from the GUI thread

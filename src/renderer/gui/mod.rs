@@ -1,11 +1,10 @@
 use super::state::*;
-use crate::body::foil::LinkMode;
 use crate::body::Electron;
 use crate::body::Species;
 use crate::config::IsolineFieldMode;
 use crate::profile_scope;
 use crate::renderer::Body;
-use crate::switch_charging;
+//use crate::switch_charging; // legacy UI is now embedded in Charging tab
 use quarkstrom::egui::{self, Vec2 as EVec2};
 use ultraviolet::Vec2;
 
@@ -13,7 +12,6 @@ pub mod analysis_tab;
 pub mod debug_tab;
 pub mod diagnostics_tab;
 pub mod charging_tab;
-pub mod foils_tab;
 pub mod measurement_tab;
 pub mod physics_tab;
 pub mod pid_controller;
@@ -28,6 +26,8 @@ pub use scenario_tab::make_body_with_species;
 impl super::Renderer {
     pub fn show_gui(&mut self, ctx: &quarkstrom::egui::Context) {
         profile_scope!("gui_update");
+        // Apply any persisted UI updates (e.g., after loading a scenario)
+        self.sync_persisted_ui();
         if self.show_splash {
             self.show_splash_screen(ctx);
             return;
@@ -88,11 +88,7 @@ impl super::Renderer {
                             super::GuiTab::Charging,
                             "⚡ Charging",
                         );
-                        ui.selectable_value(
-                            &mut self.current_tab,
-                            super::GuiTab::Foils,
-                            "🔋 Foils",
-                        );
+                        // Foils tab removed (merged into Charging workflows)
                         ui.selectable_value(
                             &mut self.current_tab,
                             super::GuiTab::Analysis,
@@ -116,11 +112,7 @@ impl super::Renderer {
                             super::GuiTab::Measurement,
                             "📏 Measurement",
                         );
-                        ui.selectable_value(
-                            &mut self.current_tab,
-                            super::GuiTab::SwitchCharging,
-                            "🔁 Switch Charging",
-                        );
+                        // Switch Charging tab removed (embedded under Charging)
                         ui.selectable_value(
                             &mut self.current_tab,
                             super::GuiTab::SoftDynamics,
@@ -152,10 +144,7 @@ impl super::Renderer {
                         super::GuiTab::Physics => self.show_physics_tab(ui),
                         super::GuiTab::Scenario => self.show_scenario_tab(ui),
                         super::GuiTab::Charging => self.show_charging_tab(ui),
-                        super::GuiTab::Foils => self.show_foils_tab(ui),
-                        super::GuiTab::SwitchCharging => {
-                            switch_charging::ui_switch_charging(ui, &mut self.switch_ui_state)
-                        }
+                        // Removed tabs routed here previously are no longer used
                         super::GuiTab::Measurement => self.show_measurement_tab(ui),
                         super::GuiTab::Analysis => self.show_analysis_tab(ui),
                         super::GuiTab::Debug => self.show_debug_tab(ui),
@@ -362,8 +351,9 @@ impl super::Renderer {
                 }
                 PlaybackModeStatus::Live => {
                     match self.charging_ui_mode {
-                        super::ChargingUiMode::Conventional => {
-                            ui.colored_label(egui::Color32::LIGHT_GREEN, "Conventional");
+                        super::ChargingUiMode::Conventional | super::ChargingUiMode::Advanced => {
+                            let label = if matches!(self.charging_ui_mode, super::ChargingUiMode::Advanced) { "Advanced" } else { "Conventional" };
+                            ui.colored_label(egui::Color32::LIGHT_GREEN, label);
                             let mode_str = if self.conventional_is_overpotential { "Overpotential" } else { "Current" };
                             ui.separator();
                             ui.small(format!("Group control: {}", mode_str));

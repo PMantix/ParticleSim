@@ -377,40 +377,35 @@ pub fn handle_command(cmd: SimCommand, simulation: &mut Simulation) {
             mark_dirty(simulation);
         }
         SimCommand::ConventionalSetCurrent { current } => {
-            // Apply to masters of A/B if present; enforce B as opposite DC, same AC/freq
-            let master_a = simulation.group_a.iter().min().copied();
-            let master_b = simulation.group_b.iter().min().copied();
-            if let Some(ma) = master_a {
-                if let Some(f) = simulation.foils.iter_mut().find(|f| f.id == ma) {
+            // Apply to ALL foils in groups: A gets +current, B gets -current
+            for id in simulation.group_a.iter().copied() {
+                if let Some(f) = simulation.foils.iter_mut().find(|f| f.id == id) {
                     f.charging_mode = crate::body::foil::ChargingMode::Current;
                     f.dc_current = current;
-                    mark_dirty(simulation);
                 }
             }
-            if let Some(mb) = master_b {
-                if let Some(f) = simulation.foils.iter_mut().find(|f| f.id == mb) {
+            for id in simulation.group_b.iter().copied() {
+                if let Some(f) = simulation.foils.iter_mut().find(|f| f.id == id) {
                     f.charging_mode = crate::body::foil::ChargingMode::Current;
                     f.dc_current = -current;
-                    mark_dirty(simulation);
                 }
             }
+            mark_dirty(simulation);
         }
         SimCommand::ConventionalSetOverpotential { target_ratio } => {
-            // Apply to masters of A/B if present; enforce B as complementary (2 - target)
-            let master_a = simulation.group_a.iter().min().copied();
-            let master_b = simulation.group_b.iter().min().copied();
-            if let Some(ma) = master_a {
-                if let Some(f) = simulation.foils.iter_mut().find(|f| f.id == ma) {
+            // Apply to ALL foils in groups: A gets target_ratio, B gets (2 - target)
+            for id in simulation.group_a.iter().copied() {
+                if let Some(f) = simulation.foils.iter_mut().find(|f| f.id == id) {
                     f.enable_overpotential_mode(target_ratio);
-                    mark_dirty(simulation);
                 }
             }
-            if let Some(mb) = master_b {
-                if let Some(f) = simulation.foils.iter_mut().find(|f| f.id == mb) {
-                    f.enable_overpotential_mode(2.0 - target_ratio);
-                    mark_dirty(simulation);
+            let b_target = 2.0 - target_ratio;
+            for id in simulation.group_b.iter().copied() {
+                if let Some(f) = simulation.foils.iter_mut().find(|f| f.id == id) {
+                    f.enable_overpotential_mode(b_target);
                 }
             }
+            mark_dirty(simulation);
         }
         SimCommand::LinkFoils { a, b, mode } => {
             let a_idx = simulation.foils.iter().position(|f| f.id == a);

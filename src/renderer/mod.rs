@@ -91,8 +91,6 @@ pub enum GuiTab {
     Physics,
     Scenario,
     Charging,
-    Foils,
-    SwitchCharging,
     Measurement,
     Analysis,
     Debug,
@@ -110,6 +108,7 @@ impl Default for GuiTab {
 pub enum ChargingUiMode {
     Conventional,
     SwitchCharging,
+    Advanced,
 }
 
 impl Default for ChargingUiMode {
@@ -245,9 +244,6 @@ pub struct Renderer {
     // Mouse interaction
     last_mouse_pos: Option<EVec2>,
     mouse_velocity: EVec2,
-    // Foil group linking selections
-    group_a_selected: Vec<u64>,
-    group_b_selected: Vec<u64>,
     // Conventional grouped control UI state
     pub conventional_is_overpotential: bool,
     pub conventional_current_setpoint: f32,
@@ -255,8 +251,6 @@ pub struct Renderer {
     // Dipole visualization
     pub show_dipoles: bool,
     pub dipole_scale: f32,
-    // Foils tab UI
-    pub foils_advanced_controls: bool,
     // Manual measurement system
     pub manual_measurement_recorder: Option<ManualMeasurementRecorder>,
     pub manual_measurement_last_results: Vec<MeasurementResult>,
@@ -308,6 +302,7 @@ impl quarkstrom::Renderer for Renderer {
             .unwrap_or_else(|| "Conventional".to_string());
         let init_mode = match persisted_mode.as_str() {
             "SwitchCharging" => ChargingUiMode::SwitchCharging,
+            "Advanced" => ChargingUiMode::Advanced,
             _ => ChargingUiMode::Conventional,
         };
         let init_conv_is_over = crate::renderer::state::PERSIST_UI_CONV_IS_OVER
@@ -438,14 +433,11 @@ impl quarkstrom::Renderer for Renderer {
             char_size,
             last_mouse_pos: None,
             mouse_velocity: EVec2::new(0.0, 0.0),
-            group_a_selected: Vec::new(),
-            group_b_selected: Vec::new(),
             conventional_is_overpotential: init_conv_is_over,
             conventional_current_setpoint: init_conv_current,
             conventional_target_ratio: init_conv_target,
             show_dipoles: false,
             dipole_scale: 20.0,
-            foils_advanced_controls: false,
             manual_measurement_recorder: None,
             manual_measurement_last_results: Vec::new(),
             manual_measurement_ui_config: ManualMeasurementConfig::default(),
@@ -485,6 +477,44 @@ impl quarkstrom::Renderer for Renderer {
 }
 
 impl Renderer {
+    /// Sync persisted UI values (set by load_state) into the live Renderer fields
+    pub fn sync_persisted_ui(&mut self) {
+        if !*crate::renderer::state::PERSIST_UI_DIRTY.lock() { return; }
+        *crate::renderer::state::PERSIST_UI_DIRTY.lock() = false;
+        // Charging mode
+        if let Some(mode) = crate::renderer::state::PERSIST_UI_CHARGING_MODE.lock().clone() {
+            let desired = match mode.as_str() {
+                "SwitchCharging" => ChargingUiMode::SwitchCharging,
+                _ => ChargingUiMode::Conventional,
+            };
+            if self.charging_ui_mode != desired {
+                // Apply guardrails consistent with the UI when changing modes
+                match desired {
+                    ChargingUiMode::Conventional | ChargingUiMode::Advanced => {
+                        if self.switch_ui_state.run_state != crate::switch_charging::RunState::Idle {
+                            self.switch_ui_state.stop();
+                        }
+                    }
+                    ChargingUiMode::SwitchCharging => {
+                        if let Some(tx) = SIM_COMMAND_SENDER.lock().as_ref() {
+                            let _ = tx.send(SimCommand::ClearFoilGroups);
+                        }
+                    }
+                }
+                self.charging_ui_mode = desired;
+            }
+        }
+        // Conventional controls
+        if let Some(is_over) = *crate::renderer::state::PERSIST_UI_CONV_IS_OVER.lock() {
+            self.conventional_is_overpotential = is_over;
+        }
+        if let Some(curr) = *crate::renderer::state::PERSIST_UI_CONV_CURRENT.lock() {
+            self.conventional_current_setpoint = curr;
+        }
+        if let Some(tgt) = *crate::renderer::state::PERSIST_UI_CONV_TARGET.lock() {
+            self.conventional_target_ratio = tgt;
+        }
+    }
     fn available_scenarios() -> Vec<String> {
         let mut list = vec!["Default".to_string()];
         if let Ok(entries) = fs::read_dir("saved_state") {
