@@ -12,6 +12,7 @@ use ultraviolet::Vec2;
 pub mod analysis_tab;
 pub mod debug_tab;
 pub mod diagnostics_tab;
+pub mod charging_tab;
 pub mod foils_tab;
 pub mod measurement_tab;
 pub mod physics_tab;
@@ -84,6 +85,11 @@ impl super::Renderer {
                         );
                         ui.selectable_value(
                             &mut self.current_tab,
+                            super::GuiTab::Charging,
+                            "⚡ Charging",
+                        );
+                        ui.selectable_value(
+                            &mut self.current_tab,
                             super::GuiTab::Foils,
                             "🔋 Foils",
                         );
@@ -145,6 +151,7 @@ impl super::Renderer {
                         super::GuiTab::Species => self.show_species_tab(ui),
                         super::GuiTab::Physics => self.show_physics_tab(ui),
                         super::GuiTab::Scenario => self.show_scenario_tab(ui),
+                        super::GuiTab::Charging => self.show_charging_tab(ui),
                         super::GuiTab::Foils => self.show_foils_tab(ui),
                         super::GuiTab::SwitchCharging => {
                             switch_charging::ui_switch_charging(ui, &mut self.switch_ui_state)

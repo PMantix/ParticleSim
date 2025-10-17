@@ -90,6 +90,7 @@ pub enum GuiTab {
     Species,
     Physics,
     Scenario,
+    Charging,
     Foils,
     SwitchCharging,
     Measurement,
@@ -102,6 +103,18 @@ pub enum GuiTab {
 impl Default for GuiTab {
     fn default() -> Self {
         GuiTab::Simulation
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ChargingUiMode {
+    Conventional,
+    SwitchCharging,
+}
+
+impl Default for ChargingUiMode {
+    fn default() -> Self {
+        ChargingUiMode::Conventional
     }
 }
 
@@ -177,6 +190,8 @@ pub struct Renderer {
     pub selected_delete_option: DeleteOption,
     // Current GUI tab
     pub current_tab: GuiTab,
+    // Unified charging UI mode selection
+    pub charging_ui_mode: ChargingUiMode,
     pub transference_number_diagnostic: Option<TransferenceNumberDiagnostic>,
     pub foil_electron_fraction_diagnostic: Option<FoilElectronFractionDiagnostic>,
     pub solvation_diagnostic: Option<crate::diagnostics::SolvationDiagnostic>,
@@ -346,6 +361,7 @@ impl quarkstrom::Renderer for Renderer {
             selected_lj_species: Species::LithiumMetal, // Default to LithiumMetal for LJ editing
             selected_delete_option: DeleteOption::AllSpecies, // Default to All Species
             current_tab: GuiTab::default(),             // Default to Simulation tab
+            charging_ui_mode: ChargingUiMode::Conventional,
             transference_number_diagnostic: Some(TransferenceNumberDiagnostic::new()),
             foil_electron_fraction_diagnostic: Some(FoilElectronFractionDiagnostic::new()),
             solvation_diagnostic: Some(crate::diagnostics::SolvationDiagnostic::new()),
