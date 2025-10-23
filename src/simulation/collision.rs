@@ -1,14 +1,14 @@
 // simulation/collision.rs
 // Contains collision detection and resolution functions
 
+use crate::body::Species;
+use crate::profile_scope;
 use crate::renderer::state::COLLISION_PASSES;
+use crate::simulation::Simulation;
 use broccoli::aabb::Rect;
 use broccoli_rayon::{build::RayonBuildPar, prelude::RayonQueryPar};
-use ultraviolet::Vec2;
-use crate::simulation::Simulation;
-use crate::profile_scope;
-use crate::body::Species;
 use std::f32::consts::TAU;
+use ultraviolet::Vec2;
 
 /// Apply Li+ collision softness (simple multiplicative scaling).
 /// Returns the adjusted 2D component of a correction/impulse vector.
@@ -63,7 +63,10 @@ pub fn collide(sim: &mut Simulation) {
         }
     }
     if !invalid_bodies.is_empty() {
-        eprintln!("[DIAG][collision] Found {} invalid bodies before tree build", invalid_bodies.len());
+        eprintln!(
+            "[DIAG][collision] Found {} invalid bodies before tree build",
+            invalid_bodies.len()
+        );
         for (i, (idx, what)) in invalid_bodies.iter().take(8).enumerate() {
             let b = &sim.bodies[*idx];
             eprintln!(
@@ -72,7 +75,10 @@ pub fn collide(sim: &mut Simulation) {
             );
         }
         if invalid_bodies.len() > 8 {
-            eprintln!("[DIAG][collision] ... and {} more", invalid_bodies.len() - 8);
+            eprintln!(
+                "[DIAG][collision] ... and {} more",
+                invalid_bodies.len() - 8
+            );
         }
     }
     let mut rects = sim
@@ -95,7 +101,8 @@ pub fn collide(sim: &mut Simulation) {
         let maxx = b.pos.x + b.radius;
         let miny = b.pos.y - b.radius;
         let maxy = b.pos.y + b.radius;
-        let any_non_finite = !(minx.is_finite() && maxx.is_finite() && miny.is_finite() && maxy.is_finite());
+        let any_non_finite =
+            !(minx.is_finite() && maxx.is_finite() && miny.is_finite() && maxy.is_finite());
         let bad_order = minx > maxx || miny > maxy;
         if any_non_finite || bad_order {
             if bad_rects < 8 {
@@ -108,7 +115,10 @@ pub fn collide(sim: &mut Simulation) {
         }
     }
     if bad_rects > 0 {
-        eprintln!("[DIAG][collision] Found {} bad rects before tree build", bad_rects);
+        eprintln!(
+            "[DIAG][collision] Found {} bad rects before tree build",
+            bad_rects
+        );
     }
 
     let mut broccoli = broccoli::Tree::par_new(&mut rects);
@@ -141,23 +151,49 @@ fn resolve(sim: &mut Simulation, i: usize, j: usize, num_passes: usize) {
     let mut v1z = sim.bodies[i].vz;
     let mut v2z = sim.bodies[j].vz;
     let mut need_sanitize = false;
-    if !(p1.x.is_finite() && p1.y.is_finite() && z1.is_finite() && v1.x.is_finite() && v1.y.is_finite() && v1z.is_finite()) {
+    if !(p1.x.is_finite()
+        && p1.y.is_finite()
+        && z1.is_finite()
+        && v1.x.is_finite()
+        && v1.y.is_finite()
+        && v1z.is_finite())
+    {
         need_sanitize = true;
     }
-    if !(p2.x.is_finite() && p2.y.is_finite() && z2.is_finite() && v2.x.is_finite() && v2.y.is_finite() && v2z.is_finite()) {
+    if !(p2.x.is_finite()
+        && p2.y.is_finite()
+        && z2.is_finite()
+        && v2.x.is_finite()
+        && v2.y.is_finite()
+        && v2z.is_finite())
+    {
         need_sanitize = true;
     }
     if need_sanitize || !dist_sq.is_finite() {
         eprintln!("[DIAG][resolve] i={} j={} sanitizing invalid inputs", i, j);
         for &k in &[i, j] {
             let b = &mut sim.bodies[k];
-            if !b.pos.x.is_finite() { b.pos.x = 0.0; }
-            if !b.pos.y.is_finite() { b.pos.y = 0.0; }
-            if !b.vel.x.is_finite() { b.vel.x = 0.0; }
-            if !b.vel.y.is_finite() { b.vel.y = 0.0; }
-            if !b.z.is_finite() { b.z = 0.0; }
-            if !b.vz.is_finite() { b.vz = 0.0; }
-            if !b.az.is_finite() { b.az = 0.0; }
+            if !b.pos.x.is_finite() {
+                b.pos.x = 0.0;
+            }
+            if !b.pos.y.is_finite() {
+                b.pos.y = 0.0;
+            }
+            if !b.vel.x.is_finite() {
+                b.vel.x = 0.0;
+            }
+            if !b.vel.y.is_finite() {
+                b.vel.y = 0.0;
+            }
+            if !b.z.is_finite() {
+                b.z = 0.0;
+            }
+            if !b.vz.is_finite() {
+                b.vz = 0.0;
+            }
+            if !b.az.is_finite() {
+                b.az = 0.0;
+            }
         }
         // Reload sanitized state
         p1 = sim.bodies[i].pos;
@@ -189,11 +225,11 @@ fn resolve(sim: &mut Simulation, i: usize, j: usize, num_passes: usize) {
         let tmpx = d_xy.x * corr;
         let tmpy = d_xy.y * corr;
         let tmpz = dz * corr;
-        
+
         // Apply Li+ collision softness (2D components only)
         let sep_xy = Vec2::new(tmpx, tmpy);
         let softened_xy = apply_li_collision_softness(sim, i, j, sep_xy);
-        
+
         sim.bodies[i].pos.x -= weight1 * softened_xy.x;
         sim.bodies[i].pos.y -= weight1 * softened_xy.y;
         sim.bodies[i].z -= weight1 * tmpz; // Z-direction not affected by frustration (2D problem)
@@ -222,9 +258,15 @@ fn resolve(sim: &mut Simulation, i: usize, j: usize, num_passes: usize) {
         // Zero any non-finite velocities
         for &k in &[i, j] {
             let b = &mut sim.bodies[k];
-            if !b.vel.x.is_finite() { b.vel.x = 0.0; }
-            if !b.vel.y.is_finite() { b.vel.y = 0.0; }
-            if !b.vz.is_finite() { b.vz = 0.0; }
+            if !b.vel.x.is_finite() {
+                b.vel.x = 0.0;
+            }
+            if !b.vel.y.is_finite() {
+                b.vel.y = 0.0;
+            }
+            if !b.vz.is_finite() {
+                b.vz = 0.0;
+            }
         }
         return;
     }
@@ -274,7 +316,11 @@ fn resolve(sim: &mut Simulation, i: usize, j: usize, num_passes: usize) {
     let dz = z2 - z1;
     let d_dot_v = d_xy.dot(v_xy) + dz * vz;
     let d_sq = d_xy.mag_sq() + dz * dz;
-    let scale = if d_sq.is_finite() && d_sq > 0.0 { 1.5 * d_dot_v / d_sq } else { 0.0 };
+    let scale = if d_sq.is_finite() && d_sq > 0.0 {
+        1.5 * d_dot_v / d_sq
+    } else {
+        0.0
+    };
     if !scale.is_finite() {
         eprintln!(
             "[DIAG][resolve] i={} j={} non-finite scale: scale={:.6e} d_dot_v={:.6e} d_sq={:.6e}",
@@ -284,11 +330,11 @@ fn resolve(sim: &mut Simulation, i: usize, j: usize, num_passes: usize) {
     let tmpx = d_xy.x * scale;
     let tmpy = d_xy.y * scale;
     let tmpz = dz * scale;
-    
+
     // Apply Li+ collision softness to velocity corrections (2D only)
     let vel_corr_xy = Vec2::new(tmpx, tmpy);
     let softened_xy = apply_li_collision_softness(sim, i, j, vel_corr_xy);
-    
+
     let v1x = v1.x + softened_xy.x * weight1;
     let v1y = v1.y + softened_xy.y * weight1;
     let v1z_new = v1z + tmpz * weight1;
@@ -307,13 +353,25 @@ fn resolve(sim: &mut Simulation, i: usize, j: usize, num_passes: usize) {
     // DIAGNOSTIC: verify results remain finite
     let bi = &sim.bodies[i];
     let bj = &sim.bodies[j];
-    if !(bi.pos.x.is_finite() && bi.pos.y.is_finite() && bi.z.is_finite() && bi.vel.x.is_finite() && bi.vel.y.is_finite() && bi.vz.is_finite()) {
+    if !(bi.pos.x.is_finite()
+        && bi.pos.y.is_finite()
+        && bi.z.is_finite()
+        && bi.vel.x.is_finite()
+        && bi.vel.y.is_finite()
+        && bi.vz.is_finite())
+    {
         eprintln!(
             "[DIAG][resolve] i={} produced non-finite state: pos=({:.3},{:.3}) z={:.3} vel=({:.3},{:.3}) vz={:.3}",
             i, bi.pos.x, bi.pos.y, bi.z, bi.vel.x, bi.vel.y, bi.vz
         );
     }
-    if !(bj.pos.x.is_finite() && bj.pos.y.is_finite() && bj.z.is_finite() && bj.vel.x.is_finite() && bj.vel.y.is_finite() && bj.vz.is_finite()) {
+    if !(bj.pos.x.is_finite()
+        && bj.pos.y.is_finite()
+        && bj.z.is_finite()
+        && bj.vel.x.is_finite()
+        && bj.vel.y.is_finite()
+        && bj.vz.is_finite())
+    {
         eprintln!(
             "[DIAG][resolve] j={} produced non-finite state: pos=({:.3},{:.3}) z={:.3} vel=({:.3},{:.3}) vz={:.3}",
             j, bj.pos.x, bj.pos.y, bj.z, bj.vel.x, bj.vel.y, bj.vz

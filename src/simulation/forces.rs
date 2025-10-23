@@ -4,8 +4,8 @@
 //! Used by the main simulation loop to update accelerations and fields.
 
 use crate::config;
-use crate::simulation::Simulation;
 use crate::profile_scope;
+use crate::simulation::Simulation;
 
 /// Compute electric field and force on all bodies using the quadtree.
 ///
@@ -15,14 +15,14 @@ use crate::profile_scope;
 pub fn attract(sim: &mut Simulation) {
     profile_scope!("forces_attract");
     sim.quadtree.build(&mut sim.bodies);
-    sim.quadtree.field(&mut sim.bodies, sim.config.coulomb_constant);
+    sim.quadtree
+        .field(&mut sim.bodies, sim.config.coulomb_constant);
     for body in &mut sim.bodies {
         body.e_field += sim.background_e_field;
     }
     for body in &mut sim.bodies {
         // Convert force (qE) to acceleration by dividing by mass (a = F / m)
         body.acc = (body.charge * body.e_field) / body.mass;
-
     }
 }
 
@@ -73,7 +73,9 @@ pub fn apply_polar_forces(sim: &mut Simulation) {
                                      src_pos: ultraviolet::Vec2,
                                      src_radius: f32,
                                      src_charge: f32| {
-                if src_charge.abs() < f32::EPSILON { return ultraviolet::Vec2::zero(); }
+                if src_charge.abs() < f32::EPSILON {
+                    return ultraviolet::Vec2::zero();
+                }
                 let d = point - src_pos;
                 let dist = d.mag();
                 let min_sep = point_radius + src_radius;
@@ -95,8 +97,14 @@ pub fn apply_polar_forces(sim: &mut Simulation) {
                 && !sim.bodies[j].electrons.is_empty();
             let j_e_pos = if j_has_dipole {
                 j_pos + sim.bodies[j].electrons[0].rel_pos
-            } else { j_pos };
-            let j_q_eff = if j_has_dipole { sim.bodies[j].species.polar_charge() } else { 0.0 };
+            } else {
+                j_pos
+            };
+            let j_q_eff = if j_has_dipole {
+                sim.bodies[j].species.polar_charge()
+            } else {
+                0.0
+            };
 
             // Field at nucleus/electron depends on selected dipole model
             let (field_nucleus, field_electron) = match sim.config.dipole_model {
@@ -105,7 +113,7 @@ pub fn apply_polar_forces(sim: &mut Simulation) {
                     let mut fnuc = ultraviolet::Vec2::zero();
                     let mut fele = ultraviolet::Vec2::zero();
                     fnuc += field_from_source(i_nuc_pos, i_nuc_rad, j_pos, j_rad, j_q);
-                    fele += field_from_source(i_ele_pos, 0.0,       j_pos, j_rad, j_q);
+                    fele += field_from_source(i_ele_pos, 0.0, j_pos, j_rad, j_q);
                     (fnuc, fele)
                 }
                 crate::config::DipoleModel::ConjugatePair => {
@@ -114,20 +122,22 @@ pub fn apply_polar_forces(sim: &mut Simulation) {
                     let mut fele = ultraviolet::Vec2::zero();
                     // From j net charge
                     fnuc += field_from_source(i_nuc_pos, i_nuc_rad, j_pos, j_rad, j_q);
-                    fele += field_from_source(i_ele_pos, 0.0,       j_pos, j_rad, j_q);
+                    fele += field_from_source(i_ele_pos, 0.0, j_pos, j_rad, j_q);
                     // From j dipole (+q_eff at nucleus, -q_eff at electron)
                     if j_has_dipole {
-                        fnuc += field_from_source(i_nuc_pos, i_nuc_rad, j_pos,  j_rad, j_q_eff);
-                        fnuc -= field_from_source(i_nuc_pos, i_nuc_rad, j_e_pos, 0.0,  j_q_eff);
-                        fele += field_from_source(i_ele_pos, 0.0,       j_pos,  j_rad, j_q_eff);
-                        fele -= field_from_source(i_ele_pos, 0.0,       j_e_pos, 0.0,  j_q_eff);
+                        fnuc += field_from_source(i_nuc_pos, i_nuc_rad, j_pos, j_rad, j_q_eff);
+                        fnuc -= field_from_source(i_nuc_pos, i_nuc_rad, j_e_pos, 0.0, j_q_eff);
+                        fele += field_from_source(i_ele_pos, 0.0, j_pos, j_rad, j_q_eff);
+                        fele -= field_from_source(i_ele_pos, 0.0, j_e_pos, 0.0, j_q_eff);
                     }
                     (fnuc, fele)
                 }
             };
 
             // If j contributes neither charge nor dipole, skip
-            if field_nucleus == ultraviolet::Vec2::zero() && field_electron == ultraviolet::Vec2::zero() {
+            if field_nucleus == ultraviolet::Vec2::zero()
+                && field_electron == ultraviolet::Vec2::zero()
+            {
                 continue;
             }
 
@@ -168,16 +178,24 @@ pub fn apply_lj_forces(sim: &mut Simulation) {
     }
 
     for i in 0..sim.bodies.len() {
-        if !sim.bodies[i].species.lj_enabled() { continue; }
+        if !sim.bodies[i].species.lj_enabled() {
+            continue;
+        }
         let neighbors = if use_cell {
-            sim.cell_list.find_neighbors_within(&sim.bodies, i, max_cutoff)
+            sim.cell_list
+                .find_neighbors_within(&sim.bodies, i, max_cutoff)
         } else {
-            sim.quadtree.find_neighbors_within(&sim.bodies, i, max_cutoff)
+            sim.quadtree
+                .find_neighbors_within(&sim.bodies, i, max_cutoff)
         };
         for &j in &neighbors {
-            if j <= i { continue; }
+            if j <= i {
+                continue;
+            }
             // Check if both particles have LJ enabled
-            if !sim.bodies[i].species.lj_enabled() || !sim.bodies[j].species.lj_enabled() { continue; }
+            if !sim.bodies[i].species.lj_enabled() || !sim.bodies[j].species.lj_enabled() {
+                continue;
+            }
             let (a, b) = {
                 let (left, right) = sim.bodies.split_at_mut(j);
                 (&mut left[i], &mut right[0])
@@ -185,7 +203,9 @@ pub fn apply_lj_forces(sim: &mut Simulation) {
             // Use per-species LJ parameters only
             let sigma = (a.species.lj_sigma() + b.species.lj_sigma()) * 0.5;
             let epsilon = (a.species.lj_epsilon() * b.species.lj_epsilon()).sqrt();
-            let cutoff = 0.5 * (a.species.lj_cutoff() * a.species.lj_sigma() + b.species.lj_cutoff() * b.species.lj_sigma());
+            let cutoff = 0.5
+                * (a.species.lj_cutoff() * a.species.lj_sigma()
+                    + b.species.lj_cutoff() * b.species.lj_sigma());
             let r_vec = b.pos - a.pos;
             let r = r_vec.mag();
             if r < cutoff && r > 1e-6 {
@@ -203,7 +223,12 @@ pub fn apply_lj_forces(sim: &mut Simulation) {
 }
 
 /// Compute soft-core repulsive force between two bodies.
-pub fn compute_repulsive_force(p1: &crate::body::Body, p2: &crate::body::Body, r_vec: ultraviolet::Vec2, r: f32) -> ultraviolet::Vec2 {
+pub fn compute_repulsive_force(
+    p1: &crate::body::Body,
+    p2: &crate::body::Body,
+    r_vec: ultraviolet::Vec2,
+    r: f32,
+) -> ultraviolet::Vec2 {
     let r0 = 0.5 * (p1.species.repulsion_cutoff() + p2.species.repulsion_cutoff());
     if r >= r0 || r <= 0.0 {
         return ultraviolet::Vec2::zero();
@@ -217,7 +242,9 @@ pub fn compute_repulsive_force(p1: &crate::body::Body, p2: &crate::body::Body, r
 pub fn apply_repulsive_forces(sim: &mut Simulation) {
     profile_scope!("forces_repulsion");
     let max_cutoff = crate::species::max_repulsion_cutoff();
-    if max_cutoff <= 0.0 { return; }
+    if max_cutoff <= 0.0 {
+        return;
+    }
     let use_cell = sim.use_cell_list();
     if use_cell {
         sim.cell_list.cell_size = max_cutoff;
@@ -227,7 +254,9 @@ pub fn apply_repulsive_forces(sim: &mut Simulation) {
     }
 
     for i in 0..sim.bodies.len() {
-        if !sim.bodies[i].species.repulsion_enabled() { continue; }
+        if !sim.bodies[i].species.repulsion_enabled() {
+            continue;
+        }
         let cutoff = sim.bodies[i].species.repulsion_cutoff();
         let neighbors = if use_cell {
             sim.cell_list.find_neighbors_within(&sim.bodies, i, cutoff)
@@ -235,8 +264,12 @@ pub fn apply_repulsive_forces(sim: &mut Simulation) {
             sim.quadtree.find_neighbors_within(&sim.bodies, i, cutoff)
         };
         for &j in &neighbors {
-            if j <= i { continue; }
-            if !sim.bodies[j].species.repulsion_enabled() { continue; }
+            if j <= i {
+                continue;
+            }
+            if !sim.bodies[j].species.repulsion_enabled() {
+                continue;
+            }
             let r_vec = sim.bodies[j].pos - sim.bodies[i].pos;
             let r = r_vec.mag();
             let f = compute_repulsive_force(&sim.bodies[i], &sim.bodies[j], r_vec, r);

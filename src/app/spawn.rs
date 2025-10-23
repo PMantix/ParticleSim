@@ -1,7 +1,7 @@
 use crate::body::{Electron, Species};
+use crate::profile_scope;
 use crate::simulation::Simulation;
 use crate::units::BOLTZMANN_CONSTANT;
-use crate::profile_scope;
 use smallvec::smallvec;
 use ultraviolet::Vec2;
 
@@ -14,13 +14,13 @@ pub fn sample_velocity(mass: f32, temperature: f32) -> Vec2 {
     // For 2D Maxwell-Boltzmann: σ = sqrt(k_B * T / m)
     // where k_B is in simulation energy units per Kelvin
     let sigma = (BOLTZMANN_CONSTANT * temperature / mass).sqrt();
-    
+
     // Box-Muller transform for normal distribution
     let u1 = fastrand::f32();
     let u2 = fastrand::f32();
     let z0 = (-2.0 * u1.ln()).sqrt() * (2.0 * std::f32::consts::PI * u2).cos();
     let z1 = (-2.0 * u1.ln()).sqrt() * (2.0 * std::f32::consts::PI * u2).sin();
-    
+
     Vec2::new(z0 * sigma, z1 * sigma)
 }
 
@@ -202,8 +202,14 @@ pub fn add_random(
                 );
                 new_body.vel = sample_velocity(new_body.mass, temp);
                 new_body.electrons.clear();
-                if matches!(new_body.species, Species::LithiumMetal | Species::ElectrolyteAnion | Species::EC | Species::DMC) {
-                    new_body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+                if matches!(
+                    new_body.species,
+                    Species::LithiumMetal | Species::ElectrolyteAnion | Species::EC | Species::DMC
+                ) {
+                    new_body.electrons.push(Electron {
+                        rel_pos: Vec2::zero(),
+                        vel: Vec2::zero(),
+                    });
                 }
                 new_body.update_charge_from_electrons();
                 new_body.update_species();
@@ -218,7 +224,10 @@ pub fn add_random(
     }
     // Report summary of placement failures only once
     if failures > 0 {
-        eprintln!("Failed to place {} random bodies out of {} after {} attempts each", failures, count, RANDOM_ATTEMPTS);
+        eprintln!(
+            "Failed to place {} random bodies out of {} after {} attempts each",
+            failures, count, RANDOM_ATTEMPTS
+        );
     }
 }
 

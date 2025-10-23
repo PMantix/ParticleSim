@@ -6,11 +6,12 @@ pub mod state;
 use crate::body::{foil::Foil, Body, Species};
 use crate::config::SimConfig;
 use crate::diagnostics::{FoilElectronFractionDiagnostic, TransferenceNumberDiagnostic};
+use crate::manual_measurement::{ManualMeasurementConfig, MeasurementResult};
+use crate::measurement_csv::MeasurementCsv;
 use crate::plotting::{PlotType, PlottingSystem, Quantity, SamplingMode};
 use crate::quadtree::Node;
 use crate::renderer::state::{SimCommand, SIM_COMMAND_SENDER};
 use crate::switch_charging;
-use crate::manual_measurement::{ManualMeasurementConfig, MeasurementResult};
 use quarkstrom::egui::{self, Color32, Pos2, Vec2 as EVec2};
 use quarkstrom::winit_input_helper::WinitInputHelper;
 use std::collections::HashMap;
@@ -76,11 +77,11 @@ pub struct MeasurementRecord {
     pub time_fs: f32,
     pub distance: f32,
     // Optional switching metadata captured at the moment of measurement
-    pub switch_step: Option<u8>,          // 0..3
-    pub switch_mode: Option<String>,      // "Current" | "Overpotential"
-    pub switch_value: Option<f64>,        // setpoint value for the active step
-    pub pos_role: Option<String>,         // e.g., "+A"
-    pub neg_role: Option<String>,         // e.g., "-A"
+    pub switch_step: Option<u8>,     // 0..3
+    pub switch_mode: Option<String>, // "Current" | "Overpotential"
+    pub switch_value: Option<f64>,   // setpoint value for the active step
+    pub pos_role: Option<String>,    // e.g., "+A"
+    pub neg_role: Option<String>,    // e.g., "-A"
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -206,9 +207,9 @@ pub struct Renderer {
     pub solvation_csv_interval_fs: f32,
     pub solvation_csv_filename: String,
     pub solvation_csv_last_write_fs: f32,
-    pub solvation_csv_wrote_header: bool,
+    pub solvation_csv_writer: MeasurementCsv,
 
-    // 2D Domain Density Calculation - Species Selection
+    // 2D Domain Density Calculation - Species Selection (default to Li+ only)
     pub density_calc_lithium_ion: bool,
     pub density_calc_lithium_metal: bool,
     pub density_calc_foil_metal: bool,
@@ -259,6 +260,7 @@ pub struct Renderer {
     pub show_manual_measurements: bool,
     pub points_csv_enabled: bool,
     pub points_csv_armed: bool,
+    pub measurement_points_seeded: bool,
     // Manual measurement helper UI state
     //pub available_measurement_configs: Vec<String>,
     //pub selected_measurement_config: Option<String>,
@@ -270,6 +272,10 @@ pub struct Renderer {
     // Foil metrics logging UI state
     pub foil_metrics_enabled: bool,
     pub foil_metrics_filename_override: String,
+    // Shared naming helpers for measurement CSVs
+    pub measurement_charge_type_input: String,
+    pub measurement_charge_amount_input: String,
+    pub measurement_steps_input: String,
 }
 
 impl quarkstrom::Renderer for Renderer {
@@ -300,7 +306,7 @@ impl quarkstrom::Renderer for Renderer {
             chars
         };
         let splash_particles = Vec::new(); // Initialize empty, will be created on first update
-        // Pull any persisted UI defaults if present
+                                           // Pull any persisted UI defaults if present
         let persisted_mode = crate::renderer::state::PERSIST_UI_CHARGING_MODE
             .lock()
             .clone()
@@ -323,20 +329,60 @@ impl quarkstrom::Renderer for Renderer {
             .clone()
             .unwrap_or(1.2);
 
-        // Build initial auto names for CSVs using the same naming scheme as Foil-based
-        let sample_switch_cfg = crate::switch_charging::SwitchChargingConfig::default();
-        let switch_running = false; // Renderer starts idle
-        let auto_measure_name = crate::manual_measurement_filename::build_measurement_filename(
-            switch_running,
-            &sample_switch_cfg,
-        );
-        let point_auto = if let Some(stripped) = auto_measure_name.strip_prefix("Measurement_") {
-            format!("Point-based_{}", stripped)
+        // Initial measurement naming helpers and defaults
+        let mut measurement_charge_type_input =
+            if matches!(init_mode, ChargingUiMode::SwitchCharging) {
+                "SWITCH_CC".to_string()
+            } else if init_conv_is_over {
+                "CONV_OP".to_string()
+            } else {
+                "CONV_CC".to_string()
+            };
+        let mut measurement_charge_amount_input =
+            if matches!(init_mode, ChargingUiMode::SwitchCharging) {
+                "0p00".to_string()
+            } else if init_conv_is_over {
+                format!("{:.2}", init_conv_target.abs()).replace('.', "p")
+            } else {
+                format!("{:.2}", init_conv_current.abs()).replace('.', "p")
+            };
+        let measurement_steps_input = if matches!(init_mode, ChargingUiMode::SwitchCharging) {
+            crate::switch_charging::SwitchChargingConfig::default()
+                .delta_steps
+                .to_string()
         } else {
-            format!("Point-based_{}", auto_measure_name)
+            String::new()
         };
+
+        if measurement_charge_type_input.trim().is_empty() {
+            measurement_charge_type_input = "CONV_CC".to_string();
+        }
+        if measurement_charge_amount_input.trim().is_empty() {
+            measurement_charge_amount_input = "0p00".to_string();
+        }
+
+        let mut base_parts: Vec<String> = Vec::new();
+        for part in [
+            measurement_charge_type_input.clone(),
+            measurement_charge_amount_input.clone(),
+            measurement_steps_input.clone(),
+        ] {
+            let trimmed = part.trim();
+            if !trimmed.is_empty() {
+                base_parts.push(trimmed.replace(' ', ""));
+            }
+        }
+        let default_base = if base_parts.is_empty() {
+            "Default".to_string()
+        } else {
+            base_parts.join("_")
+        };
+        let default_time_name = format!("Time-based_{}.csv", default_base);
+        let default_foil_name = format!("Foil-based_{}.csv", default_base);
+        let default_point_name = format!("Point-based_{}.csv", default_base);
+
         let mut mm_cfg = ManualMeasurementConfig::default();
-        mm_cfg.output_file = point_auto.clone();
+        mm_cfg.output_file = default_point_name.clone();
 
         Self {
             pos: Vec2::zero(),
@@ -416,10 +462,9 @@ impl quarkstrom::Renderer for Renderer {
             // Solvation CSV logging defaults
             solvation_csv_enabled: true,
             solvation_csv_interval_fs: 1000.0,
-            // Empty means: use auto Time-based_* naming derived from current settings
-            solvation_csv_filename: String::new(),
+            solvation_csv_filename: default_time_name.clone(),
             solvation_csv_last_write_fs: -1_000_000.0,
-            solvation_csv_wrote_header: false,
+            solvation_csv_writer: MeasurementCsv::new(),
 
             // 2D Domain Density Calculation - Species Selection (default to Li+ only)
             density_calc_lithium_ion: true,
@@ -466,15 +511,19 @@ impl quarkstrom::Renderer for Renderer {
             show_manual_measurements: false,
             points_csv_enabled: true,
             points_csv_armed: false,
-    // Foil metrics logging UI state
-    foil_metrics_enabled: true,
-    foil_metrics_filename_override: String::new(),
+            measurement_points_seeded: false,
+            // Foil metrics logging UI state
+            foil_metrics_enabled: true,
+            foil_metrics_filename_override: default_foil_name.clone(),
             //available_measurement_configs: Vec::new(),
             //selected_measurement_config: None,
             gen_selected_foil: Some(3),
             gen_direction: "right".to_string(),
             gen_max_length: 70.0,
             gen_point_count: 7,
+            measurement_charge_type_input,
+            measurement_charge_amount_input,
+            measurement_steps_input,
         }
     }
 
@@ -505,10 +554,15 @@ impl quarkstrom::Renderer for Renderer {
 impl Renderer {
     /// Sync persisted UI values (set by load_state) into the live Renderer fields
     pub fn sync_persisted_ui(&mut self) {
-        if !*crate::renderer::state::PERSIST_UI_DIRTY.lock() { return; }
+        if !*crate::renderer::state::PERSIST_UI_DIRTY.lock() {
+            return;
+        }
         *crate::renderer::state::PERSIST_UI_DIRTY.lock() = false;
         // Charging mode
-        if let Some(mode) = crate::renderer::state::PERSIST_UI_CHARGING_MODE.lock().clone() {
+        if let Some(mode) = crate::renderer::state::PERSIST_UI_CHARGING_MODE
+            .lock()
+            .clone()
+        {
             let desired = match mode.as_str() {
                 "SwitchCharging" => ChargingUiMode::SwitchCharging,
                 _ => ChargingUiMode::Conventional,
@@ -517,7 +571,8 @@ impl Renderer {
                 // Apply guardrails consistent with the UI when changing modes
                 match desired {
                     ChargingUiMode::Conventional | ChargingUiMode::Advanced => {
-                        if self.switch_ui_state.run_state != crate::switch_charging::RunState::Idle {
+                        if self.switch_ui_state.run_state != crate::switch_charging::RunState::Idle
+                        {
                             self.switch_ui_state.stop();
                         }
                     }
@@ -568,7 +623,11 @@ impl Renderer {
         if let (Some(start), Some(cursor)) = (self.measurement_start, self.measurement_cursor) {
             if let Some(dir) = self.measurement_direction {
                 let d = cursor - start;
-                let mag = if dir.mag() > 1e-9 { (d.dot(dir.normalized())).abs() } else { d.mag() };
+                let mag = if dir.mag() > 1e-9 {
+                    (d.dot(dir.normalized())).abs()
+                } else {
+                    d.mag()
+                };
                 Some(mag)
             } else {
                 Some((cursor - start).mag())

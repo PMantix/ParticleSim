@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use once_cell::sync::Lazy;
+use std::collections::HashMap;
 use std::sync::Mutex;
 
 use crate::body::Species;
@@ -29,7 +29,7 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
     m.insert(
         LithiumIon,
         SpeciesProps {
-            mass: 6.94, // amu
+            mass: 6.94,   // amu
             radius: 0.76, // Å
             damping: 1.0,
             color: [255, 255, 0, 255],
@@ -47,7 +47,7 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
     m.insert(
         LithiumMetal,
         SpeciesProps {
-            mass: 6.94, // amu
+            mass: 6.94,   // amu
             radius: 1.52, // Å
             damping: 0.01,
             color: [192, 192, 192, 255],
@@ -65,7 +65,7 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
     m.insert(
         FoilMetal,
         SpeciesProps {
-            mass: 1.0e6, // amu
+            mass: 1.0e6,  // amu
             radius: 1.52, // Å
             damping: 0.1,
             color: [128, 64, 0, 255],
@@ -112,8 +112,8 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
             polar_offset: crate::config::ELECTRON_DRIFT_RADIUS_FACTOR_EC,
             polar_charge: crate::config::POLAR_CHARGE_EC,
             enable_repulsion: true,
-            repulsion_strength: 5.0,  // Reduced from 100.0 - represents osmotic pressure
-            repulsion_cutoff: 5.0,    // Reduced from 11.0 - shorter range interaction
+            repulsion_strength: 5.0, // Reduced from 100.0 - represents osmotic pressure
+            repulsion_cutoff: 5.0,   // Reduced from 11.0 - shorter range interaction
         },
     );
     m.insert(
@@ -130,8 +130,8 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
             polar_offset: crate::config::ELECTRON_DRIFT_RADIUS_FACTOR_DMC,
             polar_charge: crate::config::POLAR_CHARGE_DMC,
             enable_repulsion: true,
-            repulsion_strength: 5.0,  // Reduced from 100.0 - represents osmotic pressure  
-            repulsion_cutoff: 5.0,    // Reduced from 11.0 - shorter range interaction
+            repulsion_strength: 5.0, // Reduced from 100.0 - represents osmotic pressure
+            repulsion_cutoff: 5.0,   // Reduced from 11.0 - shorter range interaction
         },
     );
     m
@@ -140,8 +140,15 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
 /// Maximum LJ interaction range across all species.
 pub fn max_lj_cutoff() -> f32 {
     use Species::*;
-    let species_list = [LithiumIon, LithiumMetal, FoilMetal, ElectrolyteAnion, EC, DMC];
-    
+    let species_list = [
+        LithiumIon,
+        LithiumMetal,
+        FoilMetal,
+        ElectrolyteAnion,
+        EC,
+        DMC,
+    ];
+
     species_list
         .iter()
         .map(|&species| get_species_props(species))
@@ -153,7 +160,14 @@ pub fn max_lj_cutoff() -> f32 {
 /// Maximum repulsion cutoff across all species.
 pub fn max_repulsion_cutoff() -> f32 {
     use Species::*;
-    let species_list = [LithiumIon, LithiumMetal, FoilMetal, ElectrolyteAnion, EC, DMC];
+    let species_list = [
+        LithiumIon,
+        LithiumMetal,
+        FoilMetal,
+        ElectrolyteAnion,
+        EC,
+        DMC,
+    ];
 
     species_list
         .iter()
@@ -164,9 +178,8 @@ pub fn max_repulsion_cutoff() -> f32 {
 }
 
 /// Mutable override properties for species (used by GUI)
-pub static SPECIES_PROPERTY_OVERRIDES: Lazy<Mutex<HashMap<Species, SpeciesProps>>> = Lazy::new(|| {
-    Mutex::new(HashMap::new())
-});
+pub static SPECIES_PROPERTY_OVERRIDES: Lazy<Mutex<HashMap<Species, SpeciesProps>>> =
+    Lazy::new(|| Mutex::new(HashMap::new()));
 
 /// Get species properties with GUI overrides applied
 pub fn get_species_props(species: Species) -> SpeciesProps {

@@ -1,9 +1,9 @@
-﻿use super::*;
-use quarkstrom::egui::{RichText, Color32};
+use super::*;
+use quarkstrom::egui::{Color32, RichText};
 
 impl super::super::Renderer {
     pub fn show_soft_dynamics_tab(&mut self, ui: &mut egui::Ui) {
-    ui.heading(" Soft Collisions");
+        ui.heading(" Soft Collisions");
         ui.separator();
 
         // Status display
@@ -14,7 +14,11 @@ impl super::super::Renderer {
             let s = self.sim_config.li_collision_softness.clamp(0.0, 1.0);
             ui.horizontal(|ui| {
                 ui.label("Softness:");
-                let color = if s == 0.0 { Color32::LIGHT_GRAY } else { Color32::GREEN };
+                let color = if s == 0.0 {
+                    Color32::LIGHT_GRAY
+                } else {
+                    Color32::GREEN
+                };
                 ui.colored_label(color, format!("{:.3}", s));
             });
             ui.horizontal(|ui| {

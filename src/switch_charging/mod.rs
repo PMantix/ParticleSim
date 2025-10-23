@@ -58,9 +58,7 @@ pub enum Mode {
     Overpotential,
 }
 
-impl Mode {
-    
-}
+impl Mode {}
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct StepSetpoint {
@@ -87,9 +85,15 @@ impl Default for StepActiveInactiveSetpoints {
     fn default() -> Self {
         Self {
             // Default to active foils using Current mode at -0.02 e/fs (as per preferred settings)
-            active: StepSetpoint { mode: Mode::Current, value: -0.02 },
+            active: StepSetpoint {
+                mode: Mode::Current,
+                value: -0.02,
+            },
             // Inactive foils use Overpotential with neutral target ratio 1.0
-            inactive: StepSetpoint { mode: Mode::Overpotential, value: 1.0 },
+            inactive: StepSetpoint {
+                mode: Mode::Overpotential,
+                value: 1.0,
+            },
         }
     }
 }
@@ -125,16 +129,46 @@ impl Default for SwitchChargingConfig {
             step_setpoints: HashMap::from([
                 // Legacy per-step setpoints (unused when use_active_inactive_setpoints=true)
                 // Keep consistent with the preferred active setpoint: Current -0.02
-                (0, StepSetpoint { mode: Mode::Current, value: -0.02 }),
-                (1, StepSetpoint { mode: Mode::Current, value: -0.02 }),
-                (2, StepSetpoint { mode: Mode::Current, value: -0.02 }),
-                (3, StepSetpoint { mode: Mode::Current, value: -0.02 }),
+                (
+                    0,
+                    StepSetpoint {
+                        mode: Mode::Current,
+                        value: -0.02,
+                    },
+                ),
+                (
+                    1,
+                    StepSetpoint {
+                        mode: Mode::Current,
+                        value: -0.02,
+                    },
+                ),
+                (
+                    2,
+                    StepSetpoint {
+                        mode: Mode::Current,
+                        value: -0.02,
+                    },
+                ),
+                (
+                    3,
+                    StepSetpoint {
+                        mode: Mode::Current,
+                        value: -0.02,
+                    },
+                ),
             ]),
             use_active_inactive_setpoints: true,
             step_active_inactive: HashMap::new(),
             use_global_active_inactive: true,
-            global_active: StepSetpoint { mode: Mode::Current, value: -0.02 },
-            global_inactive: StepSetpoint { mode: Mode::Overpotential, value: 1.0 },
+            global_active: StepSetpoint {
+                mode: Mode::Current,
+                value: -0.02,
+            },
+            global_inactive: StepSetpoint {
+                mode: Mode::Overpotential,
+                value: 1.0,
+            },
         };
         cfg.ensure_all_steps();
         cfg.ensure_all_step_active_inactive();
@@ -184,17 +218,24 @@ impl SwitchChargingConfig {
         // Validate per-step active/inactive setpoints if enabled
         if self.use_active_inactive_setpoints {
             if self.use_global_active_inactive {
-                if !self.global_active.value.is_finite() || !self.global_inactive.value.is_finite() {
+                if !self.global_active.value.is_finite() || !self.global_inactive.value.is_finite()
+                {
                     return Err("Global active/inactive setpoints must be finite".into());
                 }
             } else {
                 for step in 0u8..4u8 {
                     if !self.step_active_inactive.contains_key(&step) {
-                        return Err(format!("Missing active/inactive setpoints for step {}", step + 1));
+                        return Err(format!(
+                            "Missing active/inactive setpoints for step {}",
+                            step + 1
+                        ));
                     }
                     let sai = &self.step_active_inactive[&step];
                     if !sai.active.value.is_finite() || !sai.inactive.value.is_finite() {
-                        return Err(format!("Step {} active/inactive setpoints must be finite", step + 1));
+                        return Err(format!(
+                            "Step {} active/inactive setpoints must be finite",
+                            step + 1
+                        ));
                     }
                 }
             }
@@ -214,22 +255,21 @@ impl SwitchChargingConfig {
     }
 
     pub fn foils_for_role(&self, role: Role) -> &[FoilId] {
-        self.role_to_foil.get(&role).map(|v| v.as_slice()).unwrap_or(&[])
+        self.role_to_foil
+            .get(&role)
+            .map(|v| v.as_slice())
+            .unwrap_or(&[])
     }
 
     pub fn ensure_all_steps(&mut self) {
         for step in 0..4u8 {
-            self.step_setpoints
-                .entry(step)
-                .or_default();
+            self.step_setpoints.entry(step).or_default();
         }
     }
 
     pub fn ensure_all_step_active_inactive(&mut self) {
         for step in 0..4u8 {
-            self.step_active_inactive
-                .entry(step)
-                .or_default();
+            self.step_active_inactive.entry(step).or_default();
         }
     }
 }
@@ -366,7 +406,7 @@ impl SwitchScheduler {
         let pos_ids = cfg.foils_for_role(positive).to_vec();
         let neg_ids = cfg.foils_for_role(negative).to_vec();
         // Allow tick to proceed even if one side is empty; inactive logic will still apply to others
-        
+
         let setpoint = cfg.step_setpoints.get(&step)?.clone();
 
         Some(((pos_ids, neg_ids), setpoint))
@@ -501,18 +541,23 @@ impl SwitchUiState {
                 if Some(foil_id) != self.last_selected_foil {
                     // Check if this foil is already assigned to this role
                     let already_assigned = self.config.foils_for_role(role).contains(&foil_id);
-                    
+
                     if !already_assigned {
                         self.add_foil_to_role(role, foil_id);
                         self.pending_role = None;
                         let role_foils = self.config.foils_for_role(role);
                         if role_foils.len() == 1 {
-                            self.status_message = Some(format!("Assigned foil {foil_id} to role {role}"));
+                            self.status_message =
+                                Some(format!("Assigned foil {foil_id} to role {role}"));
                         } else {
-                            self.status_message = Some(format!("Added foil {foil_id} to role {role} ({} foils total)", role_foils.len()));
+                            self.status_message = Some(format!(
+                                "Added foil {foil_id} to role {role} ({} foils total)",
+                                role_foils.len()
+                            ));
                         }
                     } else {
-                        self.status_message = Some(format!("Foil {foil_id} is already assigned to role {role}"));
+                        self.status_message =
+                            Some(format!("Foil {foil_id} is already assigned to role {role}"));
                         self.pending_role = None;
                     }
                 }
@@ -599,7 +644,11 @@ impl SwitchUiState {
     /// Add a foil to an existing role assignment (supports multiple foils per role)
     pub fn add_foil_to_role(&mut self, role: Role, foil_id: FoilId) {
         self.ensure_paused_for_edit();
-        let foils = self.config.role_to_foil.entry(role).or_insert_with(Vec::new);
+        let foils = self
+            .config
+            .role_to_foil
+            .entry(role)
+            .or_insert_with(Vec::new);
         if !foils.contains(&foil_id) {
             foils.push(foil_id);
             self.config_dirty = true;
@@ -677,9 +726,15 @@ impl SwitchUiState {
     /// +A: 2nd foil, +B: 4th foil, -A: 3rd foil, -B: 1st (and 5th if present)
     fn maybe_apply_default_assignments(&mut self) {
         // Only run if there are no assignments at all and at least 4 foils are available
-        let any_assigned = Role::ALL.iter().any(|r| !self.config.foils_for_role(*r).is_empty());
-        if any_assigned { return; }
-        if self.available_foils.len() < 4 { return; }
+        let any_assigned = Role::ALL
+            .iter()
+            .any(|r| !self.config.foils_for_role(*r).is_empty());
+        if any_assigned {
+            return;
+        }
+        if self.available_foils.len() < 4 {
+            return;
+        }
 
         let ids: Vec<FoilId> = self.available_foils.iter().map(|f| f.id).collect();
 
@@ -695,7 +750,9 @@ impl SwitchUiState {
         add_idx(Role::PosB, 3); // +B: 4th foil
         add_idx(Role::NegA, 2); // -A: 3rd foil
         add_idx(Role::NegB, 0); // -B: 1st foil
-        if ids.len() >= 5 { add_idx(Role::NegB, 4); } // -B also gets 5th foil if present
+        if ids.len() >= 5 {
+            add_idx(Role::NegB, 4);
+        } // -B also gets 5th foil if present
 
         if self.validation_error.is_none() {
             self.status_message = Some("Default electrode assignments applied".into());
@@ -777,25 +834,30 @@ pub fn ui_switch_charging(ui: &mut egui::Ui, state: &mut SwitchUiState) {
             .show(ui, |ui| {
                 for role in Role::ALL.iter() {
                     ui.label(format!("{}", role.description()));
-                    
+
                     // Get assigned foils (create owned copy to avoid borrow issues)
                     let assigned_foils: Vec<FoilId> = state.config.foils_for_role(*role).to_vec();
-                    
+
                     if !assigned_foils.is_empty() {
                         ui.vertical(|ui| {
                             for foil_id in &assigned_foils {
                                 ui.horizontal(|ui| {
                                     // Show foil name/label
-                                    let foil_name = state.available_foils
+                                    let foil_name = state
+                                        .available_foils
                                         .iter()
                                         .find(|f| f.id == *foil_id)
                                         .map(|f| f.label.clone())
                                         .unwrap_or_else(|| format!("Foil {}", foil_id));
-                                    
+
                                     ui.label(format!("• {}", foil_name));
-                                    
+
                                     // Remove button for this specific foil
-                                    if ui.small_button("❌").on_hover_text("Remove this foil from role").clicked() {
+                                    if ui
+                                        .small_button("❌")
+                                        .on_hover_text("Remove this foil from role")
+                                        .clicked()
+                                    {
                                         state.remove_foil_from_role(*role, *foil_id);
                                     }
                                 });
@@ -804,15 +866,20 @@ pub fn ui_switch_charging(ui: &mut egui::Ui, state: &mut SwitchUiState) {
                     } else {
                         ui.label("(no foils assigned)");
                     }
-                    
+
                     // Add and Clear buttons
                     ui.horizontal(|ui| {
-                        if ui.button(format!("+ Add Foil to {}", role.display())).clicked() {
+                        if ui
+                            .button(format!("+ Add Foil to {}", role.display()))
+                            .clicked()
+                        {
                             state.pending_role = Some(*role);
-                            state.status_message =
-                                Some(format!("Select a foil in the viewport to add to role {}", role));
+                            state.status_message = Some(format!(
+                                "Select a foil in the viewport to add to role {}",
+                                role
+                            ));
                         }
-                        
+
                         if !assigned_foils.is_empty() {
                             if ui.button("Clear All").clicked() {
                                 state.remove_role(*role);
@@ -846,7 +913,7 @@ pub fn ui_switch_charging(ui: &mut egui::Ui, state: &mut SwitchUiState) {
 
     ui.group(|ui| {
         ui.label("Switching Rate");
-        
+
         // Steps per half-cycle is the primary control; frequency is derived
         ui.horizontal(|ui| {
             ui.label("Steps per half-cycle:");
@@ -1327,7 +1394,7 @@ mod tests {
             (vec![1], vec![4]),
             (vec![1], vec![4]),
         ];
-        
+
         assert_eq!(pairs.len(), expected.len());
         for (i, (actual, expected)) in pairs.iter().zip(expected.iter()).enumerate() {
             assert_eq!(actual.0, expected.0, "Mismatch at step {} pos", i);

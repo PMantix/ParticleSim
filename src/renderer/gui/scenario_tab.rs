@@ -71,7 +71,9 @@ impl super::super::Renderer {
                                 .lock()
                                 .as_ref()
                                 .unwrap()
-                                .send(SimCommand::DeleteSpecies { species: Species::LithiumIon })
+                                .send(SimCommand::DeleteSpecies {
+                                    species: Species::LithiumIon,
+                                })
                                 .unwrap();
                         }
                         crate::renderer::DeleteOption::LithiumMetal => {
@@ -79,7 +81,9 @@ impl super::super::Renderer {
                                 .lock()
                                 .as_ref()
                                 .unwrap()
-                                .send(SimCommand::DeleteSpecies { species: Species::LithiumMetal })
+                                .send(SimCommand::DeleteSpecies {
+                                    species: Species::LithiumMetal,
+                                })
                                 .unwrap();
                         }
                         crate::renderer::DeleteOption::FoilMetal => {
@@ -87,7 +91,9 @@ impl super::super::Renderer {
                                 .lock()
                                 .as_ref()
                                 .unwrap()
-                                .send(SimCommand::DeleteSpecies { species: Species::FoilMetal })
+                                .send(SimCommand::DeleteSpecies {
+                                    species: Species::FoilMetal,
+                                })
                                 .unwrap();
                         }
                         crate::renderer::DeleteOption::ElectrolyteAnion => {
@@ -95,7 +101,9 @@ impl super::super::Renderer {
                                 .lock()
                                 .as_ref()
                                 .unwrap()
-                                .send(SimCommand::DeleteSpecies { species: Species::ElectrolyteAnion })
+                                .send(SimCommand::DeleteSpecies {
+                                    species: Species::ElectrolyteAnion,
+                                })
                                 .unwrap();
                         }
                         crate::renderer::DeleteOption::EC => {
@@ -103,7 +111,9 @@ impl super::super::Renderer {
                                 .lock()
                                 .as_ref()
                                 .unwrap()
-                                .send(SimCommand::DeleteSpecies { species: Species::EC })
+                                .send(SimCommand::DeleteSpecies {
+                                    species: Species::EC,
+                                })
                                 .unwrap();
                         }
                         crate::renderer::DeleteOption::DMC => {
@@ -111,7 +121,9 @@ impl super::super::Renderer {
                                 .lock()
                                 .as_ref()
                                 .unwrap()
-                                .send(SimCommand::DeleteSpecies { species: Species::DMC })
+                                .send(SimCommand::DeleteSpecies {
+                                    species: Species::DMC,
+                                })
                                 .unwrap();
                         }
                     }
@@ -130,9 +142,9 @@ impl super::super::Renderer {
                 let drag_value = ui.add(
                     egui::DragValue::new(&mut domain_width)
                         .speed(10.0)
-                        .clamp_range(100.0..=5000.0)
+                        .clamp_range(100.0..=5000.0),
                 );
-                
+
                 if drag_value.changed() {
                     self.domain_width = domain_width;
                     SIM_COMMAND_SENDER
@@ -150,9 +162,9 @@ impl super::super::Renderer {
                 let drag_value = ui.add(
                     egui::DragValue::new(&mut domain_height)
                         .speed(10.0)
-                        .clamp_range(100.0..=5000.0)
+                        .clamp_range(100.0..=5000.0),
                 );
-                
+
                 if drag_value.changed() {
                     self.domain_height = domain_height;
                     SIM_COMMAND_SENDER
@@ -200,16 +212,8 @@ impl super::super::Renderer {
                             Species::ElectrolyteAnion,
                             "Electrolyte Anion",
                         );
-                        ui.selectable_value(
-                            &mut self.scenario_species,
-                            Species::EC,
-                            "EC",
-                        );
-                        ui.selectable_value(
-                            &mut self.scenario_species,
-                            Species::DMC,
-                            "DMC",
-                        );
+                        ui.selectable_value(&mut self.scenario_species, Species::EC, "EC");
+                        ui.selectable_value(&mut self.scenario_species, Species::DMC, "DMC");
                     });
             });
 
@@ -344,22 +348,24 @@ impl super::super::Renderer {
                 if ui.button("Add Electrolyte (EC/DMC)").clicked() {
                     // Calculate particle counts based on molarity and proportions
                     let total = self.electrolyte_total_particles;
-                    
+
                     // For xM LiPF6 in EC/DMC (1:1 vol ratio):
                     // LiPF6 dissociates to Li+ + PF6-
                     // Typical EC:DMC ratio is 1:1 by volume
                     // Rough calculation: ~10-20 solvent molecules per salt molecule
                     let solvent_to_salt_ratio = 15.0; // EC+DMC molecules per LiPF6
-                    
+
                     let salt_fraction = 1.0 / (1.0 + solvent_to_salt_ratio);
-                    let lipf6_count = (total as f32 * salt_fraction * self.electrolyte_molarity / 1.0).round() as usize;
-                    let li_count = lipf6_count; // 1:1 stoichiometry 
+                    let lipf6_count = (total as f32 * salt_fraction * self.electrolyte_molarity
+                        / 1.0)
+                        .round() as usize;
+                    let li_count = lipf6_count; // 1:1 stoichiometry
                     let pf6_count = lipf6_count; // 1:1 stoichiometry
-                    
+
                     let remaining = total.saturating_sub(li_count + pf6_count);
-                    let ec_count = remaining / 2;  // 1:1 EC:DMC
+                    let ec_count = remaining / 2; // 1:1 EC:DMC
                     let dmc_count = remaining - ec_count;
-                    
+
                     // Add Li+ ions
                     if li_count > 0 {
                         let li_body = make_body_with_species(
@@ -379,7 +385,7 @@ impl super::super::Renderer {
                             })
                             .unwrap();
                     }
-                    
+
                     // Add PF6- anions
                     if pf6_count > 0 {
                         let pf6_body = make_body_with_species(
@@ -399,7 +405,7 @@ impl super::super::Renderer {
                             })
                             .unwrap();
                     }
-                    
+
                     // Add EC solvent
                     if ec_count > 0 {
                         let ec_body = make_body_with_species(
@@ -419,7 +425,7 @@ impl super::super::Renderer {
                             })
                             .unwrap();
                     }
-                    
+
                     // Add DMC solvent
                     if dmc_count > 0 {
                         let dmc_body = make_body_with_species(
@@ -441,19 +447,23 @@ impl super::super::Renderer {
                     }
                 }
             });
-            
+
             // Show composition breakdown
             let total = self.electrolyte_total_particles;
             let solvent_to_salt_ratio = 15.0;
             let salt_fraction = 1.0 / (1.0 + solvent_to_salt_ratio);
-            let lipf6_count = (total as f32 * salt_fraction * self.electrolyte_molarity / 1.0).round() as usize;
+            let lipf6_count =
+                (total as f32 * salt_fraction * self.electrolyte_molarity / 1.0).round() as usize;
             let remaining = total.saturating_sub(lipf6_count * 2);
             let ec_count = remaining / 2;
             let dmc_count = remaining - ec_count;
-            
+
             ui.horizontal(|ui| {
                 ui.label("Composition:");
-                ui.label(format!("Li+: {}, PF6-: {}, EC: {}, DMC: {}", lipf6_count, lipf6_count, ec_count, dmc_count));
+                ui.label(format!(
+                    "Li+: {}, PF6-: {}, EC: {}, DMC: {}",
+                    lipf6_count, lipf6_count, ec_count, dmc_count
+                ));
             });
         });
 
@@ -568,11 +578,7 @@ impl super::super::Renderer {
         });
     }
 }
-pub fn make_body_with_species(
-    pos: Vec2,
-    vel: Vec2,
-    species: Species,
-) -> Body {
+pub fn make_body_with_species(pos: Vec2, vel: Vec2, species: Species) -> Body {
     use crate::config::{FOIL_NEUTRAL_ELECTRONS, LITHIUM_METAL_NEUTRAL_ELECTRONS};
     // Always use species properties for mass and radius to ensure consistency
     let mut body = Body::new(pos, vel, species.mass(), species.radius(), 0.0, species);
@@ -619,7 +625,10 @@ pub fn make_body_with_species(
         }
         Species::EC | Species::DMC => {
             // Neutral solvent molecules with a single drifting electron
-            body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+            body.electrons.push(Electron {
+                rel_pos: Vec2::zero(),
+                vel: Vec2::zero(),
+            });
         }
     }
     body.update_charge_from_electrons();
@@ -635,15 +644,15 @@ mod tests {
     fn make_body_with_species_uses_correct_radius() {
         let ion = make_body_with_species(Vec2::zero(), Vec2::zero(), Species::LithiumIon);
         let metal = make_body_with_species(Vec2::zero(), Vec2::zero(), Species::LithiumMetal);
-        
+
         assert_eq!(ion.radius, Species::LithiumIon.radius());
         assert_eq!(ion.mass, Species::LithiumIon.mass());
         assert_eq!(ion.species, Species::LithiumIon);
-        
+
         assert_eq!(metal.radius, Species::LithiumMetal.radius());
         assert_eq!(metal.mass, Species::LithiumMetal.mass());
         assert_eq!(metal.species, Species::LithiumMetal);
-        
+
         // Should be different radii
         assert_ne!(ion.radius, metal.radius);
     }

@@ -1,7 +1,7 @@
+use super::config::MeasurementPoint;
 /// Automatic measurement system for DOE
 use crate::body::Body;
 use crate::body::Species;
-use super::config::MeasurementPoint;
 
 #[derive(Debug, Clone)]
 pub struct MeasurementSample {
@@ -29,26 +29,26 @@ impl AutoMeasurement {
             measurement_interval,
         }
     }
-    
+
     /// Check if it's time to take a measurement
     pub fn should_measure(&self, current_time_fs: f32) -> bool {
         current_time_fs - self.last_measurement_time >= self.measurement_interval
     }
-    
+
     /// Perform measurements at all configured points
     pub fn measure(&mut self, bodies: &[Body], current_time_fs: f32) {
         if !self.should_measure(current_time_fs) {
             return;
         }
-        
+
         self.last_measurement_time = current_time_fs;
-        
+
         for point in &self.measurement_points {
             let sample = self.measure_at_point(bodies, point, current_time_fs);
             self.samples.push(sample);
         }
     }
-    
+
     /// Measure lithium metal deposition at a specific point
     fn measure_at_point(
         &self,
@@ -59,45 +59,50 @@ impl AutoMeasurement {
         // Define measurement region based on point and direction
         // Use 50Å vertical height for independent regions
         // width_ang defines maximum horizontal search distance
-        let vertical_height = 50.0;  // Independent regions with 50Å height
-        let half_height = vertical_height / 2.0;  // ±25Å
+        let vertical_height = 50.0; // Independent regions with 50Å height
+        let half_height = vertical_height / 2.0; // ±25Å
         let (x_min, x_max, y_min, y_max) = match point.direction.as_str() {
             "left" => (
-                point.x - point.width_ang,  // Scan up to width_ang to the left
+                point.x - point.width_ang, // Scan up to width_ang to the left
                 point.x,
-                point.y - half_height,      // ±25Å vertically centered at point.y
+                point.y - half_height, // ±25Å vertically centered at point.y
                 point.y + half_height,
             ),
             "right" => (
                 point.x,
-                point.x + point.width_ang,  // Scan up to width_ang to the right
-                point.y - half_height,      // ±25Å vertically centered at point.y
+                point.x + point.width_ang, // Scan up to width_ang to the right
+                point.y - half_height,     // ±25Å vertically centered at point.y
                 point.y + half_height,
             ),
             "up" => (
-                point.x - half_height,      // ±25Å horizontally centered at point.x
+                point.x - half_height, // ±25Å horizontally centered at point.x
                 point.x + half_height,
                 point.y,
-                point.y + point.width_ang,  // Scan upward
+                point.y + point.width_ang, // Scan upward
             ),
             "down" => (
-                point.x - half_height,      // ±25Å horizontally centered at point.x
+                point.x - half_height, // ±25Å horizontally centered at point.x
                 point.x + half_height,
-                point.y - point.width_ang,  // Scan downward
+                point.y - point.width_ang, // Scan downward
                 point.y,
             ),
-            _ => (point.x - point.width_ang/2.0, point.x + point.width_ang/2.0, point.y - half_height, point.y + half_height),
+            _ => (
+                point.x - point.width_ang / 2.0,
+                point.x + point.width_ang / 2.0,
+                point.y - half_height,
+                point.y + half_height,
+            ),
         };
-        
+
         // Find lithium metal particles in the measurement region
         // Simple approach: report furthest metal particle in window
         let mut lithium_metal_bodies = Vec::new();
         let mut lithium_ion_count = 0;
         let mut total_charge = 0.0;
-        
+
         for body in bodies {
             let pos = body.pos;
-            
+
             // Check if body is in measurement region
             if pos.x >= x_min && pos.x <= x_max && pos.y >= y_min && pos.y <= y_max {
                 match body.species {
@@ -113,23 +118,27 @@ impl AutoMeasurement {
                 }
             }
         }
-        
+
         // Find leading edge position (furthest CONNECTED metal from foil in measurement direction)
         let edge_position = if !lithium_metal_bodies.is_empty() {
             match point.direction.as_str() {
-                "left" => lithium_metal_bodies.iter()
+                "left" => lithium_metal_bodies
+                    .iter()
                     .map(|b| b.pos.x)
                     .min_by(|a, b| a.partial_cmp(b).unwrap())
                     .unwrap_or(point.x),
-                "right" => lithium_metal_bodies.iter()
+                "right" => lithium_metal_bodies
+                    .iter()
                     .map(|b| b.pos.x)
                     .max_by(|a, b| a.partial_cmp(b).unwrap())
                     .unwrap_or(point.x),
-                "up" => lithium_metal_bodies.iter()
+                "up" => lithium_metal_bodies
+                    .iter()
                     .map(|b| b.pos.y)
                     .max_by(|a, b| a.partial_cmp(b).unwrap())
                     .unwrap_or(point.y),
-                "down" => lithium_metal_bodies.iter()
+                "down" => lithium_metal_bodies
+                    .iter()
                     .map(|b| b.pos.y)
                     .min_by(|a, b| a.partial_cmp(b).unwrap())
                     .unwrap_or(point.y),
@@ -138,7 +147,7 @@ impl AutoMeasurement {
         } else {
             point.x // No connected metal detected, return reference position
         };
-        
+
         MeasurementSample {
             time_fs,
             position_label: point.label.clone(),
@@ -148,12 +157,12 @@ impl AutoMeasurement {
             total_charge,
         }
     }
-    
+
     /// Get all collected samples
     pub fn get_samples(&self) -> &[MeasurementSample] {
         &self.samples
     }
-    
+
     /// Clear all samples (for next test case)
     pub fn clear(&mut self) {
         self.samples.clear();

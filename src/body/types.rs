@@ -1,13 +1,13 @@
 // body/types.rs
 // Contains the Species enum, Body struct, and related methods (except electron and redox logic)
 
-use ultraviolet::Vec2;
-use crate::config;
 use super::electron::Electron;
+use crate::config;
 use crate::species::SpeciesProps;
+use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
-use serde::{Serialize, Deserialize};
 use std::hash::Hash;
+use ultraviolet::Vec2;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash, Serialize, Deserialize)]
 pub enum Species {
@@ -43,20 +43,35 @@ use std::sync::atomic::{AtomicU64, Ordering};
 static NEXT_ID: AtomicU64 = AtomicU64::new(1);
 
 impl Body {
-    pub fn new(pos: Vec2, vel: Vec2, mass: f32, radius: f32, charge: f32, species: Species) -> Self {
+    pub fn new(
+        pos: Vec2,
+        vel: Vec2,
+        mass: f32,
+        radius: f32,
+        charge: f32,
+        species: Species,
+    ) -> Self {
         // Validate inputs to prevent NaN/infinite values
         let safe_pos = Vec2::new(
             if pos.x.is_finite() { pos.x } else { 0.0 },
-            if pos.y.is_finite() { pos.y } else { 0.0 }
+            if pos.y.is_finite() { pos.y } else { 0.0 },
         );
         let safe_vel = Vec2::new(
             if vel.x.is_finite() { vel.x } else { 0.0 },
-            if vel.y.is_finite() { vel.y } else { 0.0 }
+            if vel.y.is_finite() { vel.y } else { 0.0 },
         );
-        let safe_mass = if mass.is_finite() && mass > 0.0 { mass } else { 1.0 };
-        let safe_radius = if radius.is_finite() && radius > 0.0 { radius } else { 1.0 };
+        let safe_mass = if mass.is_finite() && mass > 0.0 {
+            mass
+        } else {
+            1.0
+        };
+        let safe_radius = if radius.is_finite() && radius > 0.0 {
+            radius
+        } else {
+            1.0
+        };
         let safe_charge = if charge.is_finite() { charge } else { 0.0 };
-        
+
         Self {
             pos: safe_pos,
             z: 0.0,
@@ -80,14 +95,7 @@ impl Body {
     #[allow(dead_code)]
     /// Create a new Body using species properties for mass and radius
     pub fn new_from_species(pos: Vec2, vel: Vec2, charge: f32, species: Species) -> Self {
-        Self::new(
-            pos,
-            vel,
-            species.mass(),
-            species.radius(),
-            charge,
-            species
-        )
+        Self::new(pos, vel, species.mass(), species.radius(), charge, species)
     }
     pub fn update_species(&mut self) {
         if matches!(
@@ -97,15 +105,15 @@ impl Body {
             // Don't auto-convert FoilMetal, Anions, or solvent molecules
             return;
         }
-        
+
         let old_species = self.species;
-        
+
         if self.charge > config::LITHIUM_ION_THRESHOLD {
             self.species = Species::LithiumIon;
         } else if self.charge <= 0.0 {
             self.species = Species::LithiumMetal;
         }
-        
+
         // Update radius if species changed
         if old_species != self.species {
             self.radius = self.species.radius();
@@ -114,7 +122,9 @@ impl Body {
 
     pub fn neutral_electron_count(&self) -> usize {
         match self.species {
-            Species::LithiumMetal | Species::LithiumIon => crate::config::LITHIUM_METAL_NEUTRAL_ELECTRONS,
+            Species::LithiumMetal | Species::LithiumIon => {
+                crate::config::LITHIUM_METAL_NEUTRAL_ELECTRONS
+            }
             Species::FoilMetal => crate::config::FOIL_NEUTRAL_ELECTRONS,
             Species::ElectrolyteAnion => crate::config::ELECTROLYTE_ANION_NEUTRAL_ELECTRONS,
             Species::EC => crate::config::EC_NEUTRAL_ELECTRONS,
@@ -146,7 +156,12 @@ impl Body {
                 quadtree
                     .find_neighbors_within(bodies, i, radius)
                     .into_iter()
-                    .filter(|&n| matches!(bodies[n].species, Species::LithiumMetal | Species::FoilMetal))
+                    .filter(|&n| {
+                        matches!(
+                            bodies[n].species,
+                            Species::LithiumMetal | Species::FoilMetal
+                        )
+                    })
                     .count()
             }
         } else {
@@ -184,7 +199,12 @@ impl Body {
                 quadtree
                     .find_neighbors_within(bodies, index, radius)
                     .into_iter()
-                    .filter(|&n| matches!(bodies[n].species, Species::LithiumMetal | Species::FoilMetal))
+                    .filter(|&n| {
+                        matches!(
+                            bodies[n].species,
+                            Species::LithiumMetal | Species::FoilMetal
+                        )
+                    })
                     .count()
             };
             self.surrounded_by_metal = count >= config::SURROUND_NEIGHBOR_THRESHOLD;
@@ -273,11 +293,11 @@ impl Species {
     pub fn surface_affinity(&self) -> f32 {
         use Species::*;
         match self {
-            LithiumIon => 2.0,        // Strong attraction to cathode
-            ElectrolyteAnion => 1.5,  // Moderate attraction to anode
-            EC | DMC => 0.5,          // Weak surface interaction (neutral solvents)
-            LithiumMetal => 0.0,      // Already on surface
-            FoilMetal => 0.0,         // Already on surface
+            LithiumIon => 2.0,       // Strong attraction to cathode
+            ElectrolyteAnion => 1.5, // Moderate attraction to anode
+            EC | DMC => 0.5,         // Weak surface interaction (neutral solvents)
+            LithiumMetal => 0.0,     // Already on surface
+            FoilMetal => 0.0,        // Already on surface
         }
     }
 
@@ -290,17 +310,17 @@ impl Species {
             (LithiumIon, DMC) | (DMC, LithiumIon) => 0.25,
             (ElectrolyteAnion, EC) | (EC, ElectrolyteAnion) => 0.4,
             (ElectrolyteAnion, DMC) | (DMC, ElectrolyteAnion) => 0.35,
-            
+
             // Like-like interactions (layer separation)
             (LithiumIon, LithiumIon) => 0.8,
             (ElectrolyteAnion, ElectrolyteAnion) => 0.9,
             (EC, EC) => 0.6,
             (DMC, DMC) => 0.5,
-            
+
             // Metal particles stay at surface
             (_, LithiumMetal) | (LithiumMetal, _) => 0.0,
             (_, FoilMetal) | (FoilMetal, _) => 0.0,
-            
+
             // Default for other combinations
             _ => 0.4,
         }
@@ -315,17 +335,17 @@ impl Species {
             (LithiumIon, DMC) | (DMC, LithiumIon) => 1.2,
             (ElectrolyteAnion, EC) | (EC, ElectrolyteAnion) => 1.0,
             (ElectrolyteAnion, DMC) | (DMC, ElectrolyteAnion) => 0.8,
-            
+
             // Weaker solvent-solvent interactions
             (EC, DMC) | (DMC, EC) => 0.3,
             (EC, EC) => 0.4,
             (DMC, DMC) => 0.3,
-            
+
             // Ion-ion repulsion in z (want separation)
             (LithiumIon, ElectrolyteAnion) | (ElectrolyteAnion, LithiumIon) => 0.2,
             (LithiumIon, LithiumIon) => 0.1,
             (ElectrolyteAnion, ElectrolyteAnion) => 0.1,
-            
+
             // Metals don't participate in solvation
             (_, LithiumMetal) | (LithiumMetal, _) => 0.0,
             (_, FoilMetal) | (FoilMetal, _) => 0.0,

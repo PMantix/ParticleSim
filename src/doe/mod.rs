@@ -1,5 +1,5 @@
 /// Design of Experiments (DOE) module for automated parametric studies
-/// 
+///
 /// This module provides functionality to:
 /// - Define experimental test cases with varying parameters
 /// - Run simulations headlessly without GUI interaction
@@ -9,9 +9,8 @@
 #[cfg(feature = "doe")]
 pub mod config;
 #[cfg(feature = "doe")]
-pub mod runner;
+pub mod export;
 #[cfg(feature = "doe")]
 pub mod measurement;
 #[cfg(feature = "doe")]
-pub mod export;
-
+pub mod runner;

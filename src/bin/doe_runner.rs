@@ -13,14 +13,14 @@ fn main() {
 #[cfg(feature = "doe")]
 fn main() {
     let args: Vec<String> = env::args().collect();
-    
+
     if args.len() < 2 {
         print_usage();
         return;
     }
-    
+
     let command = &args[1];
-    
+
     match command.as_str() {
         "generate" => generate_doe_config(&args[2..]),
         "list" => list_cases(&args[2..]),
@@ -60,15 +60,15 @@ fn generate_doe_config(args: &[String]) {
         println!("Usage: cargo run --bin doe_runner generate <output_file.toml>");
         return;
     }
-    
+
     let output_file = &args[0];
-    
+
     println!("\n🔧 Generating DOE configuration...\n");
-    
+
     // Generate switch-charging DOE with your specified parameters
     let overpotentials = vec![0.7, 0.8, 0.9];
     let switching_frequencies = vec![500, 750, 1000, 1250, 1500];
-    
+
     let config = DoeConfig::generate_switch_charging_doe(
         "Switch Charging Study".to_string(),
         "default".to_string(), // Base scenario name
@@ -77,13 +77,16 @@ fn generate_doe_config(args: &[String]) {
         70000.0, // Run duration in fs
         1000.0,  // Measurement interval in fs
     );
-    
+
     match config.to_file(output_file) {
         Ok(_) => {
             println!("✅ DOE configuration generated: {}", output_file);
             println!("📊 Total test cases: {}", config.test_cases.len());
             println!("   - Conventional charging: 3 cases");
-            println!("   - Switch-charging: {} cases\n", config.test_cases.len() - 3);
+            println!(
+                "   - Switch-charging: {} cases\n",
+                config.test_cases.len() - 3
+            );
         }
         Err(e) => {
             println!("❌ Error generating config: {}", e);
@@ -97,9 +100,9 @@ fn list_cases(args: &[String]) {
         println!("Usage: cargo run --bin doe_runner list <config_file.toml>");
         return;
     }
-    
+
     let config_file = &args[0];
-    
+
     match DoeConfig::from_file(config_file) {
         Ok(config) => {
             let runner = DoeRunner::new(config, "doe_results".to_string());
@@ -117,15 +120,15 @@ fn run_case(args: &[String]) {
         println!("Usage: cargo run --bin doe_runner run <config_file.toml> <case_id>");
         return;
     }
-    
+
     let config_file = &args[0];
     let case_id = &args[1];
-    
+
     match DoeConfig::from_file(config_file) {
         Ok(config) => {
             let output_dir = format!("doe_results/{}", config.study_name.replace(" ", "_"));
             let runner = DoeRunner::new(config, output_dir);
-            
+
             match runner.run_case(case_id) {
                 Ok(_) => println!("\n✅ Case '{}' completed successfully!\n", case_id),
                 Err(e) => println!("❌ Error running case: {}\n", e),
@@ -143,16 +146,16 @@ fn run_all_cases(args: &[String]) {
         println!("Usage: cargo run --bin doe_runner run-all <config_file.toml>");
         return;
     }
-    
+
     let config_file = &args[0];
-    
+
     match DoeConfig::from_file(config_file) {
         Ok(config) => {
             let output_dir = format!("doe_results/{}", config.study_name.replace(" ", "_"));
             let runner = DoeRunner::new(config, output_dir);
-            
+
             match runner.run_all() {
-                Ok(_) => {},
+                Ok(_) => {}
                 Err(e) => println!("❌ Error running DOE: {}\n", e),
             }
         }

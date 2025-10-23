@@ -2,9 +2,9 @@
 // Contains the Simulation struct and main methods (new, step, iterate, perform_electron_hopping)
 
 use super::collision;
+use super::compressed_history::CompressedHistorySystem;
 use super::forces;
 use super::history::PlaybackController;
-use super::compressed_history::CompressedHistorySystem;
 use crate::body::foil::LinkMode;
 use crate::config;
 use crate::manual_measurement::{ManualMeasurementConfig, ManualMeasurementRecorder};
@@ -24,9 +24,9 @@ use crate::{
 use rand::prelude::*; // Import all prelude traits for rand 0.9+
 use rayon::prelude::*;
 use std::collections::{HashMap, HashSet};
-use ultraviolet::Vec2;
 use std::fs::File;
-use std::io::Write; // for writeln! and flush on File
+use std::io::Write;
+use ultraviolet::Vec2; // for writeln! and flush on File
 
 /// The main simulation state and logic for the particle system.
 pub struct Simulation {
@@ -46,7 +46,7 @@ pub struct Simulation {
     pub config: config::SimConfig, //
     /// Track when thermostat was last applied (in simulation time)
     pub last_thermostat_time: f32,
-    pub compressed_history: CompressedHistorySystem,  // Keep for compatibility but unused
+    pub compressed_history: CompressedHistorySystem, // Keep for compatibility but unused
     pub simple_history: std::collections::VecDeque<crate::io::SimulationState>,
     pub history_cursor: usize,
     pub history_dirty: bool,
@@ -68,6 +68,7 @@ pub struct Simulation {
     pub manual_measurement_recorder: Option<ManualMeasurementRecorder>,
     // Foil metrics CSV writer state (written when manual measurements occur)
     foil_metrics_csv: Option<File>,
+    foil_metrics_current_base: Option<String>,
 }
 
 impl Simulation {
@@ -121,6 +122,7 @@ impl Simulation {
             temp_inactive_set: std::collections::HashSet::new(),
             manual_measurement_recorder: None,
             foil_metrics_csv: None,
+            foil_metrics_current_base: None,
         };
         sim.initialize_history();
         sim
@@ -193,7 +195,13 @@ impl Simulation {
     }
 
     fn refresh_switch_snapshots(&mut self) {
-        let assigned: HashSet<u64> = self.switch_config.role_to_foil.values().flatten().copied().collect();
+        let assigned: HashSet<u64> = self
+            .switch_config
+            .role_to_foil
+            .values()
+            .flatten()
+            .copied()
+            .collect();
         self.switch_saved_states
             .retain(|id, _| assigned.contains(id));
         for foil_id in assigned {
@@ -244,62 +252,78 @@ impl Simulation {
     fn apply_switch_step_active_inactive(&mut self, foil_pairs: (Vec<u64>, Vec<u64>)) {
         let (pos_ids, neg_ids) = &foil_pairs;
         self.switch_active_pair = Some((pos_ids[0], neg_ids[0])); // For compatibility, store first pair
-        
+
         // Collect all foil IDs to avoid borrow conflicts
-        let all_foil_ids: Vec<u64> = self.switch_config.role_to_foil.values().flatten().copied().collect();
-        
+        let all_foil_ids: Vec<u64> = self
+            .switch_config
+            .role_to_foil
+            .values()
+            .flatten()
+            .copied()
+            .collect();
+
         // First, restore all snapshots
         for &foil_id in &all_foil_ids {
             self.restore_snapshot_for(foil_id);
         }
-        
+
         // Resolve active/inactive setpoints (global vs per-step)
         let current_step = self.switch_scheduler.current_step();
-        let (active_sp, inactive_sp): (&crate::switch_charging::StepSetpoint, &crate::switch_charging::StepSetpoint) = 
-            if self.switch_config.use_global_active_inactive {
-                (&self.switch_config.global_active, &self.switch_config.global_inactive)
-            } else {
-                match self.switch_config.step_active_inactive.get(&current_step) {
-                    Some(sai) => (&sai.active, &sai.inactive),
-                    None => {
-                        eprintln!("Warning: No active/inactive setpoints found for step {}", current_step);
-                        return;
-                    }
-                }
-            };
-
-        // Helper to apply a setpoint to a specific foil
-        let apply_setpoint_to_foil = |foil: &mut crate::body::foil::Foil, sp: &crate::switch_charging::StepSetpoint| {
-            match sp.mode {
-                crate::switch_charging::Mode::Current => {
-                    if foil.charging_mode != crate::body::foil::ChargingMode::Current {
-                        foil.disable_overpotential_mode();
-                    }
-                    foil.charging_mode = crate::body::foil::ChargingMode::Current;
-                    foil.ac_current = 0.0;
-                    foil.switch_hz = 0.0;
-                    // Clear overpotential-related state to avoid residual effects when switching modes
-                    foil.slave_overpotential_current = 0.0;
-                    // dc_current will be set by caller
-                }
-                crate::switch_charging::Mode::Overpotential => {
-                    if foil.charging_mode != crate::body::foil::ChargingMode::Overpotential {
-                        foil.enable_overpotential_mode(1.0);
-                    }
-                    if let Some(controller) = foil.overpotential_controller.as_mut() {
-                        controller.target_ratio = sp.value as f32;
-                    }
-                    // Ensure no stale current drive remains when in overpotential control
-                    foil.dc_current = 0.0;
-                    foil.ac_current = 0.0;
-                    foil.switch_hz = 0.0;
+        let (active_sp, inactive_sp): (
+            &crate::switch_charging::StepSetpoint,
+            &crate::switch_charging::StepSetpoint,
+        ) = if self.switch_config.use_global_active_inactive {
+            (
+                &self.switch_config.global_active,
+                &self.switch_config.global_inactive,
+            )
+        } else {
+            match self.switch_config.step_active_inactive.get(&current_step) {
+                Some(sai) => (&sai.active, &sai.inactive),
+                None => {
+                    eprintln!(
+                        "Warning: No active/inactive setpoints found for step {}",
+                        current_step
+                    );
+                    return;
                 }
             }
         };
 
+        // Helper to apply a setpoint to a specific foil
+        let apply_setpoint_to_foil =
+            |foil: &mut crate::body::foil::Foil, sp: &crate::switch_charging::StepSetpoint| {
+                match sp.mode {
+                    crate::switch_charging::Mode::Current => {
+                        if foil.charging_mode != crate::body::foil::ChargingMode::Current {
+                            foil.disable_overpotential_mode();
+                        }
+                        foil.charging_mode = crate::body::foil::ChargingMode::Current;
+                        foil.ac_current = 0.0;
+                        foil.switch_hz = 0.0;
+                        // Clear overpotential-related state to avoid residual effects when switching modes
+                        foil.slave_overpotential_current = 0.0;
+                        // dc_current will be set by caller
+                    }
+                    crate::switch_charging::Mode::Overpotential => {
+                        if foil.charging_mode != crate::body::foil::ChargingMode::Overpotential {
+                            foil.enable_overpotential_mode(1.0);
+                        }
+                        if let Some(controller) = foil.overpotential_controller.as_mut() {
+                            controller.target_ratio = sp.value as f32;
+                        }
+                        // Ensure no stale current drive remains when in overpotential control
+                        foil.dc_current = 0.0;
+                        foil.ac_current = 0.0;
+                        foil.switch_hz = 0.0;
+                    }
+                }
+            };
+
         // Apply active setpoint to active foils (those participating in this step)
-        let active_foil_ids: std::collections::HashSet<u64> = pos_ids.iter().chain(neg_ids.iter()).copied().collect();
-        
+        let active_foil_ids: std::collections::HashSet<u64> =
+            pos_ids.iter().chain(neg_ids.iter()).copied().collect();
+
         // Active foils (current step participants)
         if matches!(active_sp.mode, crate::switch_charging::Mode::Current) {
             // Split current between positive and negative groups, guarding against empty groups
@@ -329,13 +353,17 @@ impl Simulation {
             for &foil_id in pos_ids {
                 if let Some(foil) = self.foils.iter_mut().find(|f| f.id == foil_id) {
                     apply_setpoint_to_foil(foil, &active_sp);
-                    if let Some(ctrl) = foil.overpotential_controller.as_mut() { ctrl.target_ratio = v_pos; }
+                    if let Some(ctrl) = foil.overpotential_controller.as_mut() {
+                        ctrl.target_ratio = v_pos;
+                    }
                 }
             }
             for &foil_id in neg_ids {
                 if let Some(foil) = self.foils.iter_mut().find(|f| f.id == foil_id) {
                     apply_setpoint_to_foil(foil, &active_sp);
-                    if let Some(ctrl) = foil.overpotential_controller.as_mut() { ctrl.target_ratio = v_neg; }
+                    if let Some(ctrl) = foil.overpotential_controller.as_mut() {
+                        ctrl.target_ratio = v_neg;
+                    }
                 }
             }
         }
@@ -344,22 +372,35 @@ impl Simulation {
         self.temp_inactive_set.clear();
         let applied_inactive = &mut self.temp_inactive_set;
         for step in 0u8..4u8 {
-            if step == current_step { continue; }
+            if step == current_step {
+                continue;
+            }
             // Fetch the inactive setpoint for this non-active step
             let (inactive_mode, inactive_value) = if self.switch_config.use_global_active_inactive {
                 (inactive_sp.mode, inactive_sp.value)
             } else {
-                if let Some(sai_other) = self.switch_config.step_active_inactive.get(&step) { (sai_other.inactive.mode, sai_other.inactive.value) } else { continue } 
+                if let Some(sai_other) = self.switch_config.step_active_inactive.get(&step) {
+                    (sai_other.inactive.mode, sai_other.inactive.value)
+                } else {
+                    continue;
+                }
             };
             let (pos_role, neg_role) = crate::switch_charging::roles_for_step(step);
             let pos_step_ids = self.switch_config.foils_for_role(pos_role);
             let neg_step_ids = self.switch_config.foils_for_role(neg_role);
 
             for &foil_id in pos_step_ids.iter().chain(neg_step_ids.iter()) {
-                if active_foil_ids.contains(&foil_id) { continue; }
-                if applied_inactive.contains(&foil_id) { continue; }
+                if active_foil_ids.contains(&foil_id) {
+                    continue;
+                }
+                if applied_inactive.contains(&foil_id) {
+                    continue;
+                }
                 if let Some(foil) = self.foils.iter_mut().find(|f| f.id == foil_id) {
-                    let sp = crate::switch_charging::StepSetpoint { mode: inactive_mode, value: inactive_value };
+                    let sp = crate::switch_charging::StepSetpoint {
+                        mode: inactive_mode,
+                        value: inactive_value,
+                    };
                     apply_setpoint_to_foil(foil, &sp);
                     if matches!(inactive_mode, crate::switch_charging::Mode::Current) {
                         foil.dc_current = inactive_value as f32;
@@ -372,10 +413,17 @@ impl Simulation {
         // For any remaining foils not in the current step and not assigned to any step roles (or missed),
         // apply the current step's INACTIVE as a fallback.
         for &foil_id in &all_foil_ids {
-            if active_foil_ids.contains(&foil_id) { continue; }
-            if applied_inactive.contains(&foil_id) { continue; }
+            if active_foil_ids.contains(&foil_id) {
+                continue;
+            }
+            if applied_inactive.contains(&foil_id) {
+                continue;
+            }
             if let Some(foil) = self.foils.iter_mut().find(|f| f.id == foil_id) {
-                let sp = crate::switch_charging::StepSetpoint { mode: inactive_sp.mode, value: inactive_sp.value };
+                let sp = crate::switch_charging::StepSetpoint {
+                    mode: inactive_sp.mode,
+                    value: inactive_sp.value,
+                };
                 apply_setpoint_to_foil(foil, &sp);
                 if matches!(inactive_sp.mode, crate::switch_charging::Mode::Current) {
                     foil.dc_current = inactive_sp.value as f32;
@@ -385,25 +433,35 @@ impl Simulation {
         }
     }
 
-    fn apply_switch_step(&mut self, foil_pairs: (Vec<u64>, Vec<u64>), setpoint: &switch_charging::StepSetpoint) {
+    fn apply_switch_step(
+        &mut self,
+        foil_pairs: (Vec<u64>, Vec<u64>),
+        setpoint: &switch_charging::StepSetpoint,
+    ) {
         let (pos_ids, neg_ids) = &foil_pairs;
         self.switch_active_pair = Some((pos_ids[0], neg_ids[0])); // For compatibility, store first pair
-        
+
         // Collect all foil IDs to avoid borrow conflicts
-        let all_foil_ids: Vec<u64> = self.switch_config.role_to_foil.values().flatten().copied().collect();
-        
+        let all_foil_ids: Vec<u64> = self
+            .switch_config
+            .role_to_foil
+            .values()
+            .flatten()
+            .copied()
+            .collect();
+
         // First, restore all snapshots
         for &foil_id in &all_foil_ids {
             self.restore_snapshot_for(foil_id);
         }
-        
+
         // Apply step setpoint to all foils (old behavior)
         match setpoint.mode {
             switch_charging::Mode::Current => {
                 // Divide current between foils in each group
                 let pos_current_per_foil = setpoint.value as f32 / pos_ids.len() as f32;
                 let neg_current_per_foil = setpoint.value as f32 / neg_ids.len() as f32;
-                
+
                 for &foil_id in pos_ids {
                     if let Some(foil) = self.foils.iter_mut().find(|f| f.id == foil_id) {
                         if foil.charging_mode != crate::body::foil::ChargingMode::Current {
@@ -415,7 +473,7 @@ impl Simulation {
                         foil.switch_hz = 0.0;
                     }
                 }
-                
+
                 for &foil_id in neg_ids {
                     if let Some(foil) = self.foils.iter_mut().find(|f| f.id == foil_id) {
                         if foil.charging_mode != crate::body::foil::ChargingMode::Current {
@@ -427,14 +485,16 @@ impl Simulation {
                         foil.switch_hz = 0.0;
                     }
                 }
-                
+
                 // For inactive foils in Current mode, set them to overpotential neutralization
-                let active_ids: std::collections::HashSet<u64> = pos_ids.iter().chain(neg_ids.iter()).copied().collect();
+                let active_ids: std::collections::HashSet<u64> =
+                    pos_ids.iter().chain(neg_ids.iter()).copied().collect();
                 for &foil_id in &all_foil_ids {
                     if !active_ids.contains(&foil_id) {
                         if let Some(foil) = self.foils.iter_mut().find(|f| f.id == foil_id) {
                             // Neutralize inactive foils with overpotential 1.0
-                            if foil.charging_mode != crate::body::foil::ChargingMode::Overpotential {
+                            if foil.charging_mode != crate::body::foil::ChargingMode::Overpotential
+                            {
                                 foil.enable_overpotential_mode(1.0);
                             }
                             if let Some(controller) = foil.overpotential_controller.as_mut() {
@@ -448,7 +508,7 @@ impl Simulation {
                 // Apply same overpotential to all foils in each group
                 let target_positive = setpoint.value as f32;
                 let target_negative = (2.0 - setpoint.value) as f32;
-                
+
                 for &foil_id in pos_ids {
                     if let Some(foil) = self.foils.iter_mut().find(|f| f.id == foil_id) {
                         if foil.charging_mode != crate::body::foil::ChargingMode::Overpotential {
@@ -459,7 +519,7 @@ impl Simulation {
                         }
                     }
                 }
-                
+
                 for &foil_id in neg_ids {
                     if let Some(foil) = self.foils.iter_mut().find(|f| f.id == foil_id) {
                         if foil.charging_mode != crate::body::foil::ChargingMode::Overpotential {
@@ -470,13 +530,15 @@ impl Simulation {
                         }
                     }
                 }
-                
+
                 // For inactive foils, also neutralize them
-                let active_ids: std::collections::HashSet<u64> = pos_ids.iter().chain(neg_ids.iter()).copied().collect();
+                let active_ids: std::collections::HashSet<u64> =
+                    pos_ids.iter().chain(neg_ids.iter()).copied().collect();
                 for &foil_id in &all_foil_ids {
                     if !active_ids.contains(&foil_id) {
                         if let Some(foil) = self.foils.iter_mut().find(|f| f.id == foil_id) {
-                            if foil.charging_mode != crate::body::foil::ChargingMode::Overpotential {
+                            if foil.charging_mode != crate::body::foil::ChargingMode::Overpotential
+                            {
                                 foil.enable_overpotential_mode(1.0);
                             }
                             if let Some(controller) = foil.overpotential_controller.as_mut() {
@@ -494,7 +556,9 @@ impl Simulation {
         if self.switch_run_state != RunState::Running {
             return;
         }
-        if let Some(((pos_ids, neg_ids), setpoint)) = self.switch_scheduler.on_tick(&self.switch_config) {
+        if let Some(((pos_ids, neg_ids), setpoint)) =
+            self.switch_scheduler.on_tick(&self.switch_config)
+        {
             // When using step-based active/inactive setpoints, ignore the legacy step setpoint completely
             if self.switch_config.use_active_inactive_setpoints {
                 self.apply_switch_step_active_inactive((pos_ids, neg_ids));
@@ -506,7 +570,8 @@ impl Simulation {
                 dwell_remaining: self.switch_scheduler.dwell_remaining(),
             });
             // Mirror the active step for renderer global state (used in playback and live)
-            *crate::renderer::state::SWITCH_STEP.lock() = Some(self.switch_scheduler.current_step());
+            *crate::renderer::state::SWITCH_STEP.lock() =
+                Some(self.switch_scheduler.current_step());
         }
     }
 
@@ -549,7 +614,8 @@ impl Simulation {
                     crate::body::foil::ChargingMode::Current => foil.dc_current.abs(),
                     crate::body::foil::ChargingMode::Overpotential => {
                         if let Some(ctrl) = &foil.overpotential_controller {
-                            (ctrl.target_ratio - 1.0).abs() * self.config.induced_field_overpot_scale
+                            (ctrl.target_ratio - 1.0).abs()
+                                * self.config.induced_field_overpot_scale
                         } else {
                             0.0
                         }
@@ -566,14 +632,20 @@ impl Simulation {
                             n += 1.0;
                         }
                     }
-                    if n > 0.0 { c /= n; }
+                    if n > 0.0 {
+                        c /= n;
+                    }
 
                     // Classify by sign of intended current if in current mode; else by link mode/heuristic
                     let is_pos = match foil.charging_mode {
                         crate::body::foil::ChargingMode::Current => foil.dc_current > 0.0,
                         crate::body::foil::ChargingMode::Overpotential => {
                             // Heuristic: target>1 => cathodic (acts like positive collector of electrons)
-                            if let Some(ctrl) = &foil.overpotential_controller { ctrl.target_ratio >= 1.0 } else { false }
+                            if let Some(ctrl) = &foil.overpotential_controller {
+                                ctrl.target_ratio >= 1.0
+                            } else {
+                                false
+                            }
                         }
                     };
 
@@ -589,18 +661,34 @@ impl Simulation {
                 }
             }
 
-            if pos_count > 0 { pos_centroid /= pos_count as f32; }
-            if neg_count > 0 { neg_centroid /= neg_count as f32; }
+            if pos_count > 0 {
+                pos_centroid /= pos_count as f32;
+            }
+            if neg_count > 0 {
+                neg_centroid /= neg_count as f32;
+            }
 
             // Direction from negative to positive
             let mut dir = pos_centroid - neg_centroid;
-            if dir.mag() > 1e-6 { dir = dir.normalized(); } else { dir = Vec2::new(theta.cos(), theta.sin()); }
+            if dir.mag() > 1e-6 {
+                dir = dir.normalized();
+            } else {
+                dir = Vec2::new(theta.cos(), theta.sin());
+            }
 
             // Magnitude based on average drive between groups
             let avg_drive = {
-                let p = if pos_count>0 { pos_drive_sum / pos_count as f32 } else { 0.0 };
-                let n = if neg_count>0 { neg_drive_sum / neg_count as f32 } else { 0.0 };
-                0.5*(p+n)
+                let p = if pos_count > 0 {
+                    pos_drive_sum / pos_count as f32
+                } else {
+                    0.0
+                };
+                let n = if neg_count > 0 {
+                    neg_drive_sum / neg_count as f32
+                } else {
+                    0.0
+                };
+                0.5 * (p + n)
             };
             let induced_mag = avg_drive * self.config.induced_field_gain;
 
@@ -610,18 +698,22 @@ impl Simulation {
                 dir
             } else {
                 let m = manual_field.mag();
-                if m > 1e-9 { manual_field / m } else { Vec2::zero() }
+                if m > 1e-9 {
+                    manual_field / m
+                } else {
+                    Vec2::zero()
+                }
             };
             induced_field = induced_dir * induced_mag;
         }
 
-    // Smooth induced field across frames (simple exponential)
-    let alpha = self.config.induced_field_smoothing.clamp(0.0, 0.9999);
-    let smoothed_induced = self.prev_induced_e_field * alpha + induced_field * (1.0 - alpha);
-    self.prev_induced_e_field = smoothed_induced;
+        // Smooth induced field across frames (simple exponential)
+        let alpha = self.config.induced_field_smoothing.clamp(0.0, 0.9999);
+        let smoothed_induced = self.prev_induced_e_field * alpha + induced_field * (1.0 - alpha);
+        self.prev_induced_e_field = smoothed_induced;
 
-    // Compose total external: manual + smoothed induced
-    self.background_e_field = manual_field + smoothed_induced;
+        // Compose total external: manual + smoothed induced
+        self.background_e_field = manual_field + smoothed_induced;
         self.rewound_flags
             .par_iter_mut()
             .for_each(|flag| *flag = false);
@@ -642,9 +734,11 @@ impl Simulation {
             // NaN values detected at step start
         }
 
-    // Apply group linking constraints each frame (parallel within groups, opposite between groups)
-    // Skip when switch charging is running to avoid overriding active/inactive step controls
-    if self.switch_run_state != RunState::Running && !(self.group_a.is_empty() && self.group_b.is_empty()) {
+        // Apply group linking constraints each frame (parallel within groups, opposite between groups)
+        // Skip when switch charging is running to avoid overriding active/inactive step controls
+        if self.switch_run_state != RunState::Running
+            && !(self.group_a.is_empty() && self.group_b.is_empty())
+        {
             // Determine representatives (masters) for A and B, pick smallest id
             let master_a = self.group_a.iter().min().copied();
             let master_b = self.group_b.iter().min().copied();
@@ -683,8 +777,12 @@ impl Simulation {
                                 }
                                 crate::body::foil::ChargingMode::Overpotential => {
                                     // Only sync controller params if follower is also Overpotential
-                                    if f.charging_mode == crate::body::foil::ChargingMode::Overpotential {
-                                        if let (Some((target, kp, ki, kd)), Some(dst)) = (m_ctrl, f.overpotential_controller.as_mut()) {
+                                    if f.charging_mode
+                                        == crate::body::foil::ChargingMode::Overpotential
+                                    {
+                                        if let (Some((target, kp, ki, kd)), Some(dst)) =
+                                            (m_ctrl, f.overpotential_controller.as_mut())
+                                        {
                                             dst.target_ratio = target;
                                             dst.kp = kp;
                                             dst.ki = ki;
@@ -725,8 +823,12 @@ impl Simulation {
                                     }
                                 }
                                 crate::body::foil::ChargingMode::Overpotential => {
-                                    if f.charging_mode == crate::body::foil::ChargingMode::Overpotential {
-                                        if let (Some((target, kp, ki, kd)), Some(dst)) = (m_ctrl, f.overpotential_controller.as_mut()) {
+                                    if f.charging_mode
+                                        == crate::body::foil::ChargingMode::Overpotential
+                                    {
+                                        if let (Some((target, kp, ki, kd)), Some(dst)) =
+                                            (m_ctrl, f.overpotential_controller.as_mut())
+                                        {
                                             dst.target_ratio = target;
                                             dst.kp = kp;
                                             dst.ki = ki;
@@ -745,8 +847,13 @@ impl Simulation {
                 let mode_a = index_of(&self.foils, ma).map(|idx| self.foils[idx].charging_mode);
                 let mode_b = index_of(&self.foils, mb).map(|idx| self.foils[idx].charging_mode);
                 match (mode_a, mode_b) {
-                    (Some(crate::body::foil::ChargingMode::Current), Some(crate::body::foil::ChargingMode::Current)) => {
-                        if let (Some(a_idx), Some(b_idx)) = (index_of(&self.foils, ma), index_of(&self.foils, mb)) {
+                    (
+                        Some(crate::body::foil::ChargingMode::Current),
+                        Some(crate::body::foil::ChargingMode::Current),
+                    ) => {
+                        if let (Some(a_idx), Some(b_idx)) =
+                            (index_of(&self.foils, ma), index_of(&self.foils, mb))
+                        {
                             let a_dc = self.foils[a_idx].dc_current;
                             let a_ac = self.foils[a_idx].ac_current;
                             let a_hz = self.foils[a_idx].switch_hz;
@@ -755,14 +862,21 @@ impl Simulation {
                             self.foils[b_idx].switch_hz = a_hz;
                         }
                     }
-                    (Some(crate::body::foil::ChargingMode::Overpotential), Some(crate::body::foil::ChargingMode::Overpotential)) => {
-                        if let (Some(a_idx), Some(b_idx)) = (index_of(&self.foils, ma), index_of(&self.foils, mb)) {
+                    (
+                        Some(crate::body::foil::ChargingMode::Overpotential),
+                        Some(crate::body::foil::ChargingMode::Overpotential),
+                    ) => {
+                        if let (Some(a_idx), Some(b_idx)) =
+                            (index_of(&self.foils, ma), index_of(&self.foils, mb))
+                        {
                             // Snapshot A controller values first
                             let a_vals = self.foils[a_idx]
                                 .overpotential_controller
                                 .as_ref()
                                 .map(|c| (c.target_ratio, c.kp, c.ki, c.kd));
-                            if let (Some((a_target, a_kp, a_ki, a_kd)), Some(b_ctrl)) = (a_vals, self.foils[b_idx].overpotential_controller.as_mut()) {
+                            if let (Some((a_target, a_kp, a_ki, a_kd)), Some(b_ctrl)) =
+                                (a_vals, self.foils[b_idx].overpotential_controller.as_mut())
+                            {
                                 b_ctrl.target_ratio = 2.0 - a_target;
                                 b_ctrl.kp = a_kp;
                                 b_ctrl.ki = a_ki;
@@ -804,9 +918,16 @@ impl Simulation {
                                     }
                                 }
                                 crate::body::foil::ChargingMode::Overpotential => {
-                                    if f.charging_mode == crate::body::foil::ChargingMode::Overpotential {
-                                        if let (Some((target, kp, ki, kd)), Some(dst)) = (m_ctrl, f.overpotential_controller.as_mut()) {
-                                            dst.target_ratio = target; dst.kp = kp; dst.ki = ki; dst.kd = kd;
+                                    if f.charging_mode
+                                        == crate::body::foil::ChargingMode::Overpotential
+                                    {
+                                        if let (Some((target, kp, ki, kd)), Some(dst)) =
+                                            (m_ctrl, f.overpotential_controller.as_mut())
+                                        {
+                                            dst.target_ratio = target;
+                                            dst.kp = kp;
+                                            dst.ki = ki;
+                                            dst.kd = kd;
                                         }
                                     }
                                 }
@@ -841,9 +962,16 @@ impl Simulation {
                                     }
                                 }
                                 crate::body::foil::ChargingMode::Overpotential => {
-                                    if f.charging_mode == crate::body::foil::ChargingMode::Overpotential {
-                                        if let (Some((target, kp, ki, kd)), Some(dst)) = (m_ctrl, f.overpotential_controller.as_mut()) {
-                                            dst.target_ratio = target; dst.kp = kp; dst.ki = ki; dst.kd = kd;
+                                    if f.charging_mode
+                                        == crate::body::foil::ChargingMode::Overpotential
+                                    {
+                                        if let (Some((target, kp, ki, kd)), Some(dst)) =
+                                            (m_ctrl, f.overpotential_controller.as_mut())
+                                        {
+                                            dst.target_ratio = target;
+                                            dst.kp = kp;
+                                            dst.ki = ki;
+                                            dst.kd = kd;
                                         }
                                     }
                                 }
@@ -958,9 +1086,20 @@ impl Simulation {
             let liquid_temp = crate::simulation::utils::compute_liquid_temperature(&self.bodies);
             if liquid_temp <= 1e-6 {
                 // Check if we actually have liquid species present
-                let has_liquid = self.bodies.iter().any(|b| matches!(b.species, crate::body::Species::LithiumIon | crate::body::Species::ElectrolyteAnion | crate::body::Species::EC | crate::body::Species::DMC));
+                let has_liquid = self.bodies.iter().any(|b| {
+                    matches!(
+                        b.species,
+                        crate::body::Species::LithiumIon
+                            | crate::body::Species::ElectrolyteAnion
+                            | crate::body::Species::EC
+                            | crate::body::Species::DMC
+                    )
+                });
                 if has_liquid {
-                    crate::simulation::utils::initialize_liquid_velocities_to_temperature(&mut self.bodies, self.config.temperature);
+                    crate::simulation::utils::initialize_liquid_velocities_to_temperature(
+                        &mut self.bodies,
+                        self.config.temperature,
+                    );
                     #[cfg(feature = "thermostat_debug")]
                     {
                         crate::simulation::thermal::tdbg!(
@@ -1004,12 +1143,18 @@ impl Simulation {
         }
 
         self.frame += 1;
-        
+
         // Update manual measurement recorder
         let mut wrote_measurements = false;
         let simulation_time_fs = self.frame as f32 * self.dt;
         if let Some(recorder) = &mut self.manual_measurement_recorder {
-            let results = recorder.update(&self.bodies, &self.foils, &self.quadtree, self.frame, simulation_time_fs);
+            let results = recorder.update(
+                &self.bodies,
+                &self.foils,
+                &self.quadtree,
+                self.frame,
+                simulation_time_fs,
+            );
             if !results.is_empty() {
                 // Update shared state for GUI display
                 *crate::renderer::state::MANUAL_MEASUREMENT_RESULTS.lock() = results;
@@ -1019,8 +1164,12 @@ impl Simulation {
             // Check for auto-pause at target time
             if let Some(target_time_fs) = recorder.config().auto_pause_time_fs {
                 if simulation_time_fs >= target_time_fs {
-                    println!("✓ Auto-pause triggered at {:.0} fs (target: {:.0} fs)", simulation_time_fs, target_time_fs);
-                    crate::renderer::state::PAUSED.store(true, std::sync::atomic::Ordering::Relaxed);
+                    println!(
+                        "✓ Auto-pause triggered at {:.0} fs (target: {:.0} fs)",
+                        simulation_time_fs, target_time_fs
+                    );
+                    crate::renderer::state::PAUSED
+                        .store(true, std::sync::atomic::Ordering::Relaxed);
                 }
             }
         }
@@ -1028,7 +1177,7 @@ impl Simulation {
         if wrote_measurements {
             self.write_foil_metrics_if_due(self.frame, simulation_time_fs);
         }
-        
+
         // Capture history with lightweight ring buffer approach
         // Only capture every 10 frames and keep limited history for good performance
         if self.frame % 10 == 0 {
@@ -1067,7 +1216,7 @@ impl Simulation {
             group_a: self.group_a.iter().copied().collect(),
             group_b: self.group_b.iter().copied().collect(),
         };
-        
+
         // Add to ring buffer with capacity limit
         self.simple_history.push_back(state);
         while self.simple_history.len() > self.history_capacity {
@@ -1076,7 +1225,7 @@ impl Simulation {
                 self.history_cursor -= 1;
             }
         }
-        
+
         // Update cursor to latest frame
         self.history_cursor = self.simple_history.len().saturating_sub(1);
         self.history_dirty = false;
@@ -1133,32 +1282,85 @@ impl Simulation {
         });
     }
 
-    /// Build default foil metrics filename based on existing measurement naming (swap prefix to Foil_)
-    fn foil_metrics_filename(&self) -> String {
-        // If GUI provided an override, use it
-        if let Some(name) = crate::renderer::state::FOIL_METRICS_FILENAME_OVERRIDE.lock().clone() {
+    /// Build default foil metrics base filename using unified scheme reflecting current settings
+    fn foil_metrics_filename_base(&self) -> String {
+        // If GUI provided an override, use it as-is
+        if let Some(name) = crate::renderer::state::FOIL_METRICS_FILENAME_OVERRIDE
+            .lock()
+            .clone()
+        {
             return name;
         }
-        // Else build based on measurement naming to stay consistent
-        let switch_running = matches!(self.switch_run_state, RunState::Running);
-        let measurement_name = crate::manual_measurement_filename::build_measurement_filename(
-            switch_running,
-            &self.switch_config,
-        );
-        if let Some(stripped) = measurement_name.strip_prefix("Measurement_") {
-            format!("Foil-based_{}", stripped)
+        // Determine charging mode and value
+        let mode_str = if matches!(self.switch_run_state, RunState::Running) {
+            "SWITCH"
         } else {
-            format!("Foil-based_{}", measurement_name)
+            "CONV"
+        };
+        let (ctrl, val, step_opt) = if matches!(self.switch_run_state, RunState::Running) {
+            use crate::switch_charging::Mode;
+            let cfg = &self.switch_config;
+            let (m, v) = if cfg.use_active_inactive_setpoints {
+                let sp = if cfg.use_global_active_inactive {
+                    &cfg.global_active
+                } else {
+                    cfg.step_active_inactive
+                        .get(&0)
+                        .map(|s| &s.active)
+                        .unwrap_or(&cfg.global_active)
+                };
+                (sp.mode, sp.value)
+            } else {
+                let sp = cfg.step_setpoints.get(&0).cloned().unwrap_or_default();
+                (sp.mode, sp.value)
+            };
+            let ctrl = match m {
+                Mode::Current => "CC",
+                Mode::Overpotential => "OP",
+            };
+            (ctrl.to_string(), v as f64, Some(cfg.delta_steps))
+        } else {
+            // Conventional/Advanced: infer from first foil (fallback to defaults)
+            if let Some(foil) = self.foils.first() {
+                match foil.charging_mode {
+                    crate::body::foil::ChargingMode::Current => {
+                        ("CC".to_string(), foil.dc_current as f64, None)
+                    }
+                    crate::body::foil::ChargingMode::Overpotential => {
+                        let target = foil
+                            .overpotential_controller
+                            .as_ref()
+                            .map(|c| c.target_ratio)
+                            .unwrap_or(1.0);
+                        ("OP".to_string(), target as f64, None)
+                    }
+                }
+            } else {
+                ("CC".to_string(), 0.05, None)
+            }
+        };
+        let val_str = format!("{:.2}", val.abs()).replace('.', "p");
+        match step_opt {
+            Some(steps) => format!("Foil-based_{}_{}_{}_{}.csv", mode_str, ctrl, val_str, steps),
+            None => format!("Foil-based_{}_{}_{}.csv", mode_str, ctrl, val_str),
         }
     }
 
     /// Ensure foil metrics CSV file is open, creating with header if needed
     fn ensure_foil_metrics_csv_open(&mut self) {
-        if self.foil_metrics_csv.is_some() { return; }
-        let filename = self.foil_metrics_filename();
+        if self.foil_metrics_csv.is_some() {
+            return;
+        }
+        let filename = if let Some(b) = self.foil_metrics_current_base.clone() {
+            b
+        } else {
+            let b = self.foil_metrics_filename_base();
+            self.foil_metrics_current_base = Some(b.clone());
+            b
+        };
         // Create doe_results if needed
         let _ = std::fs::create_dir_all("doe_results");
-        let path = format!("doe_results/{}", filename);
+        let path = std::path::Path::new("doe_results").join(&filename);
         match File::create(&path) {
             Ok(mut f) => {
                 // Header: single row per timestep (wide format), grouped by field across foils
@@ -1168,19 +1370,29 @@ impl Simulation {
                 foil_ids.sort_unstable();
                 let mut header = String::from("frame,time_fs");
                 // Modes
-                for id in &foil_ids { header.push_str(&format!(",mode_f{}", id)); }
+                for id in &foil_ids {
+                    header.push_str(&format!(",mode_f{}", id));
+                }
                 // Setpoints
-                for id in &foil_ids { header.push_str(&format!(",setpoint_f{}", id)); }
+                for id in &foil_ids {
+                    header.push_str(&format!(",setpoint_f{}", id));
+                }
                 // Actual ratios
-                for id in &foil_ids { header.push_str(&format!(",actual_ratio_f{}", id)); }
+                for id in &foil_ids {
+                    header.push_str(&format!(",actual_ratio_f{}", id));
+                }
                 // Delta electrons
-                for id in &foil_ids { header.push_str(&format!(",delta_electrons_f{}", id)); }
+                for id in &foil_ids {
+                    header.push_str(&format!(",delta_electrons_f{}", id));
+                }
                 // Li metal counts
-                for id in &foil_ids { header.push_str(&format!(",li_metal_count_f{}", id)); }
+                for id in &foil_ids {
+                    header.push_str(&format!(",li_metal_count_f{}", id));
+                }
                 let _ = writeln!(f, "{}", header);
                 let _ = f.flush();
                 self.foil_metrics_csv = Some(f);
-                println!("✓ Started foil metrics recording to: {}", path);
+                println!("✓ Started foil metrics recording to: {}", path.display());
             }
             Err(e) => {
                 eprintln!("✗ Failed to open foil metrics CSV: {}", e);
@@ -1202,15 +1414,21 @@ impl Simulation {
         let mut queue: std::collections::VecDeque<usize> = std::collections::VecDeque::new();
         for &body_id in &foil.body_ids {
             if let Some(&idx) = id_to_index.get(&body_id) {
-                if visited_idx.insert(idx) { queue.push_back(idx); }
+                if visited_idx.insert(idx) {
+                    queue.push_back(idx);
+                }
             }
         }
-        if queue.is_empty() { return 0; }
+        if queue.is_empty() {
+            return 0;
+        }
 
         let use_cell = self.use_cell_list();
         let mut li_metal_count = 0usize;
         while let Some(body_index) = queue.pop_front() {
-            if body_index >= self.bodies.len() { continue; }
+            if body_index >= self.bodies.len() {
+                continue;
+            }
             let body = &self.bodies[body_index];
 
             if matches!(body.species, crate::body::Species::LithiumMetal) {
@@ -1219,12 +1437,16 @@ impl Simulation {
 
             let connection_radius = body.radius * 2.2;
             let nearby_indices = if use_cell {
-                self.cell_list.find_neighbors_within(&self.bodies, body_index, connection_radius)
+                self.cell_list
+                    .find_neighbors_within(&self.bodies, body_index, connection_radius)
             } else {
-                self.quadtree.find_neighbors_within(&self.bodies, body_index, connection_radius)
+                self.quadtree
+                    .find_neighbors_within(&self.bodies, body_index, connection_radius)
             };
             for &other_idx in &nearby_indices {
-                if other_idx >= self.bodies.len() { continue; }
+                if other_idx >= self.bodies.len() {
+                    continue;
+                }
                 let other_body = &self.bodies[other_idx];
                 if !matches!(
                     other_body.species,
@@ -1234,7 +1456,9 @@ impl Simulation {
                 }
                 let threshold = (body.radius + other_body.radius) * 1.1;
                 if (body.pos - other_body.pos).mag() <= threshold {
-                    if visited_idx.insert(other_idx) { queue.push_back(other_idx); }
+                    if visited_idx.insert(other_idx) {
+                        queue.push_back(other_idx);
+                    }
                 }
             }
         }
@@ -1244,8 +1468,11 @@ impl Simulation {
     /// Write foil metrics in wide CSV format (single row per timestep) when manual measurement cadence fires
     fn write_foil_metrics_if_due(&mut self, frame: usize, time_fs: f32) {
         // Only write when recorder exists to align with its cadence
-        if self.manual_measurement_recorder.is_none() { return; }
-        if !crate::renderer::state::FOIL_METRICS_ENABLED.load(std::sync::atomic::Ordering::Relaxed) {
+        if self.manual_measurement_recorder.is_none() {
+            return;
+        }
+        if !crate::renderer::state::FOIL_METRICS_ENABLED.load(std::sync::atomic::Ordering::Relaxed)
+        {
             return; // Disabled via GUI
         }
         // Precompute electron ratios for all foils (matches charging tab display)
@@ -1256,7 +1483,15 @@ impl Simulation {
         }
 
         // Build snapshot first to avoid borrow conflicts
-        struct Row { idx: usize, foil_id: u64, mode_str: &'static str, setpoint: f32, actual_ratio: f32, delta_e: i32, li_metal_count: usize }
+        struct Row {
+            idx: usize,
+            foil_id: u64,
+            mode_str: &'static str,
+            setpoint: f32,
+            actual_ratio: f32,
+            delta_e: i32,
+            li_metal_count: usize,
+        }
         let include_li = crate::renderer::state::FOIL_METRICS_INCLUDE_LI_METAL
             .load(std::sync::atomic::Ordering::Relaxed);
         let mut rows: Vec<Row> = Vec::with_capacity(self.foils.len());
@@ -1274,8 +1509,20 @@ impl Simulation {
             };
             let actual_ratio = ratio_map.get(&foil.id).copied().unwrap_or(1.0);
             let delta_e = foil.electron_delta_since_measure;
-            let li_metal_count = if include_li { self.li_metal_count_for_foil(foil) } else { 0 };
-            rows.push(Row { idx: i, foil_id: foil.id, mode_str, setpoint: setpoint_val, actual_ratio, delta_e, li_metal_count });
+            let li_metal_count = if include_li {
+                self.li_metal_count_for_foil(foil)
+            } else {
+                0
+            };
+            rows.push(Row {
+                idx: i,
+                foil_id: foil.id,
+                mode_str,
+                setpoint: setpoint_val,
+                actual_ratio,
+                delta_e,
+                li_metal_count,
+            });
         }
 
         // Write a single wide row
@@ -1297,15 +1544,41 @@ impl Simulation {
             // Start with frame and time
             let mut line = format!("{},{}", frame, time_fs);
             // Modes
-            for r in &rows_sorted { line.push_str(&format!(",{}", r.mode_str)); }
+            for r in &rows_sorted {
+                line.push_str(&format!(",{}", r.mode_str));
+            }
             // Setpoints (conditional values)
-            for r in &rows_sorted { if include_set { line.push_str(&format!(",{:.6}", r.setpoint)); } else { line.push_str(","); } }
+            for r in &rows_sorted {
+                if include_set {
+                    line.push_str(&format!(",{:.6}", r.setpoint));
+                } else {
+                    line.push_str(",");
+                }
+            }
             // Actual ratios
-            for r in &rows_sorted { if include_act { line.push_str(&format!(",{:.6}", r.actual_ratio)); } else { line.push_str(","); } }
+            for r in &rows_sorted {
+                if include_act {
+                    line.push_str(&format!(",{:.6}", r.actual_ratio));
+                } else {
+                    line.push_str(",");
+                }
+            }
             // Delta electrons
-            for r in &rows_sorted { if include_del { line.push_str(&format!(",{}", r.delta_e)); } else { line.push_str(","); } }
+            for r in &rows_sorted {
+                if include_del {
+                    line.push_str(&format!(",{}", r.delta_e));
+                } else {
+                    line.push_str(",");
+                }
+            }
             // Li metal counts
-            for r in &rows_sorted { if include_li { line.push_str(&format!(",{}", r.li_metal_count)); } else { line.push_str(","); } }
+            for r in &rows_sorted {
+                if include_li {
+                    line.push_str(&format!(",{}", r.li_metal_count));
+                } else {
+                    line.push_str(",");
+                }
+            }
 
             let _ = writeln!(file, "{}", line);
             let _ = file.flush();
@@ -1363,7 +1636,9 @@ impl Simulation {
 
         // BFS to find all connected metal bodies using spatial queries
         while let Some(body_index) = queue.pop_front() {
-            if body_index >= self.bodies.len() { continue; }
+            if body_index >= self.bodies.len() {
+                continue;
+            }
             let body = &self.bodies[body_index];
 
             // Count electrons in this body
@@ -1382,7 +1657,9 @@ impl Simulation {
 
             // Check each nearby body for connection
             for &other_idx in &nearby_indices {
-                if other_idx >= self.bodies.len() { continue; }
+                if other_idx >= self.bodies.len() {
+                    continue;
+                }
                 let other_body = &self.bodies[other_idx];
 
                 // Only consider metal bodies
@@ -1514,8 +1791,10 @@ impl Simulation {
         // Compute for master foils (with controllers) regardless of target, so neutral can still correct
         let mut electron_ratios = std::collections::HashMap::new();
         for foil in &self.foils {
-            if matches!(foil.charging_mode, crate::body::foil::ChargingMode::Overpotential)
-                && foil.overpotential_controller.is_some()
+            if matches!(
+                foil.charging_mode,
+                crate::body::foil::ChargingMode::Overpotential
+            ) && foil.overpotential_controller.is_some()
             {
                 let ratio = self.calculate_foil_electron_ratio(foil);
                 electron_ratios.insert(foil.id, ratio);
@@ -1565,11 +1844,7 @@ impl Simulation {
         }
 
         // DIRECT ELECTRON MANIPULATION for overpotential mode (bypasses current-based system)
-        self.process_overpotential_direct_electron_control(
-            &electron_ratios,
-            &mut rng,
-            recipients,
-        );
+        self.process_overpotential_direct_electron_control(&electron_ratios, &mut rng, recipients);
 
         // Traditional current-based processing for non-overpotential foils
         self.process_current_based_foils(time, dt, &electron_ratios, recipients);

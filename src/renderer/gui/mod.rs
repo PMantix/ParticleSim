@@ -9,9 +9,9 @@ use quarkstrom::egui::{self, Vec2 as EVec2};
 use ultraviolet::Vec2;
 
 pub mod analysis_tab;
+pub mod charging_tab;
 pub mod debug_tab;
 pub mod diagnostics_tab;
-pub mod charging_tab;
 pub mod measurement_tab;
 pub mod physics_tab;
 pub mod pid_controller;
@@ -344,30 +344,46 @@ impl super::Renderer {
                 PlaybackModeStatus::HistoryPaused | PlaybackModeStatus::HistoryPlaying => {
                     let step_opt = *crate::renderer::state::SWITCH_STEP.lock();
                     if let Some(s) = step_opt {
-                        ui.colored_label(egui::Color32::LIGHT_BLUE, format!("Switch Charging (History) • Step {}", s + 1));
+                        ui.colored_label(
+                            egui::Color32::LIGHT_BLUE,
+                            format!("Switch Charging (History) • Step {}", s + 1),
+                        );
                     } else {
                         ui.colored_label(egui::Color32::LIGHT_BLUE, "Conventional (History)");
                     }
                 }
-                PlaybackModeStatus::Live => {
-                    match self.charging_ui_mode {
-                        super::ChargingUiMode::Conventional | super::ChargingUiMode::Advanced => {
-                            let label = if matches!(self.charging_ui_mode, super::ChargingUiMode::Advanced) { "Advanced" } else { "Conventional" };
-                            ui.colored_label(egui::Color32::LIGHT_GREEN, label);
-                            let mode_str = if self.conventional_is_overpotential { "Overpotential" } else { "Current" };
-                            ui.separator();
-                            ui.small(format!("Group control: {}", mode_str));
-                        }
-                        super::ChargingUiMode::SwitchCharging => {
-                            let (label, color) = match self.switch_ui_state.run_state {
-                                crate::switch_charging::RunState::Idle => ("Switch Charging (Idle)", egui::Color32::LIGHT_GRAY),
-                                crate::switch_charging::RunState::Running => ("Switch Charging (Running)", egui::Color32::LIGHT_GREEN),
-                                crate::switch_charging::RunState::Paused => ("Switch Charging (Paused)", egui::Color32::YELLOW),
+                PlaybackModeStatus::Live => match self.charging_ui_mode {
+                    super::ChargingUiMode::Conventional | super::ChargingUiMode::Advanced => {
+                        let label =
+                            if matches!(self.charging_ui_mode, super::ChargingUiMode::Advanced) {
+                                "Advanced"
+                            } else {
+                                "Conventional"
                             };
-                            ui.colored_label(color, label);
-                        }
+                        ui.colored_label(egui::Color32::LIGHT_GREEN, label);
+                        let mode_str = if self.conventional_is_overpotential {
+                            "Overpotential"
+                        } else {
+                            "Current"
+                        };
+                        ui.separator();
+                        ui.small(format!("Group control: {}", mode_str));
                     }
-                }
+                    super::ChargingUiMode::SwitchCharging => {
+                        let (label, color) = match self.switch_ui_state.run_state {
+                            crate::switch_charging::RunState::Idle => {
+                                ("Switch Charging (Idle)", egui::Color32::LIGHT_GRAY)
+                            }
+                            crate::switch_charging::RunState::Running => {
+                                ("Switch Charging (Running)", egui::Color32::LIGHT_GREEN)
+                            }
+                            crate::switch_charging::RunState::Paused => {
+                                ("Switch Charging (Paused)", egui::Color32::YELLOW)
+                            }
+                        };
+                        ui.colored_label(color, label);
+                    }
+                },
             }
         });
     }

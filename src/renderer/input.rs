@@ -1,14 +1,14 @@
 use super::state::*;
 use super::{GuiTab, MeasurementRecord};
 use quarkstrom::winit::event::VirtualKeyCode;
-use std::sync::atomic::Ordering;
 use std::f32::consts::{PI, TAU};
+use std::sync::atomic::Ordering;
 //use crate::body::{Body, Electron};
-use ultraviolet::Vec2;
-use quarkstrom::winit_input_helper::WinitInputHelper;
-use super::state::{SIM_COMMAND_SENDER, SimCommand};
+use super::state::{SimCommand, SIM_COMMAND_SENDER};
 use crate::body::Species;
 use crate::profile_scope;
+use quarkstrom::winit_input_helper::WinitInputHelper;
+use ultraviolet::Vec2;
 
 impl super::Renderer {
     pub fn handle_input(&mut self, input: &WinitInputHelper, width: u16, height: u16) {
@@ -31,7 +31,7 @@ impl super::Renderer {
             self.window_width = width;
             self.window_height = height;
         }
-        
+
         self.settings_window_open ^= input.key_pressed(VirtualKeyCode::E);
 
         if input.key_pressed(VirtualKeyCode::Space) {
@@ -42,16 +42,18 @@ impl super::Renderer {
                     // In history mode, send PlaybackPlay command instead of toggling PAUSED
                     drop(playback_status);
                     if let Some(sender) = &*crate::renderer::state::SIM_COMMAND_SENDER.lock() {
-                        let _ = sender.send(crate::renderer::state::SimCommand::PlaybackPlay { auto_resume: false });
+                        let _ = sender.send(crate::renderer::state::SimCommand::PlaybackPlay {
+                            auto_resume: false,
+                        });
                     }
-                },
+                }
                 crate::renderer::state::PlaybackModeStatus::HistoryPlaying => {
                     // In history playing mode, send PlaybackPause command
                     drop(playback_status);
                     if let Some(sender) = &*crate::renderer::state::SIM_COMMAND_SENDER.lock() {
                         let _ = sender.send(crate::renderer::state::SimCommand::PlaybackPause);
                     }
-                },
+                }
                 crate::renderer::state::PlaybackModeStatus::Live => {
                     // In live mode, toggle PAUSED as normal
                     drop(playback_status);
@@ -104,7 +106,7 @@ impl super::Renderer {
             self.pos.y += mdy / height as f32 * self.scale * 2.0;
         }
 
-    // Screen capture removed
+        // Screen capture removed
 
         // Mouse to world conversion
         let world_mouse = || -> Vec2 {
@@ -139,7 +141,9 @@ impl super::Renderer {
             } else if self.measurement_selecting_direction {
                 // Define direction using a second click: vector from start to clicked point
                 if input.mouse_pressed(0) {
-                    if let (Some(start), Some(cursor)) = (self.measurement_start, self.measurement_cursor) {
+                    if let (Some(start), Some(cursor)) =
+                        (self.measurement_start, self.measurement_cursor)
+                    {
                         let dir = cursor - start;
                         if dir.mag_sq() > 1e-12 {
                             self.measurement_direction = Some(dir.normalized());
@@ -167,23 +171,35 @@ impl super::Renderer {
                         let (pos, neg) = crate::switch_charging::roles_for_step(step);
                         pos_role = Some(pos.display().to_string());
                         neg_role = Some(neg.display().to_string());
-                        
+
                         // Get the active setpoint from the appropriate config mode
                         if self.switch_ui_state.config.use_active_inactive_setpoints {
                             // Use new step-based active/inactive setpoints (record the active setpoint)
-                            if let Some(sai) = self.switch_ui_state.config.step_active_inactive.get(&step) {
-                                switch_mode = Some(match sai.active.mode { 
-                                    crate::switch_charging::Mode::Current => "Current".to_string(), 
-                                    crate::switch_charging::Mode::Overpotential => "Overpotential".to_string() 
+                            if let Some(sai) =
+                                self.switch_ui_state.config.step_active_inactive.get(&step)
+                            {
+                                switch_mode = Some(match sai.active.mode {
+                                    crate::switch_charging::Mode::Current => "Current".to_string(),
+                                    crate::switch_charging::Mode::Overpotential => {
+                                        "Overpotential".to_string()
+                                    }
                                 });
                                 switch_value = Some(sai.active.value);
                             }
                         } else {
                             // Use legacy step setpoints
-                            if let Some(sp) = self.switch_ui_state.config.step_setpoints.get(&step).cloned() {
-                                switch_mode = Some(match sp.mode { 
-                                    crate::switch_charging::Mode::Current => "Current".to_string(), 
-                                    crate::switch_charging::Mode::Overpotential => "Overpotential".to_string() 
+                            if let Some(sp) = self
+                                .switch_ui_state
+                                .config
+                                .step_setpoints
+                                .get(&step)
+                                .cloned()
+                            {
+                                switch_mode = Some(match sp.mode {
+                                    crate::switch_charging::Mode::Current => "Current".to_string(),
+                                    crate::switch_charging::Mode::Overpotential => {
+                                        "Overpotential".to_string()
+                                    }
                                 });
                                 switch_value = Some(sp.value);
                             }
@@ -212,7 +228,8 @@ impl super::Renderer {
         if input.mouse_pressed(1) {
             if self.spawn_body.is_none() {
                 // If shift is held, select a particle
-                if input.key_held(VirtualKeyCode::LShift) || input.key_held(VirtualKeyCode::RShift) {
+                if input.key_held(VirtualKeyCode::LShift) || input.key_held(VirtualKeyCode::RShift)
+                {
                     let mouse_pos = world_mouse();
                     let mut closest = None;
                     let mut min_dist = f32::MAX;
@@ -228,7 +245,9 @@ impl super::Renderer {
                     if let Some(id) = closest {
                         if let Some(body) = self.bodies.iter().find(|b| b.id == id) {
                             if body.species == Species::FoilMetal {
-                                if let Some(foil) = self.foils.iter().find(|f| f.body_ids.contains(&id)) {
+                                if let Some(foil) =
+                                    self.foils.iter().find(|f| f.body_ids.contains(&id))
+                                {
                                     if !self.selected_foil_ids.contains(&foil.id) {
                                         if self.selected_foil_ids.len() == 2 {
                                             self.selected_foil_ids.remove(0);
@@ -251,16 +270,13 @@ impl super::Renderer {
 
                     println!()
 
-                // If shift is not held, spawn a new body    
+                // If shift is not held, spawn a new body
                 } else {
                     // Spawning logic (no shift)
                     let mouse = world_mouse();
                     let spec = self.scenario_species;
-                    let body = crate::renderer::gui::make_body_with_species(
-                        mouse,
-                        Vec2::zero(),
-                        spec,
-                    );
+                    let body =
+                        crate::renderer::gui::make_body_with_species(mouse, Vec2::zero(), spec);
                     self.spawn_body = Some(body);
                     self.angle = None;
                     self.total = Some(0.0);

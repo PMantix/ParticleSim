@@ -1,8 +1,7 @@
-use ultraviolet::Vec2;
 use crate::body::Body;
+use ultraviolet::Vec2;
 
-#[derive(Clone, Copy)]
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Quad {
     pub center: Vec2,
     pub size: f32,
@@ -11,7 +10,10 @@ pub struct Quad {
 impl Quad {
     pub fn new_containing(bodies: &[Body]) -> Self {
         if bodies.is_empty() {
-            return Self { center: Vec2::zero(), size: 1.0 };
+            return Self {
+                center: Vec2::zero(),
+                size: 1.0,
+            };
         }
 
         let mut min_x = f32::MAX;
@@ -35,7 +37,7 @@ impl Quad {
     /// Create a quad that fits the specified domain bounds instead of auto-sizing
     pub fn new_for_domain(domain_width: f32, domain_height: f32) -> Self {
         let center = Vec2::zero(); // Domain is centered at origin
-        // Use the larger dimension to ensure the quad covers the entire domain
+                                   // Use the larger dimension to ensure the quad covers the entire domain
         let size = (2.0 * domain_width).max(2.0 * domain_height);
         Self { center, size }
     }

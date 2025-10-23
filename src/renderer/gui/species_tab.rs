@@ -30,16 +30,8 @@ impl super::super::Renderer {
                     Species::ElectrolyteAnion,
                     "Electrolyte Anion",
                 );
-                ui.selectable_value(
-                    &mut self.selected_lj_species,
-                    Species::EC,
-                    "EC",
-                );
-                ui.selectable_value(
-                    &mut self.selected_lj_species,
-                    Species::DMC,
-                    "DMC",
-                );
+                ui.selectable_value(&mut self.selected_lj_species, Species::EC, "EC");
+                ui.selectable_value(&mut self.selected_lj_species, Species::DMC, "DMC");
             });
 
         // Get current properties for selected species
@@ -162,7 +154,10 @@ impl super::super::Renderer {
         ui.group(|ui| {
             ui.label("🛑 Repulsive Potential");
             if ui
-                .checkbox(&mut current_props.enable_repulsion, "Enable repulsive potential")
+                .checkbox(
+                    &mut current_props.enable_repulsion,
+                    "Enable repulsive potential",
+                )
                 .changed()
             {
                 changed = true;
@@ -214,21 +209,26 @@ impl super::super::Renderer {
             {
                 changed = true;
             }
-            
+
             // Calculate and display effective dipole strength
-            let effective_dipole = current_props.polar_charge * current_props.polar_offset * current_props.radius;
+            let effective_dipole =
+                current_props.polar_charge * current_props.polar_offset * current_props.radius;
             ui.separator();
             ui.horizontal(|ui| {
                 ui.label("📏 Effective Dipole:");
-                ui.label(egui::RichText::new(format!("{:.4}", effective_dipole))
-                    .color(egui::Color32::from_rgb(100, 200, 100))
-                    .monospace());
+                ui.label(
+                    egui::RichText::new(format!("{:.4}", effective_dipole))
+                        .color(egui::Color32::from_rgb(100, 200, 100))
+                        .monospace(),
+                );
                 ui.label("e·Å");
             });
-            
+
             // Add some context about the calculation
-            ui.small(format!("= {:.3} × {:.3} × {:.1} (charge × offset × radius)", 
-                current_props.polar_charge, current_props.polar_offset, current_props.radius));
+            ui.small(format!(
+                "= {:.3} × {:.3} × {:.1} (charge × offset × radius)",
+                current_props.polar_charge, current_props.polar_offset, current_props.radius
+            ));
         });
 
         // Update species properties if changed
@@ -261,8 +261,14 @@ impl super::super::Renderer {
             });
             if current_props.enable_repulsion {
                 ui.horizontal(|ui| {
-                    ui.label(format!("Repulsion k: {:.2}", current_props.repulsion_strength));
-                    ui.label(format!("Repulsion r0: {:.2}", current_props.repulsion_cutoff));
+                    ui.label(format!(
+                        "Repulsion k: {:.2}",
+                        current_props.repulsion_strength
+                    ));
+                    ui.label(format!(
+                        "Repulsion r0: {:.2}",
+                        current_props.repulsion_cutoff
+                    ));
                 });
             }
             if current_props.lj_enabled {

@@ -1,7 +1,7 @@
 #![allow(dead_code)] // Public API functions that may be used by other systems
 
+use crate::body::{Electron, Species};
 use crate::simulation::Simulation;
-use crate::body::{Species, Electron};
 use ultraviolet::Vec2;
 
 /// Number of attempts when placing random particles.
@@ -20,28 +20,36 @@ pub fn handle_change_charge(simulation: &mut Simulation, id: u64, delta: f32) {
                 Species::LithiumMetal => crate::config::LITHIUM_METAL_MAX_ELECTRONS,
                 _ => usize::MAX, // No limit for other species
             };
-            
+
             let requested_additions = (-delta).round() as usize;
             let current_count = body.electrons.len();
             let available_capacity = max_electrons.saturating_sub(current_count);
             let actual_additions = requested_additions.min(available_capacity);
-            
+
             if actual_additions < requested_additions {
-                println!("Warning: Particle {} can only accept {} more electrons (max: {}, current: {})", 
-                         id, actual_additions, max_electrons, current_count);
+                println!(
+                    "Warning: Particle {} can only accept {} more electrons (max: {}, current: {})",
+                    id, actual_additions, max_electrons, current_count
+                );
             }
-            
+
             for _ in 0..actual_additions {
                 let angle = fastrand::f32() * std::f32::consts::TAU;
-                let rel_pos = Vec2::new(angle.cos(), angle.sin())
-                    * body.radius
-                    * body.species.polar_offset();
-                body.electrons.push(Electron { rel_pos, vel: Vec2::zero() });
+                let rel_pos =
+                    Vec2::new(angle.cos(), angle.sin()) * body.radius * body.species.polar_offset();
+                body.electrons.push(Electron {
+                    rel_pos,
+                    vel: Vec2::zero(),
+                });
             }
         }
         body.update_charge_from_electrons();
         println!("Particle {} new charge: {}", id, body.charge);
-        println!("Particle {} new electron count: {}", id, body.electrons.len());
+        println!(
+            "Particle {} new electron count: {}",
+            id,
+            body.electrons.len()
+        );
         println!("Particle {} new species: {:?}", id, body.species);
 
         let was_metal = body.species == Species::LithiumMetal;
@@ -98,7 +106,9 @@ pub fn handle_delete_species(simulation: &mut Simulation, species: Species) {
         simulation
             .foils
             .retain(|foil| foil.body_ids.iter().any(|id| remaining.contains(id)));
-        simulation.body_to_foil.retain(|id, _| remaining.contains(id));
+        simulation
+            .body_to_foil
+            .retain(|id, _| remaining.contains(id));
     }
 }
 
@@ -136,8 +146,14 @@ pub fn handle_add_circle(
                 body.species,
             );
             new_body.electrons.clear();
-            if matches!(new_body.species, Species::LithiumMetal | Species::ElectrolyteAnion) {
-                new_body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+            if matches!(
+                new_body.species,
+                Species::LithiumMetal | Species::ElectrolyteAnion
+            ) {
+                new_body.electrons.push(Electron {
+                    rel_pos: Vec2::zero(),
+                    vel: Vec2::zero(),
+                });
             }
             new_body.update_charge_from_electrons();
             new_body.update_species();
@@ -165,17 +181,17 @@ pub fn handle_add_ring(
         while let Some(idx) = overlaps_any(&simulation.bodies, pos, particle_radius) {
             remove_body_with_foils(simulation, idx);
         }
-        let mut new_body = crate::body::Body::new(
-            pos,
-            Vec2::zero(),
-            body.mass,
-            body.radius,
-            0.0,
-            body.species,
-        );
+        let mut new_body =
+            crate::body::Body::new(pos, Vec2::zero(), body.mass, body.radius, 0.0, body.species);
         new_body.electrons.clear();
-        if matches!(new_body.species, Species::LithiumMetal | Species::ElectrolyteAnion) {
-            new_body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+        if matches!(
+            new_body.species,
+            Species::LithiumMetal | Species::ElectrolyteAnion
+        ) {
+            new_body.electrons.push(Electron {
+                rel_pos: Vec2::zero(),
+                vel: Vec2::zero(),
+            });
         }
         new_body.update_charge_from_electrons();
         new_body.update_species();
@@ -215,8 +231,14 @@ pub fn handle_add_rectangle(
                 body.species,
             );
             new_body.electrons.clear();
-            if matches!(new_body.species, Species::LithiumMetal | Species::ElectrolyteAnion) {
-                new_body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+            if matches!(
+                new_body.species,
+                Species::LithiumMetal | Species::ElectrolyteAnion
+            ) {
+                new_body.electrons.push(Electron {
+                    rel_pos: Vec2::zero(),
+                    vel: Vec2::zero(),
+                });
             }
             new_body.update_charge_from_electrons();
             new_body.update_species();
@@ -249,8 +271,14 @@ pub fn handle_add_random(
                     body.species,
                 );
                 new_body.electrons.clear();
-                if matches!(new_body.species, Species::LithiumMetal | Species::ElectrolyteAnion) {
-                    new_body.electrons.push(Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() });
+                if matches!(
+                    new_body.species,
+                    Species::LithiumMetal | Species::ElectrolyteAnion
+                ) {
+                    new_body.electrons.push(Electron {
+                        rel_pos: Vec2::zero(),
+                        vel: Vec2::zero(),
+                    });
                 }
                 new_body.update_charge_from_electrons();
                 new_body.update_species();
@@ -260,7 +288,10 @@ pub fn handle_add_random(
             }
         }
         if !placed {
-            eprintln!("Failed to place random body after {} attempts", RANDOM_ATTEMPTS);
+            eprintln!(
+                "Failed to place random body after {} attempts",
+                RANDOM_ATTEMPTS
+            );
         }
     }
 }
@@ -269,16 +300,18 @@ pub fn handle_set_domain_size(simulation: &mut Simulation, width: f32, height: f
     let half_width = width / 2.0;
     let half_height = height / 2.0;
     simulation.bodies.retain(|body| {
-        body.pos.x >= -half_width &&
-        body.pos.x <= half_width &&
-        body.pos.y >= -half_height &&
-        body.pos.y <= half_height
+        body.pos.x >= -half_width
+            && body.pos.x <= half_width
+            && body.pos.y >= -half_height
+            && body.pos.y <= half_height
     });
     // Update rectangular domain dimensions
     simulation.domain_width = half_width;
     simulation.domain_height = half_height;
-    simulation.cell_list.update_domain_size(half_width, half_height);
-    
+    simulation
+        .cell_list
+        .update_domain_size(half_width, half_height);
+
     // Update shared state for renderer
     *crate::renderer::state::DOMAIN_WIDTH.lock() = width;
     *crate::renderer::state::DOMAIN_HEIGHT.lock() = height;
@@ -288,17 +321,27 @@ pub fn handle_set_temperature(simulation: &mut Simulation, temperature: f32) {
     let current = crate::simulation::utils::compute_temperature(&simulation.bodies);
     if current > 1e-8 {
         let scale = (temperature / current).sqrt();
-        for body in &mut simulation.bodies { body.vel *= scale; }
+        for body in &mut simulation.bodies {
+            body.vel *= scale;
+        }
     } else {
-        crate::simulation::utils::initialize_liquid_velocities_to_temperature(&mut simulation.bodies, temperature);
+        crate::simulation::utils::initialize_liquid_velocities_to_temperature(
+            &mut simulation.bodies,
+            temperature,
+        );
         // If we only initialize liquid species, optionally scale metal species tiny random? Keep them zero for now.
-        eprintln!("[set_temperature-bootstrap] initialized velocities to {:.2}K (prev ~0)", temperature);
+        eprintln!(
+            "[set_temperature-bootstrap] initialized velocities to {:.2}K (prev ~0)",
+            temperature
+        );
     }
     crate::config::LJ_CONFIG.lock().temperature = temperature;
 }
 
 pub fn overlaps_any(existing: &[crate::body::Body], pos: Vec2, radius: f32) -> Option<usize> {
-    existing.iter().position(|b| (b.pos - pos).mag() < (b.radius + radius))
+    existing
+        .iter()
+        .position(|b| (b.pos - pos).mag() < (b.radius + radius))
 }
 
 pub fn remove_body_with_foils(simulation: &mut Simulation, idx: usize) {

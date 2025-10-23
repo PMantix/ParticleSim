@@ -28,7 +28,8 @@ impl CellList {
         self.grid_size_x = ((2.0 * self.domain_width) / self.cell_size).ceil() as usize + 1;
         self.grid_size_y = ((2.0 * self.domain_height) / self.cell_size).ceil() as usize + 1;
         self.cells.clear();
-        self.cells.resize(self.grid_size_x * self.grid_size_y, Vec::new());
+        self.cells
+            .resize(self.grid_size_x * self.grid_size_y, Vec::new());
         for (i, b) in bodies.iter().enumerate() {
             let (cx, cy) = self.coord(b.pos);
             if cx < self.grid_size_x && cy < self.grid_size_y {
@@ -62,7 +63,11 @@ impl CellList {
             for dx in -range..=range {
                 let x = cx as isize + dx;
                 let y = cy as isize + dy;
-                if x < 0 || y < 0 || x >= self.grid_size_x as isize || y >= self.grid_size_y as isize {
+                if x < 0
+                    || y < 0
+                    || x >= self.grid_size_x as isize
+                    || y >= self.grid_size_y as isize
+                {
                     continue;
                 }
                 let cell_idx = x as usize + y as usize * self.grid_size_x;
@@ -94,15 +99,24 @@ impl CellList {
             for dx in -range..=range {
                 let x = cx as isize + dx;
                 let y = cy as isize + dy;
-                if x < 0 || y < 0 || x >= self.grid_size_x as isize || y >= self.grid_size_y as isize {
+                if x < 0
+                    || y < 0
+                    || x >= self.grid_size_x as isize
+                    || y >= self.grid_size_y as isize
+                {
                     continue;
                 }
                 let cell_idx = x as usize + y as usize * self.grid_size_x;
                 for &idx in &self.cells[cell_idx] {
-                    if idx == i { continue; }
+                    if idx == i {
+                        continue;
+                    }
                     let r2 = (bodies[idx].pos - bodies[i].pos).mag_sq();
                     if r2 < cutoff_sq
-                        && matches!(bodies[idx].species, Species::LithiumMetal | Species::FoilMetal)
+                        && matches!(
+                            bodies[idx].species,
+                            Species::LithiumMetal | Species::FoilMetal
+                        )
                     {
                         count += 1;
                     }

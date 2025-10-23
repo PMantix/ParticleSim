@@ -2,8 +2,8 @@
 // Calculates coordination numbers and solvation state distribution
 
 use crate::body::{Body, Species};
-use crate::quadtree::Quadtree;
 use crate::profile_scope;
+use crate::quadtree::Quadtree;
 
 /// Calculate 3D distance between two bodies, accounting for z-coordinates
 fn distance_3d(body1: &Body, body2: &Body) -> f32 {
@@ -18,7 +18,7 @@ pub struct SolvationDiagnostic {
     pub sip_fraction: f32,
     pub s2ip_fraction: f32,
     pub fd_fraction: f32,
-    
+
     // Ion ID lists for visual overlays
     pub cip_ion_ids: Vec<u64>,
     pub sip_ion_ids: Vec<u64>,
@@ -38,7 +38,7 @@ impl SolvationDiagnostic {
             sip_fraction: 0.0,
             s2ip_fraction: 0.0,
             fd_fraction: 0.0,
-            
+
             // Initialize empty ion ID lists
             cip_ion_ids: Vec::new(),
             sip_ion_ids: Vec::new(),
@@ -55,10 +55,10 @@ impl SolvationDiagnostic {
     pub fn calculate(&mut self, bodies: &[Body], quadtree: &Quadtree) {
         profile_scope!("solvation_calculation_internal");
         const CATION_SHELL_FACTOR: f32 = 4.5; // Larger shell for small lithium ions to capture solvents
-        const ANION_SHELL_FACTOR: f32 = 2.5;  // Smaller shell for larger anions
+        const ANION_SHELL_FACTOR: f32 = 2.5; // Smaller shell for larger anions
         const CONTACT_BUFFER: f32 = 0.1;
 
-    // Coordination counts removed for performance (no longer reported)
+        // Coordination counts removed for performance (no longer reported)
 
         // Clear previous ion ID lists
         self.cip_ion_ids.clear();
@@ -82,12 +82,13 @@ impl SolvationDiagnostic {
                     if body.surrounded_by_metal {
                         continue;
                     }
-                    
+
                     let li_shell = body.radius * CATION_SHELL_FACTOR;
-                    
+
                     // Use quadtree to find nearby particles instead of linear search
                     let nearby_indices = quadtree.find_neighbors_within(bodies, i, li_shell);
-                    let li_solvent_ids: Vec<u64> = nearby_indices.iter()
+                    let li_solvent_ids: Vec<u64> = nearby_indices
+                        .iter()
                         .filter_map(|&idx| {
                             let neighbor = &bodies[idx];
                             if matches!(neighbor.species, Species::EC | Species::DMC) {
@@ -97,29 +98,41 @@ impl SolvationDiagnostic {
                             }
                         })
                         .collect();
-                    
+
                     let li_solvents = li_solvent_ids.len();
 
                     // Find nearest anion using quadtree - search in expanding radius
-                    let max_search_radius = body.radius + bodies.iter()
-                        .filter(|b| b.species == Species::ElectrolyteAnion)
-                        .map(|b| b.radius)
-                        .fold(0.0, f32::max) + 2.0 * avg_solvent_radius + 50.0; // Add buffer
-                    
-                    if let Some((j, dist)) = self.find_nearest_anion_with_quadtree(bodies, quadtree, i, max_search_radius) {
+                    let max_search_radius = body.radius
+                        + bodies
+                            .iter()
+                            .filter(|b| b.species == Species::ElectrolyteAnion)
+                            .map(|b| b.radius)
+                            .fold(0.0, f32::max)
+                        + 2.0 * avg_solvent_radius
+                        + 50.0; // Add buffer
+
+                    if let Some((j, dist)) = self.find_nearest_anion_with_quadtree(
+                        bodies,
+                        quadtree,
+                        i,
+                        max_search_radius,
+                    ) {
                         // Calculate max pairing distance: cation radius + anion radius + 2*average solvent radius
-                        let max_pairing_distance = body.radius + bodies[j].radius + 2.0 * avg_solvent_radius;
-                        
+                        let max_pairing_distance =
+                            body.radius + bodies[j].radius + 2.0 * avg_solvent_radius;
+
                         if dist > max_pairing_distance {
                             // Too far from any anion to be considered paired
                             self.fd_ion_ids.push(body.id);
                             self.fd_cations.push((body.id, li_solvent_ids));
                         } else {
                             let an_shell = bodies[j].radius * ANION_SHELL_FACTOR;
-                            
+
                             // Use quadtree for anion's solvent neighbors too
-                            let anion_nearby_indices = quadtree.find_neighbors_within(bodies, j, an_shell);
-                            let an_solvent_ids: Vec<u64> = anion_nearby_indices.iter()
+                            let anion_nearby_indices =
+                                quadtree.find_neighbors_within(bodies, j, an_shell);
+                            let an_solvent_ids: Vec<u64> = anion_nearby_indices
+                                .iter()
                                 .filter_map(|&idx| {
                                     let neighbor = &bodies[idx];
                                     if matches!(neighbor.species, Species::EC | Species::DMC) {
@@ -129,19 +142,34 @@ impl SolvationDiagnostic {
                                     }
                                 })
                                 .collect();
-                            
+
                             let an_solvents = an_solvent_ids.len();
 
                             let contact_cutoff = body.radius + bodies[j].radius + CONTACT_BUFFER;
                             if dist < contact_cutoff {
                                 self.cip_ion_ids.push(body.id);
-                                self.cip_pairs.push((body.id, bodies[j].id, li_solvent_ids, an_solvent_ids));
+                                self.cip_pairs.push((
+                                    body.id,
+                                    bodies[j].id,
+                                    li_solvent_ids,
+                                    an_solvent_ids,
+                                ));
                             } else if li_solvents >= 3 && an_solvents >= 2 {
                                 self.s2ip_ion_ids.push(body.id);
-                                self.s2ip_pairs.push((body.id, bodies[j].id, li_solvent_ids, an_solvent_ids));
+                                self.s2ip_pairs.push((
+                                    body.id,
+                                    bodies[j].id,
+                                    li_solvent_ids,
+                                    an_solvent_ids,
+                                ));
                             } else {
                                 self.sip_ion_ids.push(body.id);
-                                self.sip_pairs.push((body.id, bodies[j].id, li_solvent_ids, an_solvent_ids));
+                                self.sip_pairs.push((
+                                    body.id,
+                                    bodies[j].id,
+                                    li_solvent_ids,
+                                    an_solvent_ids,
+                                ));
                             }
                         }
                     } else {
@@ -158,7 +186,10 @@ impl SolvationDiagnostic {
             }
         }
 
-        let total_ions = self.cip_ion_ids.len() + self.sip_ion_ids.len() + self.s2ip_ion_ids.len() + self.fd_ion_ids.len();
+        let total_ions = self.cip_ion_ids.len()
+            + self.sip_ion_ids.len()
+            + self.s2ip_ion_ids.len()
+            + self.fd_ion_ids.len();
         if total_ions > 0 {
             self.cip_fraction = self.cip_ion_ids.len() as f32 / total_ions as f32;
             self.sip_fraction = self.sip_ion_ids.len() as f32 / total_ions as f32;
@@ -173,16 +204,22 @@ impl SolvationDiagnostic {
     }
 
     /// Helper method to find nearest anion using quadtree with expanding search radius
-    fn find_nearest_anion_with_quadtree(&self, bodies: &[Body], quadtree: &Quadtree, index: usize, max_radius: f32) -> Option<(usize, f32)> {
+    fn find_nearest_anion_with_quadtree(
+        &self,
+        bodies: &[Body],
+        quadtree: &Quadtree,
+        index: usize,
+        max_radius: f32,
+    ) -> Option<(usize, f32)> {
         let body_ref = &bodies[index];
         let mut search_radius = body_ref.radius * 3.0; // Start with small radius
-        
+
         while search_radius <= max_radius {
             let nearby_indices = quadtree.find_neighbors_within(bodies, index, search_radius);
-            
+
             let mut best = None;
             let mut best_dist = f32::INFINITY;
-            
+
             for &idx in &nearby_indices {
                 if bodies[idx].species == Species::ElectrolyteAnion {
                     let dist = distance_3d(&bodies[idx], body_ref);
@@ -192,16 +229,15 @@ impl SolvationDiagnostic {
                     }
                 }
             }
-            
+
             if best.is_some() {
                 return best.map(|i| (i, best_dist));
             }
-            
+
             // Expand search radius
             search_radius *= 2.0;
         }
-        
+
         None
     }
 }
-

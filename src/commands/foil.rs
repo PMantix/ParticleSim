@@ -1,12 +1,20 @@
 #![allow(dead_code)] // Public API functions that may be used by other systems
 
+use crate::body::{foil::LinkMode, Species};
 use crate::simulation::Simulation;
-use crate::body::{Species, foil::LinkMode};
 use ultraviolet::Vec2;
 
 use crate::body::Electron;
 
-pub fn handle_add_foil(simulation: &mut Simulation, width: f32, height: f32, x: f32, y: f32, particle_radius: f32, current: f32) {
+pub fn handle_add_foil(
+    simulation: &mut Simulation,
+    width: f32,
+    height: f32,
+    x: f32,
+    y: f32,
+    particle_radius: f32,
+    current: f32,
+) {
     let origin = Vec2::new(x, y);
     let particle_diameter = 2.0 * particle_radius;
     let cols = (width / particle_diameter).floor() as usize;
@@ -19,7 +27,9 @@ pub fn handle_add_foil(simulation: &mut Simulation, width: f32, height: f32, x: 
                     (col as f32 + 0.5) * particle_diameter,
                     (row as f32 + 0.5) * particle_diameter,
                 );
-            while let Some(idx) = super::particle::overlaps_any(&simulation.bodies, pos, particle_radius) {
+            while let Some(idx) =
+                super::particle::overlaps_any(&simulation.bodies, pos, particle_radius)
+            {
                 super::particle::remove_body_with_foils(simulation, idx);
             }
             let mut new_body = crate::body::Body::new(
@@ -36,14 +46,7 @@ pub fn handle_add_foil(simulation: &mut Simulation, width: f32, height: f32, x: 
             simulation.bodies.push(new_body);
         }
     }
-    let foil = crate::body::foil::Foil::new(
-        body_ids.clone(),
-        origin,
-        width,
-        height,
-        current,
-        0.0,
-    );
+    let foil = crate::body::foil::Foil::new(body_ids.clone(), origin, width, height, current, 0.0);
     for id in &body_ids {
         simulation.body_to_foil.insert(*id, foil.id);
     }
@@ -51,11 +54,7 @@ pub fn handle_add_foil(simulation: &mut Simulation, width: f32, height: f32, x: 
 }
 
 pub fn handle_set_foil_current(simulation: &mut Simulation, foil_id: u64, current: f32) {
-    if let Some(foil) = simulation
-        .foils
-        .iter_mut()
-        .find(|f| f.id == foil_id)
-    {
+    if let Some(foil) = simulation.foils.iter_mut().find(|f| f.id == foil_id) {
         foil.dc_current = current;
     }
 }
@@ -67,11 +66,7 @@ pub fn handle_set_foil_dc_current(simulation: &mut Simulation, foil_id: u64, dc_
         .find(|f| f.id == foil_id)
         .and_then(|foil| foil.link_id.map(|link_id| (link_id, foil.mode)));
 
-    if let Some(foil) = simulation
-        .foils
-        .iter_mut()
-        .find(|f| f.id == foil_id)
-    {
+    if let Some(foil) = simulation.foils.iter_mut().find(|f| f.id == foil_id) {
         foil.dc_current = dc_current;
     }
 
@@ -92,11 +87,7 @@ pub fn handle_set_foil_ac_current(simulation: &mut Simulation, foil_id: u64, ac_
         .find(|f| f.id == foil_id)
         .and_then(|foil| foil.link_id.map(|link_id| (link_id, foil.mode)));
 
-    if let Some(foil) = simulation
-        .foils
-        .iter_mut()
-        .find(|f| f.id == foil_id)
-    {
+    if let Some(foil) = simulation.foils.iter_mut().find(|f| f.id == foil_id) {
         foil.ac_current = ac_current;
     }
 
@@ -112,13 +103,9 @@ pub fn handle_set_foil_frequency(simulation: &mut Simulation, foil_id: u64, swit
         .foils
         .iter()
         .find(|f| f.id == foil_id)
-    .and_then(|foil| foil.link_id);
+        .and_then(|foil| foil.link_id);
 
-    if let Some(foil) = simulation
-        .foils
-        .iter_mut()
-        .find(|f| f.id == foil_id)
-    {
+    if let Some(foil) = simulation.foils.iter_mut().find(|f| f.id == foil_id) {
         foil.switch_hz = switch_hz;
     }
 
@@ -148,27 +135,43 @@ pub fn handle_link_foils(simulation: &mut Simulation, a: u64, b: u64, mode: Link
 }
 
 pub fn handle_unlink_foils(simulation: &mut Simulation, a: u64, b: u64) {
-    if let Some(foil_a) = simulation.foils.iter_mut().find(|f| f.id == a && f.link_id == Some(b)) {
+    if let Some(foil_a) = simulation
+        .foils
+        .iter_mut()
+        .find(|f| f.id == a && f.link_id == Some(b))
+    {
         foil_a.link_id = None;
     }
-    if let Some(foil_b) = simulation.foils.iter_mut().find(|f| f.id == b && f.link_id == Some(a)) {
+    if let Some(foil_b) = simulation
+        .foils
+        .iter_mut()
+        .find(|f| f.id == b && f.link_id == Some(a))
+    {
         foil_b.link_id = None;
     }
 }
 
-pub fn handle_set_foil_charging_mode(simulation: &mut Simulation, foil_id: u64, mode: crate::body::foil::ChargingMode) {
+pub fn handle_set_foil_charging_mode(
+    simulation: &mut Simulation,
+    foil_id: u64,
+    mode: crate::body::foil::ChargingMode,
+) {
     if let Some(foil) = simulation.foils.iter_mut().find(|f| f.id == foil_id) {
         foil.charging_mode = mode;
     }
 }
 
-pub fn handle_enable_overpotential_mode(simulation: &mut Simulation, foil_id: u64, target_ratio: f32) {
+pub fn handle_enable_overpotential_mode(
+    simulation: &mut Simulation,
+    foil_id: u64,
+    target_ratio: f32,
+) {
     // Get link info before mutable borrow
     let link_info = simulation
         .foils
         .iter()
         .find(|f| f.id == foil_id)
-    .and_then(|foil| foil.link_id.map(|link_id| (link_id, foil.mode)));
+        .and_then(|foil| foil.link_id.map(|link_id| (link_id, foil.mode)));
 
     // Enable overpotential mode on the primary foil (this becomes the master)
     if let Some(foil) = simulation.foils.iter_mut().find(|f| f.id == foil_id) {
@@ -190,7 +193,7 @@ pub fn handle_disable_overpotential_mode(simulation: &mut Simulation, foil_id: u
         .foils
         .iter()
         .find(|f| f.id == foil_id)
-    .and_then(|foil| foil.link_id);
+        .and_then(|foil| foil.link_id);
 
     // Disable overpotential mode on the primary foil
     if let Some(foil) = simulation.foils.iter_mut().find(|f| f.id == foil_id) {
@@ -205,13 +208,17 @@ pub fn handle_disable_overpotential_mode(simulation: &mut Simulation, foil_id: u
     }
 }
 
-pub fn handle_set_overpotential_target(simulation: &mut Simulation, foil_id: u64, target_ratio: f32) {
+pub fn handle_set_overpotential_target(
+    simulation: &mut Simulation,
+    foil_id: u64,
+    target_ratio: f32,
+) {
     // Get link info before mutable borrow
     let link_info = simulation
         .foils
         .iter()
         .find(|f| f.id == foil_id)
-    .and_then(|foil| foil.link_id.map(|link_id| (link_id, foil.mode)));
+        .and_then(|foil| foil.link_id.map(|link_id| (link_id, foil.mode)));
 
     // Set target on primary foil
     if let Some(foil) = simulation.foils.iter_mut().find(|f| f.id == foil_id) {
@@ -240,7 +247,7 @@ pub fn handle_set_pid_gains(simulation: &mut Simulation, foil_id: u64, kp: f32, 
         .foils
         .iter()
         .find(|f| f.id == foil_id)
-    .and_then(|foil| foil.link_id);
+        .and_then(|foil| foil.link_id);
 
     // Set PID gains on primary foil
     if let Some(foil) = simulation.foils.iter_mut().find(|f| f.id == foil_id) {

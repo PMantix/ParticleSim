@@ -1,8 +1,8 @@
 /// Visual test for DOE measurements - run with GUI to verify measurement accuracy
-/// 
+///
 /// This test file is currently DISABLED because it uses an outdated renderer API.
 /// The measurement visualization is now integrated directly into the main GUI.
-/// 
+///
 /// To test DOE measurements visually:
 /// 1. Run the main simulator: `cargo run --release --bin particle_sim`
 /// 2. Go to the Visualization tab

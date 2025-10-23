@@ -1,7 +1,7 @@
 #![cfg(any(test, feature = "unit_tests"))]
 #[cfg(test)]
 mod ion_vs_anion {
-    use crate::body::{Body, Species, Electron};
+    use crate::body::{Body, Electron, Species};
     use crate::simulation::Simulation;
     use ultraviolet::Vec2;
 
@@ -38,10 +38,12 @@ mod ion_vs_anion {
             // Add one electron to ensure -1 charge
             println!("---Adding electron to anion at position: {:?}", anion.pos);
             println!("Anion charge before: {}", anion.charge);
-            anion.electrons = smallvec::smallvec![Electron { rel_pos: Vec2::zero(), vel: Vec2::zero() }];
+            anion.electrons = smallvec::smallvec![Electron {
+                rel_pos: Vec2::zero(),
+                vel: Vec2::zero()
+            }];
             anion.update_charge_from_electrons();
-            println!("Anion charge after: {}", anion.charge);   
-            
+            println!("Anion charge after: {}", anion.charge);
 
             sim.bodies.push(anion);
         }
@@ -54,23 +56,30 @@ mod ion_vs_anion {
         let mut max_anion_closeness = 0.0;
         // Ions: indices 0..n
         for i in 0..n {
-            for j in (i+1)..n {
+            for j in (i + 1)..n {
                 let d = (sim.bodies[i].pos - sim.bodies[j].pos).mag();
-                if d < 0.1 { panic!("Ions clumped: d = {}", d); }
-                if d > max_ion_closeness { max_ion_closeness = d; }
+                if d < 0.1 {
+                    panic!("Ions clumped: d = {}", d);
+                }
+                if d > max_ion_closeness {
+                    max_ion_closeness = d;
+                }
             }
         }
         // Anions: indices n..2n
-        for i in n..2*n {
-            for j in (i+1)..2*n {
+        for i in n..2 * n {
+            for j in (i + 1)..2 * n {
                 let d = (sim.bodies[i].pos - sim.bodies[j].pos).mag();
-                if d < 0.1 { panic!("Anions clumped: d = {}", d); }
-                if d > max_anion_closeness { max_anion_closeness = d; }
+                if d < 0.1 {
+                    panic!("Anions clumped: d = {}", d);
+                }
+                if d > max_anion_closeness {
+                    max_anion_closeness = d;
+                }
             }
         }
         // Print for manual inspection
         println!("Max ion separation: {}", max_ion_closeness);
         println!("Max anion separation: {}", max_anion_closeness);
-
     }
 }

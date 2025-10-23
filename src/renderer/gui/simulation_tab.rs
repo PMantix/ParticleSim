@@ -4,7 +4,7 @@ impl super::super::Renderer {
     pub fn show_simulation_tab(&mut self, ui: &mut egui::Ui) {
         ui.heading("⚙️ Simulation Controls");
 
-    let playback_status = PLAYBACK_STATUS.lock().clone();
+        let playback_status = PLAYBACK_STATUS.lock().clone();
         let sender_opt = SIM_COMMAND_SENDER.lock().clone();
         if self.playback_follow_live && playback_status.mode == PlaybackModeStatus::Live {
             self.playback_cursor = playback_status.latest_index;

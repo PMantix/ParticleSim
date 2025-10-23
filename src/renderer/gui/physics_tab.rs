@@ -153,7 +153,10 @@ impl super::super::Renderer {
                     .step_by(0.1)
                     .logarithmic(true),
             );
-            ui.label(format!("💡 Theoretical value: {:.3}", crate::units::COULOMB_CONSTANT));
+            ui.label(format!(
+                "💡 Theoretical value: {:.3}",
+                crate::units::COULOMB_CONSTANT
+            ));
             ui.label("Scale up for stronger interactions");
         });
 
@@ -208,12 +211,18 @@ impl super::super::Renderer {
                     .text("Induced Field Smoothing α")
                     .step_by(0.001),
             );
-            ui.checkbox(&mut self.sim_config.induced_field_use_direction, "Use foil-based direction (neg→pos)");
+            ui.checkbox(
+                &mut self.sim_config.induced_field_use_direction,
+                "Use foil-based direction (neg→pos)",
+            );
             ui.add(
-                egui::Slider::new(&mut self.sim_config.induced_field_overpot_scale, 0.0..=10_000_000.0)
-                    .text("Overpotential→Drive Scale")
-                    .step_by(1.0)
-                    .logarithmic(true),
+                egui::Slider::new(
+                    &mut self.sim_config.induced_field_overpot_scale,
+                    0.0..=10_000_000.0,
+                )
+                .text("Overpotential→Drive Scale")
+                .step_by(1.0)
+                .logarithmic(true),
             );
             ui.small("Drive magnitude: |current| or |target_ratio−1|×scale.");
         });
@@ -222,7 +231,11 @@ impl super::super::Renderer {
             ui.label("🌡️ Simulation Temperature");
             let mut temp = self.sim_config.temperature;
             if ui
-                .add(egui::Slider::new(&mut temp, 0.01..=450.0).text("T").step_by(0.01))
+                .add(
+                    egui::Slider::new(&mut temp, 0.01..=450.0)
+                        .text("T")
+                        .step_by(0.01),
+                )
                 .changed()
             {
                 self.sim_config.temperature = temp;
@@ -233,15 +246,15 @@ impl super::super::Renderer {
                     .send(SimCommand::SetTemperature { temperature: temp })
                     .unwrap();
             }
-            
+
             ui.separator();
-            
+
             ui.label("⏱️ Thermostat Interval (fs)");
             ui.horizontal(|ui| {
                 ui.add(
                     egui::Slider::new(&mut self.sim_config.thermostat_interval_fs, 0.1..=10.0)
                         .text("Period")
-                        .step_by(0.1)
+                        .step_by(0.1),
                 );
                 ui.label("fs");
             });
@@ -266,43 +279,45 @@ impl super::super::Renderer {
                 }
             }
             ui.add(
-                egui::Slider::new(&mut self.sim_config.z_stiffness, 0.0..=10.0)
-                    .text("Z Stiffness"),
+                egui::Slider::new(&mut self.sim_config.z_stiffness, 0.0..=10.0).text("Z Stiffness"),
             );
-            ui.add(
-                egui::Slider::new(&mut self.sim_config.z_damping, 0.0..=10.0)
-                    .text("Z Damping"),
-            );
-            ui.add(
-                egui::Slider::new(&mut self.sim_config.max_z, 0.01..=50.0)
-                    .text("Max Z"),
-            );
-            
+            ui.add(egui::Slider::new(&mut self.sim_config.z_damping, 0.0..=10.0).text("Z Damping"));
+            ui.add(egui::Slider::new(&mut self.sim_config.max_z, 0.01..=50.0).text("Max Z"));
+
             ui.separator();
-            
+
             // Z-Visualization Controls
             ui.label("🎨 Z-Visualization");
-            let mut z_viz_enabled = crate::renderer::state::SHOW_Z_VISUALIZATION.load(std::sync::atomic::Ordering::Relaxed);
+            let mut z_viz_enabled = crate::renderer::state::SHOW_Z_VISUALIZATION
+                .load(std::sync::atomic::Ordering::Relaxed);
             if ui.checkbox(&mut z_viz_enabled, "Show Z-depth").changed() {
-                crate::renderer::state::SHOW_Z_VISUALIZATION.store(z_viz_enabled, std::sync::atomic::Ordering::Relaxed);
+                crate::renderer::state::SHOW_Z_VISUALIZATION
+                    .store(z_viz_enabled, std::sync::atomic::Ordering::Relaxed);
                 if let Some(sender) = SIM_COMMAND_SENDER.lock().as_ref() {
-                    let _ = sender.send(SimCommand::ToggleZVisualization { enabled: z_viz_enabled });
+                    let _ = sender.send(SimCommand::ToggleZVisualization {
+                        enabled: z_viz_enabled,
+                    });
                 }
             }
-            
+
             let mut z_viz_strength = *crate::renderer::state::Z_VISUALIZATION_STRENGTH.lock();
-            if ui.add(
-                egui::Slider::new(&mut z_viz_strength, 0.1..=5.0)
-                    .text("Z-viz Strength")
-                    .step_by(0.1)
-            ).changed() {
+            if ui
+                .add(
+                    egui::Slider::new(&mut z_viz_strength, 0.1..=5.0)
+                        .text("Z-viz Strength")
+                        .step_by(0.1),
+                )
+                .changed()
+            {
                 *crate::renderer::state::Z_VISUALIZATION_STRENGTH.lock() = z_viz_strength;
                 if let Some(sender) = SIM_COMMAND_SENDER.lock().as_ref() {
-                    let _ = sender.send(SimCommand::SetZVisualizationStrength { strength: z_viz_strength });
+                    let _ = sender.send(SimCommand::SetZVisualizationStrength {
+                        strength: z_viz_strength,
+                    });
                 }
             }
             ui.small("Higher values = more dramatic Z-depth effect");
-            
+
             if ui.button("Apply Z Settings").clicked() {
                 if let Some(sender) = SIM_COMMAND_SENDER.lock().as_ref() {
                     let _ = sender.send(SimCommand::SetOutOfPlane {

@@ -74,7 +74,7 @@ impl TransferenceNumberDiagnostic {
         } else {
             0.0
         };
-        
+
         self.anion_drift_velocity = if !anion_velocities.is_empty() {
             anion_velocities.iter().copied().sum::<f32>() / anion_velocities.len() as f32
         } else {
@@ -84,18 +84,19 @@ impl TransferenceNumberDiagnostic {
         // Calculate transference number
         // Current contribution = charge × number_density × velocity
         // For Li+: charge = +1, for anions: charge = -1
-        self.li_current_contribution = lithium_velocities.len() as f32 * self.lithium_drift_velocity * 1.0; // +1 charge
-        self.anion_current_contribution = anion_velocities.len() as f32 * self.anion_drift_velocity * (-1.0); // -1 charge
-        
+        self.li_current_contribution =
+            lithium_velocities.len() as f32 * self.lithium_drift_velocity * 1.0; // +1 charge
+        self.anion_current_contribution =
+            anion_velocities.len() as f32 * self.anion_drift_velocity * (-1.0); // -1 charge
+
         // Total current is the sum of both contributions (considering sign)
         self.total_current = self.li_current_contribution + self.anion_current_contribution;
-        
+
         // Transference number is the fraction of current carried by Li+
         self.transference_number = if self.total_current.abs() > 1e-6 {
             self.li_current_contribution / self.total_current
         } else {
             0.0 // Default to 0 if no meaningful transport
         };
-        
     }
 }

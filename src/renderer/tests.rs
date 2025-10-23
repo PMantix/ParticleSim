@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-    use crate::renderer::state::TIMESTEP;
     use crate::body::foil::Foil;
+    use crate::renderer::state::TIMESTEP;
     use crate::renderer::Renderer;
     use quarkstrom::Renderer as QuarkstromRenderer;
 
@@ -34,15 +34,21 @@ mod tests {
         }
 
         // Check that history was created for the foil
-        assert!(r.foil_wave_history.contains_key(&1), "No wave history created for foil");
-        
+        assert!(
+            r.foil_wave_history.contains_key(&1),
+            "No wave history created for foil"
+        );
+
         // Check that history has entries
         let history = r.foil_wave_history.get(&1).unwrap();
         assert!(!history.is_empty(), "Wave history is empty");
-        
+
         // For constant current, we should have consistent current values
         let first_current = history[0].1;
         let last_current = history[history.len() - 1].1;
-        assert!((first_current - last_current).abs() < 0.001, "Current values should be consistent for constant current");
+        assert!(
+            (first_current - last_current).abs() < 0.001,
+            "Current values should be consistent for constant current"
+        );
     }
 }

@@ -1,14 +1,14 @@
 // body/mod.rs
 // Re-exports for the body module
 
-mod types;
 mod electron;
 mod redox;
+mod types;
 // Module declarations removed dead test files
 pub mod foil;
 
-pub use types::*;
 pub use electron::*;
+pub use types::*;
 //pub use redox::*;
 
 #[cfg(test)]
@@ -29,4 +29,3 @@ mod ion_vs_anion;
 #[cfg(test)]
 #[path = "tests/anion.rs"]
 mod anion;
-

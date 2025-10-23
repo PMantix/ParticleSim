@@ -2,7 +2,7 @@ use super::*;
 
 impl super::super::Renderer {
     pub fn show_charging_tab(&mut self, ui: &mut egui::Ui) {
-    // Status block is first (see below). Keep a subtle title below it.
+        // Status block is first (see below). Keep a subtle title below it.
 
         // Always show status list at the top
         ui.group(|ui| {
@@ -11,74 +11,115 @@ impl super::super::Renderer {
             if foils.is_empty() {
                 ui.small("No foils available.");
             } else {
-                egui::Grid::new("foil_status_grid_top").striped(true).show(ui, |ui| {
-                    ui.label("Foil"); ui.label("Ratio"); ui.label("Mode"); ui.label("Setpoint"); ui.end_row();
-                    for foil in foils.iter() {
-                        ui.label(format!("{}", foil.id));
-                        if let Some(diag) = &self.foil_electron_fraction_diagnostic {
-                            if let Some(ratio) = diag.fractions.get(&foil.id) {
-                                let ratio_color = if *ratio > 1.05 { egui::Color32::LIGHT_BLUE } else if *ratio < 0.95 { egui::Color32::LIGHT_RED } else { egui::Color32::WHITE };
-                                ui.colored_label(ratio_color, format!("{:.3}", ratio));
-                            } else { ui.label("N/A"); }
-                        } else { ui.label("N/A"); }
-                        let (mode_text, setpoint_text) = match foil.charging_mode {
-                            crate::body::foil::ChargingMode::Current => (
-                                "Current",
-                                format!("DC:{:.3} AC:{:.3} Hz:{:.2}", foil.dc_current, foil.ac_current, foil.switch_hz)
-                            ),
-                            crate::body::foil::ChargingMode::Overpotential => {
-                                let target = foil.overpotential_controller.as_ref().map(|c| c.target_ratio).unwrap_or(1.0);
-                                ("Overpotential", format!("Target:{:.3}", target))
-                            }
-                        };
-                        ui.label(mode_text);
-                        ui.label(setpoint_text);
+                egui::Grid::new("foil_status_grid_top")
+                    .striped(true)
+                    .show(ui, |ui| {
+                        ui.label("Foil");
+                        ui.label("Ratio");
+                        ui.label("Mode");
+                        ui.label("Setpoint");
                         ui.end_row();
-                    }
-                });
+                        for foil in foils.iter() {
+                            ui.label(format!("{}", foil.id));
+                            if let Some(diag) = &self.foil_electron_fraction_diagnostic {
+                                if let Some(ratio) = diag.fractions.get(&foil.id) {
+                                    let ratio_color = if *ratio > 1.05 {
+                                        egui::Color32::LIGHT_BLUE
+                                    } else if *ratio < 0.95 {
+                                        egui::Color32::LIGHT_RED
+                                    } else {
+                                        egui::Color32::WHITE
+                                    };
+                                    ui.colored_label(ratio_color, format!("{:.3}", ratio));
+                                } else {
+                                    ui.label("N/A");
+                                }
+                            } else {
+                                ui.label("N/A");
+                            }
+                            let (mode_text, setpoint_text) = match foil.charging_mode {
+                                crate::body::foil::ChargingMode::Current => (
+                                    "Current",
+                                    format!(
+                                        "DC:{:.3} AC:{:.3} Hz:{:.2}",
+                                        foil.dc_current, foil.ac_current, foil.switch_hz
+                                    ),
+                                ),
+                                crate::body::foil::ChargingMode::Overpotential => {
+                                    let target = foil
+                                        .overpotential_controller
+                                        .as_ref()
+                                        .map(|c| c.target_ratio)
+                                        .unwrap_or(1.0);
+                                    ("Overpotential", format!("Target:{:.3}", target))
+                                }
+                            };
+                            ui.label(mode_text);
+                            ui.label(setpoint_text);
+                            ui.end_row();
+                        }
+                    });
             }
         });
-    ui.add_space(6.0);
-    ui.separator();
-    ui.heading("⚡ Unified Charging");
-    ui.small("Select a charging mode and configure settings below.");
-    ui.separator();
+        ui.add_space(6.0);
+        ui.separator();
+        ui.heading("⚡ Unified Charging");
+        ui.small("Select a charging mode and configure settings below.");
+        ui.separator();
 
         // Mode selector
         ui.horizontal(|ui| {
             ui.label("Mode:");
             let mut mode = self.charging_ui_mode;
-            ui.radio_value(&mut mode, super::super::ChargingUiMode::Conventional, "Conventional");
-            ui.radio_value(&mut mode, super::super::ChargingUiMode::SwitchCharging, "Switch Charging");
-            ui.radio_value(&mut mode, super::super::ChargingUiMode::Advanced, "Advanced");
+            ui.radio_value(
+                &mut mode,
+                super::super::ChargingUiMode::Conventional,
+                "Conventional",
+            );
+            ui.radio_value(
+                &mut mode,
+                super::super::ChargingUiMode::SwitchCharging,
+                "Switch Charging",
+            );
+            ui.radio_value(
+                &mut mode,
+                super::super::ChargingUiMode::Advanced,
+                "Advanced",
+            );
             if mode != self.charging_ui_mode {
                 match mode {
                     super::super::ChargingUiMode::Conventional => {
                         // Stop switch charging if it is not idle
-                        if self.switch_ui_state.run_state != crate::switch_charging::RunState::Idle {
+                        if self.switch_ui_state.run_state != crate::switch_charging::RunState::Idle
+                        {
                             self.switch_ui_state.stop();
                         }
                     }
                     super::super::ChargingUiMode::SwitchCharging => {
                         // Clear conventional groups to avoid conflicts
-                        if let Some(tx) = crate::renderer::state::SIM_COMMAND_SENDER.lock().as_ref() {
+                        if let Some(tx) = crate::renderer::state::SIM_COMMAND_SENDER.lock().as_ref()
+                        {
                             let _ = tx.send(crate::renderer::state::SimCommand::ClearFoilGroups);
                         }
                     }
                     super::super::ChargingUiMode::Advanced => {
                         // Advanced operates on per-foil; ensure switch-run stops
-                        if self.switch_ui_state.run_state != crate::switch_charging::RunState::Idle {
+                        if self.switch_ui_state.run_state != crate::switch_charging::RunState::Idle
+                        {
                             self.switch_ui_state.stop();
                         }
                     }
                 }
                 self.charging_ui_mode = mode;
                 // Persist selection for save
-                *crate::renderer::state::PERSIST_UI_CHARGING_MODE.lock() = Some(match self.charging_ui_mode {
-                    super::super::ChargingUiMode::Conventional => "Conventional".to_string(),
-                    super::super::ChargingUiMode::SwitchCharging => "SwitchCharging".to_string(),
-                    super::super::ChargingUiMode::Advanced => "Advanced".to_string(),
-                });
+                *crate::renderer::state::PERSIST_UI_CHARGING_MODE.lock() =
+                    Some(match self.charging_ui_mode {
+                        super::super::ChargingUiMode::Conventional => "Conventional".to_string(),
+                        super::super::ChargingUiMode::SwitchCharging => {
+                            "SwitchCharging".to_string()
+                        }
+                        super::super::ChargingUiMode::Advanced => "Advanced".to_string(),
+                    });
             }
         });
 
@@ -96,18 +137,34 @@ impl super::super::Renderer {
                         if ui.button("Apply Conventional Preset").clicked() {
                             // Determine which preset IDs actually exist in the current sim
                             let foils = crate::renderer::state::FOILS.lock();
-                            let have: std::collections::HashSet<u64> = foils.iter().map(|f| f.id).collect();
-                            let mut group_a: Vec<u64> = [1_u64, 3, 5].into_iter().filter(|id| have.contains(id)).collect();
-                            let mut group_b: Vec<u64> = [2_u64, 4].into_iter().filter(|id| have.contains(id)).collect();
+                            let have: std::collections::HashSet<u64> =
+                                foils.iter().map(|f| f.id).collect();
+                            let mut group_a: Vec<u64> = [1_u64, 3, 5]
+                                .into_iter()
+                                .filter(|id| have.contains(id))
+                                .collect();
+                            let mut group_b: Vec<u64> = [2_u64, 4]
+                                .into_iter()
+                                .filter(|id| have.contains(id))
+                                .collect();
                             group_a.sort_unstable();
                             group_b.sort_unstable();
-                            if let Some(tx) = crate::renderer::state::SIM_COMMAND_SENDER.lock().as_ref() {
-                                let _ = tx.send(crate::renderer::state::SimCommand::SetFoilGroups { group_a, group_b });
+                            if let Some(tx) =
+                                crate::renderer::state::SIM_COMMAND_SENDER.lock().as_ref()
+                            {
+                                let _ =
+                                    tx.send(crate::renderer::state::SimCommand::SetFoilGroups {
+                                        group_a,
+                                        group_b,
+                                    });
                             }
                         }
                         if ui.button("Clear Groups").clicked() {
-                            if let Some(tx) = crate::renderer::state::SIM_COMMAND_SENDER.lock().as_ref() {
-                                let _ = tx.send(crate::renderer::state::SimCommand::ClearFoilGroups);
+                            if let Some(tx) =
+                                crate::renderer::state::SIM_COMMAND_SENDER.lock().as_ref()
+                            {
+                                let _ =
+                                    tx.send(crate::renderer::state::SimCommand::ClearFoilGroups);
                             }
                         }
                     });

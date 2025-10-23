@@ -1,6 +1,6 @@
 use crate::renderer::Renderer;
-use ultraviolet::Vec2;
 use rayon::prelude::*;
+use ultraviolet::Vec2;
 
 impl Renderer {
     /// Draw a simple charge density heatmap.
@@ -8,7 +8,10 @@ impl Renderer {
         let grid_spacing = 5.0;
         let smoothing = 5.0;
 
-    let half_view = Vec2::new(self.scale * (self.window_width as f32 / self.window_height as f32), self.scale);
+        let half_view = Vec2::new(
+            self.scale * (self.window_width as f32 / self.window_height as f32),
+            self.scale,
+        );
         let min = self.pos - half_view;
         let max = self.pos + half_view;
 
@@ -45,12 +48,7 @@ impl Renderer {
                 let norm = (density / max_abs).clamp(-1.0, 1.0);
                 let r = norm.max(0.0);
                 let b = (-norm).max(0.0);
-                let color = [
-                    (r * 255.0) as u8,
-                    0,
-                    (b * 255.0) as u8,
-                    80,
-                ];
+                let color = [(r * 255.0) as u8, 0, (b * 255.0) as u8, 80];
 
                 let rect_min = Vec2::new(
                     min.x + ix as f32 * grid_spacing,

@@ -48,7 +48,8 @@ impl Renderer {
                 }
             }
         }
-        self.foil_wave_history.retain(|id, _| self.selected_foil_ids.contains(id));
+        self.foil_wave_history
+            .retain(|id, _| self.selected_foil_ids.contains(id));
     }
 
     /// Draw square-wave lines for selected foils using stored history.
@@ -72,7 +73,9 @@ impl Renderer {
                 let y_base = base_y + idx as f32 * spacing;
                 let mut prev: Option<(f32, f32)> = None;
                 for &(t, state) in history {
-                    if t < start_time { continue; }
+                    if t < start_time {
+                        continue;
+                    }
                     if let Some((pt, pv)) = prev {
                         let x0 = base_x + (pt - start_time) * x_scale;
                         let x1 = base_x + (t - start_time) * x_scale;

@@ -1,6 +1,6 @@
+use super::quad::Quad;
 use std::ops::Range;
 use ultraviolet::Vec2;
-use super::quad::Quad;
 
 #[derive(Clone)]
 pub struct Node {

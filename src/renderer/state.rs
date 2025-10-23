@@ -4,9 +4,9 @@ use std::sync::atomic::AtomicBool;
 use std::sync::mpsc::Sender;
 
 use crate::body::foil::{Foil, LinkMode};
-use crate::manual_measurement::{ManualMeasurementConfig, MeasurementResult};
 use crate::body::Body;
 use crate::config;
+use crate::manual_measurement::{ManualMeasurementConfig, MeasurementResult};
 use crate::quadtree::Node;
 
 pub static TIMESTEP: Lazy<Mutex<f32>> = Lazy::new(|| Mutex::new(config::DEFAULT_DT_FS));
@@ -26,7 +26,7 @@ pub static SHOW_Z_VISUALIZATION: Lazy<AtomicBool> = Lazy::new(|| AtomicBool::new
 pub static Z_VISUALIZATION_STRENGTH: Lazy<Mutex<f32>> = Lazy::new(|| Mutex::new(1.0));
 pub static DOMAIN_WIDTH: Lazy<Mutex<f32>> = Lazy::new(|| Mutex::new(300.0)); // Default domain width
 pub static DOMAIN_HEIGHT: Lazy<Mutex<f32>> = Lazy::new(|| Mutex::new(300.0)); // Default domain height
-// Whether to compress saved scenarios (gzip). Default: true (compression on)
+                                                                              // Whether to compress saved scenarios (gzip). Default: true (compression on)
 pub static SAVE_COMPRESS: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(true));
 // Whether to include playback history when saving. Large size impact. Default: true for backward compatibility.
 pub static SAVE_INCLUDE_HISTORY: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(true));
@@ -92,14 +92,10 @@ pub static PLAYBACK_STATUS: Lazy<Mutex<PlaybackStatus>> =
     Lazy::new(|| Mutex::new(PlaybackStatus::default()));
 
 // Persisted UI controls (optional) so saves/loads can restore GUI selections
-pub static PERSIST_UI_CHARGING_MODE: Lazy<Mutex<Option<String>>> =
-    Lazy::new(|| Mutex::new(None)); // "Conventional" | "SwitchCharging"
-pub static PERSIST_UI_CONV_IS_OVER: Lazy<Mutex<Option<bool>>> =
-    Lazy::new(|| Mutex::new(None));
-pub static PERSIST_UI_CONV_CURRENT: Lazy<Mutex<Option<f32>>> =
-    Lazy::new(|| Mutex::new(None));
-pub static PERSIST_UI_CONV_TARGET: Lazy<Mutex<Option<f32>>> =
-    Lazy::new(|| Mutex::new(None));
+pub static PERSIST_UI_CHARGING_MODE: Lazy<Mutex<Option<String>>> = Lazy::new(|| Mutex::new(None)); // "Conventional" | "SwitchCharging"
+pub static PERSIST_UI_CONV_IS_OVER: Lazy<Mutex<Option<bool>>> = Lazy::new(|| Mutex::new(None));
+pub static PERSIST_UI_CONV_CURRENT: Lazy<Mutex<Option<f32>>> = Lazy::new(|| Mutex::new(None));
+pub static PERSIST_UI_CONV_TARGET: Lazy<Mutex<Option<f32>>> = Lazy::new(|| Mutex::new(None));
 // When true, Renderer should sync persisted UI values once (typically after load)
 pub static PERSIST_UI_DIRTY: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(false));
 
@@ -277,8 +273,7 @@ pub static FOIL_METRICS_FILENAME_OVERRIDE: Lazy<Mutex<Option<String>>> =
     Lazy::new(|| Mutex::new(None));
 pub static FOIL_METRICS_USE_SEPARATE_INTERVAL: Lazy<AtomicBool> =
     Lazy::new(|| AtomicBool::new(false));
-pub static FOIL_METRICS_INTERVAL_FS: Lazy<Mutex<f32>> =
-    Lazy::new(|| Mutex::new(1000.0));
+pub static FOIL_METRICS_INTERVAL_FS: Lazy<Mutex<f32>> = Lazy::new(|| Mutex::new(1000.0));
 
 // Foil metrics field selection
 pub static FOIL_METRICS_INCLUDE_SETPOINT: Lazy<std::sync::atomic::AtomicBool> =

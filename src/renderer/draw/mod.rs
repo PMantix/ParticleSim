@@ -1,20 +1,20 @@
 // Drawing routines split into focused modules
 
-mod field;
 mod charge;
-mod foil_wave;
 mod density;
+mod field;
+mod foil_wave;
 
 pub use field::compute_field_at_point;
 
 use super::state::*;
-use palette::{Hsluv, IntoColor, Srgba};
-use ultraviolet::Vec2;
-use crate::quadtree::Quadtree;
 use crate::body::Species;
 use crate::profile_scope;
+use crate::quadtree::Quadtree;
+use palette::{Hsluv, IntoColor, Srgba};
 use rayon::prelude::*;
 use std::sync::atomic::Ordering;
+use ultraviolet::Vec2;
 
 impl super::Renderer {
     pub fn draw(&mut self, ctx: &mut quarkstrom::RenderContext, width: u16, height: u16) {
@@ -41,7 +41,13 @@ impl super::Renderer {
 
                 // Update plotting system with new data
                 let current_time = *crate::renderer::state::SIM_TIME.lock();
-                self.plotting_system.update_plots(&self.bodies, &self.foils, current_time, self.domain_width, self.domain_height);
+                self.plotting_system.update_plots(
+                    &self.bodies,
+                    &self.foils,
+                    current_time,
+                    self.domain_width,
+                    self.domain_height,
+                );
 
                 // Update diagnostics
                 if let Some(ref mut diagnostic) = self.transference_number_diagnostic {
@@ -55,7 +61,13 @@ impl super::Renderer {
                     temp_quadtree.nodes = self.quadtree.clone();
                     // Throttle at 0.25 fs for more responsive UI
                     let current_time = *crate::renderer::state::SIM_TIME.lock();
-                    let _ = diag.calculate_if_needed(&self.bodies, &self.foils, &temp_quadtree, current_time, 0.25);
+                    let _ = diag.calculate_if_needed(
+                        &self.bodies,
+                        &self.foils,
+                        &temp_quadtree,
+                        current_time,
+                        0.25,
+                    );
                 }
                 if let Some(ref mut diag) = self.solvation_diagnostic {
                     profile_scope!("diagnostics_solvation");
@@ -70,135 +82,271 @@ impl super::Renderer {
                     // Periodic CSV logging of Solvation State
                     if self.solvation_csv_enabled {
                         let current_time = *crate::renderer::state::SIM_TIME.lock();
-                        let due = current_time - self.solvation_csv_last_write_fs >= self.solvation_csv_interval_fs;
+                        // One-time init: avoid writing immediately at startup with default Conventional
+                        // mode before the user/UI establishes the desired charging configuration.
+                        if self.solvation_csv_last_write_fs < -1e5 {
+                            self.solvation_csv_last_write_fs = current_time;
+                        }
+                        let due = current_time - self.solvation_csv_last_write_fs
+                            >= self.solvation_csv_interval_fs;
                         if due {
-                            // Ensure directory exists
-                            let _ = std::fs::create_dir_all("doe_results");
-                            let path = if self.solvation_csv_filename.contains('/') || self.solvation_csv_filename.contains('\\') {
-                                self.solvation_csv_filename.clone()
-                            } else {
-                                // Build a consistent Time-based filename if none is set
-                                let switch_running = self.switch_ui_state.run_state == crate::switch_charging::RunState::Running;
-                                let auto_measure_name = crate::manual_measurement_filename::build_measurement_filename(
-                                    switch_running,
-                                    &self.switch_ui_state.config,
-                                );
-                                let time_auto = if let Some(stripped) = auto_measure_name.strip_prefix("Measurement_") {
-                                    format!("Time-based_{}", stripped)
-                                } else {
-                                    format!("Time-based_{}", auto_measure_name)
-                                };
-                                format!("doe_results/{}", if self.solvation_csv_filename.is_empty() { time_auto } else { self.solvation_csv_filename.clone() })
-                            };
-                            // Ensure header exists (prepend if file exists without header on first write)
-                            use std::io::{Write, BufRead, BufReader};
-                            let mut need_header = false;
-                            match std::fs::metadata(&path) {
-                                Ok(meta) => {
-                                    if meta.len() == 0 {
-                                        need_header = true;
-                                    } else if !self.solvation_csv_wrote_header {
-                                        // Check first line for header
-                                        if let Ok(f) = std::fs::File::open(&path) {
-                                            let mut reader = BufReader::new(f);
-                                            let mut first_line = String::new();
-                                            let _ = reader.read_line(&mut first_line);
-                                            if !first_line.starts_with("time_fs,") {
-                                                // Prepend header by rewriting file
-                                                if let Ok(contents) = std::fs::read_to_string(&path) {
-                                                    if let Ok(mut out) = std::fs::OpenOptions::new().write(true).truncate(true).open(&path) {
-                                                        let _ = writeln!(out, "time_fs,mode,setpoint_or_current,CIP,SIP,S2IP,FD");
-                                                        let _ = write!(out, "{}", contents);
-                                                        let _ = out.flush();
-                                                        self.solvation_csv_wrote_header = true;
-                                                    }
-                                                }
-                                            } else {
-                                                self.solvation_csv_wrote_header = true;
-                                            }
-                                        }
-                                    }
-                                }
-                                Err(_) => {
-                                    // File doesn't exist yet; will be created and header written
-                                    need_header = true;
-                                }
-                            }
+                            const TIME_KEY: &str = "time-based";
+                            use std::io::{BufRead, BufReader, Write};
 
-                            // Open in append mode and write header if needed, then data row (include charging info)
-                            match std::fs::OpenOptions::new().create(true).append(true).open(&path) {
-                                Ok(mut file) => {
-                                    if need_header {
-                                        let _ = writeln!(file, "time_fs,mode,setpoint_or_current,CIP,SIP,S2IP,FD");
-                                        self.solvation_csv_wrote_header = true;
-                                    }
-                                    // Determine charging mode and setpoint/current for consistency
-                                    let (mode_str, set_value) = match self.charging_ui_mode {
-                                        super::ChargingUiMode::Conventional | super::ChargingUiMode::Advanced => {
-                                            if self.conventional_is_overpotential {
-                                                ("OP", self.conventional_target_ratio as f64)
-                                            } else {
-                                                ("CC", self.conventional_current_setpoint as f64)
-                                            }
-                                        }
-                                        super::ChargingUiMode::SwitchCharging => {
-                                            // Derive the active setpoint based on config and current step
-                                            use crate::switch_charging::{Mode, StepSetpoint};
-                                            let cfg = &self.switch_ui_state.config;
-                                            // Prefer global active/inactive setpoints when enabled
-                                            let chosen: StepSetpoint = if cfg.use_active_inactive_setpoints {
-                                                if cfg.use_global_active_inactive {
-                                                    cfg.global_active.clone()
-                                                } else {
-                                                    let step_opt = *crate::renderer::state::SWITCH_STEP.lock();
-                                                    if let Some(step) = step_opt {
-                                                        if let Some(sai) = cfg.step_active_inactive.get(&step) {
-                                                            sai.active.clone()
-                                                        } else if let Some(sai0) = cfg.step_active_inactive.get(&0) {
-                                                            sai0.active.clone()
-                                                        } else {
-                                                            cfg.global_active.clone()
-                                                        }
+                            let resolve_result =
+                                self.solvation_csv_writer.resolve(TIME_KEY, || {
+                                    let raw = self.solvation_csv_filename.trim();
+                                    let auto_name = || -> String {
+                                        let mode = match self.charging_ui_mode {
+                                            super::ChargingUiMode::SwitchCharging => "SWITCH",
+                                            _ => "CONV",
+                                        };
+                                        let (ctrl, val, step_opt) = match self.charging_ui_mode {
+                                            super::ChargingUiMode::SwitchCharging => {
+                                                use crate::switch_charging::Mode;
+                                                let cfg = &self.switch_ui_state.config;
+                                                let (m, v) = if cfg.use_active_inactive_setpoints {
+                                                    let sp = if cfg.use_global_active_inactive {
+                                                        &cfg.global_active
                                                     } else {
-                                                        // If no current step known, fall back to step 0 or global
-                                                        if let Some(sai0) = cfg.step_active_inactive.get(&0) {
-                                                            sai0.active.clone()
-                                                        } else {
-                                                            cfg.global_active.clone()
-                                                        }
-                                                    }
-                                                }
-                                            } else {
-                                                // Legacy per-step setpoints
-                                                let step_opt = *crate::renderer::state::SWITCH_STEP.lock();
-                                                if let Some(step) = step_opt {
-                                                    cfg.step_setpoints.get(&step).cloned()
-                                                        .or_else(|| cfg.step_setpoints.get(&0).cloned())
-                                                        .unwrap_or_default()
+                                                        cfg.step_active_inactive
+                                                            .get(&0)
+                                                            .map(|s| &s.active)
+                                                            .unwrap_or(&cfg.global_active)
+                                                    };
+                                                    (sp.mode, sp.value)
                                                 } else {
-                                                    cfg.step_setpoints.get(&0).cloned().unwrap_or_default()
+                                                    let sp = cfg
+                                                        .step_setpoints
+                                                        .get(&0)
+                                                        .cloned()
+                                                        .unwrap_or_default();
+                                                    (sp.mode, sp.value)
+                                                };
+                                                let ctrl = match m {
+                                                    Mode::Current => "CC",
+                                                    Mode::Overpotential => "OP",
+                                                };
+                                                (ctrl.to_string(), v as f64, Some(cfg.delta_steps))
+                                            }
+                                            _ => {
+                                                if self.conventional_is_overpotential {
+                                                    (
+                                                        "OP".to_string(),
+                                                        self.conventional_target_ratio as f64,
+                                                        None,
+                                                    )
+                                                } else {
+                                                    (
+                                                        "CC".to_string(),
+                                                        self.conventional_current_setpoint as f64,
+                                                        None,
+                                                    )
                                                 }
-                                            };
-                                            let mode_str = match chosen.mode { Mode::Current => "CC", Mode::Overpotential => "OP" };
-                                            (mode_str, chosen.value)
+                                            }
+                                        };
+                                        let val_str = format!("{:.2}", val.abs()).replace('.', "p");
+                                        match step_opt {
+                                            Some(steps) => format!(
+                                                "Time-based_{}_{}_{}_{}.csv",
+                                                mode, ctrl, val_str, steps
+                                            ),
+                                            None => format!(
+                                                "Time-based_{}_{}_{}.csv",
+                                                mode, ctrl, val_str
+                                            ),
                                         }
                                     };
-                                    let _ = writeln!(
-                                        file,
-                                        "{:.6},{},{:.6},{:.6},{:.6},{:.6},{:.6}",
-                                        current_time,
-                                        mode_str,
-                                        set_value,
-                                        diag.cip_fraction,
-                                        diag.sip_fraction,
-                                        diag.s2ip_fraction,
-                                        diag.fd_fraction
-                                    );
-                                    let _ = file.flush();
-                                    self.solvation_csv_last_write_fs = current_time;
+
+                                    let candidate = if raw.contains('/') || raw.contains('\\') {
+                                        std::path::PathBuf::from(raw)
+                                    } else {
+                                        let file_name = if raw.is_empty() {
+                                            auto_name()
+                                        } else {
+                                            raw.to_string()
+                                        };
+                                        std::path::Path::new("doe_results").join(file_name)
+                                    };
+
+                                    if let Some(parent) = candidate.parent() {
+                                        if !parent.as_os_str().is_empty() {
+                                            std::fs::create_dir_all(parent)?;
+                                        }
+                                    }
+
+                                    Ok(candidate)
+                                });
+
+                            match resolve_result {
+                                Ok(path) => {
+                                    let mut need_header = false;
+                                    match std::fs::metadata(&path) {
+                                        Ok(meta) => {
+                                            if meta.len() == 0 {
+                                                need_header = true;
+                                            } else if !self
+                                                .solvation_csv_writer
+                                                .header_written(TIME_KEY)
+                                            {
+                                                if let Ok(f) = std::fs::File::open(&path) {
+                                                    let mut reader = BufReader::new(f);
+                                                    let mut first_line = String::new();
+                                                    let _ = reader.read_line(&mut first_line);
+                                                    if first_line.starts_with("time_fs,") {
+                                                        self.solvation_csv_writer
+                                                            .mark_header_written(TIME_KEY);
+                                                    } else if let Ok(contents) =
+                                                        std::fs::read_to_string(&path)
+                                                    {
+                                                        if let Ok(mut out) =
+                                                            std::fs::OpenOptions::new()
+                                                                .write(true)
+                                                                .truncate(true)
+                                                                .open(&path)
+                                                        {
+                                                            let _ = writeln!(
+                                                                out,
+                                                                "time_fs,mode,setpoint_or_current,CIP,SIP,S2IP,FD"
+                                                            );
+                                                            let _ = write!(out, "{}", contents);
+                                                            let _ = out.flush();
+                                                            self.solvation_csv_writer
+                                                                .mark_header_written(TIME_KEY);
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        Err(_) => {
+                                            need_header = true;
+                                        }
+                                    }
+
+                                    match std::fs::OpenOptions::new()
+                                        .create(true)
+                                        .append(true)
+                                        .open(&path)
+                                    {
+                                        Ok(mut file) => {
+                                            if need_header {
+                                                let _ = writeln!(
+                                                    file,
+                                                    "time_fs,mode,setpoint_or_current,CIP,SIP,S2IP,FD"
+                                                );
+                                                self.solvation_csv_writer
+                                                    .mark_header_written(TIME_KEY);
+                                            }
+                                            // Determine charging mode and setpoint/current for consistency
+                                            let (mode_str, set_value) = match self.charging_ui_mode
+                                            {
+                                                super::ChargingUiMode::Conventional
+                                                | super::ChargingUiMode::Advanced => {
+                                                    if self.conventional_is_overpotential {
+                                                        (
+                                                            "OP",
+                                                            self.conventional_target_ratio as f64,
+                                                        )
+                                                    } else {
+                                                        (
+                                                            "CC",
+                                                            self.conventional_current_setpoint
+                                                                as f64,
+                                                        )
+                                                    }
+                                                }
+                                                super::ChargingUiMode::SwitchCharging => {
+                                                    // Derive the active setpoint based on config and current step
+                                                    use crate::switch_charging::{
+                                                        Mode, StepSetpoint,
+                                                    };
+                                                    let cfg = &self.switch_ui_state.config;
+                                                    // Prefer global active/inactive setpoints when enabled
+                                                    let chosen: StepSetpoint = if cfg
+                                                        .use_active_inactive_setpoints
+                                                    {
+                                                        if cfg.use_global_active_inactive {
+                                                            cfg.global_active.clone()
+                                                        } else {
+                                                            let step_opt = *crate::renderer::state::SWITCH_STEP.lock();
+                                                            if let Some(step) = step_opt {
+                                                                if let Some(sai) = cfg
+                                                                    .step_active_inactive
+                                                                    .get(&step)
+                                                                {
+                                                                    sai.active.clone()
+                                                                } else if let Some(sai0) =
+                                                                    cfg.step_active_inactive.get(&0)
+                                                                {
+                                                                    sai0.active.clone()
+                                                                } else {
+                                                                    cfg.global_active.clone()
+                                                                }
+                                                            } else {
+                                                                if let Some(sai0) =
+                                                                    cfg.step_active_inactive.get(&0)
+                                                                {
+                                                                    sai0.active.clone()
+                                                                } else {
+                                                                    cfg.global_active.clone()
+                                                                }
+                                                            }
+                                                        }
+                                                    } else {
+                                                        // Legacy per-step setpoints
+                                                        let step_opt =
+                                                            *crate::renderer::state::SWITCH_STEP
+                                                                .lock();
+                                                        if let Some(step) = step_opt {
+                                                            cfg.step_setpoints
+                                                                .get(&step)
+                                                                .cloned()
+                                                                .or_else(|| {
+                                                                    cfg.step_setpoints
+                                                                        .get(&0)
+                                                                        .cloned()
+                                                                })
+                                                                .unwrap_or_default()
+                                                        } else {
+                                                            cfg.step_setpoints
+                                                                .get(&0)
+                                                                .cloned()
+                                                                .unwrap_or_default()
+                                                        }
+                                                    };
+                                                    let mode_str = match chosen.mode {
+                                                        Mode::Current => "CC",
+                                                        Mode::Overpotential => "OP",
+                                                    };
+                                                    (mode_str, chosen.value)
+                                                }
+                                            };
+                                            let _ = writeln!(
+                                                file,
+                                                "{:.6},{},{:.6},{:.6},{:.6},{:.6},{:.6}",
+                                                current_time,
+                                                mode_str,
+                                                set_value,
+                                                diag.cip_fraction,
+                                                diag.sip_fraction,
+                                                diag.s2ip_fraction,
+                                                diag.fd_fraction
+                                            );
+                                            let _ = file.flush();
+                                            self.solvation_csv_last_write_fs = current_time;
+                                        }
+                                        Err(e) => {
+                                            eprintln!(
+                                                "✗ Failed to write solvation CSV ({}): {}",
+                                                path.display(),
+                                                e
+                                            );
+                                            self.solvation_csv_last_write_fs = current_time;
+                                        }
+                                    }
                                 }
                                 Err(e) => {
-                                    eprintln!("✗ Failed to write solvation CSV ({}): {}", path, e);
+                                    eprintln!("✗ Failed to resolve solvation CSV path: {}", e);
                                     self.solvation_csv_last_write_fs = current_time;
                                 }
                             }
@@ -228,25 +376,43 @@ impl super::Renderer {
             if let Some(ref solvation_diag) = self.solvation_diagnostic {
                 // Draw CIP pairs with blue for cation, dark blue for anion, light blue for solvents
                 if self.show_cip_ions {
-                    for &(cation_id, anion_id, ref cation_solvents, ref anion_solvents) in &solvation_diag.cip_pairs {
+                    for &(cation_id, anion_id, ref cation_solvents, ref anion_solvents) in
+                        &solvation_diag.cip_pairs
+                    {
                         // Draw cation
                         if let Some(body) = self.bodies.iter().find(|b| b.id == cation_id) {
-                            ctx.draw_circle(self.get_display_position(body), body.radius * 2.0, [0, 100, 255, 80]);
+                            ctx.draw_circle(
+                                self.get_display_position(body),
+                                body.radius * 2.0,
+                                [0, 100, 255, 80],
+                            );
                         }
                         // Draw anion
                         if let Some(body) = self.bodies.iter().find(|b| b.id == anion_id) {
-                            ctx.draw_circle(self.get_display_position(body), body.radius * 2.0, [0, 50, 150, 80]);
+                            ctx.draw_circle(
+                                self.get_display_position(body),
+                                body.radius * 2.0,
+                                [0, 50, 150, 80],
+                            );
                         }
                         // Draw cation solvents
                         for &solvent_id in cation_solvents {
                             if let Some(body) = self.bodies.iter().find(|b| b.id == solvent_id) {
-                                ctx.draw_circle(self.get_display_position(body), body.radius * 1.5, [100, 150, 255, 60]);
+                                ctx.draw_circle(
+                                    self.get_display_position(body),
+                                    body.radius * 1.5,
+                                    [100, 150, 255, 60],
+                                );
                             }
                         }
                         // Draw anion solvents
                         for &solvent_id in anion_solvents {
                             if let Some(body) = self.bodies.iter().find(|b| b.id == solvent_id) {
-                                ctx.draw_circle(self.get_display_position(body), body.radius * 1.5, [50, 100, 200, 60]);
+                                ctx.draw_circle(
+                                    self.get_display_position(body),
+                                    body.radius * 1.5,
+                                    [50, 100, 200, 60],
+                                );
                             }
                         }
                     }
@@ -254,25 +420,43 @@ impl super::Renderer {
 
                 // Draw SIP pairs with yellow for cation, dark yellow for anion, light yellow for solvents
                 if self.show_sip_ions {
-                    for &(cation_id, anion_id, ref cation_solvents, ref anion_solvents) in &solvation_diag.sip_pairs {
+                    for &(cation_id, anion_id, ref cation_solvents, ref anion_solvents) in
+                        &solvation_diag.sip_pairs
+                    {
                         // Draw cation
                         if let Some(body) = self.bodies.iter().find(|b| b.id == cation_id) {
-                            ctx.draw_circle(self.get_display_position(body), body.radius * 2.0, [255, 255, 0, 80]);
+                            ctx.draw_circle(
+                                self.get_display_position(body),
+                                body.radius * 2.0,
+                                [255, 255, 0, 80],
+                            );
                         }
                         // Draw anion
                         if let Some(body) = self.bodies.iter().find(|b| b.id == anion_id) {
-                            ctx.draw_circle(self.get_display_position(body), body.radius * 2.0, [220, 220, 0, 80]);
+                            ctx.draw_circle(
+                                self.get_display_position(body),
+                                body.radius * 2.0,
+                                [220, 220, 0, 80],
+                            );
                         }
                         // Draw cation solvents
                         for &solvent_id in cation_solvents {
                             if let Some(body) = self.bodies.iter().find(|b| b.id == solvent_id) {
-                                ctx.draw_circle(self.get_display_position(body), body.radius * 1.5, [255, 255, 120, 60]);
+                                ctx.draw_circle(
+                                    self.get_display_position(body),
+                                    body.radius * 1.5,
+                                    [255, 255, 120, 60],
+                                );
                             }
                         }
                         // Draw anion solvents
                         for &solvent_id in anion_solvents {
                             if let Some(body) = self.bodies.iter().find(|b| b.id == solvent_id) {
-                                ctx.draw_circle(self.get_display_position(body), body.radius * 1.5, [240, 240, 80, 60]);
+                                ctx.draw_circle(
+                                    self.get_display_position(body),
+                                    body.radius * 1.5,
+                                    [240, 240, 80, 60],
+                                );
                             }
                         }
                     }
@@ -280,25 +464,43 @@ impl super::Renderer {
 
                 // Draw S2IP pairs with orange for cation, dark orange for anion, light orange for solvents
                 if self.show_s2ip_ions {
-                    for &(cation_id, anion_id, ref cation_solvents, ref anion_solvents) in &solvation_diag.s2ip_pairs {
+                    for &(cation_id, anion_id, ref cation_solvents, ref anion_solvents) in
+                        &solvation_diag.s2ip_pairs
+                    {
                         // Draw cation
                         if let Some(body) = self.bodies.iter().find(|b| b.id == cation_id) {
-                            ctx.draw_circle(self.get_display_position(body), body.radius * 2.0, [255, 100, 0, 80]);
+                            ctx.draw_circle(
+                                self.get_display_position(body),
+                                body.radius * 2.0,
+                                [255, 100, 0, 80],
+                            );
                         }
                         // Draw anion
                         if let Some(body) = self.bodies.iter().find(|b| b.id == anion_id) {
-                            ctx.draw_circle(self.get_display_position(body), body.radius * 2.0, [230, 80, 0, 80]);
+                            ctx.draw_circle(
+                                self.get_display_position(body),
+                                body.radius * 2.0,
+                                [230, 80, 0, 80],
+                            );
                         }
                         // Draw cation solvents
                         for &solvent_id in cation_solvents {
                             if let Some(body) = self.bodies.iter().find(|b| b.id == solvent_id) {
-                                ctx.draw_circle(self.get_display_position(body), body.radius * 1.5, [255, 150, 50, 60]);
+                                ctx.draw_circle(
+                                    self.get_display_position(body),
+                                    body.radius * 1.5,
+                                    [255, 150, 50, 60],
+                                );
                             }
                         }
                         // Draw anion solvents
                         for &solvent_id in anion_solvents {
                             if let Some(body) = self.bodies.iter().find(|b| b.id == solvent_id) {
-                                ctx.draw_circle(self.get_display_position(body), body.radius * 1.5, [240, 120, 30, 60]);
+                                ctx.draw_circle(
+                                    self.get_display_position(body),
+                                    body.radius * 1.5,
+                                    [240, 120, 30, 60],
+                                );
                             }
                         }
                     }
@@ -309,12 +511,20 @@ impl super::Renderer {
                     for &(cation_id, ref cation_solvents) in &solvation_diag.fd_cations {
                         // Draw cation
                         if let Some(body) = self.bodies.iter().find(|b| b.id == cation_id) {
-                            ctx.draw_circle(self.get_display_position(body), body.radius * 2.0, [255, 0, 0, 120]);
+                            ctx.draw_circle(
+                                self.get_display_position(body),
+                                body.radius * 2.0,
+                                [255, 0, 0, 120],
+                            );
                         }
                         // Draw cation solvents
                         for &solvent_id in cation_solvents {
                             if let Some(body) = self.bodies.iter().find(|b| b.id == solvent_id) {
-                                ctx.draw_circle(self.get_display_position(body), body.radius * 1.5, [255, 80, 80, 90]);
+                                ctx.draw_circle(
+                                    self.get_display_position(body),
+                                    body.radius * 1.5,
+                                    [255, 80, 80, 90],
+                                );
                             }
                         }
                     }
@@ -329,7 +539,10 @@ impl super::Renderer {
                     // Apply dark mode if enabled
                     if self.species_dark_mode_enabled {
                         match body.species {
-                            Species::LithiumMetal | Species::ElectrolyteAnion | Species::EC | Species::DMC => {
+                            Species::LithiumMetal
+                            | Species::ElectrolyteAnion
+                            | Species::EC
+                            | Species::DMC => {
                                 let darkness_factor = 1.0 - self.species_dark_mode_strength;
                                 color[0] = (color[0] as f32 * darkness_factor) as u8;
                                 color[1] = (color[1] as f32 * darkness_factor) as u8;
@@ -342,54 +555,62 @@ impl super::Renderer {
                     if SHOW_Z_VISUALIZATION.load(Ordering::Relaxed) {
                         let max_z = self.sim_config.max_z.max(1.0);
                         let z_strength = *crate::renderer::state::Z_VISUALIZATION_STRENGTH.lock();
-                        
+
                         // Normalize z-coordinate to -1.0 to 1.0 range
                         let z_normalized = (body.z / max_z).clamp(-1.0, 1.0);
-                        
+
                         // Apply elegant z-depth effects:
                         // 1. Size scaling: particles closer to camera (positive z) appear larger
                         let size_factor = 1.0 + (z_strength * 0.3 * z_normalized);
                         draw_radius *= size_factor.max(0.3); // Don't let particles disappear
-                        
+
                         // 2. INVERTED Color brightness: particles at higher z are brighter, z=0 is darker for contrast
                         let brightness_factor = 1.0 + (z_strength * 0.6 * z_normalized); // Positive z gets brighter
                         let brightness = brightness_factor.clamp(0.2, 2.0); // Allow overbrightening, but keep minimum visibility
-                        
+
                         // 3. Additional contrast: make z=0 depth darker
-                        let z_zero_darkening = if z_normalized.abs() < 0.1 { // Close to z=0
+                        let z_zero_darkening = if z_normalized.abs() < 0.1 {
+                            // Close to z=0
                             1.0 - (z_strength * 0.3) // Darken z=0 particles
                         } else {
                             1.0
                         };
                         let final_brightness = brightness * z_zero_darkening.clamp(0.3, 1.0);
-                        
+
                         // 4. Optional color tinting based on depth
                         if z_strength > 2.0 {
                             if z_normalized > 0.0 {
                                 // Closer particles get warmer tint (more red/yellow)
                                 let warm_factor = z_normalized * (z_strength - 2.0) * 0.1;
-                                color[0] = (color[0] as f32 * (1.0 + warm_factor)).clamp(0.0, 255.0) as u8;
-                                color[1] = (color[1] as f32 * (1.0 + warm_factor * 0.5)).clamp(0.0, 255.0) as u8;
+                                color[0] =
+                                    (color[0] as f32 * (1.0 + warm_factor)).clamp(0.0, 255.0) as u8;
+                                color[1] = (color[1] as f32 * (1.0 + warm_factor * 0.5))
+                                    .clamp(0.0, 255.0)
+                                    as u8;
                             } else {
                                 // Further particles get cooler tint (more blue)
                                 let cool_factor = (-z_normalized) * (z_strength - 2.0) * 0.1;
-                                color[2] = (color[2] as f32 * (1.0 + cool_factor)).clamp(0.0, 255.0) as u8;
-                                color[1] = (color[1] as f32 * (1.0 + cool_factor * 0.5)).clamp(0.0, 255.0) as u8;
+                                color[2] =
+                                    (color[2] as f32 * (1.0 + cool_factor)).clamp(0.0, 255.0) as u8;
+                                color[1] = (color[1] as f32 * (1.0 + cool_factor * 0.5))
+                                    .clamp(0.0, 255.0)
+                                    as u8;
                             }
                         }
-                        
+
                         // Apply brightness scaling (can now make particles brighter than original)
                         color[0] = (color[0] as f32 * final_brightness).clamp(0.0, 255.0) as u8;
                         color[1] = (color[1] as f32 * final_brightness).clamp(0.0, 255.0) as u8;
                         color[2] = (color[2] as f32 * final_brightness).clamp(0.0, 255.0) as u8;
-                        
+
                         // 5. Optional alpha transparency for depth
                         if z_strength > 1.5 {
-                            let alpha_factor = 1.0 - (z_normalized.abs() * (z_strength - 1.5) * 0.2);
+                            let alpha_factor =
+                                1.0 - (z_normalized.abs() * (z_strength - 1.5) * 0.2);
                             color[3] = (color[3] as f32 * alpha_factor.clamp(0.5, 1.0)) as u8;
                         }
                     }
-                    
+
                     if body.species == Species::LithiumIon {
                         if body.surrounded_by_metal {
                             if self.show_metal_electron_deficiency {
@@ -403,18 +624,25 @@ impl super::Renderer {
                     }
 
                     if body.species == Species::FoilMetal {
-                        if let Some(foil) = self.foils.iter().find(|f| f.body_ids.contains(&body.id)) {
+                        if let Some(foil) =
+                            self.foils.iter().find(|f| f.body_ids.contains(&body.id))
+                        {
                             // Selected foil highlight
                             if self.selected_foil_ids.contains(&foil.id) {
-                                ctx.draw_circle(self.get_display_position(body), body.radius * 1.1, [255, 255, 0, 32]);
+                                ctx.draw_circle(
+                                    self.get_display_position(body),
+                                    body.radius * 1.1,
+                                    [255, 255, 0, 32],
+                                );
                             }
-                            
+
                             // Switching role halo
                             if self.show_switching_role_halos {
                                 // Determine playback mode to decide step precedence.
                                 // In playback (HistoryPlaying/HistoryPaused), always use the stored historical step.
                                 // In live mode, prefer the UI-reported step and fall back to the cached one if missing.
-                                let playback_mode = { crate::renderer::state::PLAYBACK_STATUS.lock().mode };
+                                let playback_mode =
+                                    { crate::renderer::state::PLAYBACK_STATUS.lock().mode };
                                 let cached_step = *crate::renderer::state::SWITCH_STEP.lock();
                                 let maybe_step = match playback_mode {
                                     crate::renderer::state::PlaybackModeStatus::Live => {
@@ -425,24 +653,44 @@ impl super::Renderer {
                                     _ => cached_step,
                                 };
                                 if let Some(current_step) = maybe_step {
-                                    let (pos_role, neg_role) = crate::switch_charging::roles_for_step(current_step);
-                                    
+                                    let (pos_role, neg_role) =
+                                        crate::switch_charging::roles_for_step(current_step);
+
                                     // Check if this foil has a role in the current active step
-                                    let pos_foils = self.switch_ui_state.config.foils_for_role(pos_role);
-                                    let neg_foils = self.switch_ui_state.config.foils_for_role(neg_role);
-                                    
+                                    let pos_foils =
+                                        self.switch_ui_state.config.foils_for_role(pos_role);
+                                    let neg_foils =
+                                        self.switch_ui_state.config.foils_for_role(neg_role);
+
                                     if pos_foils.contains(&foil.id) {
                                         // Positive role - draw green halo
-                                        ctx.draw_circle(self.get_display_position(body), body.radius * 1.3, [0, 255, 0, 100]);
+                                        ctx.draw_circle(
+                                            self.get_display_position(body),
+                                            body.radius * 1.3,
+                                            [0, 255, 0, 100],
+                                        );
                                     } else if neg_foils.contains(&foil.id) {
-                                        // Negative role - draw red halo  
-                                        ctx.draw_circle(self.get_display_position(body), body.radius * 1.3, [255, 0, 0, 100]);
+                                        // Negative role - draw red halo
+                                        ctx.draw_circle(
+                                            self.get_display_position(body),
+                                            body.radius * 1.3,
+                                            [255, 0, 0, 100],
+                                        );
                                     } else {
                                         // Inactive foil in switching mode - draw gray halo
-                                        let has_any_role = crate::switch_charging::Role::ALL.iter()
-                                            .any(|role| self.switch_ui_state.config.foils_for_role(*role).contains(&foil.id));
+                                        let has_any_role =
+                                            crate::switch_charging::Role::ALL.iter().any(|role| {
+                                                self.switch_ui_state
+                                                    .config
+                                                    .foils_for_role(*role)
+                                                    .contains(&foil.id)
+                                            });
                                         if has_any_role {
-                                            ctx.draw_circle(self.get_display_position(body), body.radius * 1.2, [128, 128, 128, 60]);
+                                            ctx.draw_circle(
+                                                self.get_display_position(body),
+                                                body.radius * 1.2,
+                                                [128, 128, 128, 60],
+                                            );
                                         }
                                     }
                                 }
@@ -472,29 +720,18 @@ impl super::Renderer {
                     }
 
                     // Visualize electron count for LithiumMetal
-                    if self.show_metal_electron_deficiency && body.species == Species::LithiumMetal {
+                    if self.show_metal_electron_deficiency && body.species == Species::LithiumMetal
+                    {
                         let neutral_electrons = 1;
                         let electron_count = body.electrons.len();
                         if electron_count > neutral_electrons {
-                            ctx.draw_circle(
-                                body.pos,
-                                body.radius * 0.5,
-                                [0, 255, 0, 255],
-                            );
+                            ctx.draw_circle(body.pos, body.radius * 0.5, [0, 255, 0, 255]);
                         } else if electron_count < neutral_electrons {
-                            ctx.draw_circle(
-                                body.pos,
-                                body.radius * 0.5,
-                                [255, 0, 0, 255],
-                            );
+                            ctx.draw_circle(body.pos, body.radius * 0.5, [255, 0, 0, 255]);
                         }
                         for electron in &body.electrons {
                             let electron_pos = body.pos + electron.rel_pos;
-                            ctx.draw_circle(
-                                electron_pos,
-                                body.radius * 0.3,
-                                [0, 128, 255, 255],
-                            );
+                            ctx.draw_circle(electron_pos, body.radius * 0.3, [0, 128, 255, 255]);
                         }
                     }
                 }
@@ -514,7 +751,9 @@ impl super::Renderer {
             if self.show_dipoles {
                 use crate::body::Species;
                 for body in &self.bodies {
-                    if !(matches!(body.species, Species::EC | Species::DMC) && !body.electrons.is_empty()) {
+                    if !(matches!(body.species, Species::EC | Species::DMC)
+                        && !body.electrons.is_empty())
+                    {
                         continue;
                     }
                     // Use first electron to represent dipole direction
@@ -550,13 +789,21 @@ impl super::Renderer {
 
             if let Some(id) = self.selected_particle_id {
                 if let Some(body) = self.bodies.iter().find(|b| b.id == id) {
-                    ctx.draw_circle(self.get_display_position(body), body.radius * 1.5, [255, 255, 0, 32]);
+                    ctx.draw_circle(
+                        self.get_display_position(body),
+                        body.radius * 1.5,
+                        [255, 255, 0, 32],
+                    );
                 }
             }
 
             for id in &self.selected_particle_ids {
                 if let Some(body) = self.bodies.iter().find(|b| b.id == *id) {
-                    ctx.draw_circle(self.get_display_position(body), body.radius * 3.0, [255, 255, 0, 128]);
+                    ctx.draw_circle(
+                        self.get_display_position(body),
+                        body.radius * 3.0,
+                        [255, 255, 0, 128],
+                    );
                 }
             }
         }
@@ -653,18 +900,15 @@ impl super::Renderer {
             let ny = ((max.y - min.y) / grid_spacing).ceil() as usize;
             let mut lines = vec![(Vec2::zero(), Vec2::zero()); nx * ny];
 
-            lines
-                .par_iter_mut()
-                .enumerate()
-                .for_each(|(i, line)| {
-                    let ix = i % nx;
-                    let iy = i / nx;
-                    let x = min.x + ix as f32 * grid_spacing;
-                    let y = min.y + iy as f32 * grid_spacing;
-                    let pos = Vec2::new(x, y);
-                    let field = compute_field_at_point(&self.bodies, pos, &self.sim_config);
-                    *line = (pos, pos + field * field_scale);
-                });
+            lines.par_iter_mut().enumerate().for_each(|(i, line)| {
+                let ix = i % nx;
+                let iy = i / nx;
+                let x = min.x + ix as f32 * grid_spacing;
+                let y = min.y + iy as f32 * grid_spacing;
+                let pos = Vec2::new(x, y);
+                let field = compute_field_at_point(&self.bodies, pos, &self.sim_config);
+                *line = (pos, pos + field * field_scale);
+            });
 
             for (start, end) in lines {
                 ctx.draw_line(start, end, color);
@@ -710,7 +954,11 @@ impl super::Renderer {
 
         // If a direction is set, project the cursor onto that axis
         let direction = if let Some(dir) = self.measurement_direction {
-            let unit = if dir.mag_sq() > 1e-12 { dir.normalized() } else { Vec2::new(1.0, 0.0) };
+            let unit = if dir.mag_sq() > 1e-12 {
+                dir.normalized()
+            } else {
+                Vec2::new(1.0, 0.0)
+            };
             let proj_len = diff.dot(unit);
             distance = proj_len.abs();
             unit
@@ -759,15 +1007,17 @@ impl super::Renderer {
 
         // Get measurement config from UI
         let measurement_points = &self.manual_measurement_ui_config.points;
-        
+
         // Pull latest measurement results from shared state
-        self.manual_measurement_last_results = crate::renderer::state::MANUAL_MEASUREMENT_RESULTS.lock().clone();
-        
+        self.manual_measurement_last_results = crate::renderer::state::MANUAL_MEASUREMENT_RESULTS
+            .lock()
+            .clone();
+
         for (point_idx, point) in measurement_points.iter().enumerate() {
             // Calculate measurement region bounds - directional asymmetric extent from center
             let half_width = point.width / 2.0;
             let half_height = point.height / 2.0;
-            
+
             let (x_min, x_max) = match point.direction.as_str() {
                 "left" => (point.x - point.width, point.x),
                 "right" => (point.x, point.x + point.width),
@@ -796,7 +1046,7 @@ impl super::Renderer {
                     "up" | "down" => Vec2::new(point.x, result.edge_position),
                     _ => Vec2::new(result.edge_position, point.y),
                 };
-                
+
                 // Draw magenta circle at leading edge (different from DOE green)
                 ctx.draw_circle(edge_pos, 3.0, [255, 0, 255, 200]);
                 // Draw line from edge to reference point

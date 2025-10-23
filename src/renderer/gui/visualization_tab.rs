@@ -95,22 +95,36 @@ impl super::super::Renderer {
                 egui::Slider::new(&mut self.sim_config.isoline_clip_margin, -0.2..=0.2)
                     .text("Isoline clip margin")
                     .step_by(0.005)
-                    .clamp_to_range(true)
-            ).on_hover_text("Clips extreme low/high sampled values to avoid outliers (applied symmetrically)");
+                    .clamp_to_range(true),
+            )
+            .on_hover_text(
+                "Clips extreme low/high sampled values to avoid outliers (applied symmetrically)",
+            );
             ui.add(
                 egui::Slider::new(&mut self.sim_config.isoline_bias, -0.5..=0.5)
                     .text("Isoline bias (offset)")
-                    .step_by(0.01)
-            ).on_hover_text("Shifts percentile mapping of levels up/down the range after clipping");
-            ui.horizontal(|ui|{
-                ui.checkbox(&mut self.sim_config.isoline_local_refine, "Adaptive refinement");
+                    .step_by(0.01),
+            )
+            .on_hover_text("Shifts percentile mapping of levels up/down the range after clipping");
+            ui.horizontal(|ui| {
+                ui.checkbox(
+                    &mut self.sim_config.isoline_local_refine,
+                    "Adaptive refinement",
+                );
                 if self.sim_config.isoline_local_refine {
-                    ui.add(egui::Slider::new(&mut self.sim_config.isoline_local_refine_factor, 1..=10)
-                        .text("Refine factor")
-                        .step_by(1.0));
-                    ui.add(egui::Slider::new(&mut self.sim_config.isoline_local_refine_band, 0.1..=10.0)
+                    ui.add(
+                        egui::Slider::new(&mut self.sim_config.isoline_local_refine_factor, 1..=10)
+                            .text("Refine factor")
+                            .step_by(1.0),
+                    );
+                    ui.add(
+                        egui::Slider::new(
+                            &mut self.sim_config.isoline_local_refine_band,
+                            0.1..=10.0,
+                        )
                         .text("Refine band")
-                        .step_by(0.05));
+                        .step_by(0.05),
+                    );
                 }
             });
 
@@ -119,18 +133,23 @@ impl super::super::Renderer {
             ui.add(
                 egui::Slider::new(&mut self.sim_config.isoline_color_strength, 0.0..=1.0)
                     .text("Color strength")
-                    .step_by(0.01)
-            ).on_hover_text("0 = white lines; 1 = full blue/red deviation");
+                    .step_by(0.01),
+            )
+            .on_hover_text("0 = white lines; 1 = full blue/red deviation");
             ui.add(
                 egui::Slider::new(&mut self.sim_config.isoline_color_gamma, 0.05..=3.0)
                     .text("Color gamma")
-                    .step_by(0.05)
-            ).on_hover_text("Adjusts how quickly color saturates with |potential| (perceptual)");
-            ui.horizontal(|ui|{
+                    .step_by(0.05),
+            )
+            .on_hover_text("Adjusts how quickly color saturates with |potential| (perceptual)");
+            ui.horizontal(|ui| {
                 ui.checkbox(&mut self.sim_config.isoline_filled, "Filled isobands");
                 if self.sim_config.isoline_filled {
                     let mut alpha_u8 = self.sim_config.isoline_fill_alpha as i32;
-                    if ui.add(egui::Slider::new(&mut alpha_u8, 10..=200).text("Fill alpha")).changed() {
+                    if ui
+                        .add(egui::Slider::new(&mut alpha_u8, 10..=200).text("Fill alpha"))
+                        .changed()
+                    {
                         self.sim_config.isoline_fill_alpha = alpha_u8 as u8;
                     }
                 }
@@ -139,8 +158,11 @@ impl super::super::Renderer {
             ui.add(
                 egui::Slider::new(&mut self.sim_config.isoline_distribution_gamma, 0.05..=50.0)
                     .text("Level distribution gamma")
-                    .step_by(0.05)
-            ).on_hover_text("1.0 = linear; >1 concentrates levels near extremes; <1 concentrates near center");
+                    .step_by(0.05),
+            )
+            .on_hover_text(
+                "1.0 = linear; >1 concentrates levels near extremes; <1 concentrates near center",
+            );
             // Dipole visualization controls
             ui.checkbox(&mut self.show_dipoles, "Show EC/DMC dipoles");
             if self.show_dipoles {
@@ -151,7 +173,7 @@ impl super::super::Renderer {
             ui.add(
                 egui::Slider::new(&mut self.velocity_vector_scale, 0.01..=1.0)
                     .text("Velocity Vector Scale")
-                    .step_by(0.01)
+                    .step_by(0.01),
             );
         });
 
@@ -160,19 +182,18 @@ impl super::super::Renderer {
         // Species Dark Mode
         ui.group(|ui| {
             ui.label("🌙 Species Dark Mode");
-            ui.checkbox(
-                &mut self.species_dark_mode_enabled,
-                "Enable Dark Mode"
-            )
-            .on_hover_text("Enable dark background mode for better visibility of particles");
-            
+            ui.checkbox(&mut self.species_dark_mode_enabled, "Enable Dark Mode")
+                .on_hover_text("Enable dark background mode for better visibility of particles");
+
             if self.species_dark_mode_enabled {
                 ui.add(
                     egui::Slider::new(&mut self.species_dark_mode_strength, 0.0..=1.0)
                         .text("Dark Mode Strength")
-                        .step_by(0.01)
+                        .step_by(0.01),
                 )
-                .on_hover_text("Controls how dark the background becomes (0.0 = light, 1.0 = full dark)");
+                .on_hover_text(
+                    "Controls how dark the background becomes (0.0 = light, 1.0 = full dark)",
+                );
             }
         });
 

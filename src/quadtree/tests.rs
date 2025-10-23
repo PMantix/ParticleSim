@@ -1,10 +1,10 @@
 #[cfg(test)]
 mod tests {
-    use ultraviolet::Vec2;
     use crate::body::{Body, Species};
     use crate::quadtree::Quadtree;
     use crate::units::COULOMB_CONSTANT;
     use smallvec::SmallVec;
+    use ultraviolet::Vec2;
 
     #[test]
     fn test_quadtree_field_centered_on_body() {
@@ -50,7 +50,7 @@ mod tests {
 
         for pos in &test_positions {
             // Use the same logic as in the quadtree's field function
-        let field = quadtree.acc_pos(*pos, 1.0, 0.0, &bodies, COULOMB_CONSTANT);
+            let field = quadtree.acc_pos(*pos, 1.0, 0.0, &bodies, COULOMB_CONSTANT);
             let expected_dir = pos.normalized();
             let field_dir = field.normalized();
             let dot = field_dir.dot(expected_dir);
@@ -121,7 +121,16 @@ mod tests {
         let mut quadtree = Quadtree::new(1.0, 2.0, 8, 32);
         quadtree.build(&mut bodies);
 
-        let field = quadtree.acc_pos(bodies[0].pos, bodies[0].charge, bodies[0].radius, &bodies, COULOMB_CONSTANT);
-        assert!(field.x.is_finite() && field.y.is_finite(), "Field should be finite for overlapping bodies");
+        let field = quadtree.acc_pos(
+            bodies[0].pos,
+            bodies[0].charge,
+            bodies[0].radius,
+            &bodies,
+            COULOMB_CONSTANT,
+        );
+        assert!(
+            field.x.is_finite() && field.y.is_finite(),
+            "Field should be finite for overlapping bodies"
+        );
     }
 }

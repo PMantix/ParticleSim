@@ -1,8 +1,8 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 
-use crate::body::{Body, Species, foil::Foil};
-use crate::quadtree::Quadtree;
+use crate::body::{foil::Foil, Body, Species};
 use crate::profile_scope;
+use crate::quadtree::Quadtree;
 
 /// Diagnostic calculating the ratio of actual electrons to neutral electrons
 /// for each foil and connected metal cluster.
@@ -14,18 +14,18 @@ pub struct FoilElectronFractionDiagnostic {
 
 impl FoilElectronFractionDiagnostic {
     pub fn new() -> Self {
-        Self { fractions: HashMap::new(), last_calc_time: f32::NEG_INFINITY }
+        Self {
+            fractions: HashMap::new(),
+            last_calc_time: f32::NEG_INFINITY,
+        }
     }
 
     /// Recompute electron fractions for all foils using quadtree for efficient neighbor search.
     pub fn calculate(&mut self, bodies: &[Body], foils: &[Foil], quadtree: &Quadtree) {
         profile_scope!("foil_electron_calculation_internal");
         self.fractions.clear();
-        let id_to_index: HashMap<u64, usize> = bodies
-            .iter()
-            .enumerate()
-            .map(|(i, b)| (b.id, i))
-            .collect();
+        let id_to_index: HashMap<u64, usize> =
+            bodies.iter().enumerate().map(|(i, b)| (b.id, i)).collect();
 
         for foil in foils {
             let mut queue = VecDeque::new();
@@ -46,21 +46,21 @@ impl FoilElectronFractionDiagnostic {
                 let body = &bodies[idx];
                 total_electrons += body.electrons.len();
                 total_neutral += body.neutral_electron_count();
-                
+
                 // Use quadtree to efficiently find nearby neighbors
                 let search_radius = body.radius * 2.2; // Slightly larger than connection threshold
                 let nearby_indices = quadtree.find_neighbors_within(bodies, idx, search_radius);
-                
+
                 for &neighbor_idx in &nearby_indices {
                     if visited.contains(&neighbor_idx) {
                         continue;
                     }
-                    
+
                     let neighbor = &bodies[neighbor_idx];
                     if !matches!(neighbor.species, Species::LithiumMetal | Species::FoilMetal) {
                         continue;
                     }
-                    
+
                     // Check actual connection threshold
                     let threshold = (body.radius + neighbor.radius) * 1.1;
                     if (body.pos - neighbor.pos).mag() <= threshold {
@@ -76,10 +76,17 @@ impl FoilElectronFractionDiagnostic {
             }
         }
     }
-    
+
     /// More efficient version that only recalculates if enough time has passed
     /// to avoid performance issues during rendering
-    pub fn calculate_if_needed(&mut self, bodies: &[Body], foils: &[Foil], quadtree: &Quadtree, current_time: f32, min_interval: f32) -> bool {
+    pub fn calculate_if_needed(
+        &mut self,
+        bodies: &[Body],
+        foils: &[Foil],
+        quadtree: &Quadtree,
+        current_time: f32,
+        min_interval: f32,
+    ) -> bool {
         let elapsed = current_time - self.last_calc_time;
         if elapsed >= min_interval {
             self.calculate(bodies, foils, quadtree);
@@ -90,4 +97,3 @@ impl FoilElectronFractionDiagnostic {
         }
     }
 }
-

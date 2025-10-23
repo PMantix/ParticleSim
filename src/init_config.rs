@@ -1,8 +1,8 @@
 // init_config.rs
 // Handles loading and parsing the initial particle configuration from init_config.toml
 
-use serde::{Deserialize, Serialize};
 use crate::body::Species;
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
 
@@ -123,10 +123,7 @@ impl MetalRectangleConfig {
     /// Convert center coordinates to origin (bottom-left) coordinates
     /// for use with SimCommand::AddRectangle
     pub fn to_origin_coords(&self) -> (f32, f32) {
-        (
-            self.x - self.width / 2.0,
-            self.y - self.height / 2.0,
-        )
+        (self.x - self.width / 2.0, self.y - self.height / 2.0)
     }
 }
 
@@ -134,10 +131,7 @@ impl FoilRectangleConfig {
     /// Convert center coordinates to origin (bottom-left) coordinates
     /// for use with SimCommand::AddFoil
     pub fn to_origin_coords(&self) -> (f32, f32) {
-        (
-            self.x - self.width / 2.0,
-            self.y - self.height / 2.0,
-        )
+        (self.x - self.width / 2.0, self.y - self.height / 2.0)
     }
 }
 

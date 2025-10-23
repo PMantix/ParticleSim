@@ -182,7 +182,8 @@ pub const SHOW_VELOCITY_VECTORS: bool = false;
 /// Show velocity vectors
 pub const SHOW_CHARGE_DENSITY: bool = false;
 /// Show charge-density heatmap (DISABLED FOR PERFORMANCE)
-pub const SHOW_2D_DOMAIN_DENSITY: bool = false;   /// Show 2D particle density heatmap (DISABLED FOR PERFORMANCE)
+pub const SHOW_2D_DOMAIN_DENSITY: bool = false;
+/// Show 2D particle density heatmap (DISABLED FOR PERFORMANCE)
 pub const SHOW_FIELD_VECTORS: bool = false; // Show electric field vectors (DISABLED FOR PERFORMANCE)
 
 // ====================
@@ -203,7 +204,9 @@ pub enum DipoleModel {
 }
 
 impl Default for DipoleModel {
-    fn default() -> Self { DipoleModel::SingleOffset }
+    fn default() -> Self {
+        DipoleModel::SingleOffset
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]

@@ -1,13 +1,13 @@
 // electron_hopping.rs
 // Electron transfer and hopping logic between particles
 
+use super::Simulation;
 use crate::body::Species;
 use crate::profile_scope;
 use crate::simulation::utils::can_transfer_electron;
 use rand::prelude::*;
 use rayon::prelude::*;
 use ultraviolet::Vec2;
-use super::Simulation;
 
 impl Simulation {
     /// Attempts electron hopping between particles, with optional exclusions for donors
@@ -25,7 +25,7 @@ impl Simulation {
         let mut src_indices: Vec<usize> = (0..n).collect();
         let mut rng = rand::rng();
         src_indices.shuffle(&mut rng);
-        
+
         for &src_idx in &src_indices {
             if donated_electron[src_idx] || exclude_donor[src_idx] {
                 continue;
@@ -107,20 +107,32 @@ impl Simulation {
                     // Use average of electron relative positions as a proxy for polarization direction
                     let src_pol = if !src_body.electrons.is_empty() {
                         let mut v = Vec2::zero();
-                        for e in &src_body.electrons { v += e.rel_pos; }
+                        for e in &src_body.electrons {
+                            v += e.rel_pos;
+                        }
                         v / (src_body.electrons.len() as f32)
-                    } else { Vec2::zero() };
+                    } else {
+                        Vec2::zero()
+                    };
                     let dst_pol = if !dst_body.electrons.is_empty() {
                         let mut v = Vec2::zero();
-                        for e in &dst_body.electrons { v += e.rel_pos; }
+                        for e in &dst_body.electrons {
+                            v += e.rel_pos;
+                        }
                         v / (dst_body.electrons.len() as f32)
-                    } else { Vec2::zero() };
+                    } else {
+                        Vec2::zero()
+                    };
                     // For a vacancy moving from src to dst, we want the hop direction to align with
                     // the local electron offset direction (electrons displaced roughly opposite external field).
-                    let pol_dir = if (src_pol + dst_pol).mag() > 1e-6 { (src_pol + dst_pol).normalized() } else { Vec2::zero() };
+                    let pol_dir = if (src_pol + dst_pol).mag() > 1e-6 {
+                        (src_pol + dst_pol).normalized()
+                    } else {
+                        Vec2::zero()
+                    };
                     if pol_dir != Vec2::zero() && hop_dir != Vec2::zero() {
                         let align = hop_dir.dot(pol_dir).max(0.0); // [0,1]
-                        // Map to multiplier 1 + gain*align (kept modest to avoid dominance)
+                                                                   // Map to multiplier 1 + gain*align (kept modest to avoid dominance)
                         polarization_factor = 1.0 + pol_gain * align;
                     }
                 }
@@ -155,7 +167,7 @@ impl Simulation {
                 donated_electron[src_idx] = true;
             }
         }
-        
+
         for (src_idx, dst_idx) in hops {
             if let Some(electron) = self.bodies[src_idx].electrons.pop() {
                 self.bodies[dst_idx].electrons.push(electron);
@@ -163,7 +175,7 @@ impl Simulation {
                 self.bodies[dst_idx].update_charge_from_electrons();
             }
         }
-        
+
         // Split immutable borrows for rayon safety
         profile_scope!("apply_redox");
         self.bodies.par_iter_mut().for_each(|body| {

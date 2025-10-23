@@ -1,19 +1,20 @@
 //! Manual measurement system for interactive recording during simulation
-//! 
+//!
 //! This module provides a flexible measurement system where users can:
 //! - Define measurement points manually in the GUI
 //! - Save/load measurement configurations
 //! - Automatically record measurements to CSV at specified intervals
 //! - Control when recording starts/stops manually
 
-use crate::body::{Body, Species};
 use crate::body::foil::Foil;
+use crate::body::{Body, Species};
 use crate::quadtree::Quadtree;
-use std::collections::{HashMap, HashSet, VecDeque};
 use crate::species::get_species_props;
 use serde::{Deserialize, Serialize};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::fs::File;
 use std::io::Write;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ManualMeasurementPoint {
@@ -90,6 +91,8 @@ pub struct ManualMeasurementRecorder {
     last_measurement_time: f32,
     csv_file: Option<File>,
     measurement_count: usize,
+    /// Resolved unique path for this run's point-based CSV. Set once per run.
+    resolved_path: Option<PathBuf>,
 }
 
 impl ManualMeasurementRecorder {
@@ -100,6 +103,7 @@ impl ManualMeasurementRecorder {
             last_measurement_time: -999999.0,
             csv_file: None,
             measurement_count: 0,
+            resolved_path: None,
         }
     }
 
@@ -108,7 +112,10 @@ impl ManualMeasurementRecorder {
     }
 
     /// Start recording measurements to CSV
-    pub fn start_recording(&mut self, simulation_time_fs: f32) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn start_recording(
+        &mut self,
+        simulation_time_fs: f32,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         if self.is_recording {
             return Ok(());
         }
@@ -116,9 +123,14 @@ impl ManualMeasurementRecorder {
         // Create doe_results directory if it doesn't exist
         std::fs::create_dir_all("doe_results")?;
 
-        // Open CSV file
-        let path = format!("doe_results/{}", self.config.output_file);
-        let mut file = File::create(&path)?;
+        // Resolve a unique path once per run and cache it, mirroring time-based/foil behavior.
+        if self.resolved_path.is_none() {
+            let base_path = Path::new("doe_results").join(&self.config.output_file);
+            self.resolved_path = Some(base_path);
+        }
+        let file_path = self.resolved_path.as_ref().unwrap().clone();
+        // Create/truncate on (re)start to ensure header matches current points
+        let mut file = File::create(&file_path)?;
 
         // Write header with labels for each point (edge only)
         write!(file, "frame,time_fs")?;
@@ -132,7 +144,10 @@ impl ManualMeasurementRecorder {
         self.last_measurement_time = simulation_time_fs - self.config.interval_fs; // Ensure first measurement happens
         self.measurement_count = 0;
 
-        println!("✓ Started recording measurements to: {}", path);
+        println!(
+            "✓ Started recording measurements to: {}",
+            file_path.display()
+        );
         Ok(())
     }
 
@@ -144,15 +159,26 @@ impl ManualMeasurementRecorder {
 
         self.csv_file = None;
         self.is_recording = false;
-        println!("✓ Stopped recording. Total measurements: {}", self.measurement_count);
+        println!(
+            "✓ Stopped recording. Total measurements: {}",
+            self.measurement_count
+        );
     }
 
     /// Update and potentially record measurements
-    pub fn update(&mut self, bodies: &[Body], foils: &[Foil], quadtree: &Quadtree, frame: usize, simulation_time_fs: f32) -> Vec<MeasurementResult> {
+    pub fn update(
+        &mut self,
+        bodies: &[Body],
+        foils: &[Foil],
+        quadtree: &Quadtree,
+        frame: usize,
+        simulation_time_fs: f32,
+    ) -> Vec<MeasurementResult> {
         let mut results = Vec::new();
 
         // Check if it's time to measure
-        let should_measure = simulation_time_fs - self.last_measurement_time >= self.config.interval_fs;
+        let should_measure =
+            simulation_time_fs - self.last_measurement_time >= self.config.interval_fs;
 
         if !should_measure && !self.is_recording {
             return results;
@@ -163,7 +189,8 @@ impl ManualMeasurementRecorder {
 
             // Cache connectivity per host foil to avoid repeated BFS
             let mut connected_by_foil: HashMap<u64, HashSet<usize>> = HashMap::new();
-            let id_to_index: HashMap<u64, usize> = bodies.iter().enumerate().map(|(i, b)| (b.id, i)).collect();
+            let id_to_index: HashMap<u64, usize> =
+                bodies.iter().enumerate().map(|(i, b)| (b.id, i)).collect();
 
             // Perform measurements at each point
             for point in &self.config.points {
@@ -192,7 +219,12 @@ impl ManualMeasurementRecorder {
                     });
                 }
 
-                let result = self.measure_at_point_connected(bodies, point, host_foil_id, connected_by_foil.get(&host_foil_id.unwrap_or(0)));
+                let result = self.measure_at_point_connected(
+                    bodies,
+                    point,
+                    host_foil_id,
+                    connected_by_foil.get(&host_foil_id.unwrap_or(0)),
+                );
                 results.push(result);
             }
 
@@ -200,7 +232,9 @@ impl ManualMeasurementRecorder {
             if self.is_recording {
                 if let Some(file) = &mut self.csv_file {
                     let _ = write!(file, "{},{}", frame, simulation_time_fs);
-                    for result in &results { let _ = write!(file, ",{}", result.edge_position); }
+                    for result in &results {
+                        let _ = write!(file, ",{}", result.edge_position);
+                    }
                     let _ = writeln!(file);
                     let _ = file.flush();
                     self.measurement_count += 1;
@@ -212,7 +246,11 @@ impl ManualMeasurementRecorder {
     }
 
     /// Measure at a single point
-    fn measure_at_point(&self, bodies: &[Body], point: &ManualMeasurementPoint) -> MeasurementResult {
+    fn measure_at_point(
+        &self,
+        bodies: &[Body],
+        point: &ManualMeasurementPoint,
+    ) -> MeasurementResult {
         // Define measurement region bounds
         let half_width = point.width / 2.0;
         let half_height = point.height / 2.0;
@@ -231,7 +269,7 @@ impl ManualMeasurementRecorder {
         };
 
         // Collect particles in region
-    let mut li_metal_positions = Vec::new();
+        let mut li_metal_positions = Vec::new();
 
         for body in bodies {
             let pos = body.pos;
@@ -250,19 +288,23 @@ impl ManualMeasurementRecorder {
             point.x // No metal found, return starting position
         } else {
             match point.direction.as_str() {
-                "left" => li_metal_positions.iter()
+                "left" => li_metal_positions
+                    .iter()
                     .map(|p| p.x)
                     .min_by(|a, b| a.partial_cmp(b).unwrap())
                     .unwrap_or(point.x),
-                "right" => li_metal_positions.iter()
+                "right" => li_metal_positions
+                    .iter()
                     .map(|p| p.x)
                     .max_by(|a, b| a.partial_cmp(b).unwrap())
                     .unwrap_or(point.x),
-                "up" => li_metal_positions.iter()
+                "up" => li_metal_positions
+                    .iter()
                     .map(|p| p.y)
                     .max_by(|a, b| a.partial_cmp(b).unwrap())
                     .unwrap_or(point.y),
-                "down" => li_metal_positions.iter()
+                "down" => li_metal_positions
+                    .iter()
                     .map(|p| p.y)
                     .min_by(|a, b| a.partial_cmp(b).unwrap())
                     .unwrap_or(point.y),
@@ -270,9 +312,11 @@ impl ManualMeasurementRecorder {
             }
         };
 
-        MeasurementResult { label: point.label.clone(), edge_position }
+        MeasurementResult {
+            label: point.label.clone(),
+            edge_position,
+        }
     }
-
 
     /// Measure using only metals connected to the selected host foil if provided
     fn measure_at_point_connected(
@@ -303,7 +347,7 @@ impl ManualMeasurementRecorder {
             _ => (point.y - half_height, point.y + half_height),
         };
 
-    let mut li_metal_positions = Vec::new();
+        let mut li_metal_positions = Vec::new();
 
         for (idx, body) in bodies.iter().enumerate() {
             let pos = body.pos;
@@ -324,15 +368,34 @@ impl ManualMeasurementRecorder {
             point.x
         } else {
             match point.direction.as_str() {
-                "left" => li_metal_positions.iter().map(|p| p.x).min_by(|a,b| a.partial_cmp(b).unwrap()).unwrap_or(point.x),
-                "right" => li_metal_positions.iter().map(|p| p.x).max_by(|a,b| a.partial_cmp(b).unwrap()).unwrap_or(point.x),
-                "up" => li_metal_positions.iter().map(|p| p.y).max_by(|a,b| a.partial_cmp(b).unwrap()).unwrap_or(point.y),
-                "down" => li_metal_positions.iter().map(|p| p.y).min_by(|a,b| a.partial_cmp(b).unwrap()).unwrap_or(point.y),
+                "left" => li_metal_positions
+                    .iter()
+                    .map(|p| p.x)
+                    .min_by(|a, b| a.partial_cmp(b).unwrap())
+                    .unwrap_or(point.x),
+                "right" => li_metal_positions
+                    .iter()
+                    .map(|p| p.x)
+                    .max_by(|a, b| a.partial_cmp(b).unwrap())
+                    .unwrap_or(point.x),
+                "up" => li_metal_positions
+                    .iter()
+                    .map(|p| p.y)
+                    .max_by(|a, b| a.partial_cmp(b).unwrap())
+                    .unwrap_or(point.y),
+                "down" => li_metal_positions
+                    .iter()
+                    .map(|p| p.y)
+                    .min_by(|a, b| a.partial_cmp(b).unwrap())
+                    .unwrap_or(point.y),
                 _ => point.x,
             }
         };
 
-        MeasurementResult { label: point.label.clone(), edge_position }
+        MeasurementResult {
+            label: point.label.clone(),
+            edge_position,
+        }
     }
 }
 
@@ -378,7 +441,9 @@ fn bfs_connected_metals_for_foil(
         let search_radius = body.radius + max_nb_r + metal_diameter + 0.1;
         let neighbors = quadtree.find_neighbors_within(bodies, idx, search_radius);
         for &n_idx in &neighbors {
-            if visited.contains(&n_idx) { continue; }
+            if visited.contains(&n_idx) {
+                continue;
+            }
             let nb = &bodies[n_idx];
             // Only hop through metals; FoilMetal must belong to the host foil
             match nb.species {
@@ -392,7 +457,9 @@ fn bfs_connected_metals_for_foil(
                 }
                 Species::FoilMetal => {
                     // Only traverse foil nodes that are part of the host foil
-                    if !host_foil_indices.contains(&n_idx) { continue; }
+                    if !host_foil_indices.contains(&n_idx) {
+                        continue;
+                    }
                     let threshold = (body.radius + nb.radius) + metal_diameter;
                     if (body.pos - nb.pos).mag() <= threshold {
                         visited.insert(n_idx);
@@ -405,4 +472,76 @@ fn bfs_connected_metals_for_foil(
     }
 
     visited
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+
+    fn cleanup(prefix: &str) {
+        let dir = std::path::Path::new("doe_results");
+        if !dir.exists() {
+            return;
+        }
+        if let Ok(entries) = fs::read_dir(dir) {
+            for entry in entries.flatten() {
+                if let Some(name) = entry.file_name().to_str() {
+                    if name.starts_with(prefix) {
+                        let _ = fs::remove_file(entry.path());
+                    }
+                }
+            }
+        }
+    }
+
+    fn list_files(prefix: &str) -> Vec<std::path::PathBuf> {
+        let dir = std::path::Path::new("doe_results");
+        if !dir.exists() {
+            return Vec::new();
+        }
+        let mut out = Vec::new();
+        if let Ok(entries) = fs::read_dir(dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if let Some(name) = path.file_name().and_then(|s| s.to_str()) {
+                    if name.starts_with(prefix) {
+                        out.push(path);
+                    }
+                }
+            }
+        }
+        out
+    }
+
+    #[test]
+    fn recorder_reuses_cached_path_between_starts() {
+        let prefix = "ci_points_cache";
+        cleanup(prefix);
+
+        let mut config = ManualMeasurementConfig::default();
+        config.output_file = format!("{}_points.csv", prefix);
+        config.points = vec![ManualMeasurementPoint {
+            x: 0.0,
+            y: 0.0,
+            height: 10.0,
+            width: 10.0,
+            direction: "right".to_string(),
+            label: "TestPoint".to_string(),
+            host_foil_id: None,
+        }];
+
+        let mut recorder = ManualMeasurementRecorder::new(config);
+
+        recorder.start_recording(0.0).expect("first start");
+        let files = list_files(prefix);
+        assert_eq!(files.len(), 1, "expected exactly one CSV after first start");
+
+        recorder.stop_recording();
+        recorder.start_recording(5.0).expect("second start");
+        let files_after = list_files(prefix);
+        assert_eq!(files_after.len(), 1, "expected cache to reuse same path");
+
+        cleanup(prefix);
+    }
 }

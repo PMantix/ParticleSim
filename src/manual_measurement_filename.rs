@@ -14,11 +14,7 @@ pub fn build_measurement_filename(
     switch_config: &SwitchChargingConfig,
 ) -> String {
     // A: Determine charging mode
-    let charging_mode_str = if switch_running {
-        "SWITCH"
-    } else {
-        "CONV"
-    };
+    let charging_mode_str = if switch_running { "SWITCH" } else { "CONV" };
 
     // B & C: Determine control mode and value from global active setpoint
     let (control_mode_str, value) = if switch_config.use_global_active_inactive {
@@ -55,10 +51,14 @@ pub fn build_measurement_filename(
 
     // Build filename: include delta_steps only for SWITCH mode
     if switch_running {
-        format!("Measurement_{}_{}_{}_{}.csv", 
-            charging_mode_str, control_mode_str, value_str, switch_config.delta_steps)
+        format!(
+            "Measurement_{}_{}_{}_{}.csv",
+            charging_mode_str, control_mode_str, value_str, switch_config.delta_steps
+        )
     } else {
-        format!("Measurement_{}_{}_{}.csv", 
-            charging_mode_str, control_mode_str, value_str)
+        format!(
+            "Measurement_{}_{}_{}.csv",
+            charging_mode_str, control_mode_str, value_str
+        )
     }
 }

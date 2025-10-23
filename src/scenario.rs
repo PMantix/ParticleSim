@@ -3,7 +3,7 @@
 
 use crate::body::Species;
 use crate::init_config::InitConfig;
-use crate::renderer::state::{SIM_COMMAND_SENDER, SimCommand};
+use crate::renderer::state::{SimCommand, SIM_COMMAND_SENDER};
 use ultraviolet::Vec2;
 
 /// Load and apply the initial scenario configuration
@@ -28,12 +28,12 @@ pub fn load_and_apply_scenario() -> Result<(), Box<dyn std::error::Error>> {
 /// Apply the loaded configuration to the simulation
 fn apply_configuration(init_config: InitConfig) -> Result<(), Box<dyn std::error::Error>> {
     let tx = SIM_COMMAND_SENDER.lock().as_ref().unwrap().clone();
-    
+
     // Reset time to 0 when loading a new scenario
     eprintln!("[scenario-debug] Sending ResetTime command");
     tx.send(SimCommand::ResetTime)?;
     eprintln!("[scenario-debug] ResetTime sent successfully");
-    
+
     // Determine domain size from config or fallback constant
     let (global_width, global_height) = if let Some(ref sim_config) = init_config.simulation {
         let (width, height) = sim_config.domain_size();
@@ -48,7 +48,7 @@ fn apply_configuration(init_config: InitConfig) -> Result<(), Box<dyn std::error
         *crate::renderer::state::DOMAIN_HEIGHT.lock() = size;
         (size, size)
     };
-    
+
     // Create template bodies for each species
     let body_templates = create_body_templates();
 
@@ -57,14 +57,16 @@ fn apply_configuration(init_config: InitConfig) -> Result<(), Box<dyn std::error
         match circle_config.to_species() {
             Ok(species) => {
                 let body = get_body_for_species(&body_templates, species);
-                tx.send(SimCommand::AddCircle { 
-                    body, 
-                    x: circle_config.x, 
-                    y: circle_config.y, 
-                    radius: circle_config.radius 
+                tx.send(SimCommand::AddCircle {
+                    body,
+                    x: circle_config.x,
+                    y: circle_config.y,
+                    radius: circle_config.radius,
                 })?;
-                println!("Added circle: {} at ({}, {}) with radius {}", 
-                         circle_config.species, circle_config.x, circle_config.y, circle_config.radius);
+                println!(
+                    "Added circle: {} at ({}, {}) with radius {}",
+                    circle_config.species, circle_config.x, circle_config.y, circle_config.radius
+                );
             }
             Err(e) => eprintln!("Error in circle config: {}", e),
         }
@@ -76,16 +78,21 @@ fn apply_configuration(init_config: InitConfig) -> Result<(), Box<dyn std::error
             Ok(species) => {
                 let body = get_body_for_species(&body_templates, species);
                 let (origin_x, origin_y) = rect_config.to_origin_coords();
-                tx.send(SimCommand::AddRectangle { 
-                    body, 
-                    x: origin_x, 
-                    y: origin_y, 
-                    width: rect_config.width, 
-                    height: rect_config.height 
+                tx.send(SimCommand::AddRectangle {
+                    body,
+                    x: origin_x,
+                    y: origin_y,
+                    width: rect_config.width,
+                    height: rect_config.height,
                 })?;
-                println!("Added {} rectangle: {}x{} at center ({}, {})", 
-                         rect_config.species, rect_config.width, rect_config.height, 
-                         rect_config.x, rect_config.y);
+                println!(
+                    "Added {} rectangle: {}x{} at center ({}, {})",
+                    rect_config.species,
+                    rect_config.width,
+                    rect_config.height,
+                    rect_config.x,
+                    rect_config.y
+                );
             }
             Err(e) => eprintln!("Error in metal rectangle config: {}", e),
         }
@@ -94,17 +101,22 @@ fn apply_configuration(init_config: InitConfig) -> Result<(), Box<dyn std::error
     // Add foil rectangles
     for foil_config in &init_config.particles.foil_rectangles {
         let (origin_x, origin_y) = foil_config.to_origin_coords();
-        tx.send(SimCommand::AddFoil { 
-            width: foil_config.width, 
-            height: foil_config.height, 
-            x: origin_x, 
-            y: origin_y, 
-            particle_radius: Species::FoilMetal.radius(), 
-            current: foil_config.current 
+        tx.send(SimCommand::AddFoil {
+            width: foil_config.width,
+            height: foil_config.height,
+            x: origin_x,
+            y: origin_y,
+            particle_radius: Species::FoilMetal.radius(),
+            current: foil_config.current,
         })?;
-        println!("Added foil: {}x{} at center ({}, {}) with current {}", 
-                 foil_config.width, foil_config.height, 
-                 foil_config.x, foil_config.y, foil_config.current);
+        println!(
+            "Added foil: {}x{} at center ({}, {}) with current {}",
+            foil_config.width,
+            foil_config.height,
+            foil_config.x,
+            foil_config.y,
+            foil_config.current
+        );
     }
 
     // Add random particles
@@ -114,16 +126,21 @@ fn apply_configuration(init_config: InitConfig) -> Result<(), Box<dyn std::error
                 let body = get_body_for_species(&body_templates, species);
                 let width = random_config.domain_width.unwrap_or(global_width);
                 let height = random_config.domain_height.unwrap_or(global_height);
-                eprintln!("[scenario-debug] Sending AddRandom command for {} {} particles", random_config.count, random_config.species);
+                eprintln!(
+                    "[scenario-debug] Sending AddRandom command for {} {} particles",
+                    random_config.count, random_config.species
+                );
                 tx.send(SimCommand::AddRandom {
                     body,
                     count: random_config.count,
                     domain_width: width,
-                    domain_height: height
+                    domain_height: height,
                 })?;
                 eprintln!("[scenario-debug] AddRandom sent successfully");
-                println!("Added {} random {} particles in {}x{} domain",
-                         random_config.count, random_config.species, width, height);
+                println!(
+                    "Added {} random {} particles in {}x{} domain",
+                    random_config.count, random_config.species, width, height
+                );
             }
             Err(e) => eprintln!("Error in random config: {}", e),
         }
@@ -212,17 +229,17 @@ fn get_body_for_species(templates: &BodyTemplates, species: Species) -> crate::b
 /// Load and apply the hardcoded fallback scenario
 pub fn load_hardcoded_scenario() -> Result<(), Box<dyn std::error::Error>> {
     let tx = SIM_COMMAND_SENDER.lock().as_ref().unwrap().clone();
-    
+
     // Reset time to 0 when loading hardcoded scenario
     tx.send(SimCommand::ResetTime)?;
-    
+
     // Hardcoded Scenario setup: Add two 10mm lithium clumps and a central ion clump
     let bounds = crate::config::DOMAIN_BOUNDS;
     let clump_radius = crate::config::CLUMP_RADIUS;
     let left_center = Vec2::new(-bounds * 0.6, 0.0);
     let right_center = Vec2::new(bounds * 0.6, 0.0);
     let center = Vec2::zero();
-    
+
     let metal_body = crate::body::Body::new(
         Vec2::zero(),
         Vec2::zero(),
@@ -247,18 +264,38 @@ pub fn load_hardcoded_scenario() -> Result<(), Box<dyn std::error::Error>> {
         -1.0,
         Species::ElectrolyteAnion,
     );
-    
+
     // Send SimCommands to populate the simulation
     let width = bounds * 2.0;
     let height = bounds * 2.0;
     *crate::renderer::state::DOMAIN_WIDTH.lock() = width;
     *crate::renderer::state::DOMAIN_HEIGHT.lock() = height;
     tx.send(SimCommand::SetDomainSize { width, height })?;
-    tx.send(SimCommand::AddCircle { body: metal_body.clone(), x: left_center.x, y: left_center.y, radius: clump_radius })?;
-    tx.send(SimCommand::AddCircle { body: metal_body.clone(), x: right_center.x, y: right_center.y, radius: clump_radius })?;
-    tx.send(SimCommand::AddCircle { body: ion_body, x: center.x, y: center.y, radius: clump_radius })?;
-    tx.send(SimCommand::AddCircle { body: anion_body, x: center.x, y: bounds * 0.6, radius: clump_radius })?;
-    
+    tx.send(SimCommand::AddCircle {
+        body: metal_body.clone(),
+        x: left_center.x,
+        y: left_center.y,
+        radius: clump_radius,
+    })?;
+    tx.send(SimCommand::AddCircle {
+        body: metal_body.clone(),
+        x: right_center.x,
+        y: right_center.y,
+        radius: clump_radius,
+    })?;
+    tx.send(SimCommand::AddCircle {
+        body: ion_body,
+        x: center.x,
+        y: center.y,
+        radius: clump_radius,
+    })?;
+    tx.send(SimCommand::AddCircle {
+        body: anion_body,
+        x: center.x,
+        y: bounds * 0.6,
+        radius: clump_radius,
+    })?;
+
     println!("Hardcoded scenario loaded successfully!");
     Ok(())
 }

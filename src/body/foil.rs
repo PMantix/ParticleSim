@@ -1,7 +1,7 @@
-use ultraviolet::Vec2;
-use std::sync::atomic::{AtomicU64, Ordering};
+use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
-use serde::{Serialize, Deserialize};
+use std::sync::atomic::{AtomicU64, Ordering};
+use ultraviolet::Vec2;
 
 #[allow(dead_code)] // Allow unused methods for potential future use
 
@@ -12,11 +12,11 @@ pub struct PidHistoryPoint {
     pub step: u64,
     pub target_ratio: f32,
     pub actual_ratio: f32,
-    pub setpoint: f32,  // Same as target_ratio for compatibility
-    pub actual: f32,    // Same as actual_ratio for compatibility
+    pub setpoint: f32, // Same as target_ratio for compatibility
+    pub actual: f32,   // Same as actual_ratio for compatibility
     pub error: f32,
     pub output_current: f32,
-    pub output: f32,    // Same as output_current for compatibility
+    pub output: f32, // Same as output_current for compatibility
     pub integral_error: f32,
     pub p_term: f32,
     pub i_term: f32,
@@ -121,7 +121,7 @@ impl Foil {
             mode: LinkMode::Parallel,
             charging_mode: ChargingMode::Current, // Default to current control
             overpotential_controller: None,       // No overpotential controller by default
-            slave_overpotential_current: 0.0,    // Initialize slave current to zero
+            slave_overpotential_current: 0.0,     // Initialize slave current to zero
             electron_delta_since_measure: 0,
         }
     }
@@ -132,9 +132,9 @@ impl Foil {
         self.overpotential_controller = Some(OverpotentialController {
             target_ratio,
             // Crisper defaults to improve response near small errors
-            kp: 20.0,           // Proportional gain - tunable
-            ki: 0.4,            // Integral gain - tunable  
-            kd: 0.2,            // Derivative gain - tunable
+            kp: 20.0, // Proportional gain - tunable
+            ki: 0.4,  // Integral gain - tunable
+            kd: 0.2,  // Derivative gain - tunable
             integral_error: 0.0,
             previous_error: 0.0,
             max_current: 500.0, // Maximum current limit - tunable
@@ -155,17 +155,17 @@ impl Foil {
     pub fn compute_overpotential_current(&mut self, actual_ratio: f32, dt: f32) -> f32 {
         if let Some(controller) = &mut self.overpotential_controller {
             let error = controller.target_ratio - actual_ratio;
-            
+
             // PID calculation
             controller.integral_error += error * dt;
             let derivative_error = (error - controller.previous_error) / dt;
-            
-            let pid_output = controller.kp * error 
-                           + controller.ki * controller.integral_error
-                           + controller.kd * derivative_error;
-            
+
+            let pid_output = controller.kp * error
+                + controller.ki * controller.integral_error
+                + controller.kd * derivative_error;
+
             controller.previous_error = error;
-            
+
             // Clamp to maximum current
             let output = pid_output.clamp(-controller.max_current, controller.max_current);
             controller.last_output_current = output;

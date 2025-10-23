@@ -1,10 +1,10 @@
 // body/electron.rs
 // Contains the Electron struct and electron-related methods for Body
 
-use ultraviolet::Vec2;
 use crate::config;
 use crate::profile_scope;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
+use ultraviolet::Vec2;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Electron {
@@ -29,8 +29,7 @@ impl Body {
         for e in &mut self.electrons {
             let electron_pos = self.pos + e.rel_pos;
             let local_field =
-                quadtree.field_at_point(bodies, electron_pos, coulomb_constant)
-                    + background_field;
+                quadtree.field_at_point(bodies, electron_pos, coulomb_constant) + background_field;
             let acc = -local_field * k;
             e.vel += acc * dt;
             let speed = e.vel.mag();
@@ -50,8 +49,12 @@ impl Body {
             let desired = 1 + (-self.charge).round() as usize;
             while self.electrons.len() < desired {
                 let angle = fastrand::f32() * std::f32::consts::TAU;
-                let rel_pos = Vec2::new(angle.cos(), angle.sin()) * self.radius * self.species.polar_offset();
-                self.electrons.push(Electron { rel_pos, vel: Vec2::zero() });
+                let rel_pos =
+                    Vec2::new(angle.cos(), angle.sin()) * self.radius * self.species.polar_offset();
+                self.electrons.push(Electron {
+                    rel_pos,
+                    vel: Vec2::zero(),
+                });
             }
             while self.electrons.len() > desired {
                 self.electrons.pop();

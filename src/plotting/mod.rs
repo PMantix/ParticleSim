@@ -1,10 +1,10 @@
 // plotting/mod.rs
 // Data analysis and plotting module for the particle simulation
 
-use crate::body::{Body, Species};
 use crate::body::foil::Foil;
+use crate::body::{Body, Species};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use serde::{Serialize, Deserialize};
 
 pub mod analysis;
 pub mod export;
@@ -12,9 +12,9 @@ pub mod gui;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum PlotType {
-    SpatialProfileX,     // Mean quantity vs X position
-    SpatialProfileY,     // Mean quantity vs Y position
-    TimeSeries,          // Quantity vs time
+    SpatialProfileX, // Mean quantity vs X position
+    SpatialProfileY, // Mean quantity vs Y position
+    TimeSeries,      // Quantity vs time
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -35,7 +35,7 @@ pub struct PlotConfig {
     pub title: String,
     pub sampling_mode: SamplingMode,
     pub spatial_bins: usize,
-    pub time_window: f32, // seconds
+    pub time_window: f32,      // seconds
     pub update_frequency: f32, // Hz
 }
 
@@ -100,9 +100,16 @@ impl PlottingSystem {
         window_id
     }
 
-    pub fn update_plots(&mut self, bodies: &[Body], foils: &[Foil], current_time: f32, domain_width: f32, domain_height: f32) {
+    pub fn update_plots(
+        &mut self,
+        bodies: &[Body],
+        foils: &[Foil],
+        current_time: f32,
+        domain_width: f32,
+        domain_height: f32,
+    ) {
         let window_ids: Vec<String> = self.windows.keys().cloned().collect();
-        
+
         for window_id in window_ids {
             if let Some(window) = self.windows.get_mut(&window_id) {
                 if !window.is_open {
@@ -113,7 +120,7 @@ impl PlottingSystem {
                     SamplingMode::SingleTimestep => {
                         // For single timestep, update if manually triggered (last_update = 0) or if it's been a while
                         window.last_update == 0.0 || (current_time - window.last_update) > 0.1
-                    },
+                    }
                     SamplingMode::Continuous => {
                         current_time - window.last_update >= 1.0 / window.config.update_frequency
                     }
@@ -126,10 +133,24 @@ impl PlottingSystem {
                     // Update data based on plot type
                     match window.config.plot_type {
                         PlotType::SpatialProfileX => {
-                            Self::update_spatial_profile_static(window, bodies, current_time, true, domain_width, domain_height);
+                            Self::update_spatial_profile_static(
+                                window,
+                                bodies,
+                                current_time,
+                                true,
+                                domain_width,
+                                domain_height,
+                            );
                         }
                         PlotType::SpatialProfileY => {
-                            Self::update_spatial_profile_static(window, bodies, current_time, false, domain_width, domain_height);
+                            Self::update_spatial_profile_static(
+                                window,
+                                bodies,
+                                current_time,
+                                false,
+                                domain_width,
+                                domain_height,
+                            );
                         }
                         PlotType::TimeSeries => {
                             Self::update_time_series_static(window, bodies, foils, current_time);
@@ -141,17 +162,34 @@ impl PlottingSystem {
         }
     }
 
-    fn update_spatial_profile_static(window: &mut PlotWindow, bodies: &[Body], current_time: f32, is_x_axis: bool, domain_width: f32, domain_height: f32) {
+    fn update_spatial_profile_static(
+        window: &mut PlotWindow,
+        bodies: &[Body],
+        current_time: f32,
+        is_x_axis: bool,
+        domain_width: f32,
+        domain_height: f32,
+    ) {
         // Use analysis functions for better modularity
         match window.config.quantity {
             Quantity::Charge => {
-                let charges = analysis::calculate_charge_distribution(bodies, is_x_axis, domain_width, domain_height, window.config.spatial_bins);
+                let charges = analysis::calculate_charge_distribution(
+                    bodies,
+                    is_x_axis,
+                    domain_width,
+                    domain_height,
+                    window.config.spatial_bins,
+                );
                 window.data.x_data.clear();
                 window.data.y_data.clear();
-                
-                let domain_size = if is_x_axis { domain_width } else { domain_height };
+
+                let domain_size = if is_x_axis {
+                    domain_width
+                } else {
+                    domain_height
+                };
                 let bin_size = (2.0 * domain_size) / window.config.spatial_bins as f32;
-                
+
                 for (i, &charge) in charges.iter().enumerate() {
                     let x_pos = -domain_size + (i as f32 + 0.5) * bin_size;
                     window.data.x_data.push(x_pos as f64);
@@ -159,10 +197,16 @@ impl PlottingSystem {
                 }
             }
             Quantity::Velocity => {
-                let (positions, velocities) = analysis::calculate_velocity_profile(bodies, is_x_axis, domain_width, domain_height, window.config.spatial_bins);
+                let (positions, velocities) = analysis::calculate_velocity_profile(
+                    bodies,
+                    is_x_axis,
+                    domain_width,
+                    domain_height,
+                    window.config.spatial_bins,
+                );
                 window.data.x_data.clear();
                 window.data.y_data.clear();
-                
+
                 for (i, &velocity) in velocities.iter().enumerate() {
                     window.data.x_data.push(positions[i] as f64);
                     window.data.y_data.push(velocity as f64);
@@ -170,13 +214,23 @@ impl PlottingSystem {
             }
             Quantity::LocalFieldStrength => {
                 // Calculate field strength distribution
-                let field_strengths = analysis::calculate_field_strength_distribution(bodies, is_x_axis, domain_width, domain_height, window.config.spatial_bins);
+                let field_strengths = analysis::calculate_field_strength_distribution(
+                    bodies,
+                    is_x_axis,
+                    domain_width,
+                    domain_height,
+                    window.config.spatial_bins,
+                );
                 window.data.x_data.clear();
                 window.data.y_data.clear();
-                
-                let domain_size = if is_x_axis { domain_width } else { domain_height };
+
+                let domain_size = if is_x_axis {
+                    domain_width
+                } else {
+                    domain_height
+                };
                 let bin_size = (2.0 * domain_size) / window.config.spatial_bins as f32;
-                
+
                 for (i, &field_strength) in field_strengths.iter().enumerate() {
                     let x_pos = -domain_size + (i as f32 + 0.5) * bin_size;
                     window.data.x_data.push(x_pos as f64);
@@ -188,7 +242,11 @@ impl PlottingSystem {
                 let bins = window.config.spatial_bins;
                 let mut bin_values = vec![0.0; bins];
                 let mut bin_counts = vec![0; bins];
-                let domain_size = if is_x_axis { domain_width } else { domain_height };
+                let domain_size = if is_x_axis {
+                    domain_width
+                } else {
+                    domain_height
+                };
                 let bin_size = (2.0 * domain_size) / bins as f32;
 
                 for body in bodies {
@@ -196,7 +254,7 @@ impl PlottingSystem {
                     // Fix binning calculation with proper bounds checking
                     let normalized_pos = (position + domain_size) / (2.0 * domain_size);
                     let bin_idx_f = normalized_pos * bins as f32;
-                    
+
                     // Clamp to valid range and convert to usize
                     if bin_idx_f >= 0.0 && bin_idx_f < bins as f32 {
                         let bin_idx = bin_idx_f.floor() as usize;
@@ -204,11 +262,15 @@ impl PlottingSystem {
                             let value = match window.config.quantity {
                                 Quantity::ElectronCount => body.electrons.len() as f32,
                                 Quantity::TotalSpeciesCount(species) => {
-                                    if body.species == species { 1.0 } else { 0.0 }
+                                    if body.species == species {
+                                        1.0
+                                    } else {
+                                        0.0
+                                    }
                                 }
                                 _ => 0.0,
                             };
-                            
+
                             bin_values[bin_idx] += value;
                             bin_counts[bin_idx] += 1;
                         }
@@ -218,7 +280,7 @@ impl PlottingSystem {
                 // Calculate appropriate values for display
                 window.data.x_data.clear();
                 window.data.y_data.clear();
-                
+
                 for i in 0..bins {
                     let x_pos = -domain_size + (i as f32 + 0.5) * bin_size;
                     let y_val = match window.config.quantity {
@@ -235,13 +297,13 @@ impl PlottingSystem {
                             }
                         }
                     };
-                    
+
                     window.data.x_data.push(x_pos as f64);
                     window.data.y_data.push(y_val as f64);
                 }
             }
         }
-        
+
         // Handle timestamps for spatial profiles
         if matches!(window.config.sampling_mode, SamplingMode::SingleTimestep) {
             window.data.timestamps.clear();
@@ -249,7 +311,12 @@ impl PlottingSystem {
         window.data.timestamps.push(current_time as f64);
     }
 
-    fn update_time_series_static(window: &mut PlotWindow, bodies: &[Body], foils: &[Foil], current_time: f32) {
+    fn update_time_series_static(
+        window: &mut PlotWindow,
+        bodies: &[Body],
+        foils: &[Foil],
+        current_time: f32,
+    ) {
         let value = match window.config.quantity {
             Quantity::TotalSpeciesCount(species) => {
                 // Use analysis function for species populations
@@ -257,7 +324,8 @@ impl PlottingSystem {
                 populations.get(&species).copied().unwrap_or(0) as f32
             }
             Quantity::FoilCurrent(foil_id) => {
-                foils.iter()
+                foils
+                    .iter()
                     .find(|f| f.id == foil_id)
                     .map(|f| f.dc_current) // Use DC current since legacy current field is removed
                     .unwrap_or(0.0)
@@ -268,14 +336,19 @@ impl PlottingSystem {
             }
             _ => {
                 // Calculate aggregate values
-                let total: f32 = bodies.iter().map(|body| {
-                    match window.config.quantity {
+                let total: f32 = bodies
+                    .iter()
+                    .map(|body| match window.config.quantity {
                         Quantity::Charge => body.charge,
                         Quantity::ElectronCount => body.electrons.len() as f32,
                         _ => 0.0,
-                    }
-                }).sum();
-                if bodies.is_empty() { 0.0 } else { total / bodies.len() as f32 }
+                    })
+                    .sum();
+                if bodies.is_empty() {
+                    0.0
+                } else {
+                    total / bodies.len() as f32
+                }
             }
         };
 

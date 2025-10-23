@@ -3,7 +3,7 @@ use flate2::{read::GzDecoder, write::GzEncoder, Compression};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::io::{BufWriter, Cursor, Read, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use crate::body::{foil::Foil, Body};
 use crate::config::SimConfig;
@@ -109,11 +109,21 @@ pub struct SavedUiState {
     pub foil_metrics_interval_fs: f32,
 }
 
-fn default_conv_current() -> f32 { 0.05 }
-fn default_conv_target() -> f32 { 1.2 }
-fn default_foil_metrics_enabled() -> bool { true }
-fn default_foil_metrics_use_separate_interval() -> bool { false }
-fn default_foil_metrics_interval_fs() -> f32 { 1000.0 }
+fn default_conv_current() -> f32 {
+    0.05
+}
+fn default_conv_target() -> f32 {
+    1.2
+}
+fn default_foil_metrics_enabled() -> bool {
+    true
+}
+fn default_foil_metrics_use_separate_interval() -> bool {
+    false
+}
+fn default_foil_metrics_interval_fs() -> f32 {
+    1000.0
+}
 
 impl SimulationState {
     pub fn from_simulation(sim: &Simulation) -> Self {
@@ -146,7 +156,9 @@ impl SimulationState {
         sim.switch_config.ensure_all_steps();
         // Notify UI of applied configuration if channel exists
         if let Some(tx) = &sim.switch_status_tx {
-            let _ = tx.send(crate::switch_charging::SwitchStatus::ConfigApplied(sim.switch_config.clone()));
+            let _ = tx.send(crate::switch_charging::SwitchStatus::ConfigApplied(
+                sim.switch_config.clone(),
+            ));
         }
         sim.domain_width = self.domain_width;
         sim.domain_height = self.domain_height;
@@ -166,8 +178,14 @@ impl SimulationState {
         // Restore conventional groups
         sim.group_a.clear();
         sim.group_b.clear();
-        for id in self.group_a { sim.group_a.insert(id); }
-        for id in self.group_b { if !sim.group_a.contains(&id) { sim.group_b.insert(id); } }
+        for id in self.group_a {
+            sim.group_a.insert(id);
+        }
+        for id in self.group_b {
+            if !sim.group_a.contains(&id) {
+                sim.group_b.insert(id);
+            }
+        }
 
         sim.quadtree.build(&mut sim.bodies);
         sim.cell_list.rebuild(&sim.bodies);
@@ -216,7 +234,10 @@ pub fn save_state<P: AsRef<Path>>(path: P, sim: &Simulation) -> std::io::Result<
     // Legacy compatibility: if global says compress=false but extension is .gz we could force; we choose NOT to override.
     // If global says compress=true but extension not .gz we still compress; caller likely appended .gz already in UI.
     let tmp_path = path.with_extension({
-        let mut os = path.extension().map(|e| e.to_os_string()).unwrap_or_default();
+        let mut os = path
+            .extension()
+            .map(|e| e.to_os_string())
+            .unwrap_or_default();
         os.push(".tmp");
         os
     });
@@ -307,18 +328,13 @@ fn current_ui_state() -> SavedUiState {
         .lock()
         .clone()
         .unwrap_or_else(|| "Conventional".to_string());
-    let is_over = (*rstate::PERSIST_UI_CONV_IS_OVER
-        .lock())
-        .unwrap_or(false);
-    let current = (*rstate::PERSIST_UI_CONV_CURRENT
-        .lock())
-        .unwrap_or(default_conv_current());
-    let target = (*rstate::PERSIST_UI_CONV_TARGET
-        .lock())
-        .unwrap_or(default_conv_target());
+    let is_over = (*rstate::PERSIST_UI_CONV_IS_OVER.lock()).unwrap_or(false);
+    let current = (*rstate::PERSIST_UI_CONV_CURRENT.lock()).unwrap_or(default_conv_current());
+    let target = (*rstate::PERSIST_UI_CONV_TARGET.lock()).unwrap_or(default_conv_target());
     let foil_enabled = rstate::FOIL_METRICS_ENABLED.load(std::sync::atomic::Ordering::Relaxed);
     let foil_override = rstate::FOIL_METRICS_FILENAME_OVERRIDE.lock().clone();
-    let foil_sep = rstate::FOIL_METRICS_USE_SEPARATE_INTERVAL.load(std::sync::atomic::Ordering::Relaxed);
+    let foil_sep =
+        rstate::FOIL_METRICS_USE_SEPARATE_INTERVAL.load(std::sync::atomic::Ordering::Relaxed);
     let foil_interval = *rstate::FOIL_METRICS_INTERVAL_FS.lock();
     SavedUiState {
         charging_mode: mode,

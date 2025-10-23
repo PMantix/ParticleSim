@@ -87,7 +87,10 @@ pub fn handle_command(cmd: SimCommand, simulation: &mut Simulation) {
             mark_dirty(simulation);
         }
         SimCommand::DeleteAll => {
-            eprintln!("[bodies-debug] DeleteAll command clearing {} bodies", simulation.bodies.len());
+            eprintln!(
+                "[bodies-debug] DeleteAll command clearing {} bodies",
+                simulation.bodies.len()
+            );
             simulation.bodies.clear();
             simulation.foils.clear();
             simulation.body_to_foil.clear();
@@ -543,8 +546,8 @@ pub fn handle_command(cmd: SimCommand, simulation: &mut Simulation) {
         }
         SimCommand::ResetTime => {
             simulation.frame = 0;
-            simulation.last_thermostat_time = 0.0;  // Fix: Reset thermostat timer too
-            // Update global simulation time
+            simulation.last_thermostat_time = 0.0; // Fix: Reset thermostat timer too
+                                                   // Update global simulation time
             *crate::renderer::state::SIM_TIME.lock() = 0.0;
             state_changed = true;
         }

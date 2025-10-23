@@ -1,12 +1,12 @@
 use super::node::Node;
 use super::quad::Quad;
 use crate::body::Body;
-use ultraviolet::Vec2;
-use std::sync::atomic::{AtomicUsize, Ordering, AtomicU8};
-use std::ops::Range;
-use rayon::prelude::*;
 use crate::partition::Partition;
 use crate::profile_scope;
+use rayon::prelude::*;
+use std::ops::Range;
+use std::sync::atomic::{AtomicU8, AtomicUsize, Ordering};
+use ultraviolet::Vec2;
 
 pub struct Quadtree {
     pub t_sq: f32,
@@ -64,7 +64,7 @@ impl Quadtree {
 
         let prev_len = self.atomic_len.fetch_add(1, Ordering::Relaxed);
         let children = prev_len * 4 + 1;
-    // Removed verbose diagnostics; keep function lightweight
+        // Removed verbose diagnostics; keep function lightweight
 
         // Ensure enough space for all children nodes and parents with proper bounds checking
         while self.parents.len() <= prev_len {
@@ -115,13 +115,25 @@ impl Quadtree {
             //let total_charge = bodies[range.clone()].iter().map(|b| b.charge).sum::<f32>();
 
             // Use absolute charge for weighting to avoid cancellation issues
-            let total_abs_charge = bodies[range.clone()].iter().map(|b| b.charge.abs()).sum::<f32>();
+            let total_abs_charge = bodies[range.clone()]
+                .iter()
+                .map(|b| b.charge.abs())
+                .sum::<f32>();
             let weighted_pos = if total_abs_charge > 1e-6 {
-                bodies[range.clone()].iter().fold(Vec2::zero(), |acc, b| acc + b.pos * b.charge.abs()) / total_abs_charge
+                bodies[range.clone()]
+                    .iter()
+                    .fold(Vec2::zero(), |acc, b| acc + b.pos * b.charge.abs())
+                    / total_abs_charge
             } else if total_mass > 1e-6 {
-                bodies[range.clone()].iter().fold(Vec2::zero(), |acc, b| acc + b.pos * b.mass) / total_mass
+                bodies[range.clone()]
+                    .iter()
+                    .fold(Vec2::zero(), |acc, b| acc + b.pos * b.mass)
+                    / total_mass
             } else if range.len() > 0 {
-                bodies[range.clone()].iter().fold(Vec2::zero(), |acc, b| acc + b.pos) / (range.len() as f32)
+                bodies[range.clone()]
+                    .iter()
+                    .fold(Vec2::zero(), |acc, b| acc + b.pos)
+                    / (range.len() as f32)
             } else {
                 Vec2::zero()
             };
@@ -146,8 +158,8 @@ impl Quadtree {
         }
 
         self.clear();
-        
-    let new_len = 4 * bodies.len() + 1024;
+
+        let new_len = 4 * bodies.len() + 1024;
         self.nodes.resize(new_len, Node::ZEROED);
         self.parents.resize(new_len / 4, 0);
 
@@ -158,7 +170,12 @@ impl Quadtree {
     }
 
     /// Build quadtree with specific domain boundaries instead of auto-sizing
-    pub fn build_with_domain(&mut self, bodies: &mut [Body], domain_width: f32, domain_height: f32) {
+    pub fn build_with_domain(
+        &mut self,
+        bodies: &mut [Body],
+        domain_width: f32,
+        domain_height: f32,
+    ) {
         profile_scope!("quadtree_build_domain");
         if bodies.is_empty() {
             self.clear();
@@ -166,7 +183,7 @@ impl Quadtree {
         }
 
         self.clear();
-        
+
         let new_len = 4 * bodies.len() + 1024;
         self.nodes.resize(new_len, Node::ZEROED);
         self.parents.resize(new_len / 4, 0);
@@ -178,54 +195,52 @@ impl Quadtree {
     }
 
     fn build_internal(&mut self, bodies: &mut [Body], new_len: usize) {
-
         let (tx, rx) = crossbeam::channel::unbounded();
         tx.send(Self::ROOT).unwrap();
 
         let quadtree_ptr = self as *mut Quadtree as usize;
-    let bodies_ptr = bodies.as_ptr() as usize;
+        let bodies_ptr = bodies.as_ptr() as usize;
         let bodies_len = bodies.len();
 
-    // Per-node claim flags to prevent duplicate subdivision across workers.
-    // 0 = unclaimed, 1 = claimed (subdivision in progress or done)
-    let claims: Vec<AtomicU8> = (0..new_len).map(|_| AtomicU8::new(0)).collect();
-    let claims_ptr = claims.as_ptr() as usize;
+        // Per-node claim flags to prevent duplicate subdivision across workers.
+        // 0 = unclaimed, 1 = claimed (subdivision in progress or done)
+        let claims: Vec<AtomicU8> = (0..new_len).map(|_| AtomicU8::new(0)).collect();
+        let claims_ptr = claims.as_ptr() as usize;
 
         let counter = AtomicUsize::new(0);
         let workers_started = AtomicUsize::new(0);
         let workers_done = AtomicUsize::new(0);
-    let _expected_workers = rayon::current_num_threads();
-    let _t0 = std::time::Instant::now();
-        
+        let _expected_workers = rayon::current_num_threads();
+        let _t0 = std::time::Instant::now();
+
         rayon::broadcast(|_| {
             let _w_id = workers_started.fetch_add(1, Ordering::Relaxed);
             let mut stack = Vec::new();
             let quadtree = unsafe { &mut *(quadtree_ptr as *mut Quadtree) };
             let bodies =
                 unsafe { std::slice::from_raw_parts_mut(bodies_ptr as *mut Body, bodies_len) };
-            let claims = unsafe {
-                std::slice::from_raw_parts(claims_ptr as *const AtomicU8, new_len)
-            };
-            
+            let claims =
+                unsafe { std::slice::from_raw_parts(claims_ptr as *const AtomicU8, new_len) };
+
             let mut idle_iterations = 0;
             const MAX_IDLE_ITERATIONS: usize = 1000; // Prevent infinite loops
             let mut _processed_nodes: usize = 0;
-            
+
             loop {
                 let current_counter = counter.load(Ordering::Relaxed);
-                
+
                 // Exit condition: all bodies processed OR timeout reached
                 if current_counter >= bodies.len() || idle_iterations > MAX_IDLE_ITERATIONS {
                     break;
                 }
-                
+
                 let mut work_done = false;
-                
+
                 // Try to get work from channel
                 while let Ok(node) = rx.try_recv() {
                     work_done = true;
                     idle_iterations = 0; // Reset idle counter when work is found
-                    
+
                     #[cfg(feature = "debug_quadtree")]
                     println!("Quadtree::build: processing node {}", node);
                     let range = quadtree.nodes[node].bodies.clone();
@@ -269,7 +284,10 @@ impl Quadtree {
                             let mut total_charge = 0.0;
 
                             // Bounds check to prevent slice index panic
-                            if range.start < bodies.len() && range.end <= bodies.len() && range.start <= range.end {
+                            if range.start < bodies.len()
+                                && range.end <= bodies.len()
+                                && range.start <= range.end
+                            {
                                 for body in &bodies[range.clone()] {
                                     total_mass += body.mass;
                                     weighted_pos += body.pos * body.charge; // charge-weighted
@@ -315,7 +333,7 @@ impl Quadtree {
                         // (progress logging removed)
                     }
                 }
-                
+
                 // If no work was done this iteration, increment idle counter
                 if !work_done {
                     idle_iterations += 1;
@@ -412,24 +430,24 @@ impl Quadtree {
     pub fn find_neighbors_within(&self, bodies: &[Body], i: usize, cutoff: f32) -> Vec<usize> {
         profile_scope!("quadtree_neighbors");
         let mut neighbors = Vec::new();
-        
+
         // Early return if no nodes in quadtree
         if self.nodes.is_empty() {
             return neighbors;
         }
-        
+
         // Validate input parameters
         if i >= bodies.len() || !cutoff.is_finite() || cutoff <= 0.0 {
             return neighbors;
         }
-        
+
         let pos = bodies[i].pos;
-        
+
         // Validate position is finite
         if !pos.x.is_finite() || !pos.y.is_finite() {
             return neighbors;
         }
-        
+
         let cutoff_sq = cutoff * cutoff;
 
         let mut stack = vec![Self::ROOT];
@@ -438,7 +456,7 @@ impl Quadtree {
             if node_idx >= self.nodes.len() {
                 continue;
             }
-            
+
             let node = &self.nodes[node_idx];
             // Compute min squared distance from pos to node's quad
             let quad = &node.quad;
@@ -450,8 +468,11 @@ impl Quadtree {
                 let p = if k == 0 { pos.x } else { pos.y };
                 let mn = if k == 0 { min.x } else { min.y };
                 let mx = if k == 0 { max.x } else { max.y };
-                if p < mn { d2 += (mn - p).powi(2); }
-                else if p > mx { d2 += (p - mx).powi(2); }
+                if p < mn {
+                    d2 += (mn - p).powi(2);
+                } else if p > mx {
+                    d2 += (p - mx).powi(2);
+                }
             }
             if d2 > cutoff_sq {
                 continue;
