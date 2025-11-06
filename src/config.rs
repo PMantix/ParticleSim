@@ -1,6 +1,13 @@
 // Centralized configuration for simulation parameters
 
 // ====================
+// Lithium-salt molarity (deprecated constant)
+// ====================
+// Note: Molarity is now a runtime UI control in the Scenario tab (electrolyte controls)
+// and this constant is not used by the simulation. Kept only to avoid breaking imports.
+pub const LITHIUM_SALT_MOLARITY: f32 = 1.0;
+
+// ====================
 // Electron Parameters
 // ====================
 pub const ELECTRON_SPRING_K: f32 = 5.0; // Spring constant for electron drift
@@ -40,6 +47,7 @@ pub const HOP_ACTIVATION_ENERGY: f32 = 0.025;
 pub fn default_hop_alignment_bias() -> f32 {
     0.01
 }
+
 
 /// Get the effective polarization charge for a given species
 /*
