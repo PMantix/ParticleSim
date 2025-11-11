@@ -448,6 +448,111 @@ impl super::super::Renderer {
                 }
             });
 
+            // Option to rebalance existing electrolyte mixture to current settings
+            ui.horizontal(|ui| {
+                if ui
+                    .button("Rebalance Electrolyte (delete & re-add)")
+                    .on_hover_text(
+                        "Removes existing Li+, PF6-, EC and DMC, then re-adds them using the current Molarity and Total particles",
+                    )
+                    .clicked()
+                {
+                    // Delete existing electrolyte-related species
+                    for species in [
+                        Species::LithiumIon,
+                        Species::ElectrolyteAnion,
+                        Species::EC,
+                        Species::DMC,
+                    ] {
+                        let _ = SIM_COMMAND_SENDER
+                            .lock()
+                            .as_ref()
+                            .unwrap()
+                            .send(SimCommand::DeleteSpecies { species });
+                    }
+
+                    // Re-add according to current settings
+                    let total = self.electrolyte_total_particles;
+                    let solvent_to_salt_ratio = 15.0; // EC+DMC molecules per LiPF6
+                    let salt_fraction = 1.0 / (1.0 + solvent_to_salt_ratio);
+                    let lipf6_count = (total as f32
+                        * salt_fraction
+                        * self.electrolyte_molarity
+                        / 1.0)
+                        .round() as usize;
+                    let li_count = lipf6_count; // 1:1 stoichiometry
+                    let pf6_count = lipf6_count; // 1:1 stoichiometry
+
+                    let remaining = total.saturating_sub(li_count + pf6_count);
+                    let ec_count = remaining / 2; // 1:1 EC:DMC
+                    let dmc_count = remaining - ec_count;
+
+                    if li_count > 0 {
+                        let li_body = make_body_with_species(
+                            ultraviolet::Vec2::zero(),
+                            ultraviolet::Vec2::zero(),
+                            Species::LithiumIon,
+                        );
+                        let _ = SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(
+                            SimCommand::AddRandom {
+                                body: li_body,
+                                count: li_count,
+                                domain_width: self.domain_width,
+                                domain_height: self.domain_height,
+                            },
+                        );
+                    }
+
+                    if pf6_count > 0 {
+                        let pf6_body = make_body_with_species(
+                            ultraviolet::Vec2::zero(),
+                            ultraviolet::Vec2::zero(),
+                            Species::ElectrolyteAnion,
+                        );
+                        let _ = SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(
+                            SimCommand::AddRandom {
+                                body: pf6_body,
+                                count: pf6_count,
+                                domain_width: self.domain_width,
+                                domain_height: self.domain_height,
+                            },
+                        );
+                    }
+
+                    if ec_count > 0 {
+                        let ec_body = make_body_with_species(
+                            ultraviolet::Vec2::zero(),
+                            ultraviolet::Vec2::zero(),
+                            Species::EC,
+                        );
+                        let _ = SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(
+                            SimCommand::AddRandom {
+                                body: ec_body,
+                                count: ec_count,
+                                domain_width: self.domain_width,
+                                domain_height: self.domain_height,
+                            },
+                        );
+                    }
+
+                    if dmc_count > 0 {
+                        let dmc_body = make_body_with_species(
+                            ultraviolet::Vec2::zero(),
+                            ultraviolet::Vec2::zero(),
+                            Species::DMC,
+                        );
+                        let _ = SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(
+                            SimCommand::AddRandom {
+                                body: dmc_body,
+                                count: dmc_count,
+                                domain_width: self.domain_width,
+                                domain_height: self.domain_height,
+                            },
+                        );
+                    }
+                }
+            });
+
             // Show composition breakdown
             let total = self.electrolyte_total_particles;
             let solvent_to_salt_ratio = 15.0;
