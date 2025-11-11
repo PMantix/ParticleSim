@@ -272,6 +272,7 @@ fn resolve(sim: &mut Simulation, i: usize, j: usize, num_passes: usize) {
     }
     let r_sq = r * r;
     let correction_scale = 1.0 / num_passes as f32;
+    // add a comment 
     // DIAGNOSTIC: compute components of t and log anomalies
     let disc_term = (d_dot_v * d_dot_v - v_sq * (d_sq - r_sq)).max(0.0);
     let sqrt_disc = disc_term.sqrt();
