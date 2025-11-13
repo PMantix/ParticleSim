@@ -146,7 +146,110 @@ fn apply_configuration(init_config: InitConfig) -> Result<(), Box<dyn std::error
         }
     }
 
+    // Add default 1M LiPF6 electrolyte solution with 5471 total particles
+    add_default_electrolyte(tx.clone(), global_width, global_height)?;
+
     println!("Initial configuration loaded successfully!");
+    Ok(())
+}
+
+/// Add default 1M LiPF6 electrolyte solution with 5471 total particles
+/// Composition: 342 Li+, 342 PF6-, 2393 EC, 2394 DMC
+fn add_default_electrolyte(
+    tx: std::sync::mpsc::Sender<SimCommand>,
+    domain_width: f32,
+    domain_height: f32,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let molarity = 1.0;
+    let total: usize = 5471;
+    
+    // Calculations for 1M solution with 5471 total particles
+    let solvent_to_salt_ratio = 15.0;
+    let salt_fraction = 1.0 / (1.0 + solvent_to_salt_ratio);
+    let lipf6_count = (total as f32 * salt_fraction * molarity / 1.0).round() as usize;
+    let li_count = lipf6_count;
+    let pf6_count = lipf6_count;
+    let remaining = total.saturating_sub(li_count + pf6_count);
+    let ec_count = remaining / 2;
+    let dmc_count = remaining - ec_count;
+
+    // Add Li+ ions
+    if li_count > 0 {
+        let li_body = crate::body::Body::new(
+            Vec2::zero(),
+            Vec2::zero(),
+            Species::LithiumIon.mass(),
+            Species::LithiumIon.radius(),
+            1.0,
+            Species::LithiumIon,
+        );
+        tx.send(SimCommand::AddRandom {
+            body: li_body,
+            count: li_count,
+            domain_width,
+            domain_height,
+        })?;
+    }
+
+    // Add PF6- anions
+    if pf6_count > 0 {
+        let pf6_body = crate::body::Body::new(
+            Vec2::zero(),
+            Vec2::zero(),
+            Species::ElectrolyteAnion.mass(),
+            Species::ElectrolyteAnion.radius(),
+            -1.0,
+            Species::ElectrolyteAnion,
+        );
+        tx.send(SimCommand::AddRandom {
+            body: pf6_body,
+            count: pf6_count,
+            domain_width,
+            domain_height,
+        })?;
+    }
+
+    // Add EC solvent
+    if ec_count > 0 {
+        let ec_body = crate::body::Body::new(
+            Vec2::zero(),
+            Vec2::zero(),
+            Species::EC.mass(),
+            Species::EC.radius(),
+            0.0,
+            Species::EC,
+        );
+        tx.send(SimCommand::AddRandom {
+            body: ec_body,
+            count: ec_count,
+            domain_width,
+            domain_height,
+        })?;
+    }
+
+    // Add DMC solvent
+    if dmc_count > 0 {
+        let dmc_body = crate::body::Body::new(
+            Vec2::zero(),
+            Vec2::zero(),
+            Species::DMC.mass(),
+            Species::DMC.radius(),
+            0.0,
+            Species::DMC,
+        );
+        tx.send(SimCommand::AddRandom {
+            body: dmc_body,
+            count: dmc_count,
+            domain_width,
+            domain_height,
+        })?;
+    }
+
+    eprintln!(
+        "[Electrolyte] Loaded default molarity={:.2}M: {} Li+, {} PF6-, {} EC, {} DMC (total {} particles)",
+        molarity, li_count, pf6_count, ec_count, dmc_count, total
+    );
+    
     Ok(())
 }
 

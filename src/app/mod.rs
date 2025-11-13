@@ -9,7 +9,7 @@ pub mod spawn;
 
 // Main command handling is now done directly via simulation_loop
 
-pub const RANDOM_ATTEMPTS: usize = 20;
+pub const RANDOM_ATTEMPTS: usize = 100;
 
 pub fn run() {
     // Creates a global thread pool (using rayon) with threads = max(3, total cores - 2)

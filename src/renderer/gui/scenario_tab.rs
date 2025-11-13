@@ -445,6 +445,11 @@ impl super::super::Renderer {
                             })
                             .unwrap();
                     }
+
+                    eprintln!(
+                        "[Electrolyte] Added molarity={:.2}M: {} Li+, {} PF6-, {} EC, {} DMC (total {} particles)",
+                        self.electrolyte_molarity, li_count, pf6_count, ec_count, dmc_count, total
+                    );
                 }
             });
 
@@ -550,6 +555,11 @@ impl super::super::Renderer {
                             },
                         );
                     }
+
+                    eprintln!(
+                        "[Electrolyte] Rebalanced molarity={:.2}M: {} Li+, {} PF6-, {} EC, {} DMC (total {} particles)",
+                        self.electrolyte_molarity, li_count, pf6_count, ec_count, dmc_count, total
+                    );
                 }
             });
 

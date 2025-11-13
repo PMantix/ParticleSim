@@ -222,11 +222,16 @@ pub fn add_random(
             failures += 1;
         }
     }
-    // Report summary of placement failures only once
+    // Report summary of placement results
     if failures > 0 {
         eprintln!(
             "Failed to place {} random bodies out of {} after {} attempts each",
             failures, count, RANDOM_ATTEMPTS
+        );
+    } else {
+        eprintln!(
+            "Successfully placed {} random bodies",
+            count
         );
     }
 }

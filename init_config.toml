@@ -104,11 +104,3 @@ species = "ElectrolyteAnion"
 [[particles.random]]
 count = 225 
 species = "LithiumIon"
-
-[[particles.random]]
-count = 2949
-species = "EC"
-
-[[particles.random]]
-count = 2072
-species = "DMC"

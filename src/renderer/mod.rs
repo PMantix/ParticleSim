@@ -479,7 +479,7 @@ impl quarkstrom::Renderer for Renderer {
 
             // Electrolyte solution controls
             electrolyte_molarity: 1.0,         // 1M default
-            electrolyte_total_particles: 1000, // 1000 particles default
+            electrolyte_total_particles: 5471, // 5471 particles default
 
             measurement_start: None,
             measurement_selecting_start: false,

@@ -5,7 +5,9 @@ use crate::simulation::Simulation;
 use ultraviolet::Vec2;
 
 /// Number of attempts when placing random particles.
-const RANDOM_ATTEMPTS: usize = 20;
+/// Use the authoritative value from `crate::app::RANDOM_ATTEMPTS` so there's
+/// a single source-of-truth for this setting.
+const RANDOM_ATTEMPTS: usize = crate::app::RANDOM_ATTEMPTS;
 
 pub fn handle_change_charge(simulation: &mut Simulation, id: u64, delta: f32) {
     if let Some(body) = simulation.bodies.iter_mut().find(|b| b.id == id) {
@@ -288,10 +290,9 @@ pub fn handle_add_random(
             }
         }
         if !placed {
-            eprintln!(
-                "Failed to place random body after {} attempts",
-                RANDOM_ATTEMPTS
-            );
+            eprintln!("Failed to place random body after {} attempts", RANDOM_ATTEMPTS);
+        } else {
+            eprintln!("Successfully placed random body");
         }
     }
 }
