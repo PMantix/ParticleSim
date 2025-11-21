@@ -19,9 +19,9 @@ pub const ELECTRON_SPRING_K_DMC: f32 = ELECTRON_SPRING_K; // DMC-specific spring
 // Effective polarization charge (in units of e) for solvent molecules
 pub const POLAR_CHARGE_EC: f32 = 0.40;
 pub const POLAR_CHARGE_DMC: f32 = 0.11; //0.054;
-pub const POLAR_CHARGE_VC: f32 = 0.36;
+pub const POLAR_CHARGE_VC: f32 = 0.42;
 pub const POLAR_CHARGE_FEC: f32 = 0.45;
-pub const POLAR_CHARGE_EMC: f32 = 0.20;
+pub const POLAR_CHARGE_EMC: f32 = 0.11;
 pub const POLAR_CHARGE_LLZO: f32 = 0.05;
 pub const POLAR_CHARGE_LLZT: f32 = 0.06;
 pub const POLAR_CHARGE_S40B: f32 = 0.04;
@@ -42,9 +42,9 @@ pub fn electron_spring_k(species: Species) -> f32 {
 }
 pub const ELECTRON_DRIFT_RADIUS_FACTOR_EC: f32 = 1.0; // Max electron speed as a factor of body radius per
 pub const ELECTRON_DRIFT_RADIUS_FACTOR_DMC: f32 = 0.73; // DMC-specific drift radius factor
-pub const ELECTRON_DRIFT_RADIUS_FACTOR_VC: f32 = 0.95; // VC-specific drift radius factor
+pub const ELECTRON_DRIFT_RADIUS_FACTOR_VC: f32 = 1.0; // VC-specific drift radius factor
 pub const ELECTRON_DRIFT_RADIUS_FACTOR_FEC: f32 = 0.90; // FEC-specific drift radius factor
-pub const ELECTRON_DRIFT_RADIUS_FACTOR_EMC: f32 = 0.80; // EMC-specific drift radius factor
+pub const ELECTRON_DRIFT_RADIUS_FACTOR_EMC: f32 = 0.75; // EMC-specific drift radius factor
 pub const ELECTRON_DRIFT_RADIUS_FACTOR_LLZO: f32 = 0.20; // LLZO-specific drift radius factor
 pub const ELECTRON_DRIFT_RADIUS_FACTOR_LLZT: f32 = 0.20; // LLZT-specific drift radius factor
 pub const ELECTRON_DRIFT_RADIUS_FACTOR_S40B: f32 = 0.22; // S40B solid electrolyte drift radius
