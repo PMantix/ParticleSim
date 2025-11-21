@@ -157,7 +157,7 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
         SpeciesProps {
             mass: 107.0,
             radius: 2.5,
-            damping: 1.0,
+            damping: 0.8,
             color: [140, 210, 255, 160],
             lj_enabled: false,
             lj_epsilon: 0.0,
