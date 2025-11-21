@@ -1,4 +1,6 @@
 use super::*;
+use crate::renderer::{ComponentMode, ElectrolyteComponent};
+use std::collections::HashSet;
 
 impl super::super::Renderer {
     pub fn show_scenario_tab(&mut self, ui: &mut egui::Ui) {
@@ -439,248 +441,56 @@ impl super::super::Renderer {
             ui.label("🧪 Electrolyte Solution");
             ui.horizontal(|ui| {
                 ui.label("Molarity:");
-                ui.add(egui::DragValue::new(&mut self.electrolyte_molarity).speed(0.1));
+                ui.add(
+                    egui::DragValue::new(&mut self.electrolyte_molarity)
+                        .speed(0.1)
+                        .clamp_range(0.05..=5.0),
+                );
                 ui.label("M LiPF6");
             });
             ui.horizontal(|ui| {
                 ui.label("Total particles:");
-                ui.add(egui::DragValue::new(&mut self.electrolyte_total_particles).speed(10.0));
+                ui.add(
+                    egui::DragValue::new(&mut self.electrolyte_total_particles)
+                        .speed(25.0)
+                        .clamp_range(0..=50_000),
+                );
             });
-            ui.horizontal(|ui| {
-                if ui.button("Add Electrolyte (EC/DMC)").clicked() {
-                    // Calculate particle counts based on molarity and proportions
-                    let total = self.electrolyte_total_particles;
+            ui.add_space(6.0);
+            show_electrolyte_component_table(ui, self);
 
-                    // For xM LiPF6 in EC/DMC (1:1 vol ratio):
-                    // LiPF6 dissociates to Li+ + PF6-
-                    // Typical EC:DMC ratio is 1:1 by volume
-                    // Rough calculation: ~10-20 solvent molecules per salt molecule
-                    let solvent_to_salt_ratio = 15.0; // EC+DMC molecules per LiPF6
+            let plan = compute_electrolyte_plan(self);
+            ui.add_space(6.0);
+            show_electrolyte_plan_preview(ui, &plan, self.electrolyte_total_particles);
 
-                    let salt_fraction = 1.0 / (1.0 + solvent_to_salt_ratio);
-                    let lipf6_count = (total as f32 * salt_fraction * self.electrolyte_molarity
-                        / 1.0)
-                        .round() as usize;
-                    let li_count = lipf6_count; // 1:1 stoichiometry
-                    let pf6_count = lipf6_count; // 1:1 stoichiometry
-
-                    let remaining = total.saturating_sub(li_count + pf6_count);
-                    let ec_count = remaining / 2; // 1:1 EC:DMC
-                    let dmc_count = remaining - ec_count;
-
-                    // Add Li+ ions
-                    if li_count > 0 {
-                        let li_body = make_body_with_species(
-                            ultraviolet::Vec2::zero(),
-                            ultraviolet::Vec2::zero(),
-                            Species::LithiumIon,
-                        );
-                        SIM_COMMAND_SENDER
-                            .lock()
-                            .as_ref()
-                            .unwrap()
-                            .send(SimCommand::AddRandom {
-                                body: li_body,
-                                count: li_count,
-                                domain_width: self.domain_width,
-                                domain_height: self.domain_height,
-                            })
-                            .unwrap();
-                    }
-
-                    // Add PF6- anions
-                    if pf6_count > 0 {
-                        let pf6_body = make_body_with_species(
-                            ultraviolet::Vec2::zero(),
-                            ultraviolet::Vec2::zero(),
-                            Species::ElectrolyteAnion,
-                        );
-                        SIM_COMMAND_SENDER
-                            .lock()
-                            .as_ref()
-                            .unwrap()
-                            .send(SimCommand::AddRandom {
-                                body: pf6_body,
-                                count: pf6_count,
-                                domain_width: self.domain_width,
-                                domain_height: self.domain_height,
-                            })
-                            .unwrap();
-                    }
-
-                    // Add EC solvent
-                    if ec_count > 0 {
-                        let ec_body = make_body_with_species(
-                            ultraviolet::Vec2::zero(),
-                            ultraviolet::Vec2::zero(),
-                            Species::EC,
-                        );
-                        SIM_COMMAND_SENDER
-                            .lock()
-                            .as_ref()
-                            .unwrap()
-                            .send(SimCommand::AddRandom {
-                                body: ec_body,
-                                count: ec_count,
-                                domain_width: self.domain_width,
-                                domain_height: self.domain_height,
-                            })
-                            .unwrap();
-                    }
-
-                    // Add DMC solvent
-                    if dmc_count > 0 {
-                        let dmc_body = make_body_with_species(
-                            ultraviolet::Vec2::zero(),
-                            ultraviolet::Vec2::zero(),
-                            Species::DMC,
-                        );
-                        SIM_COMMAND_SENDER
-                            .lock()
-                            .as_ref()
-                            .unwrap()
-                            .send(SimCommand::AddRandom {
-                                body: dmc_body,
-                                count: dmc_count,
-                                domain_width: self.domain_width,
-                                domain_height: self.domain_height,
-                            })
-                            .unwrap();
-                    }
-
-                    eprintln!(
-                        "[Electrolyte] Added molarity={:.2}M: {} Li+, {} PF6-, {} EC, {} DMC (total {} particles)",
-                        self.electrolyte_molarity, li_count, pf6_count, ec_count, dmc_count, total
-                    );
-                }
-            });
-
-            // Option to rebalance existing electrolyte mixture to current settings
+            let can_spawn = plan.is_actionable(self.electrolyte_total_particles);
             ui.horizontal(|ui| {
                 if ui
-                    .button("Rebalance Electrolyte (delete & re-add)")
+                    .add_enabled(
+                        can_spawn,
+                        egui::Button::new("Add Electrolyte Mixture"),
+                    )
                     .on_hover_text(
-                        "Removes existing Li+, PF6-, EC and DMC, then re-adds them using the current Molarity and Total particles",
+                        "Adds every enabled component using the counts in the preview above.",
                     )
                     .clicked()
                 {
-                    // Delete existing electrolyte-related species
-                    for species in [
-                        Species::LithiumIon,
-                        Species::ElectrolyteAnion,
-                        Species::EC,
-                        Species::DMC,
-                    ] {
-                        let _ = SIM_COMMAND_SENDER
-                            .lock()
-                            .as_ref()
-                            .unwrap()
-                            .send(SimCommand::DeleteSpecies { species });
-                    }
-
-                    // Re-add according to current settings
-                    let total = self.electrolyte_total_particles;
-                    let solvent_to_salt_ratio = 15.0; // EC+DMC molecules per LiPF6
-                    let salt_fraction = 1.0 / (1.0 + solvent_to_salt_ratio);
-                    let lipf6_count = (total as f32
-                        * salt_fraction
-                        * self.electrolyte_molarity
-                        / 1.0)
-                        .round() as usize;
-                    let li_count = lipf6_count; // 1:1 stoichiometry
-                    let pf6_count = lipf6_count; // 1:1 stoichiometry
-
-                    let remaining = total.saturating_sub(li_count + pf6_count);
-                    let ec_count = remaining / 2; // 1:1 EC:DMC
-                    let dmc_count = remaining - ec_count;
-
-                    if li_count > 0 {
-                        let li_body = make_body_with_species(
-                            ultraviolet::Vec2::zero(),
-                            ultraviolet::Vec2::zero(),
-                            Species::LithiumIon,
-                        );
-                        let _ = SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(
-                            SimCommand::AddRandom {
-                                body: li_body,
-                                count: li_count,
-                                domain_width: self.domain_width,
-                                domain_height: self.domain_height,
-                            },
-                        );
-                    }
-
-                    if pf6_count > 0 {
-                        let pf6_body = make_body_with_species(
-                            ultraviolet::Vec2::zero(),
-                            ultraviolet::Vec2::zero(),
-                            Species::ElectrolyteAnion,
-                        );
-                        let _ = SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(
-                            SimCommand::AddRandom {
-                                body: pf6_body,
-                                count: pf6_count,
-                                domain_width: self.domain_width,
-                                domain_height: self.domain_height,
-                            },
-                        );
-                    }
-
-                    if ec_count > 0 {
-                        let ec_body = make_body_with_species(
-                            ultraviolet::Vec2::zero(),
-                            ultraviolet::Vec2::zero(),
-                            Species::EC,
-                        );
-                        let _ = SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(
-                            SimCommand::AddRandom {
-                                body: ec_body,
-                                count: ec_count,
-                                domain_width: self.domain_width,
-                                domain_height: self.domain_height,
-                            },
-                        );
-                    }
-
-                    if dmc_count > 0 {
-                        let dmc_body = make_body_with_species(
-                            ultraviolet::Vec2::zero(),
-                            ultraviolet::Vec2::zero(),
-                            Species::DMC,
-                        );
-                        let _ = SIM_COMMAND_SENDER.lock().as_ref().unwrap().send(
-                            SimCommand::AddRandom {
-                                body: dmc_body,
-                                count: dmc_count,
-                                domain_width: self.domain_width,
-                                domain_height: self.domain_height,
-                            },
-                        );
-                    }
-
-                    eprintln!(
-                        "[Electrolyte] Rebalanced molarity={:.2}M: {} Li+, {} PF6-, {} EC, {} DMC (total {} particles)",
-                        self.electrolyte_molarity, li_count, pf6_count, ec_count, dmc_count, total
-                    );
+                    spawn_electrolyte_plan(self, &plan);
                 }
-            });
 
-            // Show composition breakdown
-            let total = self.electrolyte_total_particles;
-            let solvent_to_salt_ratio = 15.0;
-            let salt_fraction = 1.0 / (1.0 + solvent_to_salt_ratio);
-            let lipf6_count =
-                (total as f32 * salt_fraction * self.electrolyte_molarity / 1.0).round() as usize;
-            let remaining = total.saturating_sub(lipf6_count * 2);
-            let ec_count = remaining / 2;
-            let dmc_count = remaining - ec_count;
-
-            ui.horizontal(|ui| {
-                ui.label("Composition:");
-                ui.label(format!(
-                    "Li+: {}, PF6-: {}, EC: {}, DMC: {}",
-                    lipf6_count, lipf6_count, ec_count, dmc_count
-                ));
+                if ui
+                    .add_enabled(
+                        can_spawn,
+                        egui::Button::new("Rebalance Electrolyte"),
+                    )
+                    .on_hover_text(
+                        "Deletes the currently enabled electrolyte species before re-adding them with the new composition.",
+                    )
+                    .clicked()
+                {
+                    delete_plan_species(&plan);
+                    spawn_electrolyte_plan(self, &plan);
+                }
             });
         });
 
@@ -795,6 +605,355 @@ impl super::super::Renderer {
         });
     }
 }
+
+const ELECTROLYTE_SPECIES: &[Species] = &[
+    Species::EC,
+    Species::DMC,
+    Species::VC,
+    Species::FEC,
+    Species::EMC,
+    Species::LLZO,
+    Species::LLZT,
+    Species::S40B,
+];
+
+struct ComponentPlanEntry {
+    species: Species,
+    normalized_weight: f32,
+    count: usize,
+}
+
+struct ElectrolytePlan {
+    entries: Vec<ComponentPlanEntry>,
+}
+
+impl ElectrolytePlan {
+    fn is_actionable(&self, total_particles: usize) -> bool {
+        total_particles > 0 && self.entries.iter().any(|entry| entry.count > 0)
+    }
+}
+
+fn show_electrolyte_component_table(ui: &mut egui::Ui, renderer: &mut super::super::Renderer) {
+    ui.group(|ui| {
+        ui.label("Composition Components");
+        let mut remove_idx = None;
+        egui::Grid::new("electrolyte_component_grid")
+            .num_columns(5)
+            .striped(true)
+            .show(ui, |ui| {
+                ui.label("Species");
+                ui.label("Mode");
+                ui.label("Value");
+                ui.label("Result");
+                ui.label(" ");
+                ui.end_row();
+
+                for (idx, component) in renderer.electrolyte_components.iter_mut().enumerate() {
+                    egui::ComboBox::from_id_source(format!("component_species_{idx}"))
+                        .selected_text(species_display_name(component.species))
+                        .show_ui(ui, |ui| {
+                            for species in ELECTROLYTE_SPECIES {
+                                ui.selectable_value(
+                                    &mut component.species,
+                                    *species,
+                                    species_display_name(*species),
+                                );
+                            }
+                        });
+
+                    egui::ComboBox::from_id_source(format!("component_mode_{idx}"))
+                        .selected_text(match component.mode {
+                            ComponentMode::Fraction => "Fraction",
+                            ComponentMode::Part => "Part",
+                        })
+                        .show_ui(ui, |ui| {
+                            ui.selectable_value(
+                                &mut component.mode,
+                                ComponentMode::Fraction,
+                                "Fraction",
+                            );
+                            ui.selectable_value(&mut component.mode, ComponentMode::Part, "Part");
+                        });
+
+                    ui.add(
+                        egui::DragValue::new(&mut component.input_value)
+                            .speed(0.01)
+                            .clamp_range(0.0..=100.0),
+                    );
+
+                    ui.label(format!("{:.1}%", component.fraction * 100.0));
+
+                    if ui.button("Remove").clicked() {
+                        remove_idx = Some(idx);
+                    }
+                    ui.end_row();
+                }
+            });
+
+        if let Some(idx) = remove_idx {
+            renderer.electrolyte_components.remove(idx);
+        }
+
+        if ui.button("+ Add component").clicked() {
+            renderer
+                .electrolyte_components
+                .push(default_component_template());
+        }
+
+        recalculate_fractions(&mut renderer.electrolyte_components);
+    });
+}
+
+fn default_component_template() -> ElectrolyteComponent {
+    ElectrolyteComponent {
+        species: Species::EC,
+        fraction: 1.0,
+        mode: ComponentMode::Part,
+        input_value: 1.0,
+    }
+}
+
+fn recalculate_fractions(components: &mut [ElectrolyteComponent]) {
+    // 1. Sum explicit fractions
+    let sum_fractions: f32 = components
+        .iter()
+        .filter(|c| matches!(c.mode, ComponentMode::Fraction))
+        .map(|c| c.input_value)
+        .sum();
+
+    // 2. Handle Fraction overflow
+    if sum_fractions >= 1.0 {
+        // Normalize fractions to sum to 1.0
+        let scale = if sum_fractions > 0.0 {
+            1.0 / sum_fractions
+        } else {
+            0.0
+        };
+        for c in components.iter_mut() {
+            if matches!(c.mode, ComponentMode::Fraction) {
+                c.fraction = c.input_value * scale;
+            } else {
+                c.fraction = 0.0;
+            }
+        }
+        return;
+    }
+
+    // 3. Distribute remainder to Parts
+    let remaining_fraction = 1.0 - sum_fractions;
+    let sum_parts: f32 = components
+        .iter()
+        .filter(|c| matches!(c.mode, ComponentMode::Part))
+        .map(|c| c.input_value)
+        .sum();
+
+    if sum_parts > 0.0 {
+        let part_scale = remaining_fraction / sum_parts;
+        for c in components.iter_mut() {
+            if matches!(c.mode, ComponentMode::Part) {
+                c.fraction = c.input_value * part_scale;
+            } else if matches!(c.mode, ComponentMode::Fraction) {
+                c.fraction = c.input_value;
+            }
+        }
+    } else {
+        // No parts to distribute to, just set fractions as is
+        for c in components.iter_mut() {
+            if matches!(c.mode, ComponentMode::Fraction) {
+                c.fraction = c.input_value;
+            } else {
+                c.fraction = 0.0;
+            }
+        }
+    }
+}
+
+fn compute_electrolyte_plan(renderer: &super::super::Renderer) -> ElectrolytePlan {
+    let total_particles = renderer.electrolyte_total_particles as f32;
+    let molarity = renderer.electrolyte_molarity;
+
+    // 1. Calculate Solvent vs Salt split
+    // Heuristic: 1.0 M => 1/15 ratio of salt to solvent molecules
+    // S = total / (1 + 2 * M / 15)
+    let solvent_count_f32 = total_particles / (1.0 + 2.0 * molarity / 15.0);
+    let salt_count_f32 = solvent_count_f32 * (molarity / 15.0);
+
+    let li_count = salt_count_f32.round() as usize;
+    let anion_count = salt_count_f32.round() as usize;
+    let total_solvent_count = solvent_count_f32.round() as usize;
+
+    let mut entries = Vec::new();
+
+    // Add Ions
+    if li_count > 0 {
+        entries.push(ComponentPlanEntry {
+            species: Species::LithiumIon,
+            normalized_weight: 0.0, // Not used for ions in this logic
+            count: li_count,
+        });
+    }
+    if anion_count > 0 {
+        entries.push(ComponentPlanEntry {
+            species: Species::ElectrolyteAnion,
+            normalized_weight: 0.0,
+            count: anion_count,
+        });
+    }
+
+    // 2. Distribute Solvent
+    let enabled_solvents: Vec<_> = renderer
+        .electrolyte_components
+        .iter()
+        .filter(|c| c.fraction > 0.0)
+        .collect();
+
+    if !enabled_solvents.is_empty() && total_solvent_count > 0 {
+        let total_fraction: f32 = enabled_solvents.iter().map(|c| c.fraction).sum();
+
+        let mut solvent_entries = Vec::new();
+        for comp in &enabled_solvents {
+            let weight = comp.fraction / total_fraction;
+            let exact = weight * total_solvent_count as f32;
+            let count = exact.floor() as usize;
+            solvent_entries.push(ComponentPlanEntry {
+                species: comp.species,
+                normalized_weight: weight,
+                count,
+            });
+        }
+
+        let current_allocated: usize = solvent_entries.iter().map(|e| e.count).sum();
+        let mut remainder = total_solvent_count.saturating_sub(current_allocated);
+
+        // Simple distribution of remainder
+        for entry in solvent_entries.iter_mut() {
+            if remainder == 0 {
+                break;
+            }
+            entry.count += 1;
+            remainder -= 1;
+        }
+
+        entries.extend(solvent_entries);
+    }
+
+    ElectrolytePlan { entries }
+}
+
+fn show_electrolyte_plan_preview(
+    ui: &mut egui::Ui,
+    plan: &ElectrolytePlan,
+    total_particles: usize,
+) {
+    ui.group(|ui| {
+        ui.label("Distribution Preview");
+        if plan.entries.is_empty() {
+            ui.label("Enable at least one component with a non-zero fraction to preview counts.");
+            if total_particles == 0 {
+                ui.label("Total particles must also be greater than zero to spawn the mixture.");
+            }
+            return;
+        }
+
+        for entry in &plan.entries {
+            ui.horizontal(|ui| {
+                ui.label(species_display_name(entry.species));
+                if entry.normalized_weight > 0.0 {
+                    ui.label(format!("{:.1}%", entry.normalized_weight * 100.0));
+                }
+                if total_particles > 0 {
+                    ui.label(format!("{} particles", entry.count));
+                }
+            });
+        }
+
+        if total_particles > 0 {
+            let planned: usize = plan.entries.iter().map(|entry| entry.count).sum();
+            ui.label(format!("Planned total: {} / {}", planned, total_particles));
+        } else {
+            ui.label("Increase Total particles to > 0 to enable spawning.");
+        }
+    });
+}
+
+fn spawn_electrolyte_plan(
+    renderer: &mut super::super::Renderer,
+    plan: &ElectrolytePlan,
+) {
+    if plan.entries.is_empty() {
+        return;
+    }
+
+    let sender_opt = SIM_COMMAND_SENDER.lock().clone();
+    let Some(tx) = sender_opt else { return };
+
+    for entry in &plan.entries {
+        if entry.count == 0 {
+            continue;
+        }
+        let body = make_body_with_species(
+            ultraviolet::Vec2::zero(),
+            ultraviolet::Vec2::zero(),
+            entry.species,
+        );
+        let _ = tx.send(SimCommand::AddRandom {
+            body,
+            count: entry.count,
+            domain_width: renderer.domain_width,
+            domain_height: renderer.domain_height,
+        });
+    }
+
+    let total_added: usize = plan.entries.iter().map(|entry| entry.count).sum();
+    eprintln!(
+        "[Electrolyte] Added {} particles: {}",
+        total_added,
+        plan
+            .entries
+            .iter()
+            .filter(|entry| entry.count > 0)
+            .map(|entry| format!(
+                "{}={}",
+                species_display_name(entry.species),
+                entry.count
+            ))
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
+}
+
+fn delete_plan_species(plan: &ElectrolytePlan) {
+    let mut species: HashSet<Species> = HashSet::new();
+    for entry in &plan.entries {
+        species.insert(entry.species);
+    }
+    if species.is_empty() {
+        return;
+    }
+    let sender_opt = SIM_COMMAND_SENDER.lock().clone();
+    let Some(tx) = sender_opt else { return };
+    for species in species {
+        let _ = tx.send(SimCommand::DeleteSpecies { species });
+    }
+}
+
+fn species_display_name(species: Species) -> &'static str {
+    match species {
+        Species::LithiumIon => "Li+",
+        Species::LithiumMetal => "Li Metal",
+        Species::FoilMetal => "Foil Metal",
+        Species::ElectrolyteAnion => "PF6-",
+        Species::EC => "EC",
+        Species::DMC => "DMC",
+        Species::VC => "VC",
+        Species::FEC => "FEC",
+        Species::EMC => "EMC",
+        Species::LLZO => "LLZO",
+        Species::LLZT => "LLZT",
+        Species::S40B => "S40B",
+    }
+}
+
 pub fn make_body_with_species(pos: Vec2, vel: Vec2, species: Species) -> Body {
     use crate::config::{FOIL_NEUTRAL_ELECTRONS, LITHIUM_METAL_NEUTRAL_ELECTRONS};
     // Always use species properties for mass and radius to ensure consistency

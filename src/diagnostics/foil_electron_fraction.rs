@@ -88,7 +88,8 @@ impl FoilElectronFractionDiagnostic {
         min_interval: f32,
     ) -> bool {
         let elapsed = current_time - self.last_calc_time;
-        if elapsed >= min_interval {
+        // If enough time passed OR time went backwards (simulation reset), recalculate
+        if elapsed >= min_interval || elapsed < 0.0 {
             self.calculate(bodies, foils, quadtree);
             self.last_calc_time = current_time;
             true

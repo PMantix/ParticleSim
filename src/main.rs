@@ -8,7 +8,6 @@ mod doe;
 mod init_config;
 mod io;
 mod manual_measurement;
-mod manual_measurement_filename;
 mod measurement_csv;
 mod partition;
 mod plotting;

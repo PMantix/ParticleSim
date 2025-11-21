@@ -99,7 +99,7 @@ guidelines.
 
 ### Mouse Controls
 - **Scroll Wheel**: Zoom in/out
-- **Middle Mouse Button + Drag**: Pan the view
+- **Middle Mouse Button + Drag** (or **Alt/Option + Left Drag** on trackpads): Pan the view
 - **Shift + Left Click**: Select a particle for detailed diagnostics
 - **Right Mouse Button**: Spawn a new body
 

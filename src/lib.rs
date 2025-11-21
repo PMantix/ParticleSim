@@ -7,7 +7,6 @@ pub mod doe;
 pub mod init_config;
 pub mod io;
 pub mod manual_measurement;
-pub mod manual_measurement_filename;
 pub mod measurement_csv;
 pub mod partition;
 pub mod plotting;

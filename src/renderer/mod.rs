@@ -90,6 +90,20 @@ pub struct MeasurementRecord {
     pub neg_role: Option<String>,    // e.g., "-A"
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub enum ComponentMode {
+    Fraction,
+    Part,
+}
+
+#[derive(Clone, Debug)]
+pub struct ElectrolyteComponent {
+    pub species: Species,
+    pub fraction: f32,
+    pub mode: ComponentMode,
+    pub input_value: f32,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum GuiTab {
     Simulation,
@@ -229,6 +243,7 @@ pub struct Renderer {
     // Electrolyte solution controls
     pub electrolyte_molarity: f32,
     pub electrolyte_total_particles: usize,
+    pub electrolyte_components: Vec<ElectrolyteComponent>,
 
     // (screen capture feature removed)
     pub measurement_start: Option<Vec2>,
@@ -486,6 +501,20 @@ impl quarkstrom::Renderer for Renderer {
             // Electrolyte solution controls
             electrolyte_molarity: 1.0,         // 1M default
             electrolyte_total_particles: 5471, // 5471 particles default
+            electrolyte_components: vec![
+                ElectrolyteComponent {
+                    species: Species::EC,
+                    fraction: 0.5,
+                    mode: ComponentMode::Fraction,
+                    input_value: 0.5,
+                },
+                ElectrolyteComponent {
+                    species: Species::DMC,
+                    fraction: 0.5,
+                    mode: ComponentMode::Fraction,
+                    input_value: 0.5,
+                },
+            ],
 
             measurement_start: None,
             measurement_selecting_start: false,

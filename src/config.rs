@@ -5,6 +5,7 @@
 // ====================
 // Note: Molarity is now a runtime UI control in the Scenario tab (electrolyte controls)
 // and this constant is not used by the simulation. Kept only to avoid breaking imports.
+#[allow(dead_code)]
 pub const LITHIUM_SALT_MOLARITY: f32 = 1.0;
 
 // ====================

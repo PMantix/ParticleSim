@@ -3,7 +3,7 @@ use flate2::{read::GzDecoder, write::GzEncoder, Compression};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::io::{BufWriter, Cursor, Read, Write};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use crate::body::{foil::Foil, Body};
 use crate::config::SimConfig;

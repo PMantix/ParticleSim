@@ -98,8 +98,10 @@ impl super::Renderer {
             }
         }
 
-        // Camera grab
-        if input.mouse_held(2) {
+        // Camera grab (middle mouse or Alt+left for trackpad users)
+        let alt_pan =
+            input.key_held(VirtualKeyCode::LAlt) || input.key_held(VirtualKeyCode::RAlt);
+        if input.mouse_held(2) || (alt_pan && input.mouse_held(0)) {
             let (mdx, mdy) = input.mouse_diff();
             // Mouse diff coordinates are also in logical pixels
             self.pos.x -= mdx / height as f32 * self.scale * 2.0;

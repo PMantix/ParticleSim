@@ -542,7 +542,13 @@ impl super::Renderer {
                             Species::LithiumMetal
                             | Species::ElectrolyteAnion
                             | Species::EC
-                            | Species::DMC => {
+                            | Species::DMC
+                            | Species::VC
+                            | Species::FEC
+                            | Species::EMC
+                            | Species::LLZO
+                            | Species::LLZT
+                            | Species::S40B => {
                                 let darkness_factor = 1.0 - self.species_dark_mode_strength;
                                 color[0] = (color[0] as f32 * darkness_factor) as u8;
                                 color[1] = (color[1] as f32 * darkness_factor) as u8;
