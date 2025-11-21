@@ -332,6 +332,12 @@ fn get_body_template_for_species(species: Species) -> Body {
             0.0,
             Species::FoilMetal,
         ),
+        Species::VC => Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::VC),
+        Species::FEC => Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::FEC),
+        Species::EMC => Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::EMC),
+        Species::LLZO => Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::LLZO),
+        Species::LLZT => Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::LLZT),
+        Species::S40B => Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::S40B),
     }
 }
 

@@ -14,7 +14,8 @@ This repository contains a modular, parallelized particle simulation for large-s
   - Electrons polarize in response to local electric fields
   - Butler-Volmer kinetics for inter-species electron transfer
 - **Accurate Redox Transitions**: Li⁺/Li species transitions with strict charge conservation
-- **Polar Solvents**: EC and DMC with bound electrons and polarization forces
+- **Polar Solvents**: EC, DMC, VC, FEC, and EMC with bound electrons and polarization forces
+- **Solid Electrolytes**: LLZO, LLZT, and S40B scaffolds for interfacial studies, ceramic separators, and sulfide glass layers
 - **Optional 2.5D Out-of-Plane**: Particles can temporarily move vertically to bypass 2D crowding
 
 ### Electrochemical Control
@@ -209,10 +210,10 @@ The simulation includes a comprehensive plotting system for real-time data analy
 
 ### Temperature Definitions
 The simulation distinguishes between:
-- **Liquid Temperature**: Computed over LithiumIon, ElectrolyteAnion, EC, and DMC particles (center-of-mass drift removed). This represents the thermal state of the mobile electrolyte phase.
+- **Liquid Temperature**: Computed over LithiumIon, ElectrolyteAnion, EC, DMC, VC, FEC, and EMC particles (center-of-mass drift removed). This represents the thermal state of the mobile electrolyte phase.
 - **Global Temperature**: Computed over all dynamic bodies (excluding constrained metals’ bulk drift via COM subtraction). Useful for detecting runaway energy in non-thermostatted components.
 
-Only liquid species (Li⁺, anion, EC, DMC) are rescaled by the Maxwell–Boltzmann thermostat. Metals (LithiumMetal, FoilMetal) are excluded to preserve electrode dynamics. During bootstrap (very low initial KE) all liquid species are assigned randomized velocities to seed a Maxwellian distribution.
+Only liquid species (Li⁺, anion, EC, DMC, VC, FEC, EMC) are rescaled by the Maxwell–Boltzmann thermostat. Metals (LithiumMetal, FoilMetal) are excluded to preserve electrode dynamics. During bootstrap (very low initial KE) all liquid species are assigned randomized velocities to seed a Maxwellian distribution.
 
 ---
 

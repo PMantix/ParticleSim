@@ -69,6 +69,12 @@ pub enum DeleteOption {
     ElectrolyteAnion,
     EC,
     DMC,
+    VC,
+    FEC,
+    EMC,
+    LLZO,
+    LLZT,
+    S40B,
 }
 
 #[derive(Clone, Debug)]

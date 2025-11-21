@@ -134,6 +134,114 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
             repulsion_cutoff: 5.0,   // Reduced from 11.0 - shorter range interaction
         },
     );
+    m.insert(
+        VC,
+        SpeciesProps {
+            mass: 86.0,
+            radius: 2.4,
+            damping: 1.0,
+            color: [220, 180, 255, 140],
+            lj_enabled: false,
+            lj_epsilon: 0.0,
+            lj_sigma: crate::config::LJ_FORCE_SIGMA,
+            lj_cutoff: crate::config::LJ_FORCE_CUTOFF,
+            polar_offset: crate::config::ELECTRON_DRIFT_RADIUS_FACTOR_VC,
+            polar_charge: crate::config::POLAR_CHARGE_VC,
+            enable_repulsion: true,
+            repulsion_strength: 5.0,
+            repulsion_cutoff: 5.0,
+        },
+    );
+    m.insert(
+        FEC,
+        SpeciesProps {
+            mass: 107.0,
+            radius: 2.5,
+            damping: 1.0,
+            color: [140, 210, 255, 160],
+            lj_enabled: false,
+            lj_epsilon: 0.0,
+            lj_sigma: crate::config::LJ_FORCE_SIGMA,
+            lj_cutoff: crate::config::LJ_FORCE_CUTOFF,
+            polar_offset: crate::config::ELECTRON_DRIFT_RADIUS_FACTOR_FEC,
+            polar_charge: crate::config::POLAR_CHARGE_FEC,
+            enable_repulsion: true,
+            repulsion_strength: 6.0,
+            repulsion_cutoff: 5.0,
+        },
+    );
+    m.insert(
+        EMC,
+        SpeciesProps {
+            mass: 104.0,
+            radius: 2.6,
+            damping: 1.0,
+            color: [120, 200, 140, 150],
+            lj_enabled: false,
+            lj_epsilon: 0.0,
+            lj_sigma: crate::config::LJ_FORCE_SIGMA,
+            lj_cutoff: crate::config::LJ_FORCE_CUTOFF,
+            polar_offset: crate::config::ELECTRON_DRIFT_RADIUS_FACTOR_EMC,
+            polar_charge: crate::config::POLAR_CHARGE_EMC,
+            enable_repulsion: true,
+            repulsion_strength: 4.5,
+            repulsion_cutoff: 5.5,
+        },
+    );
+    m.insert(
+        LLZO,
+        SpeciesProps {
+            mass: 840.0,
+            radius: 4.5,
+            damping: 0.2,
+            color: [255, 215, 130, 255],
+            lj_enabled: true,
+            lj_epsilon: crate::config::LJ_FORCE_EPSILON,
+            lj_sigma: crate::config::LJ_FORCE_SIGMA,
+            lj_cutoff: crate::config::LJ_FORCE_CUTOFF,
+            polar_offset: crate::config::ELECTRON_DRIFT_RADIUS_FACTOR_LLZO,
+            polar_charge: crate::config::POLAR_CHARGE_LLZO,
+            enable_repulsion: false,
+            repulsion_strength: 5.0,
+            repulsion_cutoff: 2.0,
+        },
+    );
+    m.insert(
+        LLZT,
+        SpeciesProps {
+            mass: 865.0,
+            radius: 4.7,
+            damping: 0.2,
+            color: [255, 190, 80, 255],
+            lj_enabled: true,
+            lj_epsilon: crate::config::LJ_FORCE_EPSILON,
+            lj_sigma: crate::config::LJ_FORCE_SIGMA,
+            lj_cutoff: crate::config::LJ_FORCE_CUTOFF,
+            polar_offset: crate::config::ELECTRON_DRIFT_RADIUS_FACTOR_LLZT,
+            polar_charge: crate::config::POLAR_CHARGE_LLZT,
+            enable_repulsion: false,
+            repulsion_strength: 5.0,
+            repulsion_cutoff: 2.0,
+        },
+    );
+    m.insert(
+        S40B,
+        SpeciesProps {
+            mass: 340.0,
+            radius: 4.2,
+            damping: 0.25,
+            color: [255, 235, 140, 255],
+            lj_enabled: true,
+            lj_epsilon: crate::config::LJ_FORCE_EPSILON,
+            lj_sigma: crate::config::LJ_FORCE_SIGMA,
+            lj_cutoff: crate::config::LJ_FORCE_CUTOFF,
+            polar_offset: crate::config::ELECTRON_DRIFT_RADIUS_FACTOR_S40B,
+            polar_charge: crate::config::POLAR_CHARGE_S40B,
+            enable_repulsion: false,
+            repulsion_strength: 5.0,
+            repulsion_cutoff: 2.0,
+        },
+    );
     m
 });
 
@@ -147,6 +255,12 @@ pub fn max_lj_cutoff() -> f32 {
         ElectrolyteAnion,
         EC,
         DMC,
+        VC,
+        FEC,
+        EMC,
+        LLZO,
+        LLZT,
+        S40B,
     ];
 
     species_list
@@ -167,6 +281,12 @@ pub fn max_repulsion_cutoff() -> f32 {
         ElectrolyteAnion,
         EC,
         DMC,
+        VC,
+        FEC,
+        EMC,
+        LLZO,
+        LLZT,
+        S40B,
     ];
 
     species_list

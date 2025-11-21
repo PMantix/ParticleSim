@@ -17,6 +17,12 @@ pub enum Species {
     ElectrolyteAnion,
     EC,
     DMC,
+    VC,
+    FEC,
+    EMC,
+    LLZO,
+    LLZT,
+    S40B,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -100,7 +106,16 @@ impl Body {
     pub fn update_species(&mut self) {
         if matches!(
             self.species,
-            Species::FoilMetal | Species::ElectrolyteAnion | Species::EC | Species::DMC
+            Species::FoilMetal
+                | Species::ElectrolyteAnion
+                | Species::EC
+                | Species::DMC
+                | Species::VC
+                | Species::FEC
+                | Species::EMC
+                | Species::LLZO
+                | Species::LLZT
+                | Species::S40B
         ) {
             // Don't auto-convert FoilMetal, Anions, or solvent molecules
             return;
@@ -129,6 +144,12 @@ impl Body {
             Species::ElectrolyteAnion => crate::config::ELECTROLYTE_ANION_NEUTRAL_ELECTRONS,
             Species::EC => crate::config::EC_NEUTRAL_ELECTRONS,
             Species::DMC => crate::config::DMC_NEUTRAL_ELECTRONS,
+            Species::VC => crate::config::VC_NEUTRAL_ELECTRONS,
+            Species::FEC => crate::config::FEC_NEUTRAL_ELECTRONS,
+            Species::EMC => crate::config::EMC_NEUTRAL_ELECTRONS,
+            Species::LLZO => crate::config::LLZO_NEUTRAL_ELECTRONS,
+            Species::LLZT => crate::config::LLZT_NEUTRAL_ELECTRONS,
+            Species::S40B => crate::config::S40B_NEUTRAL_ELECTRONS,
         }
     }
 
@@ -295,9 +316,9 @@ impl Species {
         match self {
             LithiumIon => 2.0,       // Strong attraction to cathode
             ElectrolyteAnion => 1.5, // Moderate attraction to anode
-            EC | DMC => 0.5,         // Weak surface interaction (neutral solvents)
+            EC | DMC | VC | FEC | EMC => 0.5, // Weak surface interaction (neutral solvents)
             LithiumMetal => 0.0,     // Already on surface
-            FoilMetal => 0.0,        // Already on surface
+            FoilMetal | LLZO | LLZT | S40B => 0.0, // Already on or part of surface
         }
     }
 
@@ -308,18 +329,30 @@ impl Species {
             // Ion-solvent solvation shells
             (LithiumIon, EC) | (EC, LithiumIon) => 0.3,
             (LithiumIon, DMC) | (DMC, LithiumIon) => 0.25,
+            (LithiumIon, VC) | (VC, LithiumIon) => 0.3,
+            (LithiumIon, FEC) | (FEC, LithiumIon) => 0.28,
+            (LithiumIon, EMC) | (EMC, LithiumIon) => 0.27,
             (ElectrolyteAnion, EC) | (EC, ElectrolyteAnion) => 0.4,
             (ElectrolyteAnion, DMC) | (DMC, ElectrolyteAnion) => 0.35,
+            (ElectrolyteAnion, VC) | (VC, ElectrolyteAnion) => 0.38,
+            (ElectrolyteAnion, FEC) | (FEC, ElectrolyteAnion) => 0.37,
+            (ElectrolyteAnion, EMC) | (EMC, ElectrolyteAnion) => 0.33,
 
             // Like-like interactions (layer separation)
             (LithiumIon, LithiumIon) => 0.8,
             (ElectrolyteAnion, ElectrolyteAnion) => 0.9,
             (EC, EC) => 0.6,
             (DMC, DMC) => 0.5,
+            (VC, VC) => 0.6,
+            (FEC, FEC) => 0.55,
+            (EMC, EMC) => 0.48,
 
             // Metal particles stay at surface
             (_, LithiumMetal) | (LithiumMetal, _) => 0.0,
             (_, FoilMetal) | (FoilMetal, _) => 0.0,
+            (_, LLZO) | (LLZO, _) => 0.0,
+            (_, LLZT) | (LLZT, _) => 0.0,
+            (_, S40B) | (S40B, _) => 0.0,
 
             // Default for other combinations
             _ => 0.4,
@@ -333,13 +366,31 @@ impl Species {
             // Strong ion-solvent interactions
             (LithiumIon, EC) | (EC, LithiumIon) => 1.5,
             (LithiumIon, DMC) | (DMC, LithiumIon) => 1.2,
+            (LithiumIon, VC) | (VC, LithiumIon) => 1.4,
+            (LithiumIon, FEC) | (FEC, LithiumIon) => 1.45,
+            (LithiumIon, EMC) | (EMC, LithiumIon) => 1.1,
             (ElectrolyteAnion, EC) | (EC, ElectrolyteAnion) => 1.0,
             (ElectrolyteAnion, DMC) | (DMC, ElectrolyteAnion) => 0.8,
+            (ElectrolyteAnion, VC) | (VC, ElectrolyteAnion) => 0.95,
+            (ElectrolyteAnion, FEC) | (FEC, ElectrolyteAnion) => 1.05,
+            (ElectrolyteAnion, EMC) | (EMC, ElectrolyteAnion) => 0.75,
 
             // Weaker solvent-solvent interactions
             (EC, DMC) | (DMC, EC) => 0.3,
+            (EC, VC) | (VC, EC) => 0.35,
+            (EC, FEC) | (FEC, EC) => 0.38,
+            (EC, EMC) | (EMC, EC) => 0.32,
+            (DMC, VC) | (VC, DMC) => 0.28,
+            (DMC, FEC) | (FEC, DMC) => 0.3,
+            (DMC, EMC) | (EMC, DMC) => 0.25,
+            (VC, FEC) | (FEC, VC) => 0.34,
+            (VC, EMC) | (EMC, VC) => 0.3,
+            (FEC, EMC) | (EMC, FEC) => 0.33,
             (EC, EC) => 0.4,
             (DMC, DMC) => 0.3,
+            (VC, VC) => 0.42,
+            (FEC, FEC) => 0.45,
+            (EMC, EMC) => 0.28,
 
             // Ion-ion repulsion in z (want separation)
             (LithiumIon, ElectrolyteAnion) | (ElectrolyteAnion, LithiumIon) => 0.2,
@@ -349,6 +400,9 @@ impl Species {
             // Metals don't participate in solvation
             (_, LithiumMetal) | (LithiumMetal, _) => 0.0,
             (_, FoilMetal) | (FoilMetal, _) => 0.0,
+            (_, LLZO) | (LLZO, _) => 0.0,
+            (_, LLZT) | (LLZT, _) => 0.0,
+            (_, S40B) | (S40B, _) => 0.0,
         }
     }
 }

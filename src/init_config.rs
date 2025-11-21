@@ -102,6 +102,12 @@ impl CircleConfig {
             "FoilMetal" => Ok(Species::FoilMetal),
             "EC" => Ok(Species::EC),
             "DMC" => Ok(Species::DMC),
+            "VC" => Ok(Species::VC),
+            "FEC" => Ok(Species::FEC),
+            "EMC" => Ok(Species::EMC),
+            "LLZO" => Ok(Species::LLZO),
+            "LLZT" => Ok(Species::LLZT),
+            "S40B" => Ok(Species::S40B),
             _ => Err(format!("Unknown species: {}", self.species)),
         }
     }
@@ -116,6 +122,12 @@ impl MetalRectangleConfig {
             "FoilMetal" => Ok(Species::FoilMetal),
             "EC" => Ok(Species::EC),
             "DMC" => Ok(Species::DMC),
+            "VC" => Ok(Species::VC),
+            "FEC" => Ok(Species::FEC),
+            "EMC" => Ok(Species::EMC),
+            "LLZO" => Ok(Species::LLZO),
+            "LLZT" => Ok(Species::LLZT),
+            "S40B" => Ok(Species::S40B),
             _ => Err(format!("Unknown species: {}", self.species)),
         }
     }
@@ -144,6 +156,12 @@ impl RandomConfig {
             "FoilMetal" => Ok(Species::FoilMetal),
             "EC" => Ok(Species::EC),
             "DMC" => Ok(Species::DMC),
+            "VC" => Ok(Species::VC),
+            "FEC" => Ok(Species::FEC),
+            "EMC" => Ok(Species::EMC),
+            "LLZO" => Ok(Species::LLZO),
+            "LLZT" => Ok(Species::LLZT),
+            "S40B" => Ok(Species::S40B),
             _ => Err(format!("Unknown species: {}", self.species)),
         }
     }

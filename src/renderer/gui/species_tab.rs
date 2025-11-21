@@ -32,6 +32,12 @@ impl super::super::Renderer {
                 );
                 ui.selectable_value(&mut self.selected_lj_species, Species::EC, "EC");
                 ui.selectable_value(&mut self.selected_lj_species, Species::DMC, "DMC");
+                ui.selectable_value(&mut self.selected_lj_species, Species::VC, "VC");
+                ui.selectable_value(&mut self.selected_lj_species, Species::FEC, "FEC");
+                ui.selectable_value(&mut self.selected_lj_species, Species::EMC, "EMC");
+                ui.selectable_value(&mut self.selected_lj_species, Species::LLZO, "LLZO");
+                ui.selectable_value(&mut self.selected_lj_species, Species::LLZT, "LLZT");
+                ui.selectable_value(&mut self.selected_lj_species, Species::S40B, "S40B");
             });
 
         // Get current properties for selected species

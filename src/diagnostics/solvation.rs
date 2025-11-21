@@ -70,10 +70,47 @@ impl SolvationDiagnostic {
         self.s2ip_pairs.clear();
         self.fd_cations.clear();
 
-        // Get typical solvent radius (average of EC and DMC)
+        // Get typical solvent radius (average of all solvents)
         let ec_radius = crate::body::Species::EC.radius();
         let dmc_radius = crate::body::Species::DMC.radius();
-        let avg_solvent_radius = (ec_radius + dmc_radius) / 2.0;
+        let vc_radius = crate::body::Species::VC.radius();
+        let fec_radius = crate::body::Species::FEC.radius();
+        let emc_radius = crate::body::Species::EMC.radius();
+
+        // Weight solvent radius by the actual population so rare additives don't skew the metric
+        let mut weighted_radius_sum = 0.0;
+        let mut solvent_particle_count = 0usize;
+        for body in bodies {
+            match body.species {
+                Species::EC => {
+                    weighted_radius_sum += ec_radius;
+                    solvent_particle_count += 1;
+                }
+                Species::DMC => {
+                    weighted_radius_sum += dmc_radius;
+                    solvent_particle_count += 1;
+                }
+                Species::VC => {
+                    weighted_radius_sum += vc_radius;
+                    solvent_particle_count += 1;
+                }
+                Species::FEC => {
+                    weighted_radius_sum += fec_radius;
+                    solvent_particle_count += 1;
+                }
+                Species::EMC => {
+                    weighted_radius_sum += emc_radius;
+                    solvent_particle_count += 1;
+                }
+                _ => {}
+            }
+        }
+
+        let avg_solvent_radius = if solvent_particle_count > 0 {
+            weighted_radius_sum / solvent_particle_count as f32
+        } else {
+            (ec_radius + dmc_radius + vc_radius + fec_radius + emc_radius) / 5.0
+        };
 
         for (i, body) in bodies.iter().enumerate() {
             match body.species {
@@ -91,7 +128,7 @@ impl SolvationDiagnostic {
                         .iter()
                         .filter_map(|&idx| {
                             let neighbor = &bodies[idx];
-                            if matches!(neighbor.species, Species::EC | Species::DMC) {
+                            if matches!(neighbor.species, Species::EC | Species::DMC | Species::VC | Species::FEC | Species::EMC) {
                                 Some(neighbor.id)
                             } else {
                                 None
@@ -182,7 +219,16 @@ impl SolvationDiagnostic {
                     let _an_shell = body.radius * ANION_SHELL_FACTOR;
                     // Skipping anion coordination calculation (not used)
                 }
-                Species::LithiumMetal | Species::FoilMetal | Species::EC | Species::DMC => {}
+                Species::LithiumMetal
+                | Species::FoilMetal
+                | Species::EC
+                | Species::DMC
+                | Species::VC
+                | Species::FEC
+                | Species::EMC
+                | Species::LLZO
+                | Species::LLZT
+                | Species::S40B => {}
             }
         }
 

@@ -18,6 +18,12 @@ pub const ELECTRON_SPRING_K_DMC: f32 = ELECTRON_SPRING_K; // DMC-specific spring
 // Effective polarization charge (in units of e) for solvent molecules
 pub const POLAR_CHARGE_EC: f32 = 0.40;
 pub const POLAR_CHARGE_DMC: f32 = 0.11; //0.054;
+pub const POLAR_CHARGE_VC: f32 = 0.36;
+pub const POLAR_CHARGE_FEC: f32 = 0.45;
+pub const POLAR_CHARGE_EMC: f32 = 0.20;
+pub const POLAR_CHARGE_LLZO: f32 = 0.05;
+pub const POLAR_CHARGE_LLZT: f32 = 0.06;
+pub const POLAR_CHARGE_S40B: f32 = 0.04;
 pub const POLAR_CHARGE_DEFAULT: f32 = 1.0;
 
 use crate::body::Species;
@@ -35,6 +41,12 @@ pub fn electron_spring_k(species: Species) -> f32 {
 }
 pub const ELECTRON_DRIFT_RADIUS_FACTOR_EC: f32 = 1.0; // Max electron speed as a factor of body radius per
 pub const ELECTRON_DRIFT_RADIUS_FACTOR_DMC: f32 = 0.73; // DMC-specific drift radius factor
+pub const ELECTRON_DRIFT_RADIUS_FACTOR_VC: f32 = 0.95; // VC-specific drift radius factor
+pub const ELECTRON_DRIFT_RADIUS_FACTOR_FEC: f32 = 0.90; // FEC-specific drift radius factor
+pub const ELECTRON_DRIFT_RADIUS_FACTOR_EMC: f32 = 0.80; // EMC-specific drift radius factor
+pub const ELECTRON_DRIFT_RADIUS_FACTOR_LLZO: f32 = 0.20; // LLZO-specific drift radius factor
+pub const ELECTRON_DRIFT_RADIUS_FACTOR_LLZT: f32 = 0.20; // LLZT-specific drift radius factor
+pub const ELECTRON_DRIFT_RADIUS_FACTOR_S40B: f32 = 0.22; // S40B solid electrolyte drift radius
 pub const ELECTRON_DRIFT_RADIUS_FACTOR_METAL: f32 = 1.0; // Metal-specific drift radius factor
 pub const ELECTRON_MAX_SPEED_FACTOR: f32 = 10.2; // Max electron speed as a factor of body radius per dt
 pub const HOP_RADIUS_FACTOR: f32 = 2.1; // Hopping radius as a factor of body radius
@@ -99,6 +111,12 @@ pub const LITHIUM_METAL_NEUTRAL_ELECTRONS: usize = 1;
 pub const ELECTROLYTE_ANION_NEUTRAL_ELECTRONS: usize = 0;
 pub const EC_NEUTRAL_ELECTRONS: usize = 1;
 pub const DMC_NEUTRAL_ELECTRONS: usize = 1;
+pub const VC_NEUTRAL_ELECTRONS: usize = 1;
+pub const FEC_NEUTRAL_ELECTRONS: usize = 1;
+pub const EMC_NEUTRAL_ELECTRONS: usize = 1;
+pub const LLZO_NEUTRAL_ELECTRONS: usize = 0;
+pub const LLZT_NEUTRAL_ELECTRONS: usize = 0;
+pub const S40B_NEUTRAL_ELECTRONS: usize = 0;
 pub const FOIL_MAX_ELECTRONS: usize = 2; // Max electrons for foil metal
 pub const LITHIUM_METAL_MAX_ELECTRONS: usize = 3; // Max electrons for lithium metal
 /// Maximum number of nearby metallic neighbors allowed before ionization is inhibited

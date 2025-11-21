@@ -38,7 +38,7 @@ This repository is a Rust project that simulates electrochemical particle system
   - Color strength and gamma for contrast tuning
 
 ## Thermostat & Temperature Notes
-- "Liquid temperature" includes LithiumIon, ElectrolyteAnion, EC, and DMC (COM drift removed)
+- "Liquid temperature" includes LithiumIon, ElectrolyteAnion, EC, DMC, VC, FEC, and EMC (COM drift removed)
 - Maxwell–Boltzmann thermostat rescales only liquid species (metals excluded) every configured interval
 - Detailed thermostat diagnostics gated behind cargo feature `thermostat_debug`:
   - Enable via: `cargo run --features thermostat_debug --release`

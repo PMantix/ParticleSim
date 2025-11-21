@@ -136,6 +136,8 @@ impl Renderer {
             Species::ElectrolyteAnion => self.density_calc_electrolyte_anion,
             Species::EC => self.density_calc_ec,
             Species::DMC => self.density_calc_dmc,
+            Species::VC | Species::FEC | Species::EMC => self.density_calc_ec,
+            Species::LLZO | Species::LLZT | Species::S40B => self.density_calc_lithium_metal,
         }
     }
 

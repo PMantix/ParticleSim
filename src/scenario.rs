@@ -304,6 +304,54 @@ fn create_body_templates() -> BodyTemplates {
             0.0,
             Species::DMC,
         ),
+        vc_body: crate::body::Body::new(
+            Vec2::zero(),
+            Vec2::zero(),
+            Species::VC.mass(),
+            Species::VC.radius(),
+            0.0,
+            Species::VC,
+        ),
+        fec_body: crate::body::Body::new(
+            Vec2::zero(),
+            Vec2::zero(),
+            Species::FEC.mass(),
+            Species::FEC.radius(),
+            0.0,
+            Species::FEC,
+        ),
+        emc_body: crate::body::Body::new(
+            Vec2::zero(),
+            Vec2::zero(),
+            Species::EMC.mass(),
+            Species::EMC.radius(),
+            0.0,
+            Species::EMC,
+        ),
+        llzo_body: crate::body::Body::new(
+            Vec2::zero(),
+            Vec2::zero(),
+            Species::LLZO.mass(),
+            Species::LLZO.radius(),
+            0.0,
+            Species::LLZO,
+        ),
+        llzt_body: crate::body::Body::new(
+            Vec2::zero(),
+            Vec2::zero(),
+            Species::LLZT.mass(),
+            Species::LLZT.radius(),
+            0.0,
+            Species::LLZT,
+        ),
+        s40b_body: crate::body::Body::new(
+            Vec2::zero(),
+            Vec2::zero(),
+            Species::S40B.mass(),
+            Species::S40B.radius(),
+            0.0,
+            Species::S40B,
+        ),
     }
 }
 
@@ -315,6 +363,12 @@ struct BodyTemplates {
     foil_body: crate::body::Body,
     ec_body: crate::body::Body,
     dmc_body: crate::body::Body,
+    vc_body: crate::body::Body,
+    fec_body: crate::body::Body,
+    emc_body: crate::body::Body,
+    llzo_body: crate::body::Body,
+    llzt_body: crate::body::Body,
+    s40b_body: crate::body::Body,
 }
 
 /// Get the appropriate body template for a given species
@@ -326,6 +380,12 @@ fn get_body_for_species(templates: &BodyTemplates, species: Species) -> crate::b
         Species::FoilMetal => templates.foil_body.clone(),
         Species::EC => templates.ec_body.clone(),
         Species::DMC => templates.dmc_body.clone(),
+        Species::VC => templates.vc_body.clone(),
+        Species::FEC => templates.fec_body.clone(),
+        Species::EMC => templates.emc_body.clone(),
+        Species::LLZO => templates.llzo_body.clone(),
+        Species::LLZT => templates.llzt_body.clone(),
+        Species::S40B => templates.s40b_body.clone(),
     }
 }
 

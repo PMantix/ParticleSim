@@ -16,6 +16,12 @@ impl super::super::Renderer {
                         crate::renderer::DeleteOption::ElectrolyteAnion => "Anions",
                         crate::renderer::DeleteOption::EC => "EC",
                         crate::renderer::DeleteOption::DMC => "DMC",
+                        crate::renderer::DeleteOption::VC => "VC",
+                        crate::renderer::DeleteOption::FEC => "FEC",
+                        crate::renderer::DeleteOption::EMC => "EMC",
+                        crate::renderer::DeleteOption::LLZO => "LLZO",
+                        crate::renderer::DeleteOption::LLZT => "LLZT",
+                        crate::renderer::DeleteOption::S40B => "S40B",
                     })
                     .show_ui(ui, |ui| {
                         ui.selectable_value(
@@ -52,6 +58,36 @@ impl super::super::Renderer {
                             &mut self.selected_delete_option,
                             crate::renderer::DeleteOption::DMC,
                             "DMC",
+                        );
+                        ui.selectable_value(
+                            &mut self.selected_delete_option,
+                            crate::renderer::DeleteOption::VC,
+                            "VC",
+                        );
+                        ui.selectable_value(
+                            &mut self.selected_delete_option,
+                            crate::renderer::DeleteOption::FEC,
+                            "FEC",
+                        );
+                        ui.selectable_value(
+                            &mut self.selected_delete_option,
+                            crate::renderer::DeleteOption::EMC,
+                            "EMC",
+                        );
+                        ui.selectable_value(
+                            &mut self.selected_delete_option,
+                            crate::renderer::DeleteOption::LLZO,
+                            "LLZO",
+                        );
+                        ui.selectable_value(
+                            &mut self.selected_delete_option,
+                            crate::renderer::DeleteOption::LLZT,
+                            "LLZT",
+                        );
+                        ui.selectable_value(
+                            &mut self.selected_delete_option,
+                            crate::renderer::DeleteOption::S40B,
+                            "S40B",
                         );
                     });
             });
@@ -123,6 +159,66 @@ impl super::super::Renderer {
                                 .unwrap()
                                 .send(SimCommand::DeleteSpecies {
                                     species: Species::DMC,
+                                })
+                                .unwrap();
+                        }
+                        crate::renderer::DeleteOption::VC => {
+                            SIM_COMMAND_SENDER
+                                .lock()
+                                .as_ref()
+                                .unwrap()
+                                .send(SimCommand::DeleteSpecies {
+                                    species: Species::VC,
+                                })
+                                .unwrap();
+                        }
+                        crate::renderer::DeleteOption::FEC => {
+                            SIM_COMMAND_SENDER
+                                .lock()
+                                .as_ref()
+                                .unwrap()
+                                .send(SimCommand::DeleteSpecies {
+                                    species: Species::FEC,
+                                })
+                                .unwrap();
+                        }
+                        crate::renderer::DeleteOption::EMC => {
+                            SIM_COMMAND_SENDER
+                                .lock()
+                                .as_ref()
+                                .unwrap()
+                                .send(SimCommand::DeleteSpecies {
+                                    species: Species::EMC,
+                                })
+                                .unwrap();
+                        }
+                        crate::renderer::DeleteOption::LLZO => {
+                            SIM_COMMAND_SENDER
+                                .lock()
+                                .as_ref()
+                                .unwrap()
+                                .send(SimCommand::DeleteSpecies {
+                                    species: Species::LLZO,
+                                })
+                                .unwrap();
+                        }
+                        crate::renderer::DeleteOption::LLZT => {
+                            SIM_COMMAND_SENDER
+                                .lock()
+                                .as_ref()
+                                .unwrap()
+                                .send(SimCommand::DeleteSpecies {
+                                    species: Species::LLZT,
+                                })
+                                .unwrap();
+                        }
+                        crate::renderer::DeleteOption::S40B => {
+                            SIM_COMMAND_SENDER
+                                .lock()
+                                .as_ref()
+                                .unwrap()
+                                .send(SimCommand::DeleteSpecies {
+                                    species: Species::S40B,
                                 })
                                 .unwrap();
                         }
@@ -214,6 +310,12 @@ impl super::super::Renderer {
                         );
                         ui.selectable_value(&mut self.scenario_species, Species::EC, "EC");
                         ui.selectable_value(&mut self.scenario_species, Species::DMC, "DMC");
+                        ui.selectable_value(&mut self.scenario_species, Species::VC, "VC");
+                        ui.selectable_value(&mut self.scenario_species, Species::FEC, "FEC");
+                        ui.selectable_value(&mut self.scenario_species, Species::EMC, "EMC");
+                        ui.selectable_value(&mut self.scenario_species, Species::LLZO, "LLZO");
+                        ui.selectable_value(&mut self.scenario_species, Species::LLZT, "LLZT");
+                        ui.selectable_value(&mut self.scenario_species, Species::S40B, "S40B");
                     });
             });
 
@@ -738,12 +840,15 @@ pub fn make_body_with_species(pos: Vec2, vel: Vec2, species: Species) -> Body {
                 }
             }
         }
-        Species::EC | Species::DMC => {
+        Species::EC | Species::DMC | Species::VC | Species::FEC | Species::EMC => {
             // Neutral solvent molecules with a single drifting electron
             body.electrons.push(Electron {
                 rel_pos: Vec2::zero(),
                 vel: Vec2::zero(),
             });
+        }
+        Species::LLZO | Species::LLZT | Species::S40B => {
+            // Solid electrolytes treated like neutral bodies without drift electrons
         }
     }
     body.update_charge_from_electrons();
