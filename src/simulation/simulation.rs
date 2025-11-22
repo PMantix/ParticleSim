@@ -1083,6 +1083,7 @@ impl Simulation {
         }
 
         self.perform_electron_hopping_with_exclusions(&foil_current_recipients);
+        self.perform_sei_formation();
 
         // One-time forced bootstrap (before periodic): if not yet bootstrapped and we have liquid species with near-zero temp
         if !self.thermostat_bootstrapped {
@@ -2384,6 +2385,85 @@ impl Simulation {
             {
                 self.foils[add_foil_idx].accum -= 1.0;
                 self.foils[remove_foil_idx].accum += 1.0;
+            }
+        }
+    }
+
+    /// Perform SEI formation for eligible bodies in the simulation.
+    /// This is called after the main update step to allow for charge-based reactions.
+    pub fn perform_sei_formation(&mut self) {
+        if !self.config.sei_formation_enabled {
+            return;
+        }
+        profile_scope!("sei_formation");
+
+        let dt = self.dt;
+        let prob_base = self.config.sei_formation_probability;
+        let bias = self.config.sei_formation_bias;
+
+        // Collect indices of bodies to convert to SEI
+        // We use a parallel iterator to find candidates, but we need to be careful about
+        // accessing the quadtree which is read-only here.
+        // Since we need to mutate bodies later, we collect indices first.
+        
+        let conversions: Vec<usize> = self.bodies.par_iter().enumerate().filter_map(|(i, body)| {
+             match body.species {
+                Species::EC | Species::DMC | Species::VC | Species::FEC | Species::EMC => {
+                    // Check neighbors using quadtree
+                    // We use a slightly larger radius than contact to detect proximity
+                    let search_radius = body.radius * 2.5; 
+                    let neighbors = self.quadtree.find_neighbors_within(&self.bodies, i, search_radius);
+                    
+                    for &neighbor_idx in &neighbors {
+                        if neighbor_idx == i { continue; }
+                        // Safety check for index bounds (though quadtree should be consistent)
+                        if neighbor_idx >= self.bodies.len() { continue; }
+                        
+                        let neighbor = &self.bodies[neighbor_idx];
+                        
+                        if matches!(neighbor.species, Species::LithiumMetal | Species::FoilMetal) {
+                            // Found a metal surface neighbor
+                            
+                            // Probability logic:
+                            // "rate of change... related to the charge"
+                            // If the metal is negatively charged (excess electrons), it promotes reduction.
+                            // We use the magnitude of negative charge.
+                            
+                            let charge_factor = if neighbor.charge < -0.1 {
+                                neighbor.charge.abs() * bias
+                            } else {
+                                0.0
+                            };
+                            
+                            // Base probability scaled by charge factor and timestep
+                            // If charge_factor is 0, prob is 0.
+                            let prob = prob_base * charge_factor * dt;
+                            
+                            if prob > 0.0 && rand::random::<f32>() < prob {
+                                return Some(i);
+                            }
+                        }
+                    }
+                    None
+                },
+                _ => None,
+            }
+        }).collect();
+
+        // Apply conversions
+        for idx in conversions {
+            if idx < self.bodies.len() {
+                let body = &mut self.bodies[idx];
+                // Double check species hasn't changed (though unlikely in single threaded apply)
+                if matches!(body.species, Species::EC | Species::DMC | Species::VC | Species::FEC | Species::EMC) {
+                    body.species = Species::SEI;
+                    body.update_species(); // Update properties (mass, radius, etc.)
+                    
+                    // Ensure SEI is neutral and has no electrons
+                    body.charge = 0.0;
+                    body.electrons.clear();
+                    body.vel *= 0.1; // Slow down significantly upon formation (solidification)
+                }
             }
         }
     }

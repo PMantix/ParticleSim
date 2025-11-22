@@ -338,6 +338,7 @@ fn get_body_template_for_species(species: Species) -> Body {
         Species::LLZO => Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::LLZO),
         Species::LLZT => Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::LLZT),
         Species::S40B => Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::S40B),
+        Species::SEI => Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::SEI),
     }
 }
 

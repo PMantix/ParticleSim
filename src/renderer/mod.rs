@@ -75,6 +75,7 @@ pub enum DeleteOption {
     LLZO,
     LLZT,
     S40B,
+    SEI,
 }
 
 #[derive(Clone, Debug)]

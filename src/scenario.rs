@@ -386,6 +386,7 @@ fn get_body_for_species(templates: &BodyTemplates, species: Species) -> crate::b
         Species::LLZO => templates.llzo_body.clone(),
         Species::LLZT => templates.llzt_body.clone(),
         Species::S40B => templates.s40b_body.clone(),
+        Species::SEI => templates.ec_body.clone(), // Fallback to EC body for SEI template for now
     }
 }
 

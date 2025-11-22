@@ -75,6 +75,26 @@ impl super::super::Renderer {
 
         ui.separator();
 
+        // SEI Formation Controls
+        ui.group(|ui| {
+            ui.label("🛡️ SEI Formation");
+            ui.checkbox(&mut self.sim_config.sei_formation_enabled, "Enable SEI Formation");
+            ui.add(
+                egui::Slider::new(&mut self.sim_config.sei_formation_probability, 0.0..=1.0)
+                    .text("Formation Probability")
+                    .step_by(0.001)
+                    .logarithmic(true),
+            );
+            ui.add(
+                egui::Slider::new(&mut self.sim_config.sei_formation_bias, 0.0..=100.0)
+                    .text("Charge Bias")
+                    .step_by(0.1),
+            );
+            ui.small("Probability scales with negative charge magnitude on metal surface.");
+        });
+
+        ui.separator();
+
         // External Electric Field Controls
         ui.group(|ui| {
             ui.label("⚡ External Electric Field");

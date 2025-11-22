@@ -138,6 +138,7 @@ impl Renderer {
             Species::DMC => self.density_calc_dmc,
             Species::VC | Species::FEC | Species::EMC => self.density_calc_ec,
             Species::LLZO | Species::LLZT | Species::S40B => self.density_calc_lithium_metal,
+            Species::SEI => self.density_calc_lithium_metal, // Treat SEI like metal for density viz
         }
     }
 

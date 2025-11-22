@@ -24,6 +24,7 @@ impl super::super::Renderer {
                         crate::renderer::DeleteOption::LLZO => "LLZO",
                         crate::renderer::DeleteOption::LLZT => "LLZT",
                         crate::renderer::DeleteOption::S40B => "S40B",
+                        crate::renderer::DeleteOption::SEI => "SEI",
                     })
                     .show_ui(ui, |ui| {
                         ui.selectable_value(
@@ -90,6 +91,11 @@ impl super::super::Renderer {
                             &mut self.selected_delete_option,
                             crate::renderer::DeleteOption::S40B,
                             "S40B",
+                        );
+                        ui.selectable_value(
+                            &mut self.selected_delete_option,
+                            crate::renderer::DeleteOption::SEI,
+                            "SEI",
                         );
                     });
             });
@@ -221,6 +227,16 @@ impl super::super::Renderer {
                                 .unwrap()
                                 .send(SimCommand::DeleteSpecies {
                                     species: Species::S40B,
+                                })
+                                .unwrap();
+                        }
+                        crate::renderer::DeleteOption::SEI => {
+                            SIM_COMMAND_SENDER
+                                .lock()
+                                .as_ref()
+                                .unwrap()
+                                .send(SimCommand::DeleteSpecies {
+                                    species: Species::SEI,
                                 })
                                 .unwrap();
                         }
@@ -951,6 +967,7 @@ fn species_display_name(species: Species) -> &'static str {
         Species::LLZO => "LLZO",
         Species::LLZT => "LLZT",
         Species::S40B => "S40B",
+        Species::SEI => "SEI",
     }
 }
 
@@ -1008,6 +1025,9 @@ pub fn make_body_with_species(pos: Vec2, vel: Vec2, species: Species) -> Body {
         }
         Species::LLZO | Species::LLZT | Species::S40B => {
             // Solid electrolytes treated like neutral bodies without drift electrons
+        }
+        Species::SEI => {
+            // SEI is neutral and has no electrons
         }
     }
     body.update_charge_from_electrons();

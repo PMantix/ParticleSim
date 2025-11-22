@@ -333,6 +333,11 @@ pub struct SimConfig {
     #[serde(default)]
     pub dipole_model: DipoleModel,
 
+    // SEI Formation Parameters
+    pub sei_formation_enabled: bool,
+    pub sei_formation_probability: f32,
+    pub sei_formation_bias: f32,
+
     /// Version number incremented whenever config changes (for clone detection)
     #[serde(skip)]
     pub config_version: u64,
@@ -400,6 +405,11 @@ impl Default for SimConfig {
 
             // Dipole model default: original SingleOffset
             dipole_model: DipoleModel::SingleOffset,
+
+            // SEI Formation defaults
+            sei_formation_enabled: true,
+            sei_formation_probability: 0.01,
+            sei_formation_bias: 1.0,
         }
     }
 }

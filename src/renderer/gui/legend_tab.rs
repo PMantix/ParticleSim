@@ -135,6 +135,10 @@ impl super::super::Renderer {
             // 12. Abstract foil metal
             let props = crate::species::get_species_props(Species::FoilMetal);
             draw_row(ui, Some(Species::FoilMetal), "Foil Metal", "Current Collector / Electrode", props.color, props.radius * 4.0, Some("Stationary metal structure"));
+
+            // 13. SEI
+            let props = crate::species::get_species_props(Species::SEI);
+            draw_row(ui, Some(Species::SEI), "SEI", "Solid Electrolyte Interphase", props.color, props.radius * 3.0, Some("Passivating layer"));
         });
 
         // Draw floating tooltip if hovering a species in the simulation view
@@ -172,6 +176,7 @@ impl super::super::Renderer {
                                 Species::LLZT => "LLZT",
                                 Species::S40B => "S40B",
                                 Species::FoilMetal => "Foil Metal",
+                                Species::SEI => "SEI",
                             };
                             ui.label(name);
                         });

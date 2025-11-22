@@ -30,6 +30,9 @@ impl Body {
             Species::LLZO | Species::LLZT | Species::S40B => {
                 self.charge = -(self.electrons.len() as f32 - self.neutral_electron_count() as f32);
             }
+            Species::SEI => {
+                self.charge = 0.0; // SEI is always neutral
+            }
         }
     }
     pub fn apply_redox(&mut self) {
@@ -71,6 +74,9 @@ impl Body {
             }
             Species::LLZO | Species::LLZT | Species::S40B => {
                 // Solid electrolyte grains never change species
+            }
+            Species::SEI => {
+                // SEI never changes species (irreversible formation)
             }
         }
 

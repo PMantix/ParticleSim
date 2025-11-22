@@ -228,7 +228,8 @@ impl SolvationDiagnostic {
                 | Species::EMC
                 | Species::LLZO
                 | Species::LLZT
-                | Species::S40B => {}
+                | Species::S40B
+                | Species::SEI => {}
             }
         }
 

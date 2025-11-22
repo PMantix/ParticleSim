@@ -23,6 +23,7 @@ pub enum Species {
     LLZO,
     LLZT,
     S40B,
+    SEI, // Solid Electrolyte Interphase
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -116,8 +117,9 @@ impl Body {
                 | Species::LLZO
                 | Species::LLZT
                 | Species::S40B
+                | Species::SEI
         ) {
-            // Don't auto-convert FoilMetal, Anions, or solvent molecules
+            // Don't auto-convert FoilMetal, Anions, solvent molecules, or SEI
             return;
         }
 
@@ -150,6 +152,7 @@ impl Body {
             Species::LLZO => crate::config::LLZO_NEUTRAL_ELECTRONS,
             Species::LLZT => crate::config::LLZT_NEUTRAL_ELECTRONS,
             Species::S40B => crate::config::S40B_NEUTRAL_ELECTRONS,
+            Species::SEI => 0, // SEI is insulating/neutral
         }
     }
 
@@ -318,7 +321,7 @@ impl Species {
             ElectrolyteAnion => 1.5, // Moderate attraction to anode
             EC | DMC | VC | FEC | EMC => 0.5, // Weak surface interaction (neutral solvents)
             LithiumMetal => 0.0,     // Already on surface
-            FoilMetal | LLZO | LLZT | S40B => 0.0, // Already on or part of surface
+            FoilMetal | LLZO | LLZT | S40B | SEI => 0.0, // Already on or part of surface
         }
     }
 
@@ -353,6 +356,7 @@ impl Species {
             (_, LLZO) | (LLZO, _) => 0.0,
             (_, LLZT) | (LLZT, _) => 0.0,
             (_, S40B) | (S40B, _) => 0.0,
+            (_, SEI) | (SEI, _) => 0.0,
 
             // Default for other combinations
             _ => 0.4,
@@ -403,6 +407,7 @@ impl Species {
             (_, LLZO) | (LLZO, _) => 0.0,
             (_, LLZT) | (LLZT, _) => 0.0,
             (_, S40B) | (S40B, _) => 0.0,
+            (_, SEI) | (SEI, _) => 0.0,
         }
     }
 }
