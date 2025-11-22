@@ -117,6 +117,7 @@ pub enum GuiTab {
     Debug,
     Diagnostics,
     SoftDynamics,
+    Legend,
 }
 
 impl Default for GuiTab {

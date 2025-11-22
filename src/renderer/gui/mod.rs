@@ -20,6 +20,7 @@ pub mod simulation_tab;
 pub mod soft_dynamics_tab;
 pub mod species_tab;
 pub mod visualization_tab;
+pub mod legend_tab;
 
 pub use scenario_tab::make_body_with_species;
 
@@ -118,6 +119,11 @@ impl super::Renderer {
                             super::GuiTab::SoftDynamics,
                             "🔧 Soft Dynamics",
                         );
+                        ui.selectable_value(
+                            &mut self.current_tab,
+                            super::GuiTab::Legend,
+                            "📖 Legend",
+                        );
                     });
                 });
 
@@ -150,6 +156,7 @@ impl super::Renderer {
                         super::GuiTab::Debug => self.show_debug_tab(ui),
                         super::GuiTab::Diagnostics => self.show_diagnostics_tab(ui),
                         super::GuiTab::SoftDynamics => self.show_soft_dynamics_tab(ui),
+                        super::GuiTab::Legend => self.show_legend_tab(ui),
                     });
             });
 
