@@ -1458,7 +1458,7 @@ impl From<&Simulation> for LightSnapshot {
     fn from(sim: &Simulation) -> Self {
         Self {
             frame: sim.frame,
-            sim_time: sim.frame as f32 * sim.dt,
+            sim_time: sim.time,
             dt: sim.dt,
             last_thermostat_time: sim.last_thermostat_time,
 

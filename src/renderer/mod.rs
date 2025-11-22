@@ -298,6 +298,9 @@ pub struct Renderer {
     pub measurement_charge_type_input: String,
     pub measurement_charge_amount_input: String,
     pub measurement_steps_input: String,
+
+    // Hovered species for Legend tab interaction
+    pub hovered_species: Option<Species>,
 }
 
 impl quarkstrom::Renderer for Renderer {
@@ -560,6 +563,7 @@ impl quarkstrom::Renderer for Renderer {
             measurement_charge_type_input,
             measurement_charge_amount_input,
             measurement_steps_input,
+            hovered_species: None,
         }
     }
 

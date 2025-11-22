@@ -122,6 +122,28 @@ impl super::Renderer {
             mouse * self.scale + self.pos
         };
 
+        // Update hovered species if in Legend tab
+        if self.current_tab == GuiTab::Legend {
+            let mouse_pos = world_mouse();
+            let mut closest_species = None;
+            let mut min_dist = f32::MAX;
+            
+            // Check bodies for hover
+            // Optimization: Use quadtree if available, but simple iteration is fine for now
+            // since we only do this when Legend tab is open
+            for body in &self.bodies {
+                let display_pos = self.get_display_position(body);
+                let dist = (display_pos - mouse_pos).mag();
+                if dist < min_dist && dist < body.radius * 1.5 { // Slightly larger hit area
+                    min_dist = dist;
+                    closest_species = Some(body.species);
+                }
+            }
+            self.hovered_species = closest_species;
+        } else {
+            self.hovered_species = None;
+        }
+
         if self.current_tab == GuiTab::Measurement {
             self.measurement_cursor = input.mouse().map(|_| world_mouse());
 

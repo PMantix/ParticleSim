@@ -137,7 +137,7 @@ impl SimulationState {
             domain_height: sim.domain_height,
             domain_depth: sim.domain_depth,
             frame: sim.frame,
-            sim_time: sim.frame as f32 * sim.dt,
+            sim_time: sim.time,
             dt: sim.dt,
             last_thermostat_time: sim.last_thermostat_time,
             switch_step: Some(sim.switch_scheduler.current_step()),
@@ -164,6 +164,7 @@ impl SimulationState {
         sim.domain_height = self.domain_height;
         sim.domain_depth = self.domain_depth;
         sim.frame = self.frame;
+        sim.time = self.sim_time;
         sim.dt = self.dt;
         sim.last_thermostat_time = self.last_thermostat_time;
         // Update current switching step for playback visualization

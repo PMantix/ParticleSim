@@ -32,6 +32,7 @@ use ultraviolet::Vec2; // for writeln! and flush on File
 pub struct Simulation {
     pub dt: f32,
     pub frame: usize,
+    pub time: f32,
     pub bodies: Vec<Body>,
     pub quadtree: Quadtree,
     pub cell_list: CellList,
@@ -91,6 +92,7 @@ impl Simulation {
         let mut sim = Self {
             dt,
             frame: 0,
+            time: 0.0,
             bodies,
             quadtree,
             cell_list,
@@ -230,7 +232,7 @@ impl Simulation {
     // Manual measurement control methods
     pub fn start_manual_measurement(&mut self, config: ManualMeasurementConfig) {
         let mut recorder = ManualMeasurementRecorder::new(config);
-        let simulation_time_fs = self.frame as f32 * self.dt;
+        let simulation_time_fs = self.time;
         match recorder.start_recording(simulation_time_fs) {
             Ok(_) => {
                 println!("✓ Started manual measurement recording");
@@ -719,7 +721,8 @@ impl Simulation {
             .for_each(|flag| *flag = false);
         self.dt = *TIMESTEP.lock();
         self.tick_switch_charging();
-        let time = self.frame as f32 * self.dt;
+        self.time += self.dt;
+        let time = self.time;
 
         // Update global simulation time for GUI access
         *SIM_TIME.lock() = time;
@@ -1146,7 +1149,7 @@ impl Simulation {
 
         // Update manual measurement recorder
         let mut wrote_measurements = false;
-        let simulation_time_fs = self.frame as f32 * self.dt;
+        let simulation_time_fs = self.time;
         if let Some(recorder) = &mut self.manual_measurement_recorder {
             let results = recorder.update(
                 &self.bodies,
@@ -1201,7 +1204,7 @@ impl Simulation {
         // Create lightweight state snapshot
         let state = crate::io::SimulationState {
             frame: self.frame,
-            sim_time: self.frame as f32 * self.dt,
+            sim_time: self.time,
             dt: self.dt,
             bodies: self.bodies.clone(),
             foils: self.foils.clone(),

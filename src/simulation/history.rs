@@ -30,6 +30,7 @@ impl SimulationSnapshot {
     pub fn apply(&self, simulation: &mut Simulation) {
         self.state.clone().apply_to(simulation);
         simulation.frame = self.frame;
+        simulation.time = self.sim_time;
         simulation.dt = self.dt;
         simulation.last_thermostat_time = self.last_thermostat_time;
         *SIM_TIME.lock() = self.sim_time;
@@ -352,13 +353,13 @@ impl Simulation {
                         history_len,
                         latest_index,
                         cursor_clamped,
-                        self.frame as f32 * self.dt,
+                        self.time,
                         self.frame,
                         self.dt,
                     )
                 }
             } else {
-                (0, 0, 0, self.frame as f32 * self.dt, self.frame, self.dt)
+                (0, 0, 0, self.time, self.frame, self.dt)
             };
 
         let mode = if cursor >= latest_index {

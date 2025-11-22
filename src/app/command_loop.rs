@@ -546,6 +546,7 @@ pub fn handle_command(cmd: SimCommand, simulation: &mut Simulation) {
         }
         SimCommand::ResetTime => {
             simulation.frame = 0;
+            simulation.time = 0.0;
             simulation.last_thermostat_time = 0.0; // Fix: Reset thermostat timer too
                                                    // Update global simulation time
             *crate::renderer::state::SIM_TIME.lock() = 0.0;
