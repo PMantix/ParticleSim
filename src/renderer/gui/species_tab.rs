@@ -38,6 +38,7 @@ impl super::super::Renderer {
                 ui.selectable_value(&mut self.selected_lj_species, Species::LLZO, "LLZO");
                 ui.selectable_value(&mut self.selected_lj_species, Species::LLZT, "LLZT");
                 ui.selectable_value(&mut self.selected_lj_species, Species::S40B, "S40B");
+                ui.selectable_value(&mut self.selected_lj_species, Species::SEI, "SEI");
             });
 
         // Get current properties for selected species

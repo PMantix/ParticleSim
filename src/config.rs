@@ -61,6 +61,36 @@ pub fn default_hop_alignment_bias() -> f32 {
     0.01
 }
 
+fn default_sei_electrons_per_event() -> u32 {
+    1
+}
+
+fn default_sei_radius_scale() -> f32 {
+    1.1
+}
+
+// Kinetic charge thresholds (in |e| units) for each solvent. Lower values
+// mean the molecule can nucleate SEI with only a small local overpotential.
+fn default_sei_charge_threshold_vc() -> f32 {
+    0.6
+}
+
+fn default_sei_charge_threshold_fec() -> f32 {
+    0.8
+}
+
+fn default_sei_charge_threshold_ec() -> f32 {
+    1.0
+}
+
+fn default_sei_charge_threshold_emc() -> f32 {
+    1.2
+}
+
+fn default_sei_charge_threshold_dmc() -> f32 {
+    1.5
+}
+
 
 /// Get the effective polarization charge for a given species
 /*
@@ -337,6 +367,27 @@ pub struct SimConfig {
     pub sei_formation_enabled: bool,
     pub sei_formation_probability: f32,
     pub sei_formation_bias: f32,
+    /// Number of excess electrons consumed per SEI event
+    #[serde(default = "default_sei_electrons_per_event")]
+    pub sei_electrons_per_event: u32,
+    /// Scale factor applied to the parent solvent radius when it becomes SEI
+    #[serde(default = "default_sei_radius_scale")]
+    pub sei_radius_scale: f32,
+    /// Minimum local negative charge (|e| units) required for VC reduction
+    #[serde(default = "default_sei_charge_threshold_vc")]
+    pub sei_charge_threshold_vc: f32,
+    /// Minimum local negative charge (|e| units) required for FEC reduction
+    #[serde(default = "default_sei_charge_threshold_fec")]
+    pub sei_charge_threshold_fec: f32,
+    /// Minimum local negative charge (|e| units) required for EC reduction
+    #[serde(default = "default_sei_charge_threshold_ec")]
+    pub sei_charge_threshold_ec: f32,
+    /// Minimum local negative charge (|e| units) required for EMC reduction
+    #[serde(default = "default_sei_charge_threshold_emc")]
+    pub sei_charge_threshold_emc: f32,
+    /// Minimum local negative charge (|e| units) required for DMC reduction
+    #[serde(default = "default_sei_charge_threshold_dmc")]
+    pub sei_charge_threshold_dmc: f32,
 
     /// Version number incremented whenever config changes (for clone detection)
     #[serde(skip)]
@@ -410,6 +461,13 @@ impl Default for SimConfig {
             sei_formation_enabled: true,
             sei_formation_probability: 0.01,
             sei_formation_bias: 1.0,
+            sei_electrons_per_event: default_sei_electrons_per_event(),
+            sei_radius_scale: default_sei_radius_scale(),
+            sei_charge_threshold_vc: default_sei_charge_threshold_vc(),
+            sei_charge_threshold_fec: default_sei_charge_threshold_fec(),
+            sei_charge_threshold_ec: default_sei_charge_threshold_ec(),
+            sei_charge_threshold_emc: default_sei_charge_threshold_emc(),
+            sei_charge_threshold_dmc: default_sei_charge_threshold_dmc(),
         }
     }
 }
