@@ -181,7 +181,7 @@ pub const PLAYBACK_HISTORY_FRAMES: usize = 10000;
 // ====================
 /// Default timestep in femtoseconds.
 /// Typical MD timesteps: 0.5-2.0 fs. Old value was 0.015 fs (too small).
-pub const DEFAULT_DT_FS: f32 = 3.0;
+pub const DEFAULT_DT_FS: f32 = 5.0;
 pub const COLLISION_PASSES: usize =2; // Number of collision resolution passes
 /// Number of frames of history preserved for playback controls
 /// Memory usage: ~115KB per 1000 particles per frame
@@ -446,7 +446,7 @@ impl Default for SimConfig {
             li_collision_softness: LI_COLLISION_SOFTNESS,
             soft_collision_lithium_ion: true,
             soft_collision_anion: false,
-            metal_collision_stiffness: 0.9,
+            metal_collision_stiffness: 0.2,
 
             // Induced external field defaults (disabled by default via zero gain)
             induced_field_gain: 0.0,

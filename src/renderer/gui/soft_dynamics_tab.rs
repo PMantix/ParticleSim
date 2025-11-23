@@ -70,12 +70,57 @@ impl super::super::Renderer {
 
         ui.separator();
 
+        // Metal collision stiffness controls
+        ui.heading(" Metal Collision Stiffness");
+        ui.separator();
+
+        ui.group(|ui| {
+            ui.label(RichText::new(" Controls").strong());
+            ui.separator();
+
+            ui.label("Makes metal particles more structural in collisions.");
+            ui.label("Higher values = electrolyte absorbs more collision correction.");
+            ui.add_space(6.0);
+
+            if ui
+                .add(
+                    egui::Slider::new(&mut self.sim_config.metal_collision_stiffness, 0.0..=1.0)
+                        .text("Metal Stiffness Factor")
+                        .step_by(0.05),
+                )
+                .changed()
+            {
+                let mut global_config = crate::config::LJ_CONFIG.lock();
+                global_config.metal_collision_stiffness = self.sim_config.metal_collision_stiffness;
+            }
+
+            ui.horizontal(|ui| {
+                ui.label("Current:");
+                let s = self.sim_config.metal_collision_stiffness.clamp(0.0, 1.0);
+                let color = if s < 0.5 {
+                    Color32::LIGHT_GRAY
+                } else {
+                    Color32::GREEN
+                };
+                ui.colored_label(color, format!("{:.2}", s));
+            });
+
+            ui.add_space(4.0);
+            ui.label("• 0.0 = normal 50/50 split based on mass");
+            ui.label("• 0.9 = metal takes 10%, electrolyte takes 90%");
+            ui.label("• 1.0 = metal immobile (not recommended)");
+        });
+
+        ui.separator();
+
         // Description/help
         ui.group(|ui| {
             ui.label(RichText::new(" ℹ How it Works").strong());
             ui.separator();
 
-            ui.label("Applies a simple multiplicative reduction to collision corrections for selected species pairs (currently Li+ and Anions). No dependence on electric force magnitude.");
+            ui.label("Li+ Soft Collisions: Applies a simple multiplicative reduction to collision corrections for selected species pairs (currently Li+ and Anions). No dependence on electric force magnitude.");
+            ui.add_space(4.0);
+            ui.label("Metal Stiffness: Asymmetrically redistributes collision corrections when metal particles collide with electrolyte, making metals more structural and stable.");
         });
     }
 }
