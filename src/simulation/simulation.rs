@@ -2388,6 +2388,7 @@ impl Simulation {
             }
         }
     }
+}
 
 #[cfg(test)]
 mod charge_conservation_tests {

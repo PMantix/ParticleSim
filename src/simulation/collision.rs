@@ -10,29 +10,53 @@ use broccoli_rayon::{build::RayonBuildPar, prelude::RayonQueryPar};
 use std::f32::consts::TAU;
 use ultraviolet::Vec2;
 
-/// Apply Li+ collision softness (simple multiplicative scaling).
-/// Returns the adjusted 2D component of a correction/impulse vector.
-fn apply_li_collision_softness(
+/// Apply collision response modifiers based on species types.
+/// Returns adjusted weights (weight_i, weight_j) for the collision correction.
+/// Handles both Li+/anion soft collisions and metal structural stiffness.
+fn apply_collision_modifiers(
     sim: &Simulation,
     body_i_idx: usize,
     body_j_idx: usize,
-    vec_xy: Vec2,
-) -> Vec2 {
+    base_weight_i: f32,
+    base_weight_j: f32,
+) -> (f32, f32) {
     let body_i = &sim.bodies[body_i_idx];
     let body_j = &sim.bodies[body_j_idx];
-    // Determine which species are enabled for soft collisions
+    
+    // Check for metal-electrolyte collision (structural stiffness)
+    let i_is_metal = matches!(body_i.species, Species::LithiumMetal | Species::FoilMetal);
+    let j_is_metal = matches!(body_j.species, Species::LithiumMetal | Species::FoilMetal);
+    
+    if i_is_metal && !j_is_metal {
+        // i is metal, j is electrolyte - shift weight toward j
+        let stiffness = sim.config.metal_collision_stiffness.clamp(0.0, 1.0);
+        let new_weight_j = base_weight_j + (base_weight_i * stiffness);
+        let new_weight_i = base_weight_i * (1.0 - stiffness);
+        return (new_weight_i, new_weight_j);
+    } else if j_is_metal && !i_is_metal {
+        // j is metal, i is electrolyte - shift weight toward i
+        let stiffness = sim.config.metal_collision_stiffness.clamp(0.0, 1.0);
+        let new_weight_i = base_weight_i + (base_weight_j * stiffness);
+        let new_weight_j = base_weight_j * (1.0 - stiffness);
+        return (new_weight_i, new_weight_j);
+    }
+    
+    // No metal involved - check for Li+/anion soft collision
     let allow_li = sim.config.soft_collision_lithium_ion;
     let allow_an = sim.config.soft_collision_anion;
     let i_is_li = allow_li && matches!(body_i.species, Species::LithiumIon);
     let j_is_li = allow_li && matches!(body_j.species, Species::LithiumIon);
     let i_is_an = allow_an && matches!(body_i.species, Species::ElectrolyteAnion);
     let j_is_an = allow_an && matches!(body_j.species, Species::ElectrolyteAnion);
-    if !(i_is_li || j_is_li || i_is_an || j_is_an) {
-        return vec_xy; // Neither body is a softened species
+    
+    if i_is_li || j_is_li || i_is_an || j_is_an {
+        let s = sim.config.li_collision_softness.clamp(0.0, 1.0);
+        let scale = 1.0 - s;
+        return (base_weight_i * scale, base_weight_j * scale);
     }
-    let s = sim.config.li_collision_softness.clamp(0.0, 1.0);
-    // Scale down correction: 0 => unchanged; 1 => fully suppressed (not recommended)
-    vec_xy * (1.0 - s)
+    
+    // No modifiers apply
+    (base_weight_i, base_weight_j)
 }
 
 pub fn collide(sim: &mut Simulation) {
@@ -226,16 +250,15 @@ fn resolve(sim: &mut Simulation, i: usize, j: usize, num_passes: usize) {
         let tmpy = d_xy.y * corr;
         let tmpz = dz * corr;
 
-        // Apply Li+ collision softness (2D components only)
-        let sep_xy = Vec2::new(tmpx, tmpy);
-        let softened_xy = apply_li_collision_softness(sim, i, j, sep_xy);
+        // Apply collision modifiers (metal stiffness + soft collisions)
+        let (mod_weight1, mod_weight2) = apply_collision_modifiers(sim, i, j, weight1, weight2);
 
-        sim.bodies[i].pos.x -= weight1 * softened_xy.x;
-        sim.bodies[i].pos.y -= weight1 * softened_xy.y;
-        sim.bodies[i].z -= weight1 * tmpz; // Z-direction not affected by frustration (2D problem)
-        sim.bodies[j].pos.x += weight2 * softened_xy.x;
-        sim.bodies[j].pos.y += weight2 * softened_xy.y;
-        sim.bodies[j].z += weight2 * tmpz;
+        sim.bodies[i].pos.x -= mod_weight1 * tmpx;
+        sim.bodies[i].pos.y -= mod_weight1 * tmpy;
+        sim.bodies[i].z -= mod_weight1 * tmpz;
+        sim.bodies[j].pos.x += mod_weight2 * tmpx;
+        sim.bodies[j].pos.y += mod_weight2 * tmpy;
+        sim.bodies[j].z += mod_weight2 * tmpz;
         return;
     }
     let v_sq = v_xy.mag_sq() + vz * vz;
@@ -332,16 +355,15 @@ fn resolve(sim: &mut Simulation, i: usize, j: usize, num_passes: usize) {
     let tmpy = d_xy.y * scale;
     let tmpz = dz * scale;
 
-    // Apply Li+ collision softness to velocity corrections (2D only)
-    let vel_corr_xy = Vec2::new(tmpx, tmpy);
-    let softened_xy = apply_li_collision_softness(sim, i, j, vel_corr_xy);
+    // Apply collision modifiers (metal stiffness + soft collisions)
+    let (mod_weight1, mod_weight2) = apply_collision_modifiers(sim, i, j, weight1, weight2);
 
-    let v1x = v1.x + softened_xy.x * weight1;
-    let v1y = v1.y + softened_xy.y * weight1;
-    let v1z_new = v1z + tmpz * weight1;
-    let v2x = v2.x - softened_xy.x * weight2;
-    let v2y = v2.y - softened_xy.y * weight2;
-    let v2z_new = v2z - tmpz * weight2;
+    let v1x = v1.x + tmpx * mod_weight1;
+    let v1y = v1.y + tmpy * mod_weight1;
+    let v1z_new = v1z + tmpz * mod_weight1;
+    let v2x = v2.x - tmpx * mod_weight2;
+    let v2y = v2.y - tmpy * mod_weight2;
+    let v2z_new = v2z - tmpz * mod_weight2;
     sim.bodies[i].vel = Vec2::new(v1x, v1y);
     sim.bodies[i].vz = v1z_new;
     sim.bodies[j].vel = Vec2::new(v2x, v2y);

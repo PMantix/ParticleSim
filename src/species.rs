@@ -248,7 +248,7 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
             mass: 100.0,
             radius: 2.0,
             damping: 0.01, // Stationary
-            color: [100, 100, 100, 255],
+            color: [60, 60, 60, 255],
             lj_enabled: true,
             lj_epsilon: crate::config::LJ_FORCE_EPSILON,
             lj_sigma: crate::config::LJ_FORCE_SIGMA,

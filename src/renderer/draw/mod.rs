@@ -548,7 +548,8 @@ impl super::Renderer {
                             | Species::EMC
                             | Species::LLZO
                             | Species::LLZT
-                            | Species::S40B => {
+                            | Species::S40B
+                            | Species::SEI => {
                                 let darkness_factor = 1.0 - self.species_dark_mode_strength;
                                 color[0] = (color[0] as f32 * darkness_factor) as u8;
                                 color[1] = (color[1] as f32 * darkness_factor) as u8;
