@@ -20,7 +20,7 @@ This repository is a Rust project that simulates electrochemical particle system
 - **Softness Factor**: 0.0 = hard collisions (unchanged), 1.0 = fully suppressed (not recommended)
 
 ### SEI Formation Controls
-- **Location**: `src/simulation/simulation.rs::perform_sei_formation`, config in `src/config.rs`
+- **Location**: `src/simulation/sei.rs::perform_sei_formation`, config in `src/config.rs`
 - **Electron Bookkeeping**: `sei_electrons_per_event` decrements the supplying metal’s excess electrons for every solvent that reduces to SEI.
 - **Kinetic Thresholds**: `sei_charge_threshold_{vc,fec,ec,emc,dmc}` express the |e| charge required on a local metal patch before that solvent is eligible (VC < FEC < EC < EMC < DMC).
 - **Growth Geometry**: `sei_radius_scale` inflates the resulting SEI radius relative to the parent solvent (minimum clamp at the SEI species radius) to mimic polymeric buildup.

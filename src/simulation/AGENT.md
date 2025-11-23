@@ -16,6 +16,7 @@ Files:
 - `forces.rs` – force calculations (electrostatics, etc.).
 - `collision.rs` – particle collision resolution.
 - `simulation.rs` – main `Simulation` struct and step function.
+- `sei.rs` – SEI formation logic and tests.
 - `utils.rs` – small helpers for integrators or statistics.
 - `tests.rs` – unit tests (may not run under Codex).
 - `mod.rs` – re-exports module contents.

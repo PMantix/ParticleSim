@@ -5,6 +5,7 @@
 pub mod collision;
 mod electron_hopping;
 pub mod forces;
+pub mod sei;
 pub mod simulation;
 pub mod thermal;
 pub use simulation::*;
