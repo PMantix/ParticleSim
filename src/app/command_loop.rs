@@ -96,6 +96,10 @@ pub fn handle_command(cmd: SimCommand, simulation: &mut Simulation) {
             simulation.body_to_foil.clear();
             mark_dirty(simulation);
         }
+        SimCommand::ResetFoilIds => {
+            crate::body::foil::Foil::reset_id_counter();
+            eprintln!("[foil-debug] Foil ID counter reset to 1");
+        }
         SimCommand::DeleteSpecies { species } => {
             simulation.bodies.retain(|body| body.species != species);
             if species == crate::body::Species::FoilMetal {

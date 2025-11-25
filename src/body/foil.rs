@@ -23,7 +23,7 @@ pub struct PidHistoryPoint {
     pub d_term: f32,
 }
 
-//static NEXT_FOIL_ID: AtomicU64 = AtomicU64::new(1);
+static NEXT_FOIL_ID: AtomicU64 = AtomicU64::new(1);
 
 /// Mode describing how currents are linked between foils.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -101,6 +101,12 @@ pub struct Foil {
 }
 
 impl Foil {
+    /// Reset the global foil ID counter back to 1
+    /// This should be called when clearing all foils to ensure predictable IDs
+    pub fn reset_id_counter() {
+        NEXT_FOIL_ID.store(1, Ordering::Relaxed);
+    }
+
     pub fn new(
         body_ids: Vec<u64>,
         _origin: Vec2,
@@ -109,9 +115,8 @@ impl Foil {
         current: f32,
         _switch_hz: f32,
     ) -> Self {
-        static NEXT_ID: AtomicU64 = AtomicU64::new(1);
         Self {
-            id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
+            id: NEXT_FOIL_ID.fetch_add(1, Ordering::Relaxed),
             body_ids,
             dc_current: current, // Initialize DC current to the provided current
             ac_current: 0.0,     // No AC component by default

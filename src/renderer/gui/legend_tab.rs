@@ -68,7 +68,7 @@ impl super::super::Renderer {
                 ui.painter().circle_filled(center, 3.0, egui::Color32::from_rgba_unmultiplied(0, 128, 255, 255));
                 
                 ui.vertical(|ui| {
-                    ui.strong("Electron");
+                    ui.label(egui::RichText::new("Electron").strong());
                     ui.label(egui::RichText::new("e-").italics());
                 });
             });
@@ -81,7 +81,7 @@ impl super::super::Renderer {
                 ui.painter().circle_filled(center, 8.0, egui::Color32::from_rgba_unmultiplied(0, 255, 0, 255));
                 
                 ui.vertical(|ui| {
-                    ui.strong("Excess Electrons");
+                    ui.label(egui::RichText::new("Excess Electrons").strong());
                     ui.small("Indicates negative charge accumulation (surplus e-)");
                 });
             });
@@ -94,7 +94,7 @@ impl super::super::Renderer {
                 ui.painter().circle_filled(center, 8.0, egui::Color32::from_rgba_unmultiplied(255, 0, 0, 255));
                 
                 ui.vertical(|ui| {
-                    ui.strong("Electron Deficit");
+                    ui.label(egui::RichText::new("Electron Deficit").strong());
                     ui.small("Indicates positive charge accumulation (lack of e-)");
                 });
             });

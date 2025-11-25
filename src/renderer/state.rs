@@ -115,6 +115,7 @@ pub enum SimCommand {
         body: Body,
     },
     DeleteAll,
+    ResetFoilIds,
     DeleteSpecies {
         species: crate::body::Species,
     },

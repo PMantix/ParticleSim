@@ -355,6 +355,17 @@ impl super::super::Renderer {
                             }
                         });
                     self.gen_selected_foil = Some(sel);
+                    
+                    // Show warning if selected foil doesn't exist
+                    if let Some(foil_id) = self.gen_selected_foil {
+                        let foil_exists = self.foils.iter().any(|f| f.id == foil_id);
+                        if !foil_exists {
+                            ui.colored_label(
+                                egui::Color32::from_rgb(255, 150, 0),
+                                format!("⚠ Foil {} not found!", foil_id)
+                            );
+                        }
+                    }
 
                     ui.label("Direction:");
                     egui::ComboBox::from_id_source("gen_dir_combo")
@@ -371,6 +382,19 @@ impl super::super::Renderer {
 
                     if ui.button("Generate").clicked() {
                         if let Some(foil_id) = self.gen_selected_foil {
+                            // Check if the foil actually exists
+                            let foil_exists = self.foils.iter().any(|f| f.id == foil_id);
+                            if !foil_exists {
+                                println!("⚠ Warning: Selected Foil {} no longer exists!", foil_id);
+                                println!("  Available foil IDs: {:?}", self.foils.iter().map(|f| f.id).collect::<Vec<_>>());
+                                println!("  Please select a different foil from the dropdown.");
+                                // Try to select the first available foil
+                                if let Some(first_foil) = self.foils.first() {
+                                    self.gen_selected_foil = Some(first_foil.id);
+                                    println!("  Auto-selected Foil {} instead.", first_foil.id);
+                                }
+                            }
+                            
                             if let Some(new_points) = self.build_measurement_points_for_settings(foil_id) {
                                 self.manual_measurement_ui_config.points = new_points;
                                 self.measurement_points_seeded = true;

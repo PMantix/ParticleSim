@@ -12,6 +12,7 @@ pub mod analysis_tab;
 pub mod charging_tab;
 pub mod debug_tab;
 pub mod diagnostics_tab;
+pub mod electrodes_tab;
 pub mod measurement_tab;
 pub mod physics_tab;
 pub mod pid_controller;
@@ -86,8 +87,13 @@ impl super::Renderer {
                         );
                         ui.selectable_value(
                             &mut self.current_tab,
+                            super::GuiTab::Electrodes,
+                            "⚡ Electrodes",
+                        );
+                        ui.selectable_value(
+                            &mut self.current_tab,
                             super::GuiTab::Charging,
-                            "⚡ Charging",
+                            "🔋 Charging",
                         );
                         // Foils tab removed (merged into Charging workflows)
                         ui.selectable_value(
@@ -99,11 +105,6 @@ impl super::Renderer {
                             &mut self.current_tab,
                             super::GuiTab::Diagnostics,
                             "🔬 Diagnostics",
-                        );
-                        ui.selectable_value(
-                            &mut self.current_tab,
-                            super::GuiTab::Debug,
-                            "🐛 Debug",
                         );
                     });
                     // Third row of tabs
@@ -123,6 +124,11 @@ impl super::Renderer {
                             &mut self.current_tab,
                             super::GuiTab::Legend,
                             "📖 Legend",
+                        );
+                        ui.selectable_value(
+                            &mut self.current_tab,
+                            super::GuiTab::Debug,
+                            "🐛 Debug",
                         );
                     });
                 });
@@ -149,6 +155,7 @@ impl super::Renderer {
                         super::GuiTab::Species => self.show_species_tab(ui),
                         super::GuiTab::Physics => self.show_physics_tab(ui),
                         super::GuiTab::Scenario => self.show_scenario_tab(ui),
+                        super::GuiTab::Electrodes => self.show_electrodes_tab(ui),
                         super::GuiTab::Charging => self.show_charging_tab(ui),
                         // Removed tabs routed here previously are no longer used
                         super::GuiTab::Measurement => self.show_measurement_tab(ui),
