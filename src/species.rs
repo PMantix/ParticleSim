@@ -356,3 +356,116 @@ pub fn update_species_props(species: Species, props: SpeciesProps) {
         overrides.insert(species, props);
     }
 }
+
+/// Physical properties for volume calculations
+struct SolventPhysicalProps {
+    density_g_cm3: f32,  // g/cm³
+    molar_mass: f32,      // g/mol
+}
+
+impl SolventPhysicalProps {
+    /// Calculate molar volume in cm³/mol
+    fn molar_volume(&self) -> f32 {
+        self.molar_mass / self.density_g_cm3
+    }
+}
+
+/// Get physical properties for common solvents
+fn get_solvent_physical_props(species: Species) -> SolventPhysicalProps {
+    match species {
+        Species::EC => SolventPhysicalProps {
+            density_g_cm3: 1.32,
+            molar_mass: 88.06,
+        },
+        Species::DMC => SolventPhysicalProps {
+            density_g_cm3: 1.07,
+            molar_mass: 90.08,
+        },
+        Species::EMC => SolventPhysicalProps {
+            density_g_cm3: 1.01,
+            molar_mass: 104.1,
+        },
+        Species::FEC => SolventPhysicalProps {
+            density_g_cm3: 1.45,
+            molar_mass: 106.05,
+        },
+        Species::VC => SolventPhysicalProps {
+            density_g_cm3: 1.36,
+            molar_mass: 86.05,
+        },
+        _ => SolventPhysicalProps {
+            density_g_cm3: 1.0,
+            molar_mass: 100.0,
+        },
+    }
+}
+
+/// Calculate particle counts for solvents based on equal volume parts
+/// 
+/// For a 1:1 volume ratio of EC:DMC, this accounts for their different
+/// densities and molar masses to determine the correct particle count ratio.
+/// 
+/// Example: EC (ρ=1.32 g/cm³, M=88.06 g/mol) and DMC (ρ=1.07 g/cm³, M=90.08 g/mol)
+/// with 1:1 volume ratio yields approximately 1.26:1 particle count ratio
+/// because EC has higher density and requires more molecules per unit volume.
+/// 
+/// # Arguments
+/// * `solvent_species` - Vec of (Species, volume_parts) tuples, e.g. [(EC, 1.0), (DMC, 1.0)]
+/// * `total_solvent_particles` - Total number of solvent particles to distribute
+/// 
+/// # Returns
+/// Vec of (Species, particle_count) tuples
+pub fn calculate_solvent_particle_counts(
+    solvent_species: &[(Species, f32)],
+    total_solvent_particles: usize,
+) -> Vec<(Species, usize)> {
+    if solvent_species.is_empty() {
+        return Vec::new();
+    }
+
+    // Calculate molar volume for each solvent and sum up total molar volume per part
+    let mut total_molar_volume_per_part = 0.0;
+    let solvent_data: Vec<_> = solvent_species
+        .iter()
+        .map(|(species, parts)| {
+            let props = get_solvent_physical_props(*species);
+            let molar_vol = props.molar_volume();
+            total_molar_volume_per_part += molar_vol * parts;
+            (*species, *parts, molar_vol)
+        })
+        .collect();
+
+    // Calculate fraction of total particles for each solvent
+    // Particles ∝ moles, and for equal volumes: moles = volume / molar_volume
+    let mut results = Vec::new();
+    let mut assigned_total = 0;
+
+    for (i, (species, parts, molar_vol)) in solvent_data.iter().enumerate() {
+        let is_last = i == solvent_data.len() - 1;
+        
+        if is_last {
+            // Assign remaining particles to avoid rounding errors
+            let count = total_solvent_particles.saturating_sub(assigned_total);
+            results.push((*species, count));
+        } else {
+            // For volume V of this solvent: moles = V / molar_volume
+            // Since we want parts volume, the volume fraction is: parts / total_parts
+            // But total_parts doesn't directly give us volumes, we need volume ratios
+            
+            // The volume of this solvent relative to total volume
+            let volume_fraction = parts / solvent_species.iter().map(|(_, p)| p).sum::<f32>();
+            
+            // Moles of this solvent: volume × (1 / molar_volume) = volume / molar_volume
+            // Moles are proportional to particles
+            let mole_fraction = (volume_fraction / molar_vol) / 
+                solvent_data.iter().map(|(_, p, mv)| p / mv).sum::<f32>();
+            
+            let count = (total_solvent_particles as f32 * mole_fraction).round() as usize;
+            assigned_total += count;
+            results.push((*species, count));
+        }
+    }
+
+    results
+}
+

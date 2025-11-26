@@ -170,8 +170,23 @@ fn add_default_electrolyte(
     let li_count = lipf6_count;
     let pf6_count = lipf6_count;
     let remaining = total.saturating_sub(li_count + pf6_count);
-    let ec_count = remaining / 2;
-    let dmc_count = remaining - ec_count;
+    
+    // Calculate EC and DMC counts based on 1:1 volume ratio
+    // This accounts for different densities and molar masses
+    let solvent_parts = vec![
+        (Species::EC, 1.0),   // 1 part by volume
+        (Species::DMC, 1.0),  // 1 part by volume
+    ];
+    let solvent_counts = crate::species::calculate_solvent_particle_counts(&solvent_parts, remaining);
+    
+    let ec_count = solvent_counts.iter()
+        .find(|(s, _)| *s == Species::EC)
+        .map(|(_, c)| *c)
+        .unwrap_or(0);
+    let dmc_count = solvent_counts.iter()
+        .find(|(s, _)| *s == Species::DMC)
+        .map(|(_, c)| *c)
+        .unwrap_or(0);
 
     // Add Li+ ions
     if li_count > 0 {
