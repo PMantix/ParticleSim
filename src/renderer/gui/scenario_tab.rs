@@ -824,30 +824,59 @@ fn compute_electrolyte_plan(renderer: &super::super::Renderer) -> ElectrolytePla
         .collect();
 
     if !enabled_solvents.is_empty() && total_solvent_count > 0 {
-        let total_fraction: f32 = enabled_solvents.iter().map(|c| c.fraction).sum();
-
+        // Check if all solvents are in Part mode (volume-based)
+        let all_parts_mode = enabled_solvents.iter().all(|c| matches!(c.mode, ComponentMode::Part));
+        
         let mut solvent_entries = Vec::new();
-        for comp in &enabled_solvents {
-            let weight = comp.fraction / total_fraction;
-            let exact = weight * total_solvent_count as f32;
-            let count = exact.floor() as usize;
-            solvent_entries.push(ComponentPlanEntry {
-                species: comp.species,
-                normalized_weight: weight,
-                count,
-            });
-        }
-
-        let current_allocated: usize = solvent_entries.iter().map(|e| e.count).sum();
-        let mut remainder = total_solvent_count.saturating_sub(current_allocated);
-
-        // Simple distribution of remainder
-        for entry in solvent_entries.iter_mut() {
-            if remainder == 0 {
-                break;
+        
+        if all_parts_mode {
+            // Use volume-based calculation for Part mode
+            let solvent_parts: Vec<_> = enabled_solvents
+                .iter()
+                .map(|c| (c.species, c.input_value))
+                .collect();
+            
+            let particle_counts = crate::species::calculate_solvent_particle_counts(
+                &solvent_parts,
+                total_solvent_count
+            );
+            
+            let total_fraction: f32 = enabled_solvents.iter().map(|c| c.fraction).sum();
+            for (species, count) in particle_counts {
+                let comp = enabled_solvents.iter().find(|c| c.species == species).unwrap();
+                let weight = comp.fraction / total_fraction;
+                solvent_entries.push(ComponentPlanEntry {
+                    species,
+                    normalized_weight: weight,
+                    count,
+                });
             }
-            entry.count += 1;
-            remainder -= 1;
+        } else {
+            // Use fraction-based calculation for Fraction mode or mixed modes
+            let total_fraction: f32 = enabled_solvents.iter().map(|c| c.fraction).sum();
+
+            for comp in &enabled_solvents {
+                let weight = comp.fraction / total_fraction;
+                let exact = weight * total_solvent_count as f32;
+                let count = exact.floor() as usize;
+                solvent_entries.push(ComponentPlanEntry {
+                    species: comp.species,
+                    normalized_weight: weight,
+                    count,
+                });
+            }
+
+            let current_allocated: usize = solvent_entries.iter().map(|e| e.count).sum();
+            let mut remainder = total_solvent_count.saturating_sub(current_allocated);
+
+            // Simple distribution of remainder
+            for entry in solvent_entries.iter_mut() {
+                if remainder == 0 {
+                    break;
+                }
+                entry.count += 1;
+                remainder -= 1;
+            }
         }
 
         entries.extend(solvent_entries);
