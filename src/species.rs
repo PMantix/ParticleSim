@@ -440,6 +440,11 @@ pub fn calculate_solvent_particle_counts(
     let mut results = Vec::new();
     let mut assigned_total = 0;
 
+    // Calculate total mole-weighted parts: sum of (parts / molar_volume)
+    let total_mole_weighted: f32 = solvent_data.iter()
+        .map(|(_, parts, molar_vol)| parts / molar_vol)
+        .sum();
+
     for (i, (species, parts, molar_vol)) in solvent_data.iter().enumerate() {
         let is_last = i == solvent_data.len() - 1;
         
@@ -448,17 +453,9 @@ pub fn calculate_solvent_particle_counts(
             let count = total_solvent_particles.saturating_sub(assigned_total);
             results.push((*species, count));
         } else {
-            // For volume V of this solvent: moles = V / molar_volume
-            // Since we want parts volume, the volume fraction is: parts / total_parts
-            // But total_parts doesn't directly give us volumes, we need volume ratios
-            
-            // The volume of this solvent relative to total volume
-            let volume_fraction = parts / solvent_species.iter().map(|(_, p)| p).sum::<f32>();
-            
-            // Moles of this solvent: volume × (1 / molar_volume) = volume / molar_volume
-            // Moles are proportional to particles
-            let mole_fraction = (volume_fraction / molar_vol) / 
-                solvent_data.iter().map(|(_, p, mv)| p / mv).sum::<f32>();
+            // For equal volume parts: moles ∝ 1/molar_volume
+            // Higher density (lower molar volume) = more molecules per unit volume
+            let mole_fraction = (parts / molar_vol) / total_mole_weighted;
             
             let count = (total_solvent_particles as f32 * mole_fraction).round() as usize;
             assigned_total += count;
