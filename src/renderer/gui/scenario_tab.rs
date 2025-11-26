@@ -785,18 +785,18 @@ fn recalculate_fractions(components: &mut [ElectrolyteComponent]) {
 }
 
 fn compute_electrolyte_plan(renderer: &super::super::Renderer) -> ElectrolytePlan {
-    let total_particles = renderer.electrolyte_total_particles as f32;
+    let total_particles = renderer.electrolyte_total_particles;
     let molarity = renderer.electrolyte_molarity;
 
     // 1. Calculate Solvent vs Salt split
     // Heuristic: 1.0 M => 1/15 ratio of salt to solvent molecules
-    // S = total / (1 + 2 * M / 15)
-    let solvent_count_f32 = total_particles / (1.0 + 2.0 * molarity / 15.0);
-    let salt_count_f32 = solvent_count_f32 * (molarity / 15.0);
+    let solvent_to_salt_ratio = 15.0;
+    let salt_fraction = 1.0 / (1.0 + solvent_to_salt_ratio);
+    let lipf6_count = (total_particles as f32 * salt_fraction * molarity / 1.0).round() as usize;
 
-    let li_count = salt_count_f32.round() as usize;
-    let anion_count = salt_count_f32.round() as usize;
-    let total_solvent_count = solvent_count_f32.round() as usize;
+    let li_count = lipf6_count;
+    let anion_count = lipf6_count;
+    let total_solvent_count = total_particles.saturating_sub(li_count + anion_count);
 
     let mut entries = Vec::new();
 
@@ -852,30 +852,50 @@ fn compute_electrolyte_plan(renderer: &super::super::Renderer) -> ElectrolytePla
                 });
             }
         } else {
-            // Use fraction-based calculation for Fraction mode or mixed modes
-            let total_fraction: f32 = enabled_solvents.iter().map(|c| c.fraction).sum();
-
-            for comp in &enabled_solvents {
-                let weight = comp.fraction / total_fraction;
-                let exact = weight * total_solvent_count as f32;
-                let count = exact.floor() as usize;
+            // Mixed mode or all Fraction mode
+            // Separate components by mode
+            let fraction_components: Vec<_> = enabled_solvents
+                .iter()
+                .filter(|c| matches!(c.mode, ComponentMode::Fraction))
+                .collect();
+            let part_components: Vec<_> = enabled_solvents
+                .iter()
+                .filter(|c| matches!(c.mode, ComponentMode::Part))
+                .collect();
+            
+            // First, allocate particles for Fraction mode components
+            let mut particles_for_parts = total_solvent_count;
+            
+            for comp in &fraction_components {
+                let count = (comp.fraction * total_solvent_count as f32).round() as usize;
+                particles_for_parts = particles_for_parts.saturating_sub(count);
                 solvent_entries.push(ComponentPlanEntry {
                     species: comp.species,
-                    normalized_weight: weight,
+                    normalized_weight: comp.fraction,
                     count,
                 });
             }
-
-            let current_allocated: usize = solvent_entries.iter().map(|e| e.count).sum();
-            let mut remainder = total_solvent_count.saturating_sub(current_allocated);
-
-            // Simple distribution of remainder
-            for entry in solvent_entries.iter_mut() {
-                if remainder == 0 {
-                    break;
+            
+            // Then, allocate remaining particles for Part mode components using volume-based calculation
+            if !part_components.is_empty() && particles_for_parts > 0 {
+                let solvent_parts: Vec<_> = part_components
+                    .iter()
+                    .map(|c| (c.species, c.input_value))
+                    .collect();
+                
+                let particle_counts = crate::species::calculate_solvent_particle_counts(
+                    &solvent_parts,
+                    particles_for_parts
+                );
+                
+                for (species, count) in particle_counts {
+                    let comp = part_components.iter().find(|c| c.species == species).unwrap();
+                    solvent_entries.push(ComponentPlanEntry {
+                        species,
+                        normalized_weight: comp.fraction,
+                        count,
+                    });
                 }
-                entry.count += 1;
-                remainder -= 1;
             }
         }
 
