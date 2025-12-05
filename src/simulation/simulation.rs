@@ -1286,9 +1286,9 @@ impl Simulation {
         // If GUI provided an override, use it as-is
         if let Some(name) = crate::renderer::state::FOIL_METRICS_FILENAME_OVERRIDE
             .lock()
-            .clone()
+            .as_ref()
         {
-            return name;
+            return name.clone();
         }
         // Determine charging mode and value
         let mode_str = if matches!(self.switch_run_state, RunState::Running) {
@@ -1350,8 +1350,8 @@ impl Simulation {
         if self.foil_metrics_csv.is_some() {
             return;
         }
-        let filename = if let Some(b) = self.foil_metrics_current_base.clone() {
-            b
+        let filename = if let Some(ref b) = self.foil_metrics_current_base {
+            b.clone()
         } else {
             let b = self.foil_metrics_filename_base();
             self.foil_metrics_current_base = Some(b.clone());
@@ -1825,19 +1825,19 @@ impl Simulation {
                 crate::body::foil::ChargingMode::Overpotential
             ) {
                 // Check if this is a slave foil (no controller but has a linked master)
-                if self.foils[i].overpotential_controller.is_none()
-                    && self.foils[i].link_id.is_some()
-                {
-                    let master_id = self.foils[i].link_id.unwrap(); // Slave's master is its linked foil
-                    if let Some(&master_current) = master_outputs.get(&master_id) {
-                        // Determine current sign based on link mode
-                        let slave_current = match self.foils[i].mode {
-                            crate::body::foil::LinkMode::Parallel => master_current,
-                            crate::body::foil::LinkMode::Opposite => -master_current,
-                        };
+                if self.foils[i].overpotential_controller.is_none() {
+                    if let Some(master_id) = self.foils[i].link_id {
+                        if let Some(&master_current) = master_outputs.get(&master_id) {
+                            // Determine current sign based on link mode
+                            let slave_current = match self.foils[i].mode {
+                                crate::body::foil::LinkMode::Parallel => master_current,
+                                crate::body::foil::LinkMode::Opposite => -master_current,
+                            };
 
-                        self.foils[i].slave_overpotential_current = slave_current;
+                            self.foils[i].slave_overpotential_current = slave_current;
+                        }
                     }
+                }
                 }
             }
         }
