@@ -1,14 +1,6 @@
 // Centralized configuration for simulation parameters
 
 // ====================
-// Lithium-salt molarity (deprecated constant)
-// ====================
-// Note: Molarity is now a runtime UI control in the Scenario tab (electrolyte controls)
-// and this constant is not used by the simulation. Kept only to avoid breaking imports.
-#[allow(dead_code)]
-pub const LITHIUM_SALT_MOLARITY: f32 = 1.0;
-
-// ====================
 // Electron Parameters
 // ====================
 pub const ELECTRON_SPRING_K: f32 = 5.0; // Spring constant for electron drift
@@ -30,7 +22,6 @@ pub const POLAR_CHARGE_DEFAULT: f32 = 1.0;
 use crate::body::Species;
 use crate::units;
 
-/// Get the electron spring constant for a given species
 pub fn electron_spring_k(species: Species) -> f32 {
     use Species::*;
     match species {
@@ -40,6 +31,10 @@ pub fn electron_spring_k(species: Species) -> f32 {
         _ => ELECTRON_SPRING_K,
     }
 }
+
+// ====================
+// Butler-Volmer Parameters
+// ====================
 pub const ELECTRON_DRIFT_RADIUS_FACTOR_EC: f32 = 1.0; // Max electron speed as a factor of body radius per
 pub const ELECTRON_DRIFT_RADIUS_FACTOR_DMC: f32 = 0.73; // DMC-specific drift radius factor
 pub const ELECTRON_DRIFT_RADIUS_FACTOR_VC: f32 = 1.0; // VC-specific drift radius factor
@@ -91,19 +86,8 @@ fn default_sei_charge_threshold_dmc() -> f32 {
     1.5
 }
 
-
-/// Get the effective polarization charge for a given species
-/*
-    use Species::*;
-    match species {
-        EC => POLAR_CHARGE_EC,
-        DMC => POLAR_CHARGE_DMC,
-        _ => POLAR_CHARGE_DEFAULT,
-    }
-}*/
-// ====================
-// Butler-Volmer Parameters
-// ====================
+/// Get the electron spring constant for a given species
+pub fn electron_spring_k(species: Species) -> f32 {
 /// Enable Butler-Volmer kinetics for inter-species electron transfer
 pub const BV_ENABLED: bool = true;
 /// Exchange current density i0 used in the Butler-Volmer expression
@@ -168,10 +152,6 @@ pub const SURROUND_CHECK_INTERVAL: usize = 10;
 // ====================
 // History/Playback Performance
 // ====================
-/// History capture interval - capture every N frames instead of every frame
-/// This prevents O(N) per-frame overhead from killing performance with many particles
-/// Value of 5 = capture every 5th frame = 5x less history overhead, playback still smooth
-
 /// Number of frames of history preserved for playback controls
 /// Simple ring buffer approach - much faster than compressed deltas
 pub const PLAYBACK_HISTORY_FRAMES: usize = 10000;
@@ -182,7 +162,8 @@ pub const PLAYBACK_HISTORY_FRAMES: usize = 10000;
 /// Default timestep in femtoseconds.
 /// Typical MD timesteps: 0.5-2.0 fs. Old value was 0.015 fs (too small).
 pub const DEFAULT_DT_FS: f32 = 5.0;
-pub const COLLISION_PASSES: usize =2; // Number of collision resolution passes
+/// Number of collision resolution passes
+pub const COLLISION_PASSES: usize = 2;
 /// Number of frames of history preserved for playback controls
 /// Memory usage: ~115KB per 1000 particles per frame
 /// 5000 frames ≈ 576MB for small sims, 2.9GB for medium sims
@@ -207,16 +188,13 @@ pub const OUT_OF_PLANE_ENABLED: bool = false;
 pub const Z_STIFFNESS: f32 = 1.0;
 pub const Z_DAMPING: f32 = 0.5;
 pub const MAX_Z: f32 = DOMAIN_DEPTH;
-// Z-axis constraint parameters removed (simplified approach)
 
 // ====================
-// Li+ Collision Softness (Simple)
+// Li+ Collision Softness
 // ====================
 /// Single knob controlling how soft Li+ collisions are.
 /// 0.0 = hard collisions (baseline); 1.0 = very soft (max reduction).
 pub const LI_COLLISION_SOFTNESS: f32 = 0.8;
-/// Size of position history buffer for movement analysis
-// Position history removed (simplified approach)
 
 // ====================
 // Threading/Parallelism
@@ -233,15 +211,16 @@ pub const WINDOW_HEIGHT: u32 = 1200; // Window height in pixels
 // ====================
 // DISPLAY/GUI Parameters
 // ====================
+/// Show electric field isolines
 pub const SHOW_FIELD_ISOLINES: bool = false;
-/// Show electric field isolines/// Show electric-field isolines
-pub const SHOW_VELOCITY_VECTORS: bool = false;
 /// Show velocity vectors
-pub const SHOW_CHARGE_DENSITY: bool = false;
+pub const SHOW_VELOCITY_VECTORS: bool = false;
 /// Show charge-density heatmap (DISABLED FOR PERFORMANCE)
-pub const SHOW_2D_DOMAIN_DENSITY: bool = false;
+pub const SHOW_CHARGE_DENSITY: bool = false;
 /// Show 2D particle density heatmap (DISABLED FOR PERFORMANCE)
-pub const SHOW_FIELD_VECTORS: bool = false; // Show electric field vectors (DISABLED FOR PERFORMANCE)
+pub const SHOW_2D_DOMAIN_DENSITY: bool = false;
+/// Show electric field vectors (DISABLED FOR PERFORMANCE)
+pub const SHOW_FIELD_VECTORS: bool = false;
 
 // ====================
 // Temperature

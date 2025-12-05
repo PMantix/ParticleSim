@@ -77,8 +77,6 @@ impl Default for ManualMeasurementConfig {
     }
 }
 
-// Removed file IO helpers from ManualMeasurementConfig (unused)
-
 #[derive(Debug, Clone)]
 pub struct MeasurementResult {
     pub label: String,

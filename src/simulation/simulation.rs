@@ -2,7 +2,6 @@
 // Contains the Simulation struct and main methods (new, step, iterate, perform_electron_hopping)
 
 use super::collision;
-use super::compressed_history::CompressedHistorySystem;
 use super::forces;
 use super::history::PlaybackController;
 use crate::body::foil::LinkMode;
@@ -44,10 +43,9 @@ pub struct Simulation {
     pub prev_induced_e_field: Vec2,
     pub foils: Vec<crate::body::foil::Foil>,
     pub body_to_foil: HashMap<u64, u64>,
-    pub config: config::SimConfig, //
+    pub config: config::SimConfig,
     /// Track when thermostat was last applied (in simulation time)
     pub last_thermostat_time: f32,
-    pub compressed_history: CompressedHistorySystem, // Keep for compatibility but unused
     pub simple_history: std::collections::VecDeque<crate::io::SimulationState>,
     pub history_cursor: usize,
     pub history_dirty: bool,
@@ -86,8 +84,6 @@ impl Simulation {
         let cell_size = crate::species::max_lj_cutoff();
         let cell_list = CellList::new(bounds, bounds, cell_size);
         let rewound_flags = vec![];
-        // Initialize compressed history system
-        let compressed_history = CompressedHistorySystem::new_default();
         let history_capacity = std::cmp::max(1, config::PLAYBACK_HISTORY_FRAMES);
         let mut sim = Self {
             dt,
@@ -106,7 +102,6 @@ impl Simulation {
             body_to_foil: HashMap::new(),
             config: config::SimConfig::default(),
             last_thermostat_time: 0.0,
-            compressed_history,
             simple_history: std::collections::VecDeque::new(),
             history_cursor: 0,
             history_dirty: false,
