@@ -88,6 +88,18 @@ fn default_sei_charge_threshold_dmc() -> f32 {
 
 /// Get the electron spring constant for a given species
 pub fn electron_spring_k(species: Species) -> f32 {
+    use Species::*;
+    match species {
+        LithiumMetal | FoilMetal => ELECTRON_SPRING_K_METAL,
+        EC => ELECTRON_SPRING_K_EC,
+        DMC => ELECTRON_SPRING_K_DMC,
+        _ => ELECTRON_SPRING_K,
+    }
+}
+
+// ====================
+// Butler-Volmer Parameters
+// ====================
 /// Enable Butler-Volmer kinetics for inter-species electron transfer
 pub const BV_ENABLED: bool = true;
 /// Exchange current density i0 used in the Butler-Volmer expression
