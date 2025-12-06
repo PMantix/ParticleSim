@@ -246,19 +246,19 @@ fn resolve(sim: &mut Simulation, i: usize, j: usize, num_passes: usize) {
     if d_dot_v >= 0.0 && dist_sq > 0.0 && dist_sq.is_finite() {
         let dist = dist_sq.sqrt();
         let corr = r / dist - 1.0;
-        let tmpx = d_xy.x * corr;
-        let tmpy = d_xy.y * corr;
-        let tmpz = dz * corr;
+        let sep_x = d_xy.x * corr;
+        let sep_y = d_xy.y * corr;
+        let sep_z = dz * corr;
 
         // Apply collision modifiers (metal stiffness + soft collisions)
         let (mod_weight1, mod_weight2) = apply_collision_modifiers(sim, i, j, weight1, weight2);
 
-        sim.bodies[i].pos.x -= mod_weight1 * tmpx;
-        sim.bodies[i].pos.y -= mod_weight1 * tmpy;
-        sim.bodies[i].z -= mod_weight1 * tmpz;
-        sim.bodies[j].pos.x += mod_weight2 * tmpx;
-        sim.bodies[j].pos.y += mod_weight2 * tmpy;
-        sim.bodies[j].z += mod_weight2 * tmpz;
+        sim.bodies[i].pos.x -= mod_weight1 * sep_x;
+        sim.bodies[i].pos.y -= mod_weight1 * sep_y;
+        sim.bodies[i].z -= mod_weight1 * sep_z;
+        sim.bodies[j].pos.x += mod_weight2 * sep_x;
+        sim.bodies[j].pos.y += mod_weight2 * sep_y;
+        sim.bodies[j].z += mod_weight2 * sep_z;
         return;
     }
     let v_sq = v_xy.mag_sq() + vz * vz;
@@ -316,15 +316,15 @@ fn resolve(sim: &mut Simulation, i: usize, j: usize, num_passes: usize) {
         let dist = d_sq.sqrt();
         if dist.is_finite() && dist > 0.0 {
             let corr = r / dist - 1.0;
-            let tmpx = d_xy.x * corr;
-            let tmpy = d_xy.y * corr;
-            let tmpz = dz * corr;
-            sim.bodies[i].pos.x -= weight1 * tmpx;
-            sim.bodies[i].pos.y -= weight1 * tmpy;
-            sim.bodies[i].z -= weight1 * tmpz;
-            sim.bodies[j].pos.x += weight2 * tmpx;
-            sim.bodies[j].pos.y += weight2 * tmpy;
-            sim.bodies[j].z += weight2 * tmpz;
+            let sep_x = d_xy.x * corr;
+            let sep_y = d_xy.y * corr;
+            let sep_z = dz * corr;
+            sim.bodies[i].pos.x -= weight1 * sep_x;
+            sim.bodies[i].pos.y -= weight1 * sep_y;
+            sim.bodies[i].z -= weight1 * sep_z;
+            sim.bodies[j].pos.x += weight2 * sep_x;
+            sim.bodies[j].pos.y += weight2 * sep_y;
+            sim.bodies[j].z += weight2 * sep_z;
         }
         return;
     }
@@ -351,19 +351,19 @@ fn resolve(sim: &mut Simulation, i: usize, j: usize, num_passes: usize) {
             i, j, scale, d_dot_v, d_sq
         );
     }
-    let tmpx = d_xy.x * scale;
-    let tmpy = d_xy.y * scale;
-    let tmpz = dz * scale;
+    let sep_x = d_xy.x * scale;
+    let sep_y = d_xy.y * scale;
+    let sep_z = dz * scale;
 
     // Apply collision modifiers (metal stiffness + soft collisions)
     let (mod_weight1, mod_weight2) = apply_collision_modifiers(sim, i, j, weight1, weight2);
 
-    let v1x = v1.x + tmpx * mod_weight1;
-    let v1y = v1.y + tmpy * mod_weight1;
-    let v1z_new = v1z + tmpz * mod_weight1;
-    let v2x = v2.x - tmpx * mod_weight2;
-    let v2y = v2.y - tmpy * mod_weight2;
-    let v2z_new = v2z - tmpz * mod_weight2;
+    let v1x = v1.x + sep_x * mod_weight1;
+    let v1y = v1.y + sep_y * mod_weight1;
+    let v1z_new = v1z + sep_z * mod_weight1;
+    let v2x = v2.x - sep_x * mod_weight2;
+    let v2y = v2.y - sep_y * mod_weight2;
+    let v2z_new = v2z - sep_z * mod_weight2;
     sim.bodies[i].vel = Vec2::new(v1x, v1y);
     sim.bodies[i].vz = v1z_new;
     sim.bodies[j].vel = Vec2::new(v2x, v2y);

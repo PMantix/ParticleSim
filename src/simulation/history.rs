@@ -285,9 +285,6 @@ impl Simulation {
         let snapshot = SimulationSnapshot::from_state(current);
         snapshot.apply(self);
 
-        // Reset derived systems
-        self.compressed_history = super::compressed_history::CompressedHistorySystem::new_default();
-
         self.history_capacity = history_capacity.max(1);
 
         if history.is_empty() {
