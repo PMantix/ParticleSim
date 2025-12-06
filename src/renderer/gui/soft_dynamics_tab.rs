@@ -84,19 +84,19 @@ impl super::super::Renderer {
 
             if ui
                 .add(
-                    egui::Slider::new(&mut self.sim_config.metal_collision_stiffness, 0.0..=1.0)
-                        .text("Metal Stiffness Factor")
+                    egui::Slider::new(&mut self.sim_config.li_collision_softness, 0.0..=1.0)
+                        .text("Li+ Collision Softness")
                         .step_by(0.05),
                 )
                 .changed()
             {
                 let mut global_config = crate::config::LJ_CONFIG.lock();
-                global_config.metal_collision_stiffness = self.sim_config.metal_collision_stiffness;
+                global_config.li_collision_softness = self.sim_config.li_collision_softness;
             }
 
             ui.horizontal(|ui| {
                 ui.label("Current:");
-                let s = self.sim_config.metal_collision_stiffness.clamp(0.0, 1.0);
+                let s = self.sim_config.li_collision_softness.clamp(0.0, 1.0);
                 let color = if s < 0.5 {
                     Color32::LIGHT_GRAY
                 } else {

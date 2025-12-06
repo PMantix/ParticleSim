@@ -61,36 +61,6 @@ pub fn default_hop_alignment_bias() -> f32 {
     0.01
 }
 
-fn default_sei_electrons_per_event() -> u32 {
-    1
-}
-
-fn default_sei_radius_scale() -> f32 {
-    1.1
-}
-
-// Kinetic charge thresholds (in |e| units) for each solvent. Lower values
-// mean the molecule can nucleate SEI with only a small local overpotential.
-fn default_sei_charge_threshold_vc() -> f32 {
-    0.6
-}
-
-fn default_sei_charge_threshold_fec() -> f32 {
-    0.8
-}
-
-fn default_sei_charge_threshold_ec() -> f32 {
-    1.0
-}
-
-fn default_sei_charge_threshold_emc() -> f32 {
-    1.2
-}
-
-fn default_sei_charge_threshold_dmc() -> f32 {
-    1.5
-}
-
 
 /// Get the effective polarization charge for a given species
 /*
@@ -182,7 +152,7 @@ pub const PLAYBACK_HISTORY_FRAMES: usize = 10000;
 /// Default timestep in femtoseconds.
 /// Typical MD timesteps: 0.5-2.0 fs. Old value was 0.015 fs (too small).
 pub const DEFAULT_DT_FS: f32 = 5.0;
-pub const COLLISION_PASSES: usize =2; // Number of collision resolution passes
+pub const COLLISION_PASSES: usize = 7; // Number of collision resolution passes
 /// Number of frames of history preserved for playback controls
 /// Memory usage: ~115KB per 1000 particles per frame
 /// 5000 frames ≈ 576MB for small sims, 2.9GB for medium sims
@@ -345,8 +315,6 @@ pub struct SimConfig {
     pub soft_collision_lithium_ion: bool,
     /// Enable soft-collision scaling for electrolyte anions
     pub soft_collision_anion: bool,
-    /// Structural stiffness for metal particles (0.0 = normal equal split, 1.0 = electrolyte does all adjusting)
-    pub metal_collision_stiffness: f32,
 
     // Induced external field from foil charging
     /// Gain mapping foil drive (current or overpotential) to induced |E|
@@ -366,29 +334,25 @@ pub struct SimConfig {
     pub dipole_model: DipoleModel,
 
     // SEI Formation Parameters
+    #[serde(default)]
     pub sei_formation_enabled: bool,
+    #[serde(default)]
     pub sei_formation_probability: f32,
+    #[serde(default)]
     pub sei_formation_bias: f32,
-    /// Number of excess electrons consumed per SEI event
-    #[serde(default = "default_sei_electrons_per_event")]
-    pub sei_electrons_per_event: u32,
-    /// Scale factor applied to the parent solvent radius when it becomes SEI
-    #[serde(default = "default_sei_radius_scale")]
+    #[serde(default)]
+    pub sei_electrons_per_event: usize,
+    #[serde(default)]
     pub sei_radius_scale: f32,
-    /// Minimum local negative charge (|e| units) required for VC reduction
-    #[serde(default = "default_sei_charge_threshold_vc")]
+    #[serde(default)]
     pub sei_charge_threshold_vc: f32,
-    /// Minimum local negative charge (|e| units) required for FEC reduction
-    #[serde(default = "default_sei_charge_threshold_fec")]
+    #[serde(default)]
     pub sei_charge_threshold_fec: f32,
-    /// Minimum local negative charge (|e| units) required for EC reduction
-    #[serde(default = "default_sei_charge_threshold_ec")]
+    #[serde(default)]
     pub sei_charge_threshold_ec: f32,
-    /// Minimum local negative charge (|e| units) required for EMC reduction
-    #[serde(default = "default_sei_charge_threshold_emc")]
+    #[serde(default)]
     pub sei_charge_threshold_emc: f32,
-    /// Minimum local negative charge (|e| units) required for DMC reduction
-    #[serde(default = "default_sei_charge_threshold_dmc")]
+    #[serde(default)]
     pub sei_charge_threshold_dmc: f32,
 
     /// Version number incremented whenever config changes (for clone detection)
@@ -446,7 +410,6 @@ impl Default for SimConfig {
             li_collision_softness: LI_COLLISION_SOFTNESS,
             soft_collision_lithium_ion: true,
             soft_collision_anion: false,
-            metal_collision_stiffness: 0.2,
 
             // Induced external field defaults (disabled by default via zero gain)
             induced_field_gain: 0.0,
@@ -460,17 +423,17 @@ impl Default for SimConfig {
             // Dipole model default: original SingleOffset
             dipole_model: DipoleModel::SingleOffset,
 
-            // SEI Formation defaults
-            sei_formation_enabled: true,
+            // SEI formation defaults (disabled by default)
+            sei_formation_enabled: false,
             sei_formation_probability: 0.01,
             sei_formation_bias: 1.0,
-            sei_electrons_per_event: default_sei_electrons_per_event(),
-            sei_radius_scale: default_sei_radius_scale(),
-            sei_charge_threshold_vc: default_sei_charge_threshold_vc(),
-            sei_charge_threshold_fec: default_sei_charge_threshold_fec(),
-            sei_charge_threshold_ec: default_sei_charge_threshold_ec(),
-            sei_charge_threshold_emc: default_sei_charge_threshold_emc(),
-            sei_charge_threshold_dmc: default_sei_charge_threshold_dmc(),
+            sei_electrons_per_event: 2,
+            sei_radius_scale: 1.2,
+            sei_charge_threshold_vc: 0.5,
+            sei_charge_threshold_fec: 0.5,
+            sei_charge_threshold_ec: 0.5,
+            sei_charge_threshold_emc: 0.5,
+            sei_charge_threshold_dmc: 0.5,
         }
     }
 }

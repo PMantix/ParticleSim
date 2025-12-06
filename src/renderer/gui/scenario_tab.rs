@@ -460,7 +460,7 @@ impl super::super::Renderer {
                 ui.add(
                     egui::DragValue::new(&mut self.electrolyte_molarity)
                         .speed(0.1)
-                        .clamp_range(0.05..=5.0),
+                        .clamp_range(0.0..=5.0),
                 );
                 ui.label("M LiPF6");
             });
@@ -500,12 +500,20 @@ impl super::super::Renderer {
                         egui::Button::new("Rebalance Electrolyte"),
                     )
                     .on_hover_text(
-                        "Deletes the currently enabled electrolyte species before re-adding them with the new composition.",
+                        "Deletes ALL electrolyte species (ions, solvents, solids) before re-adding the new composition.",
                     )
                     .clicked()
                 {
-                    delete_plan_species(&plan);
+                    delete_all_electrolyte();
                     spawn_electrolyte_plan(self, &plan);
+                }
+
+                if ui
+                    .button("Delete Electrolyte")
+                    .on_hover_text("Removes all electrolyte particles, ions, and SEI.")
+                    .clicked()
+                {
+                    delete_all_electrolyte();
                 }
             });
         });
@@ -637,6 +645,7 @@ struct ComponentPlanEntry {
     species: Species,
     normalized_weight: f32,
     count: usize,
+    charge_override: Option<f32>,
 }
 
 struct ElectrolytePlan {
@@ -661,6 +670,7 @@ fn show_electrolyte_component_table(ui: &mut egui::Ui, renderer: &mut super::sup
                 ui.label("Mode");
                 ui.label("Value");
                 ui.label("Result");
+                ui.label("Stoich.");
                 ui.label(" ");
                 ui.end_row();
 
@@ -669,11 +679,18 @@ fn show_electrolyte_component_table(ui: &mut egui::Ui, renderer: &mut super::sup
                         .selected_text(species_display_name(component.species))
                         .show_ui(ui, |ui| {
                             for species in ELECTROLYTE_SPECIES {
-                                ui.selectable_value(
+                                if ui.selectable_value(
                                     &mut component.species,
                                     *species,
                                     species_display_name(*species),
-                                );
+                                )
+                                .changed()
+                                {
+                                    component.lithium_stoichiometry = match species {
+                                        Species::LLZO | Species::LLZT | Species::S40B => 1.0,
+                                        _ => 0.0,
+                                    };
+                                }
                             }
                         });
 
@@ -698,6 +715,19 @@ fn show_electrolyte_component_table(ui: &mut egui::Ui, renderer: &mut super::sup
                     );
 
                     ui.label(format!("{:.1}%", component.fraction * 100.0));
+
+                    if matches!(
+                        component.species,
+                        Species::LLZO | Species::LLZT | Species::S40B
+                    ) {
+                        ui.add(
+                            egui::DragValue::new(&mut component.lithium_stoichiometry)
+                                .speed(0.1)
+                                .clamp_range(0.0..=20.0),
+                        );
+                    } else {
+                        ui.label("-");
+                    }
 
                     if ui.button("Remove").clicked() {
                         remove_idx = Some(idx);
@@ -726,6 +756,7 @@ fn default_component_template() -> ElectrolyteComponent {
         fraction: 1.0,
         mode: ComponentMode::Part,
         input_value: 1.0,
+        lithium_stoichiometry: 0.0,
     }
 }
 
@@ -806,6 +837,7 @@ fn compute_electrolyte_plan(renderer: &super::super::Renderer) -> ElectrolytePla
             species: Species::LithiumIon,
             normalized_weight: 0.0, // Not used for ions in this logic
             count: li_count,
+            charge_override: None,
         });
     }
     if anion_count > 0 {
@@ -813,6 +845,7 @@ fn compute_electrolyte_plan(renderer: &super::super::Renderer) -> ElectrolytePla
             species: Species::ElectrolyteAnion,
             normalized_weight: 0.0,
             count: anion_count,
+            charge_override: None,
         });
     }
 
@@ -824,31 +857,72 @@ fn compute_electrolyte_plan(renderer: &super::super::Renderer) -> ElectrolytePla
         .collect();
 
     if !enabled_solvents.is_empty() && total_solvent_count > 0 {
+        // Calculate expansion factor due to solid electrolyte stoichiometry
+        // Total Particles = Base Particles + (Base Particles * Stoichiometry)
+        // Expansion Factor = 1 + Stoichiometry
+        // Weighted Average Expansion = Sum(Fraction * (1 + Stoich))
+        let total_fraction: f32 = enabled_solvents.iter().map(|c| c.fraction).sum();
+        let weighted_expansion: f32 = enabled_solvents
+            .iter()
+            .map(|c| {
+                let stoich = if matches!(c.species, Species::LLZO | Species::LLZT | Species::S40B) {
+                    c.lithium_stoichiometry
+                } else {
+                    0.0
+                };
+                (c.fraction / total_fraction) * (1.0 + stoich)
+            })
+            .sum();
+
+        // Adjust the available count for base particles
+        let adjusted_solvent_count = if weighted_expansion > 1.0 {
+            (total_solvent_count as f32 / weighted_expansion).floor() as usize
+        } else {
+            total_solvent_count
+        };
+
         // Check if all solvents are in Part mode (volume-based)
-        let all_parts_mode = enabled_solvents.iter().all(|c| matches!(c.mode, ComponentMode::Part));
-        
+        let all_parts_mode = enabled_solvents
+            .iter()
+            .all(|c| matches!(c.mode, ComponentMode::Part));
+
         let mut solvent_entries = Vec::new();
-        
+        let mut extra_li_count = 0;
+
         if all_parts_mode {
             // Use volume-based calculation for Part mode
             let solvent_parts: Vec<_> = enabled_solvents
                 .iter()
                 .map(|c| (c.species, c.input_value))
                 .collect();
-            
+
             let particle_counts = crate::species::calculate_solvent_particle_counts(
                 &solvent_parts,
-                total_solvent_count
+                adjusted_solvent_count,
             );
-            
-            let total_fraction: f32 = enabled_solvents.iter().map(|c| c.fraction).sum();
+
             for (species, count) in particle_counts {
-                let comp = enabled_solvents.iter().find(|c| c.species == species).unwrap();
+                let comp = enabled_solvents
+                    .iter()
+                    .find(|c| c.species == species)
+                    .unwrap();
                 let weight = comp.fraction / total_fraction;
+
+                let mut charge_override = None;
+                if matches!(species, Species::LLZO | Species::LLZT | Species::S40B) {
+                    let stoich = comp.lithium_stoichiometry;
+                    if stoich > 0.0 {
+                        let extra = (count as f32 * stoich).round() as usize;
+                        extra_li_count += extra;
+                        charge_override = Some(-1.0 * stoich);
+                    }
+                }
+
                 solvent_entries.push(ComponentPlanEntry {
                     species,
                     normalized_weight: weight,
                     count,
+                    charge_override,
                 });
             }
         } else {
@@ -862,44 +936,80 @@ fn compute_electrolyte_plan(renderer: &super::super::Renderer) -> ElectrolytePla
                 .iter()
                 .filter(|c| matches!(c.mode, ComponentMode::Part))
                 .collect();
-            
+
             // First, allocate particles for Fraction mode components
-            let mut particles_for_parts = total_solvent_count;
-            
+            let mut particles_for_parts = adjusted_solvent_count;
+
             for comp in &fraction_components {
-                let count = (comp.fraction * total_solvent_count as f32).round() as usize;
+                let count = (comp.fraction * adjusted_solvent_count as f32).round() as usize;
                 particles_for_parts = particles_for_parts.saturating_sub(count);
+
+                let mut charge_override = None;
+                if matches!(comp.species, Species::LLZO | Species::LLZT | Species::S40B) {
+                    let stoich = comp.lithium_stoichiometry;
+                    if stoich > 0.0 {
+                        let extra = (count as f32 * stoich).round() as usize;
+                        extra_li_count += extra;
+                        charge_override = Some(-1.0 * stoich);
+                    }
+                }
+
                 solvent_entries.push(ComponentPlanEntry {
                     species: comp.species,
                     normalized_weight: comp.fraction,
                     count,
+                    charge_override,
                 });
             }
-            
+
             // Then, allocate remaining particles for Part mode components using volume-based calculation
             if !part_components.is_empty() && particles_for_parts > 0 {
                 let solvent_parts: Vec<_> = part_components
                     .iter()
                     .map(|c| (c.species, c.input_value))
                     .collect();
-                
+
                 let particle_counts = crate::species::calculate_solvent_particle_counts(
                     &solvent_parts,
-                    particles_for_parts
+                    particles_for_parts,
                 );
-                
+
                 for (species, count) in particle_counts {
-                    let comp = part_components.iter().find(|c| c.species == species).unwrap();
+                    let comp = part_components
+                        .iter()
+                        .find(|c| c.species == species)
+                        .unwrap();
+
+                    let mut charge_override = None;
+                    if matches!(species, Species::LLZO | Species::LLZT | Species::S40B) {
+                        let stoich = comp.lithium_stoichiometry;
+                        if stoich > 0.0 {
+                            let extra = (count as f32 * stoich).round() as usize;
+                            extra_li_count += extra;
+                            charge_override = Some(-1.0 * stoich);
+                        }
+                    }
+
                     solvent_entries.push(ComponentPlanEntry {
                         species,
                         normalized_weight: comp.fraction,
                         count,
+                        charge_override,
                     });
                 }
             }
         }
 
         entries.extend(solvent_entries);
+
+        if extra_li_count > 0 {
+            entries.push(ComponentPlanEntry {
+                species: Species::LithiumIon,
+                normalized_weight: 0.0,
+                count: extra_li_count,
+                charge_override: None,
+            });
+        }
     }
 
     ElectrolytePlan { entries }
@@ -956,11 +1066,16 @@ fn spawn_electrolyte_plan(
         if entry.count == 0 {
             continue;
         }
-        let body = make_body_with_species(
+        let mut body = make_body_with_species(
             ultraviolet::Vec2::zero(),
             ultraviolet::Vec2::zero(),
             entry.species,
         );
+
+        if let Some(charge) = entry.charge_override {
+            body.charge = charge;
+        }
+
         let _ = tx.send(SimCommand::AddRandom {
             body,
             count: entry.count,
@@ -987,6 +1102,7 @@ fn spawn_electrolyte_plan(
     );
 }
 
+#[allow(dead_code)]
 fn delete_plan_species(plan: &ElectrolytePlan) {
     let mut species: HashSet<Species> = HashSet::new();
     for entry in &plan.entries {
@@ -998,6 +1114,29 @@ fn delete_plan_species(plan: &ElectrolytePlan) {
     let sender_opt = SIM_COMMAND_SENDER.lock().clone();
     let Some(tx) = sender_opt else { return };
     for species in species {
+        let _ = tx.send(SimCommand::DeleteSpecies { species });
+    }
+}
+
+fn delete_all_electrolyte() {
+    let sender_opt = SIM_COMMAND_SENDER.lock().clone();
+    let Some(tx) = sender_opt else { return };
+
+    let species_to_delete = [
+        Species::LithiumIon,
+        Species::ElectrolyteAnion,
+        Species::EC,
+        Species::DMC,
+        Species::VC,
+        Species::FEC,
+        Species::EMC,
+        Species::LLZO,
+        Species::LLZT,
+        Species::S40B,
+        Species::SEI,
+    ];
+
+    for species in species_to_delete {
         let _ = tx.send(SimCommand::DeleteSpecies { species });
     }
 }

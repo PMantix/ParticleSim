@@ -29,13 +29,13 @@ fn apply_collision_modifiers(
     
     if i_is_metal && !j_is_metal {
         // i is metal, j is electrolyte - shift weight toward j
-        let stiffness = sim.config.metal_collision_stiffness.clamp(0.0, 1.0);
+        let stiffness = sim.config.li_collision_softness.clamp(0.0, 1.0);
         let new_weight_j = base_weight_j + (base_weight_i * stiffness);
         let new_weight_i = base_weight_i * (1.0 - stiffness);
         return (new_weight_i, new_weight_j);
     } else if j_is_metal && !i_is_metal {
         // j is metal, i is electrolyte - shift weight toward i
-        let stiffness = sim.config.metal_collision_stiffness.clamp(0.0, 1.0);
+        let stiffness = sim.config.li_collision_softness.clamp(0.0, 1.0);
         let new_weight_i = base_weight_i + (base_weight_j * stiffness);
         let new_weight_j = base_weight_j * (1.0 - stiffness);
         return (new_weight_i, new_weight_j);

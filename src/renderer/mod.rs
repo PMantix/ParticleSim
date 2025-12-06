@@ -103,6 +103,7 @@ pub struct ElectrolyteComponent {
     pub fraction: f32,
     pub mode: ComponentMode,
     pub input_value: f32,
+    pub lithium_stoichiometry: f32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -522,12 +523,14 @@ impl quarkstrom::Renderer for Renderer {
                     fraction: 0.5,
                     mode: ComponentMode::Fraction,
                     input_value: 0.5,
+                    lithium_stoichiometry: 0.0,
                 },
                 ElectrolyteComponent {
                     species: Species::DMC,
                     fraction: 0.5,
                     mode: ComponentMode::Fraction,
                     input_value: 0.5,
+                    lithium_stoichiometry: 0.0,
                 },
             ],
 
