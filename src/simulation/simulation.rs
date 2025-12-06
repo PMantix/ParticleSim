@@ -2,7 +2,6 @@
 // Contains the Simulation struct and main methods (new, step, iterate, perform_electron_hopping)
 
 use super::collision;
-use super::compressed_history::CompressedHistorySystem;
 use super::forces;
 use super::history::PlaybackController;
 use crate::body::foil::LinkMode;
@@ -44,10 +43,9 @@ pub struct Simulation {
     pub prev_induced_e_field: Vec2,
     pub foils: Vec<crate::body::foil::Foil>,
     pub body_to_foil: HashMap<u64, u64>,
-    pub config: config::SimConfig, //
+    pub config: config::SimConfig,
     /// Track when thermostat was last applied (in simulation time)
     pub last_thermostat_time: f32,
-    pub compressed_history: CompressedHistorySystem, // Keep for compatibility but unused
     pub simple_history: std::collections::VecDeque<crate::io::SimulationState>,
     pub history_cursor: usize,
     pub history_dirty: bool,
@@ -86,8 +84,6 @@ impl Simulation {
         let cell_size = crate::species::max_lj_cutoff();
         let cell_list = CellList::new(bounds, bounds, cell_size);
         let rewound_flags = vec![];
-        // Initialize compressed history system
-        let compressed_history = CompressedHistorySystem::new_default();
         let history_capacity = std::cmp::max(1, config::PLAYBACK_HISTORY_FRAMES);
         let mut sim = Self {
             dt,
@@ -106,7 +102,6 @@ impl Simulation {
             body_to_foil: HashMap::new(),
             config: config::SimConfig::default(),
             last_thermostat_time: 0.0,
-            compressed_history,
             simple_history: std::collections::VecDeque::new(),
             history_cursor: 0,
             history_dirty: false,
@@ -1291,9 +1286,9 @@ impl Simulation {
         // If GUI provided an override, use it as-is
         if let Some(name) = crate::renderer::state::FOIL_METRICS_FILENAME_OVERRIDE
             .lock()
-            .clone()
+            .as_ref()
         {
-            return name;
+            return name.clone();
         }
         // Determine charging mode and value
         let mode_str = if matches!(self.switch_run_state, RunState::Running) {
@@ -1355,8 +1350,8 @@ impl Simulation {
         if self.foil_metrics_csv.is_some() {
             return;
         }
-        let filename = if let Some(b) = self.foil_metrics_current_base.clone() {
-            b
+        let filename = if let Some(ref b) = self.foil_metrics_current_base {
+            b.clone()
         } else {
             let b = self.foil_metrics_filename_base();
             self.foil_metrics_current_base = Some(b.clone());
@@ -1830,19 +1825,19 @@ impl Simulation {
                 crate::body::foil::ChargingMode::Overpotential
             ) {
                 // Check if this is a slave foil (no controller but has a linked master)
-                if self.foils[i].overpotential_controller.is_none()
-                    && self.foils[i].link_id.is_some()
-                {
-                    let master_id = self.foils[i].link_id.unwrap(); // Slave's master is its linked foil
-                    if let Some(&master_current) = master_outputs.get(&master_id) {
-                        // Determine current sign based on link mode
-                        let slave_current = match self.foils[i].mode {
-                            crate::body::foil::LinkMode::Parallel => master_current,
-                            crate::body::foil::LinkMode::Opposite => -master_current,
-                        };
+                if self.foils[i].overpotential_controller.is_none() {
+                    if let Some(master_id) = self.foils[i].link_id {
+                        if let Some(&master_current) = master_outputs.get(&master_id) {
+                            // Determine current sign based on link mode
+                            let slave_current = match self.foils[i].mode {
+                                crate::body::foil::LinkMode::Parallel => master_current,
+                                crate::body::foil::LinkMode::Opposite => -master_current,
+                            };
 
-                        self.foils[i].slave_overpotential_current = slave_current;
+                            self.foils[i].slave_overpotential_current = slave_current;
+                        }
                     }
+                }
                 }
             }
         }

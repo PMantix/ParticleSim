@@ -36,10 +36,6 @@ impl Simulation {
         // Exclude metals which may be constrained / collective
         let mut liquid_ke = 0.0;
         let mut liquid_count = 0;
-        let mut _ec_count = 0; // debug only
-        let mut _dmc_count = 0; // debug only
-        let mut _li_count = 0; // debug only
-        let mut _anion_count = 0; // debug only
         for body in &self.bodies {
             match body.species {
                 Species::LithiumIon | Species::ElectrolyteAnion | Species::EC | Species::DMC => {
