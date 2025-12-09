@@ -242,6 +242,24 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
             repulsion_cutoff: 2.0,
         },
     );
+    m.insert(
+        SEI,
+        SpeciesProps {
+            mass: 100.0,
+            radius: 2.0,
+            damping: 0.01, // Stationary
+            color: [100, 20, 30, 255], // Dark red/burgundy
+            lj_enabled: true,
+            lj_epsilon: crate::config::LJ_FORCE_EPSILON,
+            lj_sigma: crate::config::LJ_FORCE_SIGMA,
+            lj_cutoff: crate::config::LJ_FORCE_CUTOFF,
+            polar_offset: 0.0,
+            polar_charge: 0.0,
+            enable_repulsion: false,
+            repulsion_strength: 5.0,
+            repulsion_cutoff: 2.0,
+        },
+    );
     m
 });
 
@@ -261,6 +279,7 @@ pub fn max_lj_cutoff() -> f32 {
         LLZO,
         LLZT,
         S40B,
+        SEI,
     ];
 
     species_list
@@ -287,6 +306,7 @@ pub fn max_repulsion_cutoff() -> f32 {
         LLZO,
         LLZT,
         S40B,
+        SEI,
     ];
 
     species_list

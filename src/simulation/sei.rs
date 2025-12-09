@@ -181,6 +181,7 @@ fn consume_extra_electrons(body: &mut Body, count: usize) -> bool {
 #[cfg(test)]
 mod sei_tests {
     use super::super::simulation::Simulation;
+    use super::sei_charge_threshold_for_species;
     use crate::body::{Body, Electron, Species};
     use ultraviolet::Vec2;
 

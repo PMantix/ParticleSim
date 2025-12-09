@@ -432,17 +432,17 @@ impl Default for SimConfig {
             // Dipole model default: original SingleOffset
             dipole_model: DipoleModel::SingleOffset,
 
-            // SEI formation defaults (disabled by default)
-            sei_formation_enabled: false,
+            // SEI formation defaults (enabled by default with proper thresholds)
+            sei_formation_enabled: true,
             sei_formation_probability: 0.01,
             sei_formation_bias: 1.0,
-            sei_electrons_per_event: 2,
-            sei_radius_scale: 1.2,
-            sei_charge_threshold_vc: 0.5,
-            sei_charge_threshold_fec: 0.5,
-            sei_charge_threshold_ec: 0.5,
-            sei_charge_threshold_emc: 0.5,
-            sei_charge_threshold_dmc: 0.5,
+            sei_electrons_per_event: default_sei_electrons_per_event(),
+            sei_radius_scale: default_sei_radius_scale(),
+            sei_charge_threshold_vc: default_sei_charge_threshold_vc(),
+            sei_charge_threshold_fec: default_sei_charge_threshold_fec(),
+            sei_charge_threshold_ec: default_sei_charge_threshold_ec(),
+            sei_charge_threshold_emc: default_sei_charge_threshold_emc(),
+            sei_charge_threshold_dmc: default_sei_charge_threshold_dmc(),
         }
     }
 }
