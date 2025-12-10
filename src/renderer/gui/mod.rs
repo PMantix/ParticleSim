@@ -251,6 +251,18 @@ impl super::Renderer {
                     color,
                 );
             }
+            
+            // Draw "BATTERY" subtext below and offset to the right
+            let subtext_y = start_y + self.splash_art_height as f32 * char_h + 8.0;
+            let subtext_x = rect.center().x + self.splash_art_width as f32 * char_w * 0.25;
+            ui.painter().text(
+                Pos2::new(subtext_x, subtext_y),
+                Align2::LEFT_TOP,
+                crate::renderer::SPLASH_SUBTEXT,
+                FontId::proportional(char_h * 2.0),
+                Color32::from_gray(180),
+            );
+
             let y = start_y + self.splash_art_height as f32 * char_h + 10.0;
             let center_x = rect.center().x;
 
