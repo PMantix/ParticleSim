@@ -95,12 +95,5 @@ height = 350.0 # 350 height as requested
 current = 0.0
 
 # Random particles
-# Optimized counts: 0.35× scaling while preserving species ratios
-# Li:Anion = 1:1 (electroneutrality), EC:DMC = 1.26:1 (realistic mixture)
-[[particles.random]]
-count = 225
-species = "ElectrolyteAnion"
-
-[[particles.random]]
-count = 225 
-species = "LithiumIon"
+# (None by default; electrolyte is provided by the hardcoded
+#  add_default_electrolyte() path in `scenario.rs`.)
