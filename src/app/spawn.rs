@@ -30,6 +30,19 @@ pub fn overlaps_any(existing: &[crate::body::Body], pos: Vec2, radius: f32) -> O
         .position(|b| (b.pos - pos).mag() < (b.radius + radius) * 0.65)
 }
 
+/// Check if a position is within exclusion distance of any metal particle.
+/// Used to prevent Li+ ions from being placed too close to metal surfaces.
+pub fn is_near_metal(existing: &[crate::body::Body], pos: Vec2, exclusion_radius: f32) -> bool {
+    existing.iter().any(|b| {
+        matches!(b.species, Species::LithiumMetal | Species::FoilMetal)
+            && (b.pos - pos).mag() < exclusion_radius
+    })
+}
+
+/// Metal exclusion radius for Li+ ion placement (in simulation units / Angstroms)
+/// Should be large enough to prevent immediate conversion upon simulation start
+const LITHIUM_ION_METAL_EXCLUSION: f32 = 5.0;
+
 pub fn remove_body_with_foils(simulation: &mut Simulation, idx: usize) {
     let body = simulation.bodies.remove(idx);
     if let Some(foil_id) = simulation.body_to_foil.remove(&body.id) {
@@ -192,6 +205,14 @@ pub fn add_random(
                 fastrand::f32() * domain_height - domain_height / 2.0,
             );
             if overlaps_any(&simulation.bodies, pos, body.radius).is_none() {
+                // For LithiumIon, also check that we're not near any metal
+                // to prevent immediate conversion to LithiumMetal
+                if body.species == Species::LithiumIon
+                    && is_near_metal(&simulation.bodies, pos, LITHIUM_ION_METAL_EXCLUSION)
+                {
+                    continue;
+                }
+
                 let mut new_body = crate::body::Body::new(
                     pos,
                     Vec2::zero(),

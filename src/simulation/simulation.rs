@@ -989,6 +989,7 @@ impl Simulation {
         forces::apply_polar_forces(self);
         forces::apply_lj_forces(self);
         forces::apply_repulsive_forces(self);
+        forces::apply_stack_pressure(self);
 
         // Check for NaN values after force calculations
         let nan_count = self

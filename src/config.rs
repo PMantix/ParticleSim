@@ -366,6 +366,18 @@ pub struct SimConfig {
     #[serde(default = "default_foil_mass")]
     pub foil_mass: f32,
 
+    /// Enable stack pressure from domain boundaries (OFF by default)
+    #[serde(default)]
+    pub stack_pressure_enabled: bool,
+
+    /// Stack pressure magnitude (force per particle near boundary)
+    #[serde(default = "default_stack_pressure")]
+    pub stack_pressure: f32,
+
+    /// Distance from boundary where pressure acts (decay length)
+    #[serde(default = "default_stack_pressure_decay")]
+    pub stack_pressure_decay: f32,
+
     /// Version number incremented whenever config changes (for clone detection)
     #[serde(skip)]
     pub config_version: u64,
@@ -373,6 +385,14 @@ pub struct SimConfig {
 
 fn default_foil_mass() -> f32 {
     1.0e6
+}
+
+fn default_stack_pressure() -> f32 {
+    100.0  // Reasonable starting value when enabled
+}
+
+fn default_stack_pressure_decay() -> f32 {
+    10.0  // Simulation units
 }
 
 impl Default for SimConfig {
@@ -450,6 +470,10 @@ impl Default for SimConfig {
             sei_charge_threshold_emc: default_sei_charge_threshold_emc(),
             sei_charge_threshold_dmc: default_sei_charge_threshold_dmc(),
             foil_mass: default_foil_mass(),
+            // Stack pressure defaults (OFF by default)
+            stack_pressure_enabled: false,
+            stack_pressure: default_stack_pressure(),
+            stack_pressure_decay: default_stack_pressure_decay(),
         }
     }
 }

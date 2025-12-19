@@ -247,6 +247,36 @@ impl super::super::Renderer {
             ui.small("Drive magnitude: |current| or |target_ratio−1|×scale.");
         });
 
+        // Stack Pressure (Cell Casing) Controls
+        ui.group(|ui| {
+            ui.label("📦 Stack Pressure (Cell Casing)");
+            ui.small("Uniaxial compression from left/right boundaries (perpendicular to electrodes)");
+            
+            ui.checkbox(
+                &mut self.sim_config.stack_pressure_enabled,
+                "Enable Stack Pressure",
+            );
+            
+            ui.add_enabled(
+                self.sim_config.stack_pressure_enabled,
+                egui::Slider::new(&mut self.sim_config.stack_pressure, 0.0..=10000.0)
+                    .text("Pressure")
+                    .logarithmic(true)
+                    .step_by(1.0),
+            );
+            
+            ui.add_enabled(
+                self.sim_config.stack_pressure_enabled,
+                egui::Slider::new(&mut self.sim_config.stack_pressure_decay, 1.0..=100.0)
+                    .text("Decay Length")
+                    .step_by(0.5),
+            );
+            
+            if self.sim_config.stack_pressure_enabled {
+                ui.small("💡 Reduce foil mass (above) for electrodes to respond to pressure");
+            }
+        });
+
         ui.group(|ui| {
             ui.label("🌡️ Simulation Temperature");
             let mut temp = self.sim_config.temperature;

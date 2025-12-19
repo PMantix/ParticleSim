@@ -17,7 +17,7 @@ impl super::super::Renderer {
                     ));
                 });
                 ui.horizontal(|ui| {
-                    ui.label("Li⁺ Drift Velocity:");
+                    ui.label("Li+ Drift Velocity:");
                     ui.label(format!("{:.6} Å/fs", diagnostic.lithium_drift_velocity));
                 });
                 ui.horizontal(|ui| {
@@ -26,7 +26,7 @@ impl super::super::Renderer {
                 });
                 ui.separator();
                 ui.horizontal(|ui| {
-                    ui.label("Li⁺ Current Contribution:");
+                    ui.label("Li+ Current Contribution:");
                     ui.label(format!("{:.6} e/fs", diagnostic.li_current_contribution));
                 });
                 ui.horizontal(|ui| {
@@ -46,13 +46,13 @@ impl super::super::Renderer {
                 // Progress bar visualization
                 ui.add(
                     egui::ProgressBar::new(diagnostic.transference_number)
-                        .text(format!("t⁺ = {:.3}", diagnostic.transference_number))
+                        .text(format!("t+ = {:.3}", diagnostic.transference_number))
                         .show_percentage(),
                 );
 
                 ui.separator();
-                ui.label("ℹ️ Theory: t⁺ = 1 means only Li⁺ carries current");
-                ui.label("   t⁺ = 0 means only anions carry current");
+                ui.label("Info: t+ = 1 means only Li+ carries current");
+                ui.label("   t+ = 0 means only anions carry current");
                 ui.label("   Current ∝ charge × concentration × velocity");
             } else {
                 ui.label("❌ No diagnostic data available.");
@@ -102,7 +102,7 @@ impl super::super::Renderer {
                 .filter(|b| b.species == crate::body::Species::FoilMetal)
                 .count();
 
-            ui.label(format!("Li⁺ particles: {}", lithium_count));
+            ui.label(format!("Li+ particles: {}", lithium_count));
             ui.label(format!("Anion particles: {}", anion_count));
             ui.label(format!("Foil particles: {}", foil_count));
             ui.label(format!("Total particles: {}", self.bodies.len()));
@@ -153,7 +153,7 @@ impl super::super::Renderer {
                 ui.separator();
                 ui.label("📊 Species Selection:");
                 ui.horizontal(|ui| {
-                    ui.checkbox(&mut self.density_calc_lithium_ion, "Li⁺");
+                    ui.checkbox(&mut self.density_calc_lithium_ion, "Li+");
                     ui.checkbox(&mut self.density_calc_lithium_metal, "Li⁰");
                     ui.checkbox(&mut self.density_calc_foil_metal, "Foil");
                 });

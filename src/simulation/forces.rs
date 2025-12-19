@@ -284,3 +284,35 @@ pub fn apply_repulsive_forces(sim: &mut Simulation) {
         }
     }
 }
+
+/// Apply uniaxial stack pressure from left/right domain boundaries.
+/// Simulates cell casing compression perpendicular to electrode surfaces.
+/// Pressure decays linearly from boundary over the decay distance.
+pub fn apply_stack_pressure(sim: &mut Simulation) {
+    profile_scope!("forces_stack_pressure");
+    
+    if !sim.config.stack_pressure_enabled || sim.config.stack_pressure <= 0.0 {
+        return;
+    }
+    
+    let pressure = sim.config.stack_pressure;
+    let decay = sim.config.stack_pressure_decay;
+    let x_min = -sim.domain_width;
+    let x_max = sim.domain_width;
+    
+    for body in &mut sim.bodies {
+        // Left wall pushes right (+x direction)
+        let dist_left = body.pos.x - x_min;
+        if dist_left < decay && dist_left > 0.0 {
+            let force = pressure * (1.0 - dist_left / decay);
+            body.acc.x += force / body.mass;
+        }
+        
+        // Right wall pushes left (-x direction)
+        let dist_right = x_max - body.pos.x;
+        if dist_right < decay && dist_right > 0.0 {
+            let force = pressure * (1.0 - dist_right / decay);
+            body.acc.x -= force / body.mass;
+        }
+    }
+}
