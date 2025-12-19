@@ -562,6 +562,19 @@ pub fn handle_command(cmd: SimCommand, simulation: &mut Simulation) {
         SimCommand::StopManualMeasurement => {
             simulation.stop_manual_measurement();
         }
+        SimCommand::UpdateFoilMasses { mass } => {
+            // Update all existing FoilMetal bodies with the new mass
+            for body in simulation.bodies.iter_mut() {
+                if matches!(body.species, crate::body::Species::FoilMetal) {
+                    body.mass = mass;
+                }
+            }
+            // Also update the species properties for future foils
+            let mut props = crate::species::get_species_props(crate::body::Species::FoilMetal);
+            props.mass = mass;
+            crate::species::update_species_props(crate::body::Species::FoilMetal, props);
+            mark_dirty(simulation);
+        }
     }
 
     if state_changed {

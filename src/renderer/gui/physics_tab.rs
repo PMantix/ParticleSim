@@ -284,6 +284,61 @@ impl super::super::Renderer {
 
         ui.separator();
 
+        // Foil Metal Mass Control
+        ui.group(|ui| {
+            ui.label("🔩 Foil Metal Properties");
+            ui.small("Control electrode (foil) particle mass for mechanical behavior");
+            
+            let mut foil_mass = self.sim_config.foil_mass;
+            let old_mass = foil_mass;
+            
+            // Preset buttons
+            ui.horizontal(|ui| {
+                ui.label("Presets:");
+                if ui.button("Stationary (1M)").clicked() {
+                    foil_mass = 1.0e6;
+                }
+                if ui.button("Copper (63.5)").clicked() {
+                    foil_mass = 63.546;
+                }
+                if ui.button("Aluminum (27)").clicked() {
+                    foil_mass = 26.98;
+                }
+            });
+            
+            // Slider with logarithmic scale
+            ui.add(
+                egui::Slider::new(&mut foil_mass, 1.0..=1.0e7)
+                    .text("Foil Mass (amu)")
+                    .logarithmic(true)
+                    .step_by(0.1),
+            );
+            
+            // Update if changed
+            if (foil_mass - old_mass).abs() > 0.01 {
+                self.sim_config.foil_mass = foil_mass;
+                
+                // Update species properties for FoilMetal
+                let mut props = crate::species::get_species_props(crate::body::Species::FoilMetal);
+                props.mass = foil_mass;
+                crate::species::update_species_props(crate::body::Species::FoilMetal, props);
+                
+                // Sync config to simulation
+                *crate::config::LJ_CONFIG.lock() = self.sim_config.clone();
+            }
+            
+            ui.small("💡 Low mass allows electrode movement; high mass keeps electrodes stationary");
+            ui.small("⚠️ Changes apply to new foils. Use 'Update Existing' to modify current foils.");
+            
+            if ui.button("Update Existing Foil Masses").clicked() {
+                if let Some(sender) = SIM_COMMAND_SENDER.lock().as_ref() {
+                    let _ = sender.send(SimCommand::UpdateFoilMasses { mass: foil_mass });
+                }
+            }
+        });
+
+        ui.separator();
+
         ui.group(|ui| {
             ui.label("🪐 Out-of-Plane");
             let mut enabled = self.sim_config.enable_out_of_plane;

@@ -259,6 +259,10 @@ pub enum SimCommand {
         config: ManualMeasurementConfig,
     },
     StopManualMeasurement,
+    // Foil mass update command
+    UpdateFoilMasses {
+        mass: f32,
+    },
 }
 
 pub static SIM_COMMAND_SENDER: Lazy<Mutex<Option<Sender<SimCommand>>>> =

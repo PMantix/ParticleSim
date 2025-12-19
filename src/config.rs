@@ -362,9 +362,17 @@ pub struct SimConfig {
     #[serde(default)]
     pub sei_charge_threshold_dmc: f32,
 
+    /// Foil metal particle mass in amu (default 1e6 for stationary, ~63.5 for copper, ~27 for aluminum)
+    #[serde(default = "default_foil_mass")]
+    pub foil_mass: f32,
+
     /// Version number incremented whenever config changes (for clone detection)
     #[serde(skip)]
     pub config_version: u64,
+}
+
+fn default_foil_mass() -> f32 {
+    1.0e6
 }
 
 impl Default for SimConfig {
@@ -441,6 +449,7 @@ impl Default for SimConfig {
             sei_charge_threshold_ec: default_sei_charge_threshold_ec(),
             sei_charge_threshold_emc: default_sei_charge_threshold_emc(),
             sei_charge_threshold_dmc: default_sei_charge_threshold_dmc(),
+            foil_mass: default_foil_mass(),
         }
     }
 }
