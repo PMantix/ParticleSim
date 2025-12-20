@@ -6,6 +6,7 @@ use super::forces;
 use super::history::PlaybackController;
 use crate::body::foil::LinkMode;
 use crate::config;
+use crate::electrode::ActiveMaterialRegion;
 use crate::manual_measurement::{ManualMeasurementConfig, ManualMeasurementRecorder};
 use crate::profile_scope;
 use crate::renderer::state::{
@@ -68,6 +69,8 @@ pub struct Simulation {
     // Foil metrics CSV writer state (written when manual measurements occur)
     foil_metrics_csv: Option<File>,
     foil_metrics_current_base: Option<String>,
+    // Active material regions for intercalation electrodes
+    pub active_regions: Vec<ActiveMaterialRegion>,
 }
 
 impl Simulation {
@@ -120,6 +123,7 @@ impl Simulation {
             manual_measurement_recorder: None,
             foil_metrics_csv: None,
             foil_metrics_current_base: None,
+            active_regions: Vec::new(),
         };
         sim.initialize_history();
         sim
@@ -244,6 +248,20 @@ impl Simulation {
             recorder.stop_recording();
         }
         self.manual_measurement_recorder = None;
+    }
+    
+    /// Sync active region data to the renderer for SOC-based coloring
+    fn sync_active_region_render_data(&self) {
+        if self.active_regions.is_empty() {
+            return;
+        }
+        
+        let regions: Vec<(f32, f32, u8, f32)> = self.active_regions.iter()
+            .map(|r| (r.center_x, r.center_y, r.material as u8, r.state_of_charge))
+            .collect();
+        
+        let mut data = crate::renderer::state::ACTIVE_REGION_RENDER_DATA.lock();
+        data.regions = regions;
     }
 
     fn apply_switch_step_active_inactive(&mut self, foil_pairs: (Vec<u64>, Vec<u64>)) {
@@ -1080,6 +1098,13 @@ impl Simulation {
 
         self.perform_electron_hopping_with_exclusions(&foil_current_recipients);
         self.perform_sei_formation();
+        
+        // Perform intercalation/deintercalation for active material electrodes
+        self.perform_intercalation();
+        self.perform_deintercalation();
+        
+        // Sync active region data to renderer for SOC-based coloring
+        self.sync_active_region_render_data();
 
         // One-time forced bootstrap (before periodic): if not yet bootstrapped and we have liquid species with near-zero temp
         if !self.thermostat_bootstrapped {

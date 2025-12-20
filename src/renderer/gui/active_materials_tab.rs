@@ -378,6 +378,13 @@ impl super::super::Renderer {
             });
         }
         
+        // Sync active material regions to simulation for intercalation physics
+        if let Some(sender) = SIM_COMMAND_SENDER.lock().as_ref() {
+            let _ = sender.send(SimCommand::SyncActiveMaterialRegions {
+                regions: self.active_material_regions.clone(),
+            });
+        }
+        
         // Add electrolyte
         self.add_default_electrolyte();
         

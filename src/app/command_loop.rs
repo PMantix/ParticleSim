@@ -575,6 +575,16 @@ pub fn handle_command(cmd: SimCommand, simulation: &mut Simulation) {
             crate::species::update_species_props(crate::body::Species::FoilMetal, props);
             mark_dirty(simulation);
         }
+        SimCommand::SyncActiveMaterialRegions { regions } => {
+            simulation.active_regions = regions;
+            println!("📍 Synced {} active material regions to simulation", simulation.active_regions.len());
+            mark_dirty(simulation);
+        }
+        SimCommand::ClearActiveMaterialRegions => {
+            simulation.active_regions.clear();
+            println!("🗑️ Cleared all active material regions");
+            mark_dirty(simulation);
+        }
     }
 
     if state_changed {

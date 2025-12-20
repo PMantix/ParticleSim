@@ -532,9 +532,23 @@ impl super::Renderer {
             }
 
             if self.show_bodies {
+                // Get active region data for SOC-based coloring
+                let active_region_data = crate::renderer::state::ACTIVE_REGION_RENDER_DATA.lock();
+                
                 for body in &self.bodies {
                     let mut color = body.species.color();
                     let mut draw_radius = body.radius;
+                    
+                    // Apply SOC-based coloring for intercalation electrode materials
+                    if matches!(body.species, 
+                        Species::Graphite | Species::HardCarbon | Species::SiliconOxide | Species::LTO |
+                        Species::LFP | Species::LMFP | Species::NMC | Species::NCA
+                    ) {
+                        // Find the closest active region to get SOC
+                        if let Some(soc) = self.find_electrode_soc(&active_region_data.regions, body.pos.x, body.pos.y, body.species) {
+                            color = self.soc_color_for_species(body.species, soc);
+                        }
+                    }
 
                     // Apply dark mode if enabled
                     if self.species_dark_mode_enabled {
@@ -1060,5 +1074,66 @@ impl super::Renderer {
                 ctx.draw_line(edge_pos, Vec2::new(point.x, point.y), [255, 0, 255, 150]);
             }
         }
+    }
+    
+    /// Find the SOC for an electrode particle based on its position and the active regions
+    fn find_electrode_soc(&self, regions: &[(f32, f32, u8, f32)], x: f32, y: f32, species: Species) -> Option<f32> {
+        if regions.is_empty() {
+            return None;
+        }
+        
+        // Find closest region that matches this species' material type
+        let species_material_idx = match species {
+            Species::Graphite => 0,
+            Species::HardCarbon => 1,
+            Species::SiliconOxide => 2,
+            Species::LTO => 3,
+            Species::LFP => 4,
+            Species::LMFP => 5,
+            Species::NMC => 6,
+            Species::NCA => 7,
+            _ => return None,
+        };
+        
+        let mut best_soc = None;
+        let mut best_dist_sq = f32::MAX;
+        
+        for &(cx, cy, mat_idx, soc) in regions {
+            // Only match regions with same material type
+            if mat_idx != species_material_idx {
+                continue;
+            }
+            
+            let dx = x - cx;
+            let dy = y - cy;
+            let dist_sq = dx * dx + dy * dy;
+            
+            // Match within ~50 unit radius of region center
+            if dist_sq < 2500.0 && dist_sq < best_dist_sq {
+                best_dist_sq = dist_sq;
+                best_soc = Some(soc);
+            }
+        }
+        
+        best_soc
+    }
+    
+    /// Get the color for an electrode species at a given SOC
+    fn soc_color_for_species(&self, species: Species, soc: f32) -> [u8; 4] {
+        use crate::electrode::MaterialType;
+        
+        let material = match species {
+            Species::Graphite => MaterialType::Graphite,
+            Species::HardCarbon => MaterialType::HardCarbon,
+            Species::SiliconOxide => MaterialType::SiliconOxide,
+            Species::LTO => MaterialType::LTO,
+            Species::LFP => MaterialType::LFP,
+            Species::LMFP => MaterialType::LMFP,
+            Species::NMC => MaterialType::NMC,
+            Species::NCA => MaterialType::NCA,
+            _ => return species.color(),
+        };
+        
+        material.color_at_soc(soc)
     }
 }

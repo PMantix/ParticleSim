@@ -91,6 +91,17 @@ impl Default for PlaybackStatus {
 pub static PLAYBACK_STATUS: Lazy<Mutex<PlaybackStatus>> =
     Lazy::new(|| Mutex::new(PlaybackStatus::default()));
 
+// Active material region SOC data for rendering (synced from simulation)
+// Maps region center (x, y) to (material_type_index, state_of_charge)
+// This allows the renderer to color electrode particles based on their region's SOC
+#[derive(Clone, Debug, Default)]
+pub struct ActiveRegionRenderData {
+    /// Vec of (center_x, center_y, material_type_index, state_of_charge)
+    pub regions: Vec<(f32, f32, u8, f32)>,
+}
+pub static ACTIVE_REGION_RENDER_DATA: Lazy<Mutex<ActiveRegionRenderData>> =
+    Lazy::new(|| Mutex::new(ActiveRegionRenderData::default()));
+
 // Persisted UI controls (optional) so saves/loads can restore GUI selections
 pub static PERSIST_UI_CHARGING_MODE: Lazy<Mutex<Option<String>>> = Lazy::new(|| Mutex::new(None)); // "Conventional" | "SwitchCharging"
 pub static PERSIST_UI_CONV_IS_OVER: Lazy<Mutex<Option<bool>>> = Lazy::new(|| Mutex::new(None));
@@ -263,6 +274,11 @@ pub enum SimCommand {
     UpdateFoilMasses {
         mass: f32,
     },
+    // Active material region commands for intercalation electrodes
+    SyncActiveMaterialRegions {
+        regions: Vec<crate::electrode::ActiveMaterialRegion>,
+    },
+    ClearActiveMaterialRegions,
 }
 
 pub static SIM_COMMAND_SENDER: Lazy<Mutex<Option<Sender<SimCommand>>>> =
