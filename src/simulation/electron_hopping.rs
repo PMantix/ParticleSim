@@ -33,10 +33,21 @@ impl Simulation {
             let src_body = &self.bodies[src_idx];
             let src_diff =
                 src_body.electrons.len() as i32 - src_body.neutral_electron_count() as i32;
-            if !(src_body.species == Species::LithiumMetal
-                || src_body.species == Species::FoilMetal)
-                || src_diff < 0
-            {
+            // Allow electron donation from metals and intercalation electrode materials
+            let is_conductor = matches!(
+                src_body.species,
+                Species::LithiumMetal
+                    | Species::FoilMetal
+                    | Species::Graphite
+                    | Species::HardCarbon
+                    | Species::SiliconOxide
+                    | Species::LTO
+                    | Species::LFP
+                    | Species::LMFP
+                    | Species::NMC
+                    | Species::NCA
+            );
+            if !is_conductor || src_diff < 0 {
                 continue;
             }
             let hop_radius = self.config.hop_radius_factor * src_body.radius;
@@ -54,9 +65,19 @@ impl Simulation {
                     // Allow hop if donor is more excess than recipient
                     if src_diff >= dst_diff {
                         match dst_body.species {
+                            // Standard species that can receive electrons
                             Species::LithiumMetal | Species::FoilMetal | Species::LithiumIon => {
                                 can_transfer_electron(src_body, dst_body)
                             }
+                            // Intercalation electrode materials can receive electrons
+                            Species::Graphite
+                            | Species::HardCarbon
+                            | Species::SiliconOxide
+                            | Species::LTO
+                            | Species::LFP
+                            | Species::LMFP
+                            | Species::NMC
+                            | Species::NCA => can_transfer_electron(src_body, dst_body),
                             _ => false,
                         }
                     } else {

@@ -29,7 +29,8 @@ fn is_intercalation_electrode(species: Species) -> bool {
 }
 
 impl Simulation {
-    /// Perform intercalation: Li+ ions near electrode surfaces may be absorbed.
+    /// Perform intercalation: Li+ ions near electrode surfaces with excess electrons are absorbed.
+    /// The reaction is: Li⁺ + e⁻ → Li(intercalated)
     /// This is called each simulation step after electron hopping.
     pub fn perform_intercalation(&mut self) {
         if self.active_regions.is_empty() {
@@ -39,66 +40,75 @@ impl Simulation {
 
         let dt = self.dt;
         
-        // Find Li+ ions near intercalation electrode surfaces
-        // Collect candidates: (li_index, region_index, electrode_body_index)
+        // Find electrode particles with excess electrons near Li+ ions
+        // Collect candidates: (li_index, electrode_index, region_index)
         let mut candidates: Vec<(usize, usize, usize)> = Vec::new();
         
-        for (li_idx, li_body) in self.bodies.iter().enumerate() {
-            if li_body.species != Species::LithiumIon {
+        // First, find electrode particles that have excess electrons (ready to accept Li+)
+        for (elec_idx, elec_body) in self.bodies.iter().enumerate() {
+            if !is_intercalation_electrode(elec_body.species) {
                 continue;
             }
             
-            // Check distance to each active region's electrode particles
-            let search_radius = li_body.radius * INTERCALATION_DISTANCE_FACTOR;
-            let neighbors = self.quadtree.find_neighbors_within(&self.bodies, li_idx, search_radius);
+            // Check if electrode has excess electrons (received from foil via hopping)
+            let neutral_count = elec_body.neutral_electron_count();
+            if elec_body.electrons.len() <= neutral_count {
+                continue; // No excess electrons, can't accept Li+
+            }
             
-            for &neighbor_idx in &neighbors {
-                if neighbor_idx == li_idx || neighbor_idx >= self.bodies.len() {
+            // Find which active region this electrode particle belongs to
+            let region_idx = match self.find_region_for_electrode(elec_body.pos.x, elec_body.pos.y) {
+                Some(idx) => idx,
+                None => continue,
+            };
+            
+            // Check if this is an anode (accepts Li+ during charge)
+            if region_idx >= self.active_regions.len() {
+                continue;
+            }
+            let region = &self.active_regions[region_idx];
+            if region.material.role() != ElectrodeRole::Anode {
+                continue; // Only anodes intercalate during charging
+            }
+            if region.is_full() {
+                continue; // Electrode is fully lithiated
+            }
+            
+            // Look for nearby Li+ ions
+            let search_radius = elec_body.radius * INTERCALATION_DISTANCE_FACTOR;
+            let neighbors = self.quadtree.find_neighbors_within(&self.bodies, elec_idx, search_radius);
+            
+            for &li_idx in &neighbors {
+                if li_idx == elec_idx || li_idx >= self.bodies.len() {
                     continue;
                 }
                 
-                let neighbor = &self.bodies[neighbor_idx];
-                if !is_intercalation_electrode(neighbor.species) {
+                let li_body = &self.bodies[li_idx];
+                if li_body.species != Species::LithiumIon {
                     continue;
                 }
                 
-                // Find which active region this electrode particle belongs to
-                // For now, use position-based matching (closest region center)
-                if let Some(region_idx) = self.find_region_for_electrode(neighbor.pos.x, neighbor.pos.y) {
-                    candidates.push((li_idx, region_idx, neighbor_idx));
-                    break; // Only one intercalation attempt per Li+ per step
-                }
+                candidates.push((li_idx, elec_idx, region_idx));
+                break; // Only one intercalation attempt per electrode per step
             }
         }
         
         // Process intercalation candidates
-        // Track which Li+ ions to remove
+        // Track which Li+ ions to remove and which electrodes lose an electron
         let mut to_remove: Vec<usize> = Vec::new();
+        let mut electrode_consume_electron: Vec<usize> = Vec::new();
         
-        for (li_idx, region_idx, _electrode_idx) in candidates {
-            // Check if region can accept more Li
+        for (li_idx, electrode_idx, region_idx) in candidates {
+            // Skip if already processed
+            if to_remove.contains(&li_idx) || electrode_consume_electron.contains(&electrode_idx) {
+                continue;
+            }
+            
             if region_idx >= self.active_regions.len() {
                 continue;
             }
             
             let region = &self.active_regions[region_idx];
-            if region.is_full() {
-                continue; // Electrode is fully lithiated
-            }
-            
-            // Electrochemical driving force based on overpotential
-            // For now, use a simplified model:
-            // - Anodes (low voltage) accept Li+ during charge
-            // - Cathodes (high voltage) release Li+ during charge
-            let role = region.material.role();
-            let accept_li = match role {
-                ElectrodeRole::Anode => true,  // Anodes accept Li+ during charging
-                ElectrodeRole::Cathode => false, // Cathodes release Li+ during charging
-            };
-            
-            if !accept_li {
-                continue;
-            }
             
             // Probability based on:
             // 1. Base rate scaled by timestep
@@ -110,13 +120,23 @@ impl Simulation {
             
             if random::<f32>() < prob {
                 // Successful intercalation!
-                // Mark Li+ for removal and update region
+                // Mark Li+ for removal and electrode for electron consumption
                 to_remove.push(li_idx);
+                electrode_consume_electron.push(electrode_idx);
                 
                 // Update region (need mutable access)
                 let region = &mut self.active_regions[region_idx];
                 region.intercalate();
                 region.total_intercalated += 1;
+            }
+        }
+        
+        // Consume electrons from electrodes that performed intercalation
+        // Li⁺ + e⁻ → Li(intercalated), so the electron is "used up"
+        for &elec_idx in &electrode_consume_electron {
+            if elec_idx < self.bodies.len() && !self.bodies[elec_idx].electrons.is_empty() {
+                self.bodies[elec_idx].electrons.pop();
+                self.bodies[elec_idx].update_charge_from_electrons();
             }
         }
         
@@ -126,13 +146,14 @@ impl Simulation {
         for idx in to_remove {
             if idx < self.bodies.len() {
                 let removed = self.bodies.remove(idx);
-                println!("⚡ Li+ intercalated into electrode (was body {})", removed.id);
+                println!("⚡ Li+ intercalated into anode (was body {})", removed.id);
             }
         }
     }
     
-    /// Perform deintercalation: Release Li+ from electrodes during discharge.
-    /// This spawns new Li+ ions at electrode surfaces.
+    /// Perform deintercalation: Release Li+ from cathodes during charging.
+    /// The reaction is: Li(intercalated) → Li⁺ + e⁻
+    /// This spawns new Li+ ions at electrode surfaces and adds electrons to cathode particles.
     pub fn perform_deintercalation(&mut self) {
         if self.active_regions.is_empty() {
             return;
@@ -140,21 +161,18 @@ impl Simulation {
         profile_scope!("deintercalation");
         
         let dt = self.dt;
-        let mut spawned_bodies: Vec<crate::body::Body> = Vec::new();
         
-        for region in &mut self.active_regions {
+        // For each cathode region, check if we should deintercalate
+        // We need to find cathode particles that can accept the released electron
+        let mut deintercalation_events: Vec<(usize, f32, f32)> = Vec::new(); // (region_idx, spawn_x, spawn_y)
+        
+        for (region_idx, region) in self.active_regions.iter().enumerate() {
             if region.is_empty() {
                 continue; // No Li to release
             }
             
-            // Only cathodes release Li+ during charging (for now)
-            let role = region.material.role();
-            let release_li = match role {
-                ElectrodeRole::Anode => false,
-                ElectrodeRole::Cathode => true,
-            };
-            
-            if !release_li {
+            // Only cathodes release Li+ during charging
+            if region.material.role() != ElectrodeRole::Cathode {
                 continue;
             }
             
@@ -164,15 +182,60 @@ impl Simulation {
             let prob = BASE_INTERCALATION_PROBABILITY * soc_factor * kinetics_factor * dt;
             
             if random::<f32>() < prob {
-                // Deintercalate one Li
+                // Calculate spawn position
+                let spawn_x = region.center_x + (random::<f32>() - 0.5) * 20.0;
+                let spawn_y = region.center_y + (random::<f32>() - 0.5) * 20.0;
+                deintercalation_events.push((region_idx, spawn_x, spawn_y));
+            }
+        }
+        
+        // Process deintercalation events
+        let mut spawned_bodies: Vec<crate::body::Body> = Vec::new();
+        
+        for (region_idx, spawn_x, spawn_y) in deintercalation_events {
+            // Find a nearby cathode particle to receive the electron
+            // The electron will then hop toward the foil
+            let mut found_cathode_body = None;
+            for (body_idx, body) in self.bodies.iter().enumerate() {
+                if !is_intercalation_electrode(body.species) {
+                    continue;
+                }
+                // Check if this is a cathode material
+                if !matches!(body.species, Species::LFP | Species::LMFP | Species::NMC | Species::NCA) {
+                    continue;
+                }
+                
+                // Check distance to spawn point
+                let dx = body.pos.x - spawn_x;
+                let dy = body.pos.y - spawn_y;
+                if dx * dx + dy * dy < 400.0 { // Within 20 units
+                    // Check if can accept electron (not at max)
+                    if body.electrons.len() < crate::config::ELECTRODE_CATHODE_MAX_ELECTRONS {
+                        found_cathode_body = Some(body_idx);
+                        break;
+                    }
+                }
+            }
+            
+            // Only proceed if we found a cathode body to receive the electron
+            if let Some(cathode_idx) = found_cathode_body {
+                // Deintercalate from region
+                let region = &mut self.active_regions[region_idx];
                 if region.deintercalate() {
                     region.total_deintercalated += 1;
                     
-                    // Spawn a new Li+ ion near the electrode surface
-                    let spawn_x = region.center_x + (random::<f32>() - 0.5) * 20.0;
-                    let spawn_y = region.center_y + (random::<f32>() - 0.5) * 20.0;
+                    // Add electron to cathode particle (will hop toward foil)
+                    let angle = random::<f32>() * std::f32::consts::TAU;
+                    let cathode = &mut self.bodies[cathode_idx];
+                    let rel_pos = ultraviolet::Vec2::new(angle.cos(), angle.sin())
+                        * cathode.radius * cathode.species.polar_offset();
+                    cathode.electrons.push(crate::body::Electron {
+                        rel_pos,
+                        vel: ultraviolet::Vec2::zero(),
+                    });
+                    cathode.update_charge_from_electrons();
                     
-                    // Initial velocity pointing away from electrode
+                    // Spawn Li+ ion
                     let vel_x = (random::<f32>() - 0.5) * 0.1;
                     let vel_y = (random::<f32>() - 0.5) * 0.1;
                     
