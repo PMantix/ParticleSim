@@ -258,7 +258,9 @@ impl super::super::Renderer {
         println!("  Go to Measurement tab and click 'Generate' to create new points.");
     }
     
-    fn add_default_electrolyte(&self) {
+    /// Add default electrolyte (1M LiPF6 in EC:DMC 1:1)
+    /// Public so other tabs can reuse this functionality
+    pub fn add_default_electrolyte(&self) {
         use crate::renderer::state::{SimCommand, SIM_COMMAND_SENDER};
         use crate::body::Species;
         

@@ -24,7 +24,7 @@ pub fn run() {
         .unwrap();
 
     let config = quarkstrom::Config {
-        window_mode: quarkstrom::WindowMode::Maximized,
+        window_mode: quarkstrom::WindowMode::Windowed(1600, 900),
     };
 
     let (tx, rx) = channel();

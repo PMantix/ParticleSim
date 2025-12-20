@@ -1,7 +1,6 @@
 // electrode/intercalation.rs
 // Physics and logic for Li⁺ intercalation/deintercalation at electrode surfaces
 
-use super::region::ActiveMaterialRegion;
 use super::material::{MaterialType, StorageMechanism};
 
 /// Configuration for intercalation physics
