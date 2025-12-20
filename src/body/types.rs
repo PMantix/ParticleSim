@@ -127,8 +127,17 @@ impl Body {
                 | Species::LLZT
                 | Species::S40B
                 | Species::SEI
+                // Intercalation electrode materials - don't auto-convert
+                | Species::Graphite
+                | Species::HardCarbon
+                | Species::SiliconOxide
+                | Species::LTO
+                | Species::LFP
+                | Species::LMFP
+                | Species::NMC
+                | Species::NCA
         ) {
-            // Don't auto-convert FoilMetal, Anions, solvent molecules, or SEI
+            // Don't auto-convert FoilMetal, Anions, solvent molecules, SEI, or electrode materials
             return;
         }
 
