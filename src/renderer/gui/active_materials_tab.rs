@@ -286,12 +286,21 @@ impl super::super::Renderer {
             let _ = sender.send(SimCommand::DeleteAll);
         }
         
+        // Reset foil ID counter so new foils start at ID 1
+        if let Some(sender) = SIM_COMMAND_SENDER.lock().as_ref() {
+            let _ = sender.send(SimCommand::ResetFoilIds);
+        }
+        
         std::thread::sleep(std::time::Duration::from_millis(50));
         
         // Calculate positions for alternating anode/cathode layers
         let spacing = self.electrode_spacing;
         let total_electrodes = self.intercalation_layer_count * 2;
         let start_x = -((total_electrodes - 1) as f32 * spacing) / 2.0;
+        
+        // Track foil IDs for group assignment (anodes vs cathodes)
+        let mut anode_foil_ids: Vec<u64> = Vec::new();
+        let mut cathode_foil_ids: Vec<u64> = Vec::new();
         
         // Clear and regenerate active regions
         self.active_material_regions.clear();
@@ -341,6 +350,14 @@ impl super::super::Renderer {
                     particle_radius: Species::FoilMetal.radius(),
                     current: 0.0,
                 });
+                
+                // Track foil ID for group assignment (foil IDs start at 1, created in order)
+                let foil_id = (i + 1) as u64;
+                if is_anode {
+                    anode_foil_ids.push(foil_id);
+                } else {
+                    cathode_foil_ids.push(foil_id);
+                }
             }
             
             // Create active material region for tracking
@@ -353,6 +370,14 @@ impl super::super::Renderer {
             self.active_material_regions.push(region);
         }
         
+        // Assign foil groups (Group A = anodes, Group B = cathodes)
+        if let Some(sender) = SIM_COMMAND_SENDER.lock().as_ref() {
+            let _ = sender.send(SimCommand::SetFoilGroups {
+                group_a: anode_foil_ids.clone(),
+                group_b: cathode_foil_ids.clone(),
+            });
+        }
+        
         // Add electrolyte
         self.add_default_electrolyte();
         
@@ -361,6 +386,8 @@ impl super::super::Renderer {
         println!("✓ Generated {} electrode layers with {} active regions",
             total_electrodes,
             self.active_material_regions.len());
+        println!("  Anode foils (Group A): {:?}", anode_foil_ids);
+        println!("  Cathode foils (Group B): {:?}", cathode_foil_ids);
     }
 }
 

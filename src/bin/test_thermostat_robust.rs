@@ -339,6 +339,15 @@ fn get_body_template_for_species(species: Species) -> Body {
         Species::LLZT => Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::LLZT),
         Species::S40B => Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::S40B),
         Species::SEI => Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::SEI),
+        // Intercalation electrode materials (stationary)
+        Species::Graphite => Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::Graphite),
+        Species::HardCarbon => Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::HardCarbon),
+        Species::SiliconOxide => Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::SiliconOxide),
+        Species::LTO => Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::LTO),
+        Species::LFP => Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::LFP),
+        Species::LMFP => Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::LMFP),
+        Species::NMC => Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::NMC),
+        Species::NCA => Body::new(Vec2::zero(), Vec2::zero(), 1.0, 1.0, 0.0, Species::NCA),
     }
 }
 
