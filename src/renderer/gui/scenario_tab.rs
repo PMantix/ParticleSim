@@ -1156,6 +1156,15 @@ fn species_display_name(species: Species) -> &'static str {
         Species::LLZT => "LLZT",
         Species::S40B => "S40B",
         Species::SEI => "SEI",
+        // Intercalation electrode materials
+        Species::Graphite => "Graphite",
+        Species::HardCarbon => "Hard Carbon",
+        Species::SiliconOxide => "SiOx",
+        Species::LTO => "LTO",
+        Species::LFP => "LFP",
+        Species::LMFP => "LMFP",
+        Species::NMC => "NMC",
+        Species::NCA => "NCA",
     }
 }
 
@@ -1216,6 +1225,11 @@ pub fn make_body_with_species(pos: Vec2, vel: Vec2, species: Species) -> Body {
         }
         Species::SEI => {
             // SEI is neutral and has no electrons
+        }
+        // Intercalation electrode materials - neutral, no electrons
+        Species::Graphite | Species::HardCarbon | Species::SiliconOxide | Species::LTO
+        | Species::LFP | Species::LMFP | Species::NMC | Species::NCA => {
+            // Electrode materials are neutral solids
         }
     }
     body.update_charge_from_electrons();

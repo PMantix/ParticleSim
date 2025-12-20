@@ -94,15 +94,9 @@ impl super::Renderer {
                         );
                         ui.selectable_value(
                             &mut self.current_tab,
-                            super::GuiTab::ActiveMaterials,
-                            "🔋 Materials",
-                        );
-                        ui.selectable_value(
-                            &mut self.current_tab,
                             super::GuiTab::Charging,
                             "⚡ Charging",
                         );
-                        // Foils tab removed (merged into Charging workflows)
                         ui.selectable_value(
                             &mut self.current_tab,
                             super::GuiTab::Analysis,
@@ -116,6 +110,11 @@ impl super::Renderer {
                     });
                     // Third row of tabs
                     ui.horizontal(|ui| {
+                        ui.selectable_value(
+                            &mut self.current_tab,
+                            super::GuiTab::ActiveMaterials,
+                            "🔋 Materials",
+                        );
                         ui.selectable_value(
                             &mut self.current_tab,
                             super::GuiTab::Measurement,

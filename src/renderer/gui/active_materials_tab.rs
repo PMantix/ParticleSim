@@ -312,20 +312,20 @@ impl super::super::Renderer {
                 self.initial_cathode_soc
             };
             
-            // For now, create LithiumMetal rectangles as placeholders
-            // In the full implementation, we'd use material-specific species
+            // Convert MaterialType to Species and create electrode particles
+            let electrode_species = material.to_species();
             if let Some(sender) = SIM_COMMAND_SENDER.lock().as_ref() {
-                let metal_body = crate::body::Body::new(
+                let electrode_body = crate::body::Body::new(
                     ultraviolet::Vec2::zero(),
                     ultraviolet::Vec2::zero(),
-                    Species::LithiumMetal.mass(),
-                    Species::LithiumMetal.radius(),
+                    electrode_species.mass(),
+                    electrode_species.radius(),
                     0.0,
-                    Species::LithiumMetal,
+                    electrode_species,
                 );
                 
                 let _ = sender.send(SimCommand::AddRectangle {
-                    body: metal_body,
+                    body: electrode_body,
                     x: x_center - self.electrode_metal_width / 2.0,
                     y: y_center - self.electrode_metal_height / 2.0,
                     width: self.electrode_metal_width,

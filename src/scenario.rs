@@ -402,6 +402,9 @@ fn get_body_for_species(templates: &BodyTemplates, species: Species) -> crate::b
         Species::LLZT => templates.llzt_body.clone(),
         Species::S40B => templates.s40b_body.clone(),
         Species::SEI => templates.ec_body.clone(), // Fallback to EC body for SEI template for now
+        // Intercalation electrode materials - use metal body as template
+        Species::Graphite | Species::HardCarbon | Species::SiliconOxide | Species::LTO
+        | Species::LFP | Species::LMFP | Species::NMC | Species::NCA => templates.metal_body.clone(),
     }
 }
 

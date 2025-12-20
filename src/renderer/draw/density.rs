@@ -139,6 +139,9 @@ impl Renderer {
             Species::VC | Species::FEC | Species::EMC => self.density_calc_ec,
             Species::LLZO | Species::LLZT | Species::S40B => self.density_calc_lithium_metal,
             Species::SEI => self.density_calc_lithium_metal, // Treat SEI like metal for density viz
+            // Intercalation electrode materials - treat like metal for density visualization
+            Species::Graphite | Species::HardCarbon | Species::SiliconOxide | Species::LTO
+            | Species::LFP | Species::LMFP | Species::NMC | Species::NCA => self.density_calc_lithium_metal,
         }
     }
 

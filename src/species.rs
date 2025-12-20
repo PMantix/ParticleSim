@@ -260,6 +260,151 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
             repulsion_cutoff: 2.0,
         },
     );
+    // Intercalation electrode materials
+    m.insert(
+        Graphite,
+        SpeciesProps {
+            mass: 72.0,   // 6 carbons per LiC₆ unit
+            radius: 1.7,  // Slightly larger than Li metal
+            damping: 0.01, // Stationary electrode
+            color: [40, 40, 40, 255], // Black (delithiated default)
+            lj_enabled: true,
+            lj_epsilon: crate::config::LJ_FORCE_EPSILON,
+            lj_sigma: crate::config::LJ_FORCE_SIGMA,
+            lj_cutoff: crate::config::LJ_FORCE_CUTOFF,
+            polar_offset: 0.0,
+            polar_charge: 0.0,
+            enable_repulsion: false,
+            repulsion_strength: 5.0,
+            repulsion_cutoff: 2.0,
+        },
+    );
+    m.insert(
+        HardCarbon,
+        SpeciesProps {
+            mass: 72.0,
+            radius: 1.8,
+            damping: 0.01,
+            color: [60, 60, 60, 255], // Dark gray
+            lj_enabled: true,
+            lj_epsilon: crate::config::LJ_FORCE_EPSILON,
+            lj_sigma: crate::config::LJ_FORCE_SIGMA,
+            lj_cutoff: crate::config::LJ_FORCE_CUTOFF,
+            polar_offset: 0.0,
+            polar_charge: 0.0,
+            enable_repulsion: false,
+            repulsion_strength: 5.0,
+            repulsion_cutoff: 2.0,
+        },
+    );
+    m.insert(
+        SiliconOxide,
+        SpeciesProps {
+            mass: 60.0,   // SiO₂ approximate
+            radius: 2.0,
+            damping: 0.01,
+            color: [120, 100, 80, 255], // Brown
+            lj_enabled: true,
+            lj_epsilon: crate::config::LJ_FORCE_EPSILON,
+            lj_sigma: crate::config::LJ_FORCE_SIGMA,
+            lj_cutoff: crate::config::LJ_FORCE_CUTOFF,
+            polar_offset: 0.0,
+            polar_charge: 0.0,
+            enable_repulsion: false,
+            repulsion_strength: 5.0,
+            repulsion_cutoff: 2.0,
+        },
+    );
+    m.insert(
+        LTO,
+        SpeciesProps {
+            mass: 460.0,  // Li₄Ti₅O₁₂
+            radius: 2.5,
+            damping: 0.01,
+            color: [200, 200, 220, 255], // Light gray-blue
+            lj_enabled: true,
+            lj_epsilon: crate::config::LJ_FORCE_EPSILON,
+            lj_sigma: crate::config::LJ_FORCE_SIGMA,
+            lj_cutoff: crate::config::LJ_FORCE_CUTOFF,
+            polar_offset: 0.0,
+            polar_charge: 0.0,
+            enable_repulsion: false,
+            repulsion_strength: 5.0,
+            repulsion_cutoff: 2.0,
+        },
+    );
+    m.insert(
+        LFP,
+        SpeciesProps {
+            mass: 158.0,  // LiFePO₄
+            radius: 2.2,
+            damping: 0.01,
+            color: [140, 140, 140, 255], // Gray (delithiated default)
+            lj_enabled: true,
+            lj_epsilon: crate::config::LJ_FORCE_EPSILON,
+            lj_sigma: crate::config::LJ_FORCE_SIGMA,
+            lj_cutoff: crate::config::LJ_FORCE_CUTOFF,
+            polar_offset: 0.0,
+            polar_charge: 0.0,
+            enable_repulsion: false,
+            repulsion_strength: 5.0,
+            repulsion_cutoff: 2.0,
+        },
+    );
+    m.insert(
+        LMFP,
+        SpeciesProps {
+            mass: 158.0,  // Similar to LFP
+            radius: 2.2,
+            damping: 0.01,
+            color: [160, 140, 120, 255], // Tan
+            lj_enabled: true,
+            lj_epsilon: crate::config::LJ_FORCE_EPSILON,
+            lj_sigma: crate::config::LJ_FORCE_SIGMA,
+            lj_cutoff: crate::config::LJ_FORCE_CUTOFF,
+            polar_offset: 0.0,
+            polar_charge: 0.0,
+            enable_repulsion: false,
+            repulsion_strength: 5.0,
+            repulsion_cutoff: 2.0,
+        },
+    );
+    m.insert(
+        NMC,
+        SpeciesProps {
+            mass: 97.0,   // LiNi₀.₃₃Mn₀.₃₃Co₀.₃₃O₂ approximate
+            radius: 2.0,
+            damping: 0.01,
+            color: [40, 40, 40, 255], // Black (oxidized/delithiated)
+            lj_enabled: true,
+            lj_epsilon: crate::config::LJ_FORCE_EPSILON,
+            lj_sigma: crate::config::LJ_FORCE_SIGMA,
+            lj_cutoff: crate::config::LJ_FORCE_CUTOFF,
+            polar_offset: 0.0,
+            polar_charge: 0.0,
+            enable_repulsion: false,
+            repulsion_strength: 5.0,
+            repulsion_cutoff: 2.0,
+        },
+    );
+    m.insert(
+        NCA,
+        SpeciesProps {
+            mass: 97.0,   // Similar to NMC
+            radius: 2.0,
+            damping: 0.01,
+            color: [50, 50, 50, 255], // Black
+            lj_enabled: true,
+            lj_epsilon: crate::config::LJ_FORCE_EPSILON,
+            lj_sigma: crate::config::LJ_FORCE_SIGMA,
+            lj_cutoff: crate::config::LJ_FORCE_CUTOFF,
+            polar_offset: 0.0,
+            polar_charge: 0.0,
+            enable_repulsion: false,
+            repulsion_strength: 5.0,
+            repulsion_cutoff: 2.0,
+        },
+    );
     m
 });
 
@@ -280,6 +425,14 @@ pub fn max_lj_cutoff() -> f32 {
         LLZT,
         S40B,
         SEI,
+        Graphite,
+        HardCarbon,
+        SiliconOxide,
+        LTO,
+        LFP,
+        LMFP,
+        NMC,
+        NCA,
     ];
 
     species_list
@@ -307,6 +460,14 @@ pub fn max_repulsion_cutoff() -> f32 {
         LLZT,
         S40B,
         SEI,
+        Graphite,
+        HardCarbon,
+        SiliconOxide,
+        LTO,
+        LFP,
+        LMFP,
+        NMC,
+        NCA,
     ];
 
     species_list
