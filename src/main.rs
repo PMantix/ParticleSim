@@ -5,6 +5,7 @@ mod commands;
 mod config;
 mod diagnostics;
 mod doe;
+mod electrode;
 mod init_config;
 mod io;
 mod manual_measurement;

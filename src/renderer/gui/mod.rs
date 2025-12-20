@@ -8,6 +8,7 @@ use crate::renderer::Body;
 use quarkstrom::egui::{self, Vec2 as EVec2};
 use ultraviolet::Vec2;
 
+pub mod active_materials_tab;
 pub mod analysis_tab;
 pub mod charging_tab;
 pub mod debug_tab;
@@ -23,6 +24,7 @@ pub mod species_tab;
 pub mod visualization_tab;
 pub mod legend_tab;
 
+pub use active_materials_tab::CellPreset;
 pub use scenario_tab::make_body_with_species;
 
 impl super::Renderer {
@@ -92,8 +94,13 @@ impl super::Renderer {
                         );
                         ui.selectable_value(
                             &mut self.current_tab,
+                            super::GuiTab::ActiveMaterials,
+                            "🔋 Materials",
+                        );
+                        ui.selectable_value(
+                            &mut self.current_tab,
                             super::GuiTab::Charging,
-                            "🔋 Charging",
+                            "⚡ Charging",
                         );
                         // Foils tab removed (merged into Charging workflows)
                         ui.selectable_value(
@@ -156,6 +163,7 @@ impl super::Renderer {
                         super::GuiTab::Physics => self.show_physics_tab(ui),
                         super::GuiTab::Scenario => self.show_scenario_tab(ui),
                         super::GuiTab::Electrodes => self.show_electrodes_tab(ui),
+                        super::GuiTab::ActiveMaterials => self.show_active_materials_tab(ui),
                         super::GuiTab::Charging => self.show_charging_tab(ui),
                         // Removed tabs routed here previously are no longer used
                         super::GuiTab::Measurement => self.show_measurement_tab(ui),

@@ -4,6 +4,7 @@ pub mod commands;
 pub mod config;
 pub mod diagnostics;
 pub mod doe;
+pub mod electrode;
 pub mod init_config;
 pub mod io;
 pub mod manual_measurement;

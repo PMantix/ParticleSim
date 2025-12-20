@@ -109,6 +109,7 @@ pub enum GuiTab {
     Physics,
     Scenario,
     Electrodes,
+    ActiveMaterials,
     Charging,
     Measurement,
     Analysis,
@@ -305,6 +306,16 @@ pub struct Renderer {
     pub electrode_spacing: f32,
     pub electrode_count: usize,
     pub electrode_y_offset: f32,
+
+    // Active materials configuration
+    pub use_intercalation_electrodes: bool,
+    pub selected_anode_material: crate::electrode::MaterialType,
+    pub selected_cathode_material: crate::electrode::MaterialType,
+    pub cell_preset: gui::CellPreset,
+    pub intercalation_layer_count: usize,
+    pub initial_anode_soc: f32,
+    pub initial_cathode_soc: f32,
+    pub active_material_regions: Vec<crate::electrode::ActiveMaterialRegion>,
 
     // Hovered species for Legend tab interaction
     pub hovered_species: Option<Species>,
@@ -580,6 +591,15 @@ impl quarkstrom::Renderer for Renderer {
             electrode_spacing: 100.0,
             electrode_count: 5,
             electrode_y_offset: 0.0,
+            // Active materials defaults
+            use_intercalation_electrodes: false,
+            selected_anode_material: crate::electrode::MaterialType::Graphite,
+            selected_cathode_material: crate::electrode::MaterialType::LFP,
+            cell_preset: gui::CellPreset::default(),
+            intercalation_layer_count: 2,
+            initial_anode_soc: 1.0,  // Fully lithiated (charged state for anode)
+            initial_cathode_soc: 0.0, // Fully delithiated (charged state for cathode)
+            active_material_regions: Vec::new(),
             hovered_species: None,
         }
     }
