@@ -8,6 +8,14 @@ pub fn can_transfer_electron(src: &Body, dst: &Body) -> bool {
     let dst_max_electrons = match dst.species {
         Species::FoilMetal => crate::config::FOIL_MAX_ELECTRONS,
         Species::LithiumMetal => crate::config::LITHIUM_METAL_MAX_ELECTRONS,
+        // Intercalation electrode materials can hold multiple electrons
+        // Use a reasonable limit based on the material's capacity for charge transfer
+        Species::Graphite | Species::HardCarbon | Species::SiliconOxide | Species::LTO => {
+            crate::config::ELECTRODE_ANODE_MAX_ELECTRONS
+        }
+        Species::LFP | Species::LMFP | Species::NMC | Species::NCA => {
+            crate::config::ELECTRODE_CATHODE_MAX_ELECTRONS
+        }
         _ => usize::MAX, // No limit for other species
     };
 

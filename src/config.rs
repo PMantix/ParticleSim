@@ -134,6 +134,9 @@ pub const LLZT_NEUTRAL_ELECTRONS: usize = 0;
 pub const S40B_NEUTRAL_ELECTRONS: usize = 0;
 pub const FOIL_MAX_ELECTRONS: usize = 2; // Max electrons for foil metal
 pub const LITHIUM_METAL_MAX_ELECTRONS: usize = 3; // Max electrons for lithium metal
+// Intercalation electrode max electrons (allow charge accumulation for reactions)
+pub const ELECTRODE_ANODE_MAX_ELECTRONS: usize = 3; // Anodes (Graphite, etc.) accumulate electrons during charge
+pub const ELECTRODE_CATHODE_MAX_ELECTRONS: usize = 2; // Cathodes (LFP, NMC, etc.) lose electrons during charge
 /// Maximum number of nearby metallic neighbors allowed before ionization is inhibited
 //pub const IONIZATION_NEIGHBOR_THRESHOLD: usize = 4;
 /// Minimum local electric-field magnitude required for ionization/reduction
