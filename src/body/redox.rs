@@ -33,6 +33,11 @@ impl Body {
             Species::SEI => {
                 self.charge = 0.0; // SEI is always neutral
             }
+            // Intercalation electrode materials - always neutral (no direct electron exchange)
+            Species::Graphite | Species::HardCarbon | Species::SiliconOxide | Species::LTO
+            | Species::LFP | Species::LMFP | Species::NMC | Species::NCA => {
+                self.charge = 0.0;
+            }
         }
     }
     pub fn apply_redox(&mut self) {
@@ -77,6 +82,11 @@ impl Body {
             }
             Species::SEI => {
                 // SEI never changes species (irreversible formation)
+            }
+            // Intercalation electrode materials - never change species (Li storage is tracked separately)
+            Species::Graphite | Species::HardCarbon | Species::SiliconOxide | Species::LTO
+            | Species::LFP | Species::LMFP | Species::NMC | Species::NCA => {
+                // Electrode materials don't undergo redox - Li intercalation is handled separately
             }
         }
 

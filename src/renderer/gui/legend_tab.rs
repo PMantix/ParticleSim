@@ -177,6 +177,15 @@ impl super::super::Renderer {
                                 Species::S40B => "S40B",
                                 Species::FoilMetal => "Foil Metal",
                                 Species::SEI => "SEI",
+                                // Intercalation electrode materials
+                                Species::Graphite => "Graphite",
+                                Species::HardCarbon => "Hard Carbon",
+                                Species::SiliconOxide => "SiOx",
+                                Species::LTO => "LTO",
+                                Species::LFP => "LFP",
+                                Species::LMFP => "LMFP",
+                                Species::NMC => "NMC",
+                                Species::NCA => "NCA",
                             };
                             ui.label(name);
                         });

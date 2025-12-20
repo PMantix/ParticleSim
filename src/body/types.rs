@@ -24,6 +24,15 @@ pub enum Species {
     LLZT,
     S40B,
     SEI, // Solid Electrolyte Interphase
+    // Intercalation electrode materials
+    Graphite,      // Graphitic carbon anode
+    HardCarbon,    // Hard carbon anode
+    SiliconOxide,  // SiOₓ anode
+    LTO,           // Li₄Ti₅O₁₂ anode
+    LFP,           // LiFePO₄ cathode
+    LMFP,          // LiMn₀.₆Fe₀.₄PO₄ cathode
+    NMC,           // LiNiMnCoO₂ cathode
+    NCA,           // LiNiCoAlO₂ cathode
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -153,6 +162,9 @@ impl Body {
             Species::LLZT => crate::config::LLZT_NEUTRAL_ELECTRONS,
             Species::S40B => crate::config::S40B_NEUTRAL_ELECTRONS,
             Species::SEI => 0, // SEI is insulating/neutral
+            // Intercalation electrode materials - treat as neutral (no electron transfer)
+            Species::Graphite | Species::HardCarbon | Species::SiliconOxide | Species::LTO
+            | Species::LFP | Species::LMFP | Species::NMC | Species::NCA => 0,
         }
     }
 
@@ -322,6 +334,8 @@ impl Species {
             EC | DMC | VC | FEC | EMC => 0.5, // Weak surface interaction (neutral solvents)
             LithiumMetal => 0.0,     // Already on surface
             FoilMetal | LLZO | LLZT | S40B | SEI => 0.0, // Already on or part of surface
+            // Intercalation electrode materials - already on surface
+            Graphite | HardCarbon | SiliconOxide | LTO | LFP | LMFP | NMC | NCA => 0.0,
         }
     }
 
@@ -408,6 +422,15 @@ impl Species {
             (_, LLZT) | (LLZT, _) => 0.0,
             (_, S40B) | (S40B, _) => 0.0,
             (_, SEI) | (SEI, _) => 0.0,
+            // Intercalation electrode materials don't participate in solvation
+            (_, Graphite) | (Graphite, _) => 0.0,
+            (_, HardCarbon) | (HardCarbon, _) => 0.0,
+            (_, SiliconOxide) | (SiliconOxide, _) => 0.0,
+            (_, LTO) | (LTO, _) => 0.0,
+            (_, LFP) | (LFP, _) => 0.0,
+            (_, LMFP) | (LMFP, _) => 0.0,
+            (_, NMC) | (NMC, _) => 0.0,
+            (_, NCA) | (NCA, _) => 0.0,
         }
     }
 }

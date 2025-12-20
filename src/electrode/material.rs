@@ -256,6 +256,22 @@ impl MaterialType {
             MaterialType::NCA => "LiNCA",
         }
     }
+    
+    /// Convert MaterialType to the corresponding Species enum variant
+    pub fn to_species(&self) -> crate::body::Species {
+        use crate::body::Species;
+        match self {
+            MaterialType::LithiumMetal => Species::LithiumMetal,
+            MaterialType::Graphite => Species::Graphite,
+            MaterialType::HardCarbon => Species::HardCarbon,
+            MaterialType::SiliconOxide => Species::SiliconOxide,
+            MaterialType::LTO => Species::LTO,
+            MaterialType::LFP => Species::LFP,
+            MaterialType::LMFP => Species::LMFP,
+            MaterialType::NMC => Species::NMC,
+            MaterialType::NCA => Species::NCA,
+        }
+    }
 }
 
 /// All available anode materials

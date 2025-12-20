@@ -229,7 +229,16 @@ impl SolvationDiagnostic {
                 | Species::LLZO
                 | Species::LLZT
                 | Species::S40B
-                | Species::SEI => {}
+                | Species::SEI
+                // Intercalation electrode materials - skip
+                | Species::Graphite
+                | Species::HardCarbon
+                | Species::SiliconOxide
+                | Species::LTO
+                | Species::LFP
+                | Species::LMFP
+                | Species::NMC
+                | Species::NCA => {}
             }
         }
 
