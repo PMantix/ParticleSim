@@ -1,5 +1,6 @@
 use super::simulation::Simulation;
-use crate::body::{Body, Species};
+use crate::body::{Body, Species, local_potential_from_charge};
+use crate::config::{ENABLE_POTENTIAL_GATING, SEI_FORMATION_POTENTIAL};
 use crate::profile_scope;
 use rand::random;
 use rayon::prelude::*;
@@ -72,6 +73,15 @@ impl Simulation {
                         sei_charge_threshold_for_species(species, &config_snapshot);
                     if available_charge < threshold {
                         continue;
+                    }
+
+                    // Gate SEI formation by local electrochemical potential
+                    // SEI (solvent reduction) only favorable at low potentials (~0.8V for EC)
+                    if ENABLE_POTENTIAL_GATING {
+                        let local_potential = local_potential_from_charge(neighbor.charge);
+                        if local_potential > SEI_FORMATION_POTENTIAL {
+                            continue; // Potential too high, SEI formation not thermodynamically favorable
+                        }
                     }
 
                     // Increase probability as the local charge exceeds the kinetic threshold

@@ -518,15 +518,15 @@ src/
 - [x] `src/electrode/intercalation.rs` - Desolvation and Butler-Volmer physics
 - [x] `src/electrode/INTEGRATION_SKETCH.rs` - Integration reference
 
-### Step 1: Wire Up Module
-- [ ] Add `pub mod electrode;` to `src/lib.rs`
-- [ ] Run `cargo check` to verify module compiles
+### Step 1: Wire Up Module ✅
+- [x] Add `pub mod electrode;` to `src/lib.rs`
+- [x] Run `cargo check` to verify module compiles
 
-### Step 2: Add Simulation Fields
-- [ ] Add `active_regions: Vec<ActiveMaterialRegion>` to Simulation struct
-- [ ] Add `body_to_region: HashMap<u64, u64>` for lookup
+### Step 2: Add Simulation Fields (Partial)
+- [x] Add `active_regions: Vec<ActiveMaterialRegion>` to Simulation struct
+- [ ] Add `body_to_region: HashMap<u64, usize>` for lookup
 - [ ] Add `intercalation_config: IntercalationConfig`
-- [ ] Initialize in `Simulation::new()`
+- [x] Initialize in `Simulation::new()`
 
 ### Step 3: Implement perform_intercalation()
 - [ ] Add `count_nearby_solvent()` helper
@@ -537,9 +537,8 @@ src/
 - [ ] Call from `Simulation::step()`
 
 ### Step 4: Renderer Integration
-- [ ] Sync `active_regions` to Renderer
-- [ ] Modify body coloring to check `body_to_region`
-- [ ] Use `region.current_color()` for SOC visualization
+- [x] Sync `active_regions` to Renderer (via ACTIVE_REGION_RENDER_DATA)
+- [x] SOC-based coloring using `lithium_content` field
 
 ### Step 5: Commands and Configuration
 - [ ] Add `CreateActiveMaterialRegion` SimCommand
@@ -560,7 +559,7 @@ src/
 - [ ] Test full cell (Graphite || LFP)
 - [ ] Add remaining materials (NMC, NCA, etc.)
 
-### Step 7: Electrochemical Potential Gating (Critical Physics Fix)
+### Step 7: Electrochemical Potential Gating (Critical Physics Fix) ✅
 
 **Problem:** Currently, reactions like Li plating and SEI formation happen based purely on electron availability, ignoring thermodynamic favorability. This causes Li plating/SEI at cathode potentials (~3.4V) where they're impossible.
 
@@ -572,7 +571,7 @@ src/
 
 **Implementation:**
 
-- [ ] Add `equilibrium_potential()` method to Species
+- [x] Add `equilibrium_potential()` method to Species
   ```rust
   Species::LithiumMetal => 0.0,   // Li⁺/Li reference
   Species::Graphite => 0.1,       // Graphite intercalation  
@@ -581,7 +580,7 @@ src/
   // etc.
   ```
 
-- [ ] Add `local_potential_from_charge()` helper function
+- [x] Add `local_potential_from_charge()` helper function
   ```rust
   // Map charge to potential: negative charge → low potential, positive → high
   fn local_potential_from_charge(charge: f32) -> f32 {
@@ -591,11 +590,11 @@ src/
   }
   ```
 
-- [ ] Gate `apply_redox()` in `src/body/redox.rs`
+- [x] Gate `apply_redox()` in `src/body/redox.rs`
   - Li⁺ + e⁻ → Li⁰ only if `local_potential < LITHIUM_PLATING_THRESHOLD` (~0V + small overpotential)
   - Prevents lithium plating at cathode potentials
 
-- [ ] Gate `perform_sei_formation()` in `src/simulation/sei.rs`  
+- [x] Gate `perform_sei_formation()` in `src/simulation/sei.rs`  
   - SEI formation only if `local_potential < SEI_FORMATION_THRESHOLD` (~0.8V for EC)
   - Prevents SEI at cathode
 
@@ -603,12 +602,13 @@ src/
   - Intercalation favorable when `local_potential < material.ocv(soc)`
   - Deintercalation favorable when `local_potential > material.ocv(soc)`
 
-- [ ] Add config constants for thresholds (tunable via GUI)
+- [x] Add config constants for thresholds (tunable via GUI)
   ```rust
-  pub const LITHIUM_PLATING_POTENTIAL: f32 = 0.0;
-  pub const SEI_FORMATION_POTENTIAL: f32 = 0.8;
+  pub const LITHIUM_PLATING_POTENTIAL: f32 = 0.5;
+  pub const SEI_FORMATION_POTENTIAL: f32 = 1.0;
   pub const POTENTIAL_PER_CHARGE: f32 = 2.0;
   pub const BASELINE_POTENTIAL: f32 = 2.0;
+  pub const ENABLE_POTENTIAL_GATING: bool = true;
   ```
 
 **Expected behavior after implementation:**
