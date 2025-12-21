@@ -53,6 +53,9 @@ pub struct Body {
     pub surrounded_by_metal: bool,
     pub last_surround_pos: Vec2,
     pub last_surround_frame: usize,
+    /// Lithium content for intercalation electrode materials (0.0 = delithiated, 1.0 = fully lithiated)
+    /// Used for SOC visualization and intercalation physics
+    pub lithium_content: f32,
 }
 
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -105,6 +108,7 @@ impl Body {
             surrounded_by_metal: false,
             last_surround_pos: pos,
             last_surround_frame: 0,
+            lithium_content: 0.0, // Start delithiated, will be set based on initial SOC
         }
     }
 
@@ -171,10 +175,24 @@ impl Body {
             Species::LLZT => crate::config::LLZT_NEUTRAL_ELECTRONS,
             Species::S40B => crate::config::S40B_NEUTRAL_ELECTRONS,
             Species::SEI => 0, // SEI is insulating/neutral
-            // Intercalation electrode materials - treat as neutral (no electron transfer)
-            Species::Graphite | Species::HardCarbon | Species::SiliconOxide | Species::LTO
-            | Species::LFP | Species::LMFP | Species::NMC | Species::NCA => 0,
+            // Intercalation electrode materials - each has its own neutral electron count
+            Species::Graphite => crate::config::GRAPHITE_NEUTRAL_ELECTRONS,
+            Species::HardCarbon => crate::config::HARD_CARBON_NEUTRAL_ELECTRONS,
+            Species::SiliconOxide => crate::config::SILICON_OXIDE_NEUTRAL_ELECTRONS,
+            Species::LTO => crate::config::LTO_NEUTRAL_ELECTRONS,
+            Species::LFP => crate::config::LFP_NEUTRAL_ELECTRONS,
+            Species::LMFP => crate::config::LMFP_NEUTRAL_ELECTRONS,
+            Species::NMC => crate::config::NMC_NEUTRAL_ELECTRONS,
+            Species::NCA => crate::config::NCA_NEUTRAL_ELECTRONS,
         }
+    }
+
+    /// Initial electron count when spawning this species.
+    /// By default, all species start at their neutral electron count.
+    /// For electrode materials, the GUI SOC slider can adjust this at spawn time.
+    pub fn initial_electron_count(&self) -> usize {
+        // Default: start at neutral state
+        self.neutral_electron_count()
     }
 
     /// Count nearby metal neighbors (LithiumMetal or FoilMetal) within
