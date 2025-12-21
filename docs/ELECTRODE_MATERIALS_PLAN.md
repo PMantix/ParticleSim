@@ -183,20 +183,35 @@ This provides:
 **Goal:** Electrons only hop FROM electrode materials when thermodynamically favorable
 
 - [ ] Modify `attempt_electron_hop()` in electron_hopping.rs
-  - Add check: `donor.local_potential() < donor.equilibrium_potential() + threshold`
+  - Add check: `donor.local_potential() < donor.equilibrium_potential() + donor.donation_overpotential()`
   - This prevents cathode materials from reducing Li⁺ inappropriately
   
-- [ ] Add `ELECTRON_DONATION_OVERPOTENTIAL` config constant
-  - Small threshold (~0.1V) to allow some overpotential driving
+- [ ] Add `donation_overpotential()` method to Body (species-specific)
+  ```rust
+  pub fn donation_overpotential(&self) -> f32 {
+      match self.species {
+          Species::LithiumMetal => 0.05,  // Fast kinetics
+          Species::Graphite => 0.1,       // Moderate kinetics
+          Species::HardCarbon => 0.15,    // Slower than graphite
+          Species::LTO => 0.05,           // Fast kinetics (spinel)
+          Species::LFP => 0.1,            // Moderate (olivine)
+          Species::LMFP => 0.12,          // Slightly slower than LFP
+          Species::NMC => 0.08,           // Fast (layered)
+          Species::NCA => 0.08,           // Fast (layered)
+          Species::FoilMetal => 0.0,      // Current collector, no barrier
+          _ => 0.1,                       // Default
+      }
+  }
+  ```
 
 **Expected behavior:**
-| Material | Eq. Potential | Donates electron when... |
-|----------|---------------|--------------------------|
-| Li metal | 0.0V | local_potential < 0.1V |
-| Graphite | 0.1V | local_potential < 0.2V |
-| LTO | 1.55V | local_potential < 1.65V |
-| LFP | 3.4V | local_potential < 3.5V |
-| NMC | 3.8V | local_potential < 3.9V |
+| Material | Eq. Potential | Overpotential | Donates electron when... |
+|----------|---------------|---------------|--------------------------|
+| Li metal | 0.0V | 0.05V | local_potential < 0.05V |
+| Graphite | 0.1V | 0.1V | local_potential < 0.2V |
+| LTO | 1.55V | 0.05V | local_potential < 1.6V |
+| LFP | 3.4V | 0.1V | local_potential < 3.5V |
+| NMC | 3.8V | 0.08V | local_potential < 3.88V |
 
 ### Phase 3: SOC Visualization via Nearby Lithium Count
 **Goal:** Color electrode particles by local lithium density
@@ -331,7 +346,7 @@ src/
 
 ### Phase 2: Thermodynamic Electron Donation (Next)
 - [ ] Gate electron donation by material equilibrium potential
-- [ ] Add `ELECTRON_DONATION_OVERPOTENTIAL` constant
+- [ ] Add `donation_overpotential()` method to Body (species-specific)
 - [ ] Test: LFP only donates electrons at cathode potentials
 - [ ] Test: Graphite donates electrons at anode potentials
 
@@ -408,13 +423,13 @@ src/
 
 **Implementation:**
 - [ ] In `attempt_electron_hop()`, check donor's equilibrium potential
-- [ ] Electron donation allowed when: `local_potential < equilibrium_potential + threshold`
-- [ ] Add `ELECTRON_DONATION_OVERPOTENTIAL` constant (~0.1V)
+- [ ] Electron donation allowed when: `local_potential < equilibrium_potential + donation_overpotential`
+- [ ] Add `donation_overpotential()` method to Body (species-specific values)
 
-**Expected behavior:**
-- LFP (3.4V) only donates electrons when local potential < ~3.5V
-- Graphite (0.1V) donates electrons at anode potentials
-- Li metal (0.0V) most readily donates electrons
+**Species-specific overpotentials reflect material kinetics:**
+- Fast kinetics (LTO, Li metal): ~0.05V
+- Moderate kinetics (LFP, Graphite): ~0.1V  
+- Layered oxides (NMC, NCA): ~0.08V
 
 This completes the thermodynamic consistency of the simulation.
 
