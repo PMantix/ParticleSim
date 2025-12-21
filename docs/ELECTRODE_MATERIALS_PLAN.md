@@ -10,31 +10,147 @@ This document outlines a phased approach to expanding ParticleSim from symmetric
 
 ---
 
-## Current Architecture Overview
+## Design Philosophy: Emergent Intercalation
 
-### How Species/Materials Work Today
+### The Key Insight
 
-1. **Species Enum** ([src/body/types.rs](../src/body/types.rs#L13-L26))
-   - All particle types defined in a single enum: `LithiumIon`, `LithiumMetal`, `FoilMetal`, electrolyte species, etc.
-   - Each species has static properties defined in `SPECIES_PROPERTIES` HashMap
+Rather than explicitly modeling intercalation with complex stoichiometry tracking, rate equations, and particle absorption/spawning, we leverage the particle-based simulation's natural physics:
 
-2. **Species Properties** ([src/species.rs](../src/species.rs))
-   - `SpeciesProps` struct contains: mass, radius, damping, color, LJ parameters, polar properties, repulsion parameters
-   - Properties can be overridden at runtime via GUI
+**Real intercalation:**
+1. Li⁺ approaches electrode surface
+2. Li⁺ desolvates (sheds solvent shell)
+3. Li⁺ enters host lattice (gaps between layers/particles)
+4. Li⁺ gets reduced by accepting electron from host
 
-3. **Electrochemical Behavior** ([src/body/redox.rs](../src/body/redox.rs))
-   - `apply_redox()` handles Li⁺ ↔ Li metal conversions based on electron count
-   - Species-specific charge calculations in `update_charge_from_electrons()`
-   - Electron sea protection for bulk metal stability
+**What our simulation already does:**
+1. Li⁺ moves toward electrode (electric field + diffusion)
+2. Desolvation happens implicitly (solvent sterically excluded from tight spaces)
+3. Li⁺ can physically enter gaps between electrode particles
+4. Electron hopping reduces Li⁺ → Li⁰ when near electrode material
 
-4. **Electrode Structure** ([src/body/foil.rs](../src/body/foil.rs))
-   - `Foil` struct manages current collectors (electron sources/sinks)
-   - Contains body_ids of particles belonging to that electrode
-   - Handles current control (DC/AC), overpotential control via PID
+### Advantages of Emergent Approach
 
-5. **Electron Transfer** ([src/simulation/electron_hopping.rs](../src/simulation/electron_hopping.rs))
-   - Butler-Volmer kinetics for inter-species electron transfer
-   - Currently limited to LithiumMetal ↔ LithiumIon ↔ FoilMetal transfers
+| Aspect | Explicit Tracking | Emergent Approach |
+|--------|-------------------|-------------------|
+| Capacity limits | Arbitrary counters | Natural geometry limits |
+| Stoichiometry | Manual tracking | Implicit from particle count |
+| Code complexity | High (many systems) | Low (use existing physics) |
+| Physical realism | Abstracted | Actual spatial distribution |
+| Concentration gradients | Calculated | Emerge naturally |
+
+### What We Keep
+
+- **MaterialType** - for equilibrium potentials, colors, species identification
+- **Species enum entries** - Graphite, LFP, NMC, etc.
+- **Potential gating** - controls where reactions happen thermodynamically
+- **Electron hopping** - existing Butler-Volmer kinetics
+- **SOC visualization** - based on nearby lithium count
+
+### What We Remove (Cleanup Task)
+
+The following explicit intercalation machinery is no longer needed:
+
+- `IntercalationConfig` struct
+- `IntercalationResult` / `DeintercalationResult` enums  
+- `desolvation_probability()` function
+- `butler_volmer_rate()` for intercalation (keep for electron hopping)
+- `reaction_direction()` function
+- `intercalate_many()` / `deintercalate_many()` methods
+- `ActiveMaterialRegion.lithium_count` / `lithium_capacity` tracking
+- `IntercalationStats` struct
+- Particle absorption/spawning logic
+
+---
+
+## Revised Architecture
+
+### Core Concept: Electrode Particles as Lithium Hosts
+
+Each electrode material particle (Graphite, LFP, etc.) acts as a **host region** for lithium:
+- Li⁺ ions can physically occupy gaps between/within electrode particles
+- Electrons hop to reduce Li⁺ → Li⁰ when thermodynamically favorable
+- Li⁰ stays trapped in electrode region due to geometry
+- "State of charge" = density of Li⁰ near electrode particles
+
+### Thermodynamic Gating (Critical)
+
+**Electron donation from active materials must be gated by thermodynamic favorability:**
+
+```rust
+// In electron_hopping.rs - when electron hops FROM active material particle
+fn can_donate_electron(donor: &Body, acceptor: &Body) -> bool {
+    if !ENABLE_POTENTIAL_GATING {
+        return true;
+    }
+    
+    // Get the donor's equilibrium potential
+    let donor_eq_potential = donor.equilibrium_potential();
+    
+    // Get local potential from charge (overpotential)
+    let local_potential = donor.local_potential();
+    
+    // Electron donation favorable when local potential < equilibrium
+    // (more reducing conditions than equilibrium)
+    local_potential < donor_eq_potential + OVERPOTENTIAL_THRESHOLD
+}
+```
+
+**Effect by material:**
+- **Graphite (0.1V):** Donates electrons easily (low barrier)
+- **LFP (3.4V):** Only donates electrons at high potentials (cathode conditions)
+- **Li metal (0.0V):** Most reducing, donates most readily
+
+This naturally prevents:
+- Li plating at cathode (electrons can't reduce Li⁺ at 3.4V)
+- Unwanted reduction at high potentials
+
+### SOC Visualization via Nearby Lithium Count
+
+Instead of tracking `lithium_content` per particle, we **count nearby lithium atoms**:
+
+```rust
+// For rendering - count Li within cutoff distance of electrode particle
+fn calculate_local_soc(electrode_body: &Body, all_bodies: &[Body]) -> f32 {
+    let cutoff = electrode_body.radius * 3.0; // tunable
+    let mut li_count = 0;
+    let mut max_capacity = estimate_capacity_from_volume(electrode_body);
+    
+    for body in all_bodies {
+        if body.species == Species::LithiumMetal {
+            let dist = (electrode_body.pos - body.pos).length();
+            if dist < cutoff {
+                li_count += 1;
+            }
+        }
+    }
+    
+    (li_count as f32 / max_capacity).clamp(0.0, 1.0)
+}
+```
+
+This provides:
+- Real-time SOC visualization
+- No state to track or synchronize
+- Natural gradients visible in simulation
+
+---
+
+## Current Architecture (What Works Today)
+
+### Species/Materials
+- **Species Enum** in [src/body/types.rs](src/body/types.rs) - includes electrode materials: Graphite, HardCarbon, SiliconOxide, LTO, LFP, LMFP, NMC, NCA
+- **Electron hopping** extended to all electrode materials
+- **Potential gating** prevents reactions at wrong potentials
+
+### Electrochemical Behavior
+- `apply_redox()` handles Li⁺ ↔ Li⁰ with potential gating
+- SEI formation gated by potential
+- Butler-Volmer kinetics for electron transfer
+
+### What Still Needs Work
+- Electron hopping needs thermodynamic gating for donation
+- SOC visualization needs nearby-lithium counting
+- Cleanup of unused intercalation code
 
 ---
 
@@ -42,338 +158,108 @@ This document outlines a phased approach to expanding ParticleSim from symmetric
 
 ### Lithium Metal (Current Implementation)
 - **Mechanism:** Plating/stripping - Li⁺ deposits as Li⁰ metal atoms
-- **Structure:** Amorphous/polycrystalline surface growth
-- **Capacity:** Theoretically unlimited (limited by Li supply)
 - **Voltage:** 0 V vs Li/Li⁺ (reference)
+- **Behavior:** Li⁺ reduced anywhere with excess electrons at low potential
 
-### Intercalation Cathodes (NMC, LFP, LMFP, NCA)
-- **Mechanism:** Li⁺ insertion/extraction from crystalline host lattice
-- **Structure:** Layered (NMC, NCA), olivine (LFP, LMFP), or spinel frameworks
-- **Capacity:** Fixed by stoichiometry (e.g., LiFePO₄ → FePO₄ + Li⁺ + e⁻)
-- **Voltage:** Material-dependent (3.2-4.2V vs Li/Li⁺)
-- **Key Physics:** 
-  - Desolvation energy barrier at surface
-  - Solid-state diffusion within host
-  - Redox of transition metal (Fe²⁺↔Fe³⁺, Ni²⁺↔Ni⁴⁺, etc.)
+### Intercalation Materials (Graphite, LFP, NMC, etc.)
+- **Mechanism:** Li⁺ enters gaps, gets reduced, stays trapped
+- **Voltage:** Material-dependent (0.1-4.2V vs Li/Li⁺)
+- **Behavior:** Geometry naturally limits capacity; potential gates reactions
 
-### Intercalation Anodes (Graphite, Hard Carbon, LTO)
-- **Mechanism:** Li⁺ intercalation between graphene layers or into disordered carbon
-- **Structure:** Layered graphite, disordered carbon, or spinel (LTO)
-- **Capacity:** LiC₆ (graphite) = 372 mAh/g, Hard carbon ~300-500 mAh/g
-- **Voltage:** 0.1-0.2V (graphite), 1.55V (LTO) vs Li/Li⁺
-
-### Alloying Anodes (Silicon Oxide)
-- **Mechanism:** Li alloys with Si → Li₄.₄Si (high capacity, large volume change)
-- **Capacity:** ~1500-2000 mAh/g (SiOx composites)
-- **Challenges:** 300% volume expansion, SEI instability
+**The key insight:** In a particle simulation, intercalation IS just "Li enters gaps and gets reduced" - no special machinery needed!
 
 ---
 
-## Proposed Architecture Changes
+## Revised Implementation Phases
 
-### Phase 1: Core Data Model Refactoring
+### Phase 1: Species & Basic Framework ✅ COMPLETE
+- [x] Add electrode material Species (Graphite, LFP, NMC, etc.)
+- [x] Add electron hopping support for all materials
+- [x] Add equilibrium potentials per species
+- [x] Implement potential gating for Li plating
+- [x] Implement potential gating for SEI formation
 
-#### 1.1 Introduce `ElectrodeRole` Concept
+### Phase 2: Thermodynamic Electron Donation Gating
+**Goal:** Electrons only hop FROM electrode materials when thermodynamically favorable
 
-```rust
-// New file: src/electrode/role.rs
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum ElectrodeRole {
-    Anode,
-    Cathode,
-}
+- [ ] Modify `attempt_electron_hop()` in electron_hopping.rs
+  - Add check: `donor.local_potential() < donor.equilibrium_potential() + threshold`
+  - This prevents cathode materials from reducing Li⁺ inappropriately
+  
+- [ ] Add `ELECTRON_DONATION_OVERPOTENTIAL` config constant
+  - Small threshold (~0.1V) to allow some overpotential driving
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum ElectrodeMechanism {
-    /// Li⁺ plates/strips as metallic Li⁰
-    Plating,
-    /// Li⁺ intercalates into host lattice
-    Intercalation {
-        max_stoichiometry: f32, // e.g., 1.0 for LiC₆, 1.0 for LiFePO₄
-    },
-    /// Li alloys with host material
-    Alloying {
-        max_li_per_host: f32, // e.g., 4.4 for Li₄.₄Si
-        volume_expansion: f32, // fractional expansion at full lithiation
-    },
-}
-```
+**Expected behavior:**
+| Material | Eq. Potential | Donates electron when... |
+|----------|---------------|--------------------------|
+| Li metal | 0.0V | local_potential < 0.1V |
+| Graphite | 0.1V | local_potential < 0.2V |
+| LTO | 1.55V | local_potential < 1.65V |
+| LFP | 3.4V | local_potential < 3.5V |
+| NMC | 3.8V | local_potential < 3.9V |
 
-#### 1.2 Expand Species Enum
+### Phase 3: SOC Visualization via Nearby Lithium Count
+**Goal:** Color electrode particles by local lithium density
 
-```rust
-// In src/body/types.rs - Phase 1 additions
-pub enum Species {
-    // === Existing ===
-    LithiumIon,
-    LithiumMetal,
-    FoilMetal,
-    ElectrolyteAnion,
-    EC, DMC, VC, FEC, EMC,
-    LLZO, LLZT, S40B,
-    SEI,
-    
-    // === Phase 1: Graphite Anode ===
-    Graphite,           // Delithiated graphite (C₆)
-    LithiatedGraphite,  // Partially to fully lithiated (LiₓC₆)
-    
-    // === Phase 2: Cathode Materials ===
-    LFP,     // LiFePO₄ (lithiated)
-    FP,      // FePO₄ (delithiated)
-    NMC,     // LiNi₀.₈Mn₀.₁Co₀.₁O₂ variants
-    NMCDel,  // Delithiated NMC
-    
-    // === Phase 3: Additional Materials ===
-    HardCarbon,
-    LithiatedHardCarbon,
-    SiliconOxide,
-    LithiatedSiliconOxide,
-    LTO,        // Li₄Ti₅O₁₂
-    LithiatedLTO, // Li₇Ti₅O₁₂
-    NCA,
-    NCADel,
-    LMFP,
-    LMFPDel,
-}
-```
+- [ ] Add `count_nearby_lithium()` function
+  ```rust
+  fn count_nearby_lithium(body_idx: usize, bodies: &[Body], cutoff: f32) -> usize
+  ```
 
-#### 1.3 Create `ElectrodeMaterial` Trait
+- [ ] Add `calculate_local_soc()` for rendering
+  - Count Li⁰ within `radius * 3.0` of electrode particle
+  - Normalize by estimated capacity (based on particle size)
+  
+- [ ] Update renderer to use nearby lithium count
+  - Replace `body.lithium_content` with dynamic calculation
+  - Can cache per-frame for performance
 
-```rust
-// New file: src/electrode/material.rs
-pub trait ElectrodeMaterial {
-    /// Species when fully lithiated
-    fn lithiated_species(&self) -> Species;
-    
-    /// Species when fully delithiated  
-    fn delithiated_species(&self) -> Species;
-    
-    /// Equilibrium potential vs Li/Li⁺ as function of state of charge (0.0-1.0)
-    fn open_circuit_voltage(&self, soc: f32) -> f32;
-    
-    /// Maximum Li stoichiometry (Li per formula unit)
-    fn max_lithium_content(&self) -> f32;
-    
-    /// Desolvation energy barrier (eV)
-    fn desolvation_barrier(&self) -> f32;
-    
-    /// Solid-state diffusion coefficient (Å²/fs)
-    fn diffusion_coefficient(&self) -> f32;
-    
-    /// Exchange current density for Butler-Volmer kinetics
-    fn exchange_current(&self) -> f32;
-    
-    /// Role (anode or cathode)
-    fn role(&self) -> ElectrodeRole;
-    
-    /// Mechanism type
-    fn mechanism(&self) -> ElectrodeMechanism;
-}
-```
+- [ ] Remove `lithium_content` field from Body (cleanup)
 
-### Phase 2: Intercalation Physics
+### Phase 4: Cleanup Unused Code
+**Goal:** Remove explicit intercalation machinery that's no longer needed
 
-#### 2.1 State of Charge Tracking
+- [ ] Remove from `src/electrode/intercalation.rs`:
+  - [ ] `IntercalationConfig` struct
+  - [ ] `IntercalationResult` enum
+  - [ ] `DeintercalationResult` enum  
+  - [ ] `desolvation_probability()` function
+  - [ ] `butler_volmer_rate()` function (intercalation-specific)
+  - [ ] `reaction_direction()` function
+  - [ ] `ReactionDirection` enum
+  - [ ] `IntercalationStats` struct
 
-For intercalation electrodes, we need to track lithium content per electrode region:
+- [ ] Remove from `src/electrode/region.rs`:
+  - [ ] `lithium_count` field
+  - [ ] `lithium_capacity` field
+  - [ ] `intercalate_many()` method
+  - [ ] `deintercalate_many()` method
 
-```rust
-// Extended Foil struct or new ActiveMaterial struct
-pub struct ActiveMaterialRegion {
-    pub id: u64,
-    pub body_ids: Vec<u64>,
-    pub material: Box<dyn ElectrodeMaterial>,
-    
-    /// Current lithium content (0.0 = empty, 1.0 = fully lithiated)
-    pub state_of_charge: f32,
-    
-    /// Number of Li sites available
-    pub lithium_capacity: usize,
-    
-    /// Number of Li currently in material
-    pub lithium_count: usize,
-    
-    /// Surface area for rate calculations
-    pub surface_area: f32,
-}
-```
+- [ ] Remove from `src/electrode/material.rs`:
+  - [ ] `StorageMechanism` enum (or keep if useful for docs)
+  - [ ] `mechanism()` method
+  - [ ] `max_stoichiometry()` method
+  - [ ] `desolvation_barrier()` method
 
-#### 2.2 Desolvation Process
+- [ ] Remove from Simulation:
+  - [ ] `intercalation_config` field (if added)
+  - [ ] Any particle absorption/spawning for intercalation
 
-Li⁺ ions approaching an intercalation electrode must shed their solvation shell:
+- [ ] Clean up dead code warnings
 
-```rust
-// New in src/simulation/desolvation.rs
-impl Simulation {
-    /// Check for Li⁺ ions near electrode surfaces and attempt desolvation
-    pub fn perform_desolvation(&mut self) {
-        for (i, body) in self.bodies.iter().enumerate() {
-            if body.species != Species::LithiumIon {
-                continue;
-            }
-            
-            // Find nearby electrode surface particles
-            let nearby_electrode = self.find_nearby_electrode_surface(i);
-            if let Some((electrode_idx, material)) = nearby_electrode {
-                let barrier = material.desolvation_barrier();
-                let thermal_energy = self.config.thermal_energy_kt;
-                
-                // Arrhenius-type probability
-                let prob = (-barrier / thermal_energy).exp() * self.dt;
-                
-                if rand::random::<f32>() < prob {
-                    self.desolvate_and_intercalate(i, electrode_idx);
-                }
-            }
-        }
-    }
-}
-```
-
-#### 2.3 Intercalation/Deintercalation
-
-```rust
-// New reactions for intercalation electrodes
-impl Body {
-    pub fn apply_intercalation_redox(&mut self, electrode: &mut ActiveMaterialRegion) {
-        match electrode.material.mechanism() {
-            ElectrodeMechanism::Intercalation { max_stoichiometry } => {
-                // Li⁺ + e⁻ → Li(intercalated)
-                // Updates SOC rather than creating new metal particles
-                if self.species == Species::LithiumIon && !self.electrons.is_empty() {
-                    if electrode.state_of_charge < max_stoichiometry {
-                        electrode.lithium_count += 1;
-                        electrode.state_of_charge = 
-                            electrode.lithium_count as f32 / electrode.lithium_capacity as f32;
-                        // Remove the Li⁺ from simulation (absorbed into electrode)
-                        self.species = Species::Absorbed; // Or mark for removal
-                    }
-                }
-            }
-            // ... other mechanisms
-        }
-    }
-}
-```
-
-### Phase 3: Voltage and Rate Expressions
-
-#### 3.1 Open Circuit Voltage (OCV) Curves
-
-Each material needs characteristic OCV curves:
-
-```rust
-// Example implementations
-impl ElectrodeMaterial for GraphiteAnode {
-    fn open_circuit_voltage(&self, soc: f32) -> f32 {
-        // Graphite staging plateaus (simplified)
-        match soc {
-            x if x < 0.05 => 0.2 - 2.0 * x,  // Stage IV → III
-            x if x < 0.25 => 0.12,            // Stage II plateau
-            x if x < 0.50 => 0.10,            // Stage II → I transition  
-            x if x < 0.95 => 0.08,            // Stage I plateau
-            _ => 0.01,                         // Near full lithiation
-        }
-    }
-}
-
-impl ElectrodeMaterial for LFPCathode {
-    fn open_circuit_voltage(&self, soc: f32) -> f32 {
-        // LFP has very flat voltage profile
-        3.4 + 0.05 * (soc - 0.5) // Slight tilt around 3.4V
-    }
-}
-
-impl ElectrodeMaterial for NMCCathode {
-    fn open_circuit_voltage(&self, soc: f32) -> f32 {
-        // NMC has sloped voltage profile
-        4.3 - 0.7 * soc // ~4.3V delithiated, ~3.6V lithiated
-    }
-}
-```
-
-#### 3.2 Butler-Volmer with Material Properties
-
-Extend existing B-V kinetics to use material-specific parameters:
-
-```rust
-fn calculate_transfer_rate(
-    material: &dyn ElectrodeMaterial,
-    overpotential: f32,
-    temperature: f32,
-) -> f32 {
-    let i0 = material.exchange_current();
-    let alpha = 0.5; // Transfer coefficient
-    let f = 96485.0 / (8.314 * temperature); // F/RT
-    
-    i0 * ((alpha * f * overpotential).exp() 
-        - ((1.0 - alpha) * f * overpotential).exp())
-}
-```
+### Phase 5: Testing & Validation
+- [ ] Test graphite anode: Li⁺ enters gaps, gets reduced at low potential
+- [ ] Test LFP cathode: Li⁺ enters gaps, gets reduced at cathode potential
+- [ ] Verify Li metal still plates normally at anode
+- [ ] Verify no Li plating at cathode potentials
+- [ ] Verify SEI only forms at anode
+- [ ] Verify SOC coloring reflects actual lithium distribution
 
 ---
 
-## Implementation Phases
+## Configuration (Simplified)
 
-### Phase 1: Graphite Anode (Recommended Starting Point)
-**Why start here:**
-- Graphite is the most common anode material
-- Well-understood intercalation physics
-- Can validate intercalation framework before cathodes
-- Pairs naturally with existing Li metal counter electrode
-
-**Tasks:**
-1. Add `Graphite` and `LithiatedGraphite` species
-2. Create `GraphiteAnode` material implementation
-3. Add SOC tracking to electrode regions
-4. Implement basic intercalation (Li⁺ absorption at surface)
-5. Add deintercalation (Li release during discharge)
-6. Visualize SOC via particle color gradient
-
-**Estimated complexity:** Medium (2-3 weeks)
-
-### Phase 2: LFP Cathode
-**Why second:**
-- Simple olivine structure with flat voltage
-- Well-characterized kinetics
-- Provides first full cell (Graphite||LFP)
-
-**Tasks:**
-1. Add `LFP` and `FP` species
-2. Create `LFPCathode` material implementation
-3. Implement cathode-specific electron flow
-4. Add voltage-based current control
-5. Test full cell cycling
-
-**Estimated complexity:** Medium (2-3 weeks)
-
-### Phase 3: NMC Cathode
-**Why third:**
-- Most commercially important cathode
-- More complex voltage profile tests OCV implementation
-- Multiple Ni/Co/Mn ratios possible
-
-**Tasks:**
-1. Add `NMC` and `NMCDel` species  
-2. Implement sloped OCV curve
-3. Add composition variants (NMC811, NMC622, etc.)
-
-**Estimated complexity:** Medium (2 weeks)
-
-### Phase 4: Alternative Anodes
-- Hard Carbon (similar to graphite, different OCV)
-- Silicon Oxide (alloying mechanism, volume expansion)
-- LTO (high-rate, different voltage window)
-
-### Phase 5: Additional Cathodes
-- NCA (similar to NMC)
-- LMFP (Mn-doped LFP)
-
----
-
-## Configuration Changes
-
-### Extended init_config.toml
+With emergent intercalation, configuration is simpler - just specify electrode materials:
 
 ```toml
 [simulation]
@@ -382,186 +268,100 @@ domain_height = 400.0
 
 [[electrodes]]
 name = "anode"
-material = "Graphite"
-role = "anode"
+material = "Graphite"  # Just the material type
 x = -150.0
 y = 0.0
 width = 50.0
 height = 350.0
-initial_soc = 1.0  # Start fully lithiated
+# No SOC tracking needed - geometry handles capacity
 
 [[electrodes]]
 name = "cathode"
 material = "LFP"
-role = "cathode"
 x = 150.0
 y = 0.0
 width = 50.0
 height = 350.0
-initial_soc = 0.0  # Start delithiated (discharged state)
 
 [electrolyte]
 molarity = 1.0
-salt = "LiPF6"
-solvents = [
-    { species = "EC", volume_fraction = 0.3 },
-    { species = "DMC", volume_fraction = 0.7 },
-]
-```
-
-### Material Database
-
-Consider a TOML-based material property database:
-
-```toml
-# materials.toml
-[graphite]
-display_name = "Graphite (Synthetic)"
-role = "anode"
-mechanism = "intercalation"
-max_capacity_mah_g = 372
-density_g_cm3 = 2.26
-particle_radius_a = 2.0
-diffusion_coeff = 1e-10  # cm²/s
-exchange_current = 0.001
-
-[lfp]
-display_name = "LiFePO₄"
-role = "cathode"
-mechanism = "intercalation"
-max_capacity_mah_g = 170
-density_g_cm3 = 3.6
-nominal_voltage = 3.4
-particle_radius_a = 2.5
 ```
 
 ---
 
 ## GUI Enhancements
 
-### New Electrode Material Tab
-- Material selection dropdown (Graphite, LFP, NMC, etc.)
-- Role assignment (anode/cathode)
-- SOC indicator with color visualization
-- OCV display based on current SOC
-- Capacity utilization metrics
+### Updated Visualization
+- **SOC coloring by nearby Li count** - dynamic, no tracking needed
+- Color gradient based on local lithium density
+- Real-time updates as Li moves in/out
 
-### Enhanced Visualization
-- Color gradient for SOC (e.g., gold→black for graphite lithiation)
-- Separate electrode region highlighting
-- Real-time voltage display
-- Current/capacity rate visualization
+### Material Selection
+- Material dropdown per electrode
+- Equilibrium potential display
+- No complex capacity/stoichiometry controls needed
 
 ---
 
-## Testing Strategy
-
-### Unit Tests
-- OCV curve accuracy for each material
-- SOC tracking during intercalation/deintercalation
-- Butler-Volmer rate calculations
-- Desolvation probability
-
-### Integration Tests
-- Half-cell cycling (Li metal vs. graphite)
-- Full-cell cycling (graphite vs. LFP)
-- Rate capability tests
-- Long-term stability
-
-### Validation
-- Compare simulated voltage profiles to experimental data
-- Verify correct stoichiometry limits
-- Check energy conservation
-
----
-
-## Risks and Mitigations
-
-| Risk | Likelihood | Impact | Mitigation |
-|------|------------|--------|------------|
-| Performance degradation with more species | Medium | High | Profile early, optimize hot paths |
-| Complex species interactions | High | Medium | Thorough unit testing, staged rollout |
-| OCV accuracy issues | Medium | Medium | Use validated empirical fits |
-| Breaking existing Li metal simulations | Medium | High | Feature flags, extensive regression tests |
-| GUI complexity explosion | Medium | Medium | Progressive disclosure, tabs for advanced features |
-
----
-
-## File Structure Proposal
+## File Structure (Simplified)
 
 ```
 src/
 ├── electrode/
-│   ├── mod.rs
-│   ├── material.rs         # ElectrodeMaterial trait
-│   ├── role.rs             # ElectrodeRole enum
-│   ├── graphite.rs         # Graphite implementation
-│   ├── lfp.rs              # LFP implementation
-│   ├── nmc.rs              # NMC implementation
-│   ├── silicon.rs          # Silicon oxide implementation
-│   └── database.rs         # Material property database
+│   ├── mod.rs              # Keep
+│   ├── material.rs         # Keep (equilibrium potentials, colors)
+│   ├── region.rs           # Simplify (remove lithium tracking)
+│   └── intercalation.rs    # REMOVE (no longer needed)
 ├── simulation/
-│   ├── intercalation.rs    # Intercalation physics
-│   ├── desolvation.rs      # Desolvation barriers
-│   └── ... (existing files)
+│   └── ... (existing files, no new intercalation.rs)
 └── ... (existing structure)
 ```
 
 ---
 
-## Implementation Checklist
+## Implementation Checklist (Revised for Emergent Approach)
 
-### Sketched Code (Created)
-- [x] `src/electrode/mod.rs` - Module structure
-- [x] `src/electrode/material.rs` - MaterialType enum with OCV curves, colors, kinetics
-- [x] `src/electrode/region.rs` - ActiveMaterialRegion with SOC tracking
-- [x] `src/electrode/intercalation.rs` - Desolvation and Butler-Volmer physics
-- [x] `src/electrode/INTEGRATION_SKETCH.rs` - Integration reference
+### Completed ✅
+- [x] Species enum with electrode materials
+- [x] Equilibrium potentials per species
+- [x] Potential gating for Li plating
+- [x] Potential gating for SEI formation
+- [x] Electron hopping for all electrode materials
+- [x] Basic SOC coloring infrastructure
 
-### Step 1: Wire Up Module ✅
-- [x] Add `pub mod electrode;` to `src/lib.rs`
-- [x] Run `cargo check` to verify module compiles
+### Phase 2: Thermodynamic Electron Donation (Next)
+- [ ] Gate electron donation by material equilibrium potential
+- [ ] Add `ELECTRON_DONATION_OVERPOTENTIAL` constant
+- [ ] Test: LFP only donates electrons at cathode potentials
+- [ ] Test: Graphite donates electrons at anode potentials
 
-### Step 2: Add Simulation Fields (Partial)
-- [x] Add `active_regions: Vec<ActiveMaterialRegion>` to Simulation struct
-- [ ] Add `body_to_region: HashMap<u64, usize>` for lookup
-- [ ] Add `intercalation_config: IntercalationConfig`
-- [x] Initialize in `Simulation::new()`
+### Phase 3: SOC Visualization
+- [ ] Implement `count_nearby_lithium()` function
+- [ ] Update renderer to color by nearby Li count
+- [ ] Remove `lithium_content` field from Body
+- [ ] Test visualization reflects actual Li distribution
 
-### Step 3: Implement perform_intercalation()
-- [ ] Add `count_nearby_solvent()` helper
-- [ ] Add `get_foil_potential()` helper (or integrate with existing)
-- [ ] Implement main intercalation loop
-- [ ] Handle particle removal (absorbed Li⁺)
-- [ ] Handle Li⁺ spawning (deintercalation)
-- [ ] Call from `Simulation::step()`
+### Phase 4: Code Cleanup
+- [ ] Remove `IntercalationConfig` struct
+- [ ] Remove `IntercalationResult` / `DeintercalationResult` enums
+- [ ] Remove `desolvation_probability()` function
+- [ ] Remove `butler_volmer_rate()` for intercalation
+- [ ] Remove `reaction_direction()` / `ReactionDirection`
+- [ ] Remove `IntercalationStats` struct
+- [ ] Simplify `ActiveMaterialRegion` (remove Li tracking)
+- [ ] Remove unused methods from `MaterialType`
+- [ ] Clean up dead code warnings
 
-### Step 4: Renderer Integration
-- [x] Sync `active_regions` to Renderer (via ACTIVE_REGION_RENDER_DATA)
-- [x] SOC-based coloring using `lithium_content` field
-
-### Step 5: Commands and Configuration
-- [ ] Add `CreateActiveMaterialRegion` SimCommand
-- [ ] Handle command in simulation
-- [ ] Add electrode config to `init_config.toml` schema
-- [ ] Parse and create regions in scenario loading
-
-### Step 6: Test with Graphite
-- [ ] Create test scenario: Li metal vs Graphite half-cell
-- [ ] Verify Li⁺ absorption at graphite surface
-- [ ] Verify SOC increases and color changes
-- [ ] Verify capacity limit works
-- [ ] Verify deintercalation when polarity reverses
-
-### Future Steps
-- [ ] Add GUI tab for material selection
-- [ ] Add LFP cathode configuration
+### Phase 5: Testing
+- [ ] Test graphite half-cell
+- [ ] Test LFP half-cell
 - [ ] Test full cell (Graphite || LFP)
-- [ ] Add remaining materials (NMC, NCA, etc.)
+- [ ] Verify Li metal still works correctly
+- [ ] Verify SEI only at anode
 
-### Step 7: Electrochemical Potential Gating (Critical Physics Fix) ✅
+---
 
-**Problem:** Currently, reactions like Li plating and SEI formation happen based purely on electron availability, ignoring thermodynamic favorability. This causes Li plating/SEI at cathode potentials (~3.4V) where they're impossible.
+## Step 7: Electrochemical Potential Gating ✅ COMPLETE
 
 **Solution:** Use local charge state to derive local electrochemical potential, then gate reactions by comparing local potential to reaction equilibrium potential.
 
@@ -569,117 +369,61 @@ src/
 - Excess electrons → negative charge → lower potential (more reducing)
 - Electron deficit → positive charge → higher potential (more oxidizing)
 
-**Implementation:**
+**Implemented:**
+- [x] `equilibrium_potential()` method on Body (per-species)
+- [x] `local_potential_from_charge()` helper function
+- [x] `local_potential()` method on Body
+- [x] Gated Li⁺ → Li⁰ in `apply_redox()`
+- [x] Gated SEI formation in `perform_sei_formation()`
+- [x] Config constants: `LITHIUM_PLATING_POTENTIAL`, `SEI_FORMATION_POTENTIAL`, etc.
 
-- [x] Add `equilibrium_potential()` method to Species
-  ```rust
-  Species::LithiumMetal => 0.0,   // Li⁺/Li reference
-  Species::Graphite => 0.1,       // Graphite intercalation  
-  Species::LFP => 3.4,            // LiFePO₄
-  Species::SEI => 0.8,            // EC reduction threshold
-  // etc.
-  ```
+---
 
-- [x] Add `local_potential_from_charge()` helper function
-  ```rust
-  // Map charge to potential: negative charge → low potential, positive → high
-  fn local_potential_from_charge(charge: f32) -> f32 {
-      const POTENTIAL_PER_CHARGE: f32 = 2.0;  // tunable
-      const BASELINE_POTENTIAL: f32 = 2.0;    // V at neutral
-      BASELINE_POTENTIAL + charge * POTENTIAL_PER_CHARGE
-  }
-  ```
+## Step 8: Emergent SOC Visualization (Replaces explicit tracking)
 
-- [x] Gate `apply_redox()` in `src/body/redox.rs`
-  - Li⁺ + e⁻ → Li⁰ only if `local_potential < LITHIUM_PLATING_THRESHOLD` (~0V + small overpotential)
-  - Prevents lithium plating at cathode potentials
+**Revised approach:** Instead of tracking `lithium_content` per particle, we dynamically count nearby lithium for visualization.
 
-- [x] Gate `perform_sei_formation()` in `src/simulation/sei.rs`  
-  - SEI formation only if `local_potential < SEI_FORMATION_THRESHOLD` (~0.8V for EC)
-  - Prevents SEI at cathode
+**Current state:**
+- [x] `lithium_content` field exists (but will be replaced)
+- [x] Renderer uses `lithium_content` for coloring
 
-- [ ] Gate intercalation/deintercalation by material OCV
-  - Intercalation favorable when `local_potential < material.ocv(soc)`
-  - Deintercalation favorable when `local_potential > material.ocv(soc)`
+**Revised implementation:**
+- [ ] Add `count_nearby_lithium(body_idx, bodies, cutoff) -> usize`
+- [ ] Calculate local SOC = nearby_li_count / estimated_capacity
+- [ ] Update renderer to use dynamic count instead of stored field
+- [ ] Remove `lithium_content` field from Body struct
+- [ ] Remove `lithium_content` initialization code
 
-- [x] Add config constants for thresholds (tunable via GUI)
-  ```rust
-  pub const LITHIUM_PLATING_POTENTIAL: f32 = 0.5;
-  pub const SEI_FORMATION_POTENTIAL: f32 = 1.0;
-  pub const POTENTIAL_PER_CHARGE: f32 = 2.0;
-  pub const BASELINE_POTENTIAL: f32 = 2.0;
-  pub const ENABLE_POTENTIAL_GATING: bool = true;
-  ```
+**Benefits:**
+- No state synchronization needed
+- Accurate representation of actual Li distribution
+- Natural concentration gradients visible
+- Simpler code
 
-**Expected behavior after implementation:**
-| Reaction | Equilibrium | Where it should happen |
-|----------|-------------|------------------------|
-| Li⁺ + e⁻ → Li⁰ | 0V | Only at anode (low potential) |
-| Solvent → SEI | ~0.8V | Only at anode |
-| Li⁺ → Li(graphite) | 0.1V | Only at anode during charge |
-| Li⁺ → Li(LFP) | 3.4V | At cathode during discharge |
+---
 
-### Step 8: Lithium Content Tracking & Intercalation Transfer
+## Step 9: Thermodynamic Electron Donation Gating
 
-**Context:** Added `lithium_content: f32` field to Body struct for tracking intercalated lithium (0.0 = delithiated, 1.0 = fully lithiated). SOC-based coloring now uses this field. Initial values set at spawn (cathodes start lithiated, anodes delithiated).
+**Goal:** Prevent electrons from leaving electrode materials unless thermodynamically favorable.
 
 **Implementation:**
+- [ ] In `attempt_electron_hop()`, check donor's equilibrium potential
+- [ ] Electron donation allowed when: `local_potential < equilibrium_potential + threshold`
+- [ ] Add `ELECTRON_DONATION_OVERPOTENTIAL` constant (~0.1V)
 
-- [x] Add `lithium_content` field to Body struct
-- [x] Initialize `lithium_content` at spawn based on species (cathodes=1.0, anodes=0.0)
-- [x] Update renderer to use `lithium_content` for SOC coloring
-- [ ] Implement lithium transfer during intercalation:
-  - When Li⁺ is absorbed into electrode particle → increase `lithium_content`
-  - When Li⁺ is released from electrode → decrease `lithium_content`
-  
-- [ ] Add `perform_lithium_intercalation()` to Simulation
-  ```rust
-  // Detect Li⁺ near electrode surface
-  // If local potential favorable (see Step 7), attempt intercalation:
-  //   - Remove Li⁺ from simulation (absorbed)
-  //   - Increase electrode body's lithium_content
-  //   - Transfer electron to electrode
-  ```
+**Expected behavior:**
+- LFP (3.4V) only donates electrons when local potential < ~3.5V
+- Graphite (0.1V) donates electrons at anode potentials
+- Li metal (0.0V) most readily donates electrons
 
-- [ ] Add `perform_lithium_deintercalation()` to Simulation
-  ```rust
-  // For electrodes with lithium_content > 0 and favorable potential:
-  //   - Spawn Li⁺ near electrode surface
-  //   - Decrease electrode body's lithium_content  
-  //   - Remove electron from electrode (or allow hopping)
-  ```
-
-- [ ] Add capacity limits per electrode material
-  ```rust
-  // Each electrode body has max Li capacity based on material
-  // lithium_content is normalized 0.0-1.0
-  // Actual Li count = lithium_content * max_capacity(material)
-  ```
-
-- [ ] Connect to GUI SOC slider
-  - Initial SOC slider sets `lithium_content` at spawn time
-  - Allow different initial SOC for anode vs cathode
-
-**Physics:**
-- Intercalation: Li⁺(electrolyte) + e⁻(electrode) → Li(intercalated)
-- Deintercalation: Li(intercalated) → Li⁺(electrolyte) + e⁻(electrode)
-- Rate depends on: overpotential, material kinetics, desolvation barrier, local Li⁺ concentration
+This completes the thermodynamic consistency of the simulation.
 
 ---
 
 ## Next Steps
 
-1. **Review sketched code** - Check `src/electrode/` files
-2. **Create feature branch** - `feature/multi-electrode-materials`
-3. **Wire up module** - Add to lib.rs and cargo check
-4. **Implement Step 2-3** - Core simulation integration
-5. **Test with graphite half-cell** - Validate intercalation works
-
----
-
-## References
-
-- Graphite staging: Dahn et al., Phys. Rev. B 44, 9170 (1991)
-- LFP kinetics: Malik et al., Nature Materials 10, 587 (2011)
-- NMC voltage profiles: Jung et al., J. Electrochem. Soc. 164, A1361 (2017)
+1. **Phase 2:** Implement thermodynamic electron donation gating
+2. **Phase 3:** Implement nearby-lithium SOC visualization
+3. **Phase 4:** Clean up unused intercalation code
+4. **Phase 5:** Test with graphite/LFP electrodes
 - Butler-Volmer in batteries: Newman & Thomas-Alyea, Electrochemical Systems (2004)
