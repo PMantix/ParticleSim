@@ -8,6 +8,10 @@ use crate::simulation::utils::can_transfer_electron;
 use rand::prelude::*;
 use rayon::prelude::*;
 use ultraviolet::Vec2;
+use std::sync::atomic::{AtomicU64, Ordering};
+
+// Debug counters for electrode hopping diagnostics
+static DEBUG_FRAME_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 impl Simulation {
     /// Attempts electron hopping between particles, with optional exclusions for donors
@@ -25,6 +29,23 @@ impl Simulation {
         let mut src_indices: Vec<usize> = (0..n).collect();
         let mut rng = rand::rng();
         src_indices.shuffle(&mut rng);
+
+        // Debug: track electrode hopping attempts
+        let frame = DEBUG_FRAME_COUNTER.fetch_add(1, Ordering::Relaxed);
+        let debug_this_frame = frame % 500 == 0; // Print every 500 frames
+        
+        let mut foil_with_excess = 0usize;
+        let mut foil_with_deficit = 0usize;
+        let mut electrode_with_electrons = 0usize;
+        let mut electrode_neighbors_found = 0usize;
+        let mut electrode_hops_attempted = 0usize;
+        let mut electrode_hops_failed_alignment = 0usize;
+        let mut electrode_hops_failed_dphi = 0usize;
+        let mut electrode_hops_failed_rate = 0usize;
+        let mut electrode_hops_failed_prob = 0usize;
+        let mut electrode_hops_succeeded = 0usize;
+        let mut electrode_to_foil_attempted = 0usize;
+        let mut electrode_to_foil_succeeded = 0usize;
 
         for &src_idx in &src_indices {
             if donated_electron[src_idx] || exclude_donor[src_idx] {
@@ -50,12 +71,50 @@ impl Simulation {
             if !is_conductor || src_diff < 0 {
                 continue;
             }
+            
+            // Debug: track foils with excess/deficit electrons and electrodes with electrons
+            let src_is_foil = src_body.species == Species::FoilMetal;
+            let src_is_electrode = matches!(
+                src_body.species,
+                Species::Graphite | Species::HardCarbon | Species::SiliconOxide | Species::LTO |
+                Species::LFP | Species::LMFP | Species::NMC | Species::NCA
+            );
+            if src_is_foil && src_diff > 0 {
+                foil_with_excess += 1;
+            }
+            if src_is_electrode && src_body.electrons.len() > 0 {
+                electrode_with_electrons += 1;
+            }
+            
             let hop_radius = self.config.hop_radius_factor * src_body.radius;
 
             // Use quadtree for neighbor search!
-            let mut candidate_neighbors = self
+            let all_neighbors = self
                 .quadtree
-                .find_neighbors_within(&self.bodies, src_idx, hop_radius)
+                .find_neighbors_within(&self.bodies, src_idx, hop_radius);
+            
+            // Debug: check if foils have electrode neighbors
+            if src_is_foil && src_diff > 0 && debug_this_frame && foil_with_excess <= 3 {
+                let electrode_neighbor_count = all_neighbors.iter()
+                    .filter(|&&idx| matches!(
+                        self.bodies[idx].species,
+                        Species::Graphite | Species::HardCarbon | Species::SiliconOxide | Species::LTO |
+                        Species::LFP | Species::LMFP | Species::NMC | Species::NCA
+                    ))
+                    .count();
+                if electrode_neighbor_count == 0 {
+                    eprintln!("[HOPPING] Foil idx={} has {} electrons (excess {}) but NO electrode neighbors within hop_radius={:.2}",
+                        src_idx, src_body.electrons.len(), src_diff, hop_radius);
+                    // Check what neighbors it does have
+                    let neighbor_species: Vec<_> = all_neighbors.iter()
+                        .take(5)
+                        .map(|&idx| format!("{:?}", self.bodies[idx].species))
+                        .collect();
+                    eprintln!("[HOPPING]   Found {} neighbors, first few: {:?}", all_neighbors.len(), neighbor_species);
+                }
+            }
+            
+            let mut candidate_neighbors = all_neighbors
                 .into_iter()
                 .filter(|&dst_idx| dst_idx != src_idx && !received_electron[dst_idx])
                 .filter(|&dst_idx| {
@@ -87,10 +146,38 @@ impl Simulation {
                 .collect::<Vec<_>>();
 
             candidate_neighbors.shuffle(&mut rng);
+            
+            // Debug: track electrode neighbor candidates
+            let has_electrode_candidate = candidate_neighbors.iter().any(|&idx| {
+                matches!(
+                    self.bodies[idx].species,
+                    Species::Graphite | Species::HardCarbon | Species::SiliconOxide | Species::LTO |
+                    Species::LFP | Species::LMFP | Species::NMC | Species::NCA
+                )
+            });
+            if (src_is_foil || src_is_electrode) && has_electrode_candidate {
+                electrode_neighbors_found += 1;
+            }
 
             // Only check until the first successful hop
             if let Some(&dst_idx) = candidate_neighbors.iter().find(|&&dst_idx| {
                 let dst_body = &self.bodies[dst_idx];
+                let dst_is_foil = dst_body.species == Species::FoilMetal;
+                let dst_is_electrode = matches!(
+                    dst_body.species,
+                    Species::Graphite | Species::HardCarbon | Species::SiliconOxide | Species::LTO |
+                    Species::LFP | Species::LMFP | Species::NMC | Species::NCA
+                );
+                let is_electrode_hop = (src_is_foil || src_is_electrode) && dst_is_electrode;
+                let is_electrode_to_foil = src_is_electrode && dst_is_foil;
+                
+                if is_electrode_hop {
+                    electrode_hops_attempted += 1;
+                }
+                if is_electrode_to_foil {
+                    electrode_to_foil_attempted += 1;
+                }
+                
                 let d_phi = dst_body.charge - src_body.charge;
                 let hop_vec = dst_body.pos - src_body.pos;
                 let hop_dir = if hop_vec.mag() > 1e-6 {
@@ -116,7 +203,32 @@ impl Simulation {
                 let bias = self.config.hop_alignment_bias.max(0.0);
                 // Scale the alignment by the bias factor (no clamping to allow amplification > 1.0)
                 alignment = alignment * bias;
+                
+                // For electrode hops (foil<->electrode or electrode<->electrode), 
+                // use relaxed alignment - electrode materials conduct electrons freely
+                let is_electrode_material = |s: Species| matches!(s,
+                    Species::Graphite | Species::HardCarbon | Species::SiliconOxide | Species::LTO |
+                    Species::LFP | Species::LMFP | Species::NMC | Species::NCA
+                );
+                let is_metal_or_electrode = |s: Species| matches!(s,
+                    Species::FoilMetal | Species::LithiumMetal |
+                    Species::Graphite | Species::HardCarbon | Species::SiliconOxide | Species::LTO |
+                    Species::LFP | Species::LMFP | Species::NMC | Species::NCA
+                );
+                
+                // Relax alignment for conductive pathways (foil-electrode or electrode-electrode)
+                let both_conductive = is_metal_or_electrode(src_body.species) && is_metal_or_electrode(dst_body.species);
+                let involves_electrode = is_electrode_material(src_body.species) || is_electrode_material(dst_body.species);
+                
+                if both_conductive && involves_electrode {
+                    // Use minimum alignment of 0.5 for electrode conduction paths
+                    alignment = alignment.max(0.5);
+                }
+                
                 if alignment < 1e-3 {
+                    if is_electrode_hop {
+                        electrode_hops_failed_alignment += 1;
+                    }
                     return false;
                 }
 
@@ -169,6 +281,9 @@ impl Simulation {
                     i0 * (forward - backward)
                 } else {
                     if d_phi <= 0.0 {
+                        if is_electrode_hop {
+                            electrode_hops_failed_dphi += 1;
+                        }
                         return false;
                     }
                     self.config.hop_rate_k0
@@ -178,15 +293,57 @@ impl Simulation {
                 };
 
                 if rate <= 0.0 {
+                    if is_electrode_hop {
+                        electrode_hops_failed_rate += 1;
+                    }
                     return false;
                 }
                 let p_hop = alignment * polarization_factor * (1.0 - (-rate * self.dt).exp());
-                rand::random::<f32>() < p_hop
+                let succeeded = rand::random::<f32>() < p_hop;
+                if is_electrode_hop {
+                    if succeeded {
+                        electrode_hops_succeeded += 1;
+                    } else {
+                        electrode_hops_failed_prob += 1;
+                    }
+                }
+                if is_electrode_to_foil && succeeded {
+                    electrode_to_foil_succeeded += 1;
+                }
+                succeeded
             }) {
                 hops.push((src_idx, dst_idx));
                 received_electron[dst_idx] = true;
                 donated_electron[src_idx] = true;
             }
+        }
+        
+        // Count foils with deficit (for discharge tracking)
+        for body in &self.bodies {
+            if body.species == Species::FoilMetal {
+                let diff = body.electrons.len() as i32 - body.neutral_electron_count() as i32;
+                if diff < 0 {
+                    foil_with_deficit += 1;
+                }
+            }
+        }
+        
+        // Debug summary
+        if debug_this_frame {
+            eprintln!("[HOPPING] Frame {} Summary:", frame);
+            eprintln!("  Foils with excess electrons: {}", foil_with_excess);
+            eprintln!("  Foils with deficit (need electrons): {}", foil_with_deficit);
+            eprintln!("  Electrode particles with electrons: {}", electrode_with_electrons);
+            eprintln!("  Electrode neighbors found: {}", electrode_neighbors_found);
+            eprintln!("  Electrode hops attempted: {}", electrode_hops_attempted);
+            eprintln!("  Electrode->Foil attempted: {}", electrode_to_foil_attempted);
+            eprintln!("  Electrode->Foil succeeded: {}", electrode_to_foil_succeeded);
+            eprintln!("  Failed - alignment: {}", electrode_hops_failed_alignment);
+            eprintln!("  Failed - d_phi <= 0: {}", electrode_hops_failed_dphi);
+            eprintln!("  Failed - rate <= 0: {}", electrode_hops_failed_rate);
+            eprintln!("  Failed - probability: {}", electrode_hops_failed_prob);
+            eprintln!("  Succeeded: {}", electrode_hops_succeeded);
+            eprintln!("  Total hops this frame: {}", hops.len());
         }
 
         for (src_idx, dst_idx) in hops {

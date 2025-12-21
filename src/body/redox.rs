@@ -33,10 +33,12 @@ impl Body {
             Species::SEI => {
                 self.charge = 0.0; // SEI is always neutral
             }
-            // Intercalation electrode materials - always neutral (no direct electron exchange)
+            // Intercalation electrode materials - charge based on electron excess
+            // neutral_electron_count() returns 0, so charge = -electrons.len()
+            // This allows electron hopping to work properly between electrode particles
             Species::Graphite | Species::HardCarbon | Species::SiliconOxide | Species::LTO
             | Species::LFP | Species::LMFP | Species::NMC | Species::NCA => {
-                self.charge = 0.0;
+                self.charge = -(self.electrons.len() as f32 - self.neutral_electron_count() as f32);
             }
         }
     }

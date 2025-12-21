@@ -560,6 +560,111 @@ src/
 - [ ] Test full cell (Graphite || LFP)
 - [ ] Add remaining materials (NMC, NCA, etc.)
 
+### Step 7: Electrochemical Potential Gating (Critical Physics Fix)
+
+**Problem:** Currently, reactions like Li plating and SEI formation happen based purely on electron availability, ignoring thermodynamic favorability. This causes Li plating/SEI at cathode potentials (~3.4V) where they're impossible.
+
+**Solution:** Use local charge state to derive local electrochemical potential, then gate reactions by comparing local potential to reaction equilibrium potential.
+
+**Key insight:** The explicit electron model already encodes local potential through charge:
+- Excess electrons → negative charge → lower potential (more reducing)
+- Electron deficit → positive charge → higher potential (more oxidizing)
+
+**Implementation:**
+
+- [ ] Add `equilibrium_potential()` method to Species
+  ```rust
+  Species::LithiumMetal => 0.0,   // Li⁺/Li reference
+  Species::Graphite => 0.1,       // Graphite intercalation  
+  Species::LFP => 3.4,            // LiFePO₄
+  Species::SEI => 0.8,            // EC reduction threshold
+  // etc.
+  ```
+
+- [ ] Add `local_potential_from_charge()` helper function
+  ```rust
+  // Map charge to potential: negative charge → low potential, positive → high
+  fn local_potential_from_charge(charge: f32) -> f32 {
+      const POTENTIAL_PER_CHARGE: f32 = 2.0;  // tunable
+      const BASELINE_POTENTIAL: f32 = 2.0;    // V at neutral
+      BASELINE_POTENTIAL + charge * POTENTIAL_PER_CHARGE
+  }
+  ```
+
+- [ ] Gate `apply_redox()` in `src/body/redox.rs`
+  - Li⁺ + e⁻ → Li⁰ only if `local_potential < LITHIUM_PLATING_THRESHOLD` (~0V + small overpotential)
+  - Prevents lithium plating at cathode potentials
+
+- [ ] Gate `perform_sei_formation()` in `src/simulation/sei.rs`  
+  - SEI formation only if `local_potential < SEI_FORMATION_THRESHOLD` (~0.8V for EC)
+  - Prevents SEI at cathode
+
+- [ ] Gate intercalation/deintercalation by material OCV
+  - Intercalation favorable when `local_potential < material.ocv(soc)`
+  - Deintercalation favorable when `local_potential > material.ocv(soc)`
+
+- [ ] Add config constants for thresholds (tunable via GUI)
+  ```rust
+  pub const LITHIUM_PLATING_POTENTIAL: f32 = 0.0;
+  pub const SEI_FORMATION_POTENTIAL: f32 = 0.8;
+  pub const POTENTIAL_PER_CHARGE: f32 = 2.0;
+  pub const BASELINE_POTENTIAL: f32 = 2.0;
+  ```
+
+**Expected behavior after implementation:**
+| Reaction | Equilibrium | Where it should happen |
+|----------|-------------|------------------------|
+| Li⁺ + e⁻ → Li⁰ | 0V | Only at anode (low potential) |
+| Solvent → SEI | ~0.8V | Only at anode |
+| Li⁺ → Li(graphite) | 0.1V | Only at anode during charge |
+| Li⁺ → Li(LFP) | 3.4V | At cathode during discharge |
+
+### Step 8: Lithium Content Tracking & Intercalation Transfer
+
+**Context:** Added `lithium_content: f32` field to Body struct for tracking intercalated lithium (0.0 = delithiated, 1.0 = fully lithiated). SOC-based coloring now uses this field. Initial values set at spawn (cathodes start lithiated, anodes delithiated).
+
+**Implementation:**
+
+- [x] Add `lithium_content` field to Body struct
+- [x] Initialize `lithium_content` at spawn based on species (cathodes=1.0, anodes=0.0)
+- [x] Update renderer to use `lithium_content` for SOC coloring
+- [ ] Implement lithium transfer during intercalation:
+  - When Li⁺ is absorbed into electrode particle → increase `lithium_content`
+  - When Li⁺ is released from electrode → decrease `lithium_content`
+  
+- [ ] Add `perform_lithium_intercalation()` to Simulation
+  ```rust
+  // Detect Li⁺ near electrode surface
+  // If local potential favorable (see Step 7), attempt intercalation:
+  //   - Remove Li⁺ from simulation (absorbed)
+  //   - Increase electrode body's lithium_content
+  //   - Transfer electron to electrode
+  ```
+
+- [ ] Add `perform_lithium_deintercalation()` to Simulation
+  ```rust
+  // For electrodes with lithium_content > 0 and favorable potential:
+  //   - Spawn Li⁺ near electrode surface
+  //   - Decrease electrode body's lithium_content  
+  //   - Remove electron from electrode (or allow hopping)
+  ```
+
+- [ ] Add capacity limits per electrode material
+  ```rust
+  // Each electrode body has max Li capacity based on material
+  // lithium_content is normalized 0.0-1.0
+  // Actual Li count = lithium_content * max_capacity(material)
+  ```
+
+- [ ] Connect to GUI SOC slider
+  - Initial SOC slider sets `lithium_content` at spawn time
+  - Allow different initial SOC for anode vs cathode
+
+**Physics:**
+- Intercalation: Li⁺(electrolyte) + e⁻(electrode) → Li(intercalated)
+- Deintercalation: Li(intercalated) → Li⁺(electrolyte) + e⁻(electrode)
+- Rate depends on: overpotential, material kinetics, desolvation barrier, local Li⁺ concentration
+
 ---
 
 ## Next Steps

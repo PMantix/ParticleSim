@@ -45,7 +45,7 @@ pub const ELECTRON_DRIFT_RADIUS_FACTOR_LLZT: f32 = 0.20; // LLZT-specific drift 
 pub const ELECTRON_DRIFT_RADIUS_FACTOR_S40B: f32 = 0.22; // S40B solid electrolyte drift radius
 pub const ELECTRON_DRIFT_RADIUS_FACTOR_METAL: f32 = 1.0; // Metal-specific drift radius factor
 pub const ELECTRON_MAX_SPEED_FACTOR: f32 = 10.2; // Max electron speed as a factor of body radius per dt
-pub const HOP_RADIUS_FACTOR: f32 = 2.1; // Hopping radius as a factor of body radius
+pub const HOP_RADIUS_FACTOR: f32 = 3.0; // Hopping radius as a factor of body radius (increased to reach electrode materials)
 pub const HOP_RATE_K0: f32 = 1.0;
 /// Base hop‐rate constant (per unit time) at zero overpotential
 pub const HOP_TRANSFER_COEFF: f32 = 0.5;
@@ -132,6 +132,16 @@ pub const EMC_NEUTRAL_ELECTRONS: usize = 1;
 pub const LLZO_NEUTRAL_ELECTRONS: usize = 0;
 pub const LLZT_NEUTRAL_ELECTRONS: usize = 0;
 pub const S40B_NEUTRAL_ELECTRONS: usize = 0;
+// Intercalation electrode neutral electrons (equilibrium point for electron hopping)
+// These determine when a material is considered to have excess vs deficit electrons
+pub const GRAPHITE_NEUTRAL_ELECTRONS: usize = 1;
+pub const HARD_CARBON_NEUTRAL_ELECTRONS: usize = 1;
+pub const SILICON_OXIDE_NEUTRAL_ELECTRONS: usize = 1;
+pub const LTO_NEUTRAL_ELECTRONS: usize = 1;
+pub const LFP_NEUTRAL_ELECTRONS: usize = 1;
+pub const LMFP_NEUTRAL_ELECTRONS: usize = 1;
+pub const NMC_NEUTRAL_ELECTRONS: usize = 1;
+pub const NCA_NEUTRAL_ELECTRONS: usize = 1;
 pub const FOIL_MAX_ELECTRONS: usize = 2; // Max electrons for foil metal
 pub const LITHIUM_METAL_MAX_ELECTRONS: usize = 3; // Max electrons for lithium metal
 // Intercalation electrode max electrons (allow charge accumulation for reactions)

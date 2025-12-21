@@ -532,7 +532,7 @@ impl super::Renderer {
             }
 
             if self.show_bodies {
-                // Get active region data for SOC-based coloring
+                // Get active region data for SOC-based coloring (fallback)
                 let active_region_data = crate::renderer::state::ACTIVE_REGION_RENDER_DATA.lock();
                 
                 for body in &self.bodies {
@@ -540,11 +540,16 @@ impl super::Renderer {
                     let mut draw_radius = body.radius;
                     
                     // Apply SOC-based coloring for intercalation electrode materials
+                    // Use lithium_content field directly for SOC visualization
                     if matches!(body.species, 
                         Species::Graphite | Species::HardCarbon | Species::SiliconOxide | Species::LTO |
                         Species::LFP | Species::LMFP | Species::NMC | Species::NCA
                     ) {
-                        // Find the closest active region to get SOC
+                        // Use lithium_content directly as SOC (0.0 = delithiated, 1.0 = lithiated)
+                        let soc = body.lithium_content.clamp(0.0, 1.0);
+                        color = self.soc_color_for_species(body.species, soc);
+                    } else if !active_region_data.regions.is_empty() {
+                        // Fallback to region-based SOC if available (legacy path)
                         if let Some(soc) = self.find_electrode_soc(&active_region_data.regions, body.pos.x, body.pos.y, body.species) {
                             color = self.soc_color_for_species(body.species, soc);
                         }
