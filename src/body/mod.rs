@@ -2,14 +2,14 @@
 // Re-exports for the body module
 
 mod electron;
-mod redox;
+pub mod redox;
 mod types;
 // Module declarations removed dead test files
 pub mod foil;
 
 pub use electron::*;
 pub use types::*;
-//pub use redox::*;
+pub use redox::local_potential_from_charge;
 
 #[cfg(test)]
 #[path = "tests/foil_electron_limits.rs"]

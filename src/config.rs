@@ -147,6 +147,23 @@ pub const LITHIUM_METAL_MAX_ELECTRONS: usize = 3; // Max electrons for lithium m
 // Intercalation electrode max electrons (allow charge accumulation for reactions)
 pub const ELECTRODE_ANODE_MAX_ELECTRONS: usize = 3; // Anodes (Graphite, etc.) accumulate electrons during charge
 pub const ELECTRODE_CATHODE_MAX_ELECTRONS: usize = 2; // Cathodes (LFP, NMC, etc.) lose electrons during charge
+
+// ====================
+// Electrochemical Potential Gating
+// ====================
+// These constants control thermodynamic favorability of reactions
+// Local potential is derived from charge: V = BASELINE + charge * POTENTIAL_PER_CHARGE
+/// Baseline potential (V vs Li/Li⁺) when particle has neutral charge
+pub const BASELINE_POTENTIAL: f32 = 2.0;
+/// Potential change per unit charge (V/e). Negative charge → lower potential
+pub const POTENTIAL_PER_CHARGE: f32 = 2.0;
+/// Lithium plating threshold (V vs Li/Li⁺). Li⁺ + e⁻ → Li⁰ only below this
+pub const LITHIUM_PLATING_POTENTIAL: f32 = 0.5;
+/// SEI formation threshold (V vs Li/Li⁺). EC reduction only below this
+pub const SEI_FORMATION_POTENTIAL: f32 = 1.0;
+/// Enable electrochemical potential gating for reactions
+pub const ENABLE_POTENTIAL_GATING: bool = true;
+
 /// Maximum number of nearby metallic neighbors allowed before ionization is inhibited
 //pub const IONIZATION_NEIGHBOR_THRESHOLD: usize = 4;
 /// Minimum local electric-field magnitude required for ionization/reduction

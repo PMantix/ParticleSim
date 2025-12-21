@@ -4,9 +4,43 @@
 use super::types::{Body, Species};
 use crate::config::{
     ENABLE_ELECTRON_SEA_PROTECTION, FOIL_NEUTRAL_ELECTRONS, LITHIUM_METAL_NEUTRAL_ELECTRONS,
+    BASELINE_POTENTIAL, POTENTIAL_PER_CHARGE, LITHIUM_PLATING_POTENTIAL, ENABLE_POTENTIAL_GATING,
 };
 
+/// Calculate local electrochemical potential from charge
+/// Negative charge (excess electrons) → lower potential (more reducing)
+/// Positive charge (electron deficit) → higher potential (more oxidizing)
+pub fn local_potential_from_charge(charge: f32) -> f32 {
+    BASELINE_POTENTIAL + charge * POTENTIAL_PER_CHARGE
+}
+
 impl Body {
+    /// Get the equilibrium potential (V vs Li/Li⁺) for this species
+    /// This is the potential at which the species is in equilibrium
+    pub fn equilibrium_potential(&self) -> f32 {
+        match self.species {
+            Species::LithiumMetal | Species::LithiumIon => 0.0, // Li⁺/Li reference
+            Species::FoilMetal => 0.0, // Current collector, same as Li reference
+            Species::Graphite => 0.1,   // Graphite intercalation
+            Species::HardCarbon => 0.2, // Hard carbon
+            Species::SiliconOxide => 0.4, // SiOx
+            Species::LTO => 1.55,       // Li₄Ti₅O₁₂
+            Species::LFP => 3.4,        // LiFePO₄
+            Species::LMFP => 3.5,       // LiMnFePO₄  
+            Species::NMC => 3.7,        // LiNiMnCoO₂ (average)
+            Species::NCA => 3.7,        // LiNiCoAlO₂
+            Species::SEI => 0.8,        // SEI formation potential
+            // Electrolyte/solvent species - not directly involved in redox
+            Species::ElectrolyteAnion | Species::EC | Species::DMC | 
+            Species::VC | Species::FEC | Species::EMC => 0.8, // EC reduction ~0.8V
+            Species::LLZO | Species::LLZT | Species::S40B => 0.0, // Solid electrolytes
+        }
+    }
+    
+    /// Get the local electrochemical potential based on this body's charge
+    pub fn local_potential(&self) -> f32 {
+        local_potential_from_charge(self.charge)
+    }
     pub fn update_charge_from_electrons(&mut self) {
         match self.species {
             Species::FoilMetal => {
@@ -48,8 +82,18 @@ impl Body {
         match self.species {
             Species::LithiumIon => {
                 if !self.electrons.is_empty() {
-                    self.species = Species::LithiumMetal;
-                    self.update_charge_from_electrons();
+                    // Gate lithium plating by local potential
+                    // Li⁺ + e⁻ → Li⁰ only favorable at low potentials (near 0V)
+                    let can_plate = if ENABLE_POTENTIAL_GATING {
+                        self.local_potential() < LITHIUM_PLATING_POTENTIAL
+                    } else {
+                        true
+                    };
+                    
+                    if can_plate {
+                        self.species = Species::LithiumMetal;
+                        self.update_charge_from_electrons();
+                    }
                 }
             }
             Species::LithiumMetal => {
