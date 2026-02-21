@@ -328,6 +328,7 @@ pub struct Renderer {
     pub eis_points_per_decade: f32,
     pub eis_periods_per_freq: usize,
     pub eis_settle_periods: usize,
+    pub eis_show_fit: bool,
 }
 
 impl quarkstrom::Renderer for Renderer {
@@ -610,12 +611,13 @@ impl quarkstrom::Renderer for Renderer {
             initial_cathode_soc: 0.0, // Fully delithiated (charged state for cathode)
             active_material_regions: Vec::new(),
             hovered_species: None,
-            eis_amplitude: 0.001,
+            eis_amplitude: 0.1,
             eis_f_min: 1e-3,
             eis_f_max: 1e-1,
             eis_points_per_decade: 3.0,
             eis_periods_per_freq: 2,
             eis_settle_periods: 1,
+            eis_show_fit: true,
         }
     }
 

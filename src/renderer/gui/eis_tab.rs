@@ -1,5 +1,5 @@
 // renderer/gui/eis_tab.rs
-// EIS configuration, Nyquist/Bode plots, and CSV export
+// EIS configuration, Nyquist plot, signal time series, and CSV export
 
 use crate::renderer::state::{SimCommand, SIM_COMMAND_SENDER};
 use crate::simulation::eis::EIS_RESULTS;
@@ -25,23 +25,53 @@ impl super::super::Renderer {
                             .max_decimals(6),
                     );
                 });
+                let dt = *crate::renderer::state::TIMESTEP.lock();
+
+                // Helper: convert freq → steps and clamp to a safe range
+                let freq_to_steps = |f: f32| -> u64 {
+                    if f > 0.0 && dt > 0.0 {
+                        ((1.0 / (f * dt)).round() as u64).max(1)
+                    } else {
+                        1
+                    }
+                };
+
+                // f_min — editable as frequency OR as steps/period
                 ui.horizontal(|ui| {
-                    ui.label("f_min (1/fs):");
+                    ui.label("f_min:");
                     ui.add(
                         egui::DragValue::new(&mut self.eis_f_min)
                             .speed(1e-7)
                             .clamp_range(1e-10..=1.0)
-                            .max_decimals(8),
+                            .max_decimals(8)
+                            .suffix(" 1/fs"),
                     );
+                    ui.label("=");
+                    let mut steps = freq_to_steps(self.eis_f_min);
+                    let prev = steps;
+                    ui.add(egui::DragValue::new(&mut steps).speed(10).clamp_range(1..=10_000_000u64).suffix(" steps"));
+                    if steps != prev && steps > 0 && dt > 0.0 {
+                        self.eis_f_min = (1.0 / (steps as f32 * dt)).clamp(1e-10, 1.0);
+                    }
                 });
+
+                // f_max — editable as frequency OR as steps/period
                 ui.horizontal(|ui| {
-                    ui.label("f_max (1/fs):");
+                    ui.label("f_max:");
                     ui.add(
                         egui::DragValue::new(&mut self.eis_f_max)
                             .speed(1e-4)
                             .clamp_range(1e-8..=1.0)
-                            .max_decimals(6),
+                            .max_decimals(6)
+                            .suffix(" 1/fs"),
                     );
+                    ui.label("=");
+                    let mut steps = freq_to_steps(self.eis_f_max);
+                    let prev = steps;
+                    ui.add(egui::DragValue::new(&mut steps).speed(10).clamp_range(1..=10_000_000u64).suffix(" steps"));
+                    if steps != prev && steps > 0 && dt > 0.0 {
+                        self.eis_f_max = (1.0 / (steps as f32 * dt)).clamp(1e-8, 1.0);
+                    }
                 });
                 ui.horizontal(|ui| {
                     ui.label("Points per decade:");
@@ -175,8 +205,20 @@ impl super::super::Renderer {
 
         ui.separator();
 
+        // Signal Time Series — visible while running or once data has been collected
+        if shared.is_running || !shared.ts_t_rel.is_empty() {
+            egui::CollapsingHeader::new("Signal Time Series")
+                .default_open(true)
+                .show(ui, |ui| {
+                    ui.checkbox(&mut self.eis_show_fit, "Show best-fit sinusoid");
+                    self.draw_timeseries_plot(ui, &shared);
+                });
+        }
+
         if shared.points.is_empty() {
-            ui.label("No EIS data yet. Configure and start a sweep.");
+            if !shared.is_running {
+                ui.label("No EIS data yet. Configure and start a sweep.");
+            }
             return;
         }
 
@@ -185,13 +227,6 @@ impl super::super::Renderer {
             .default_open(true)
             .show(ui, |ui| {
                 self.draw_nyquist_plot(ui, &shared.points);
-            });
-
-        // Bode plot: |Z| and phase vs log(freq)
-        egui::CollapsingHeader::new("Bode Plot")
-            .default_open(false)
-            .show(ui, |ui| {
-                self.draw_bode_plot(ui, &shared.points);
             });
 
         // Data table
@@ -206,6 +241,7 @@ impl super::super::Renderer {
                         ui.label("-Im(Z)");
                         ui.label("|Z|");
                         ui.label("Phase (deg)");
+                        ui.label("R²");
                         ui.end_row();
 
                         for pt in &shared.points {
@@ -214,6 +250,7 @@ impl super::super::Renderer {
                             ui.label(format!("{:.4e}", -pt.z_imag));
                             ui.label(format!("{:.4e}", pt.magnitude));
                             ui.label(format!("{:.2}", pt.phase_deg));
+                            ui.label(format!("{:.4}", pt.fit_r2));
                             ui.end_row();
                         }
                     });
@@ -231,9 +268,17 @@ impl super::super::Renderer {
         ui: &mut egui::Ui,
         points: &[crate::simulation::eis::EisPoint],
     ) {
+        const LEFT_MARGIN: f32 = 62.0;
         let available = ui.available_size();
-        let plot_size = egui::Vec2::new(available.x - 20.0, 250.0_f32.min(available.y - 50.0));
-        let (rect, _response) = ui.allocate_exact_size(plot_size, egui::Sense::hover());
+        let plot_size = egui::Vec2::new(available.x - LEFT_MARGIN - 10.0, 300.0);
+
+        // Indent right so y-axis tick labels have room on the left
+        let (rect, response) = ui
+            .horizontal(|ui| {
+                ui.add_space(LEFT_MARGIN);
+                ui.allocate_exact_size(plot_size, egui::Sense::hover())
+            })
+            .inner;
 
         if !ui.is_rect_visible(rect) || points.is_empty() {
             return;
@@ -284,8 +329,8 @@ impl super::super::Renderer {
             ui.painter().circle_filled(*pt, 3.0, data_color);
         }
 
-        // Axis labels
-        let label_color = egui::Color32::BLACK;
+        // Axis labels — use theme text color so they're readable in dark mode
+        let label_color = ui.visuals().text_color();
         let font = egui::FontId::proportional(12.0);
         ui.painter().text(
             egui::Pos2::new(rect.center().x, rect.max.y + 15.0),
@@ -295,7 +340,7 @@ impl super::super::Renderer {
             label_color,
         );
         ui.painter().text(
-            egui::Pos2::new(rect.min.x - 30.0, rect.center().y),
+            egui::Pos2::new(rect.min.x - 32.0, rect.center().y),
             egui::Align2::CENTER_CENTER,
             "-Im(Z)",
             font,
@@ -315,126 +360,318 @@ impl super::super::Renderer {
                 label_color,
             );
             ui.painter().text(
-                egui::Pos2::new(rect.min.x - 3.0, rect.min.y + frac * rect.height()),
+                egui::Pos2::new(rect.min.x - 4.0, rect.min.y + frac * rect.height()),
                 egui::Align2::RIGHT_CENTER,
                 format!("{:.2e}", y_val),
                 egui::FontId::proportional(9.0),
                 label_color,
             );
         }
+
+        // Reserve vertical space for the x-axis label below the plot
+        ui.add_space(25.0);
+
+        // Hover tooltip: highlight nearest point within 30 px and show values
+        let hover_pos = if response.hovered() {
+            ui.ctx().pointer_hover_pos()
+        } else {
+            None
+        };
+        if let Some(hover_pos) = hover_pos {
+            if let Some((idx, dist_sq)) = screen_pts
+                .iter()
+                .enumerate()
+                .map(|(i, &p)| {
+                    (
+                        i,
+                        (p.x - hover_pos.x).powi(2) + (p.y - hover_pos.y).powi(2),
+                    )
+                })
+                .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))
+            {
+                if dist_sq < 30.0f32.powi(2) {
+                    let pt = &points[idx];
+                    // Ring around the hovered point
+                    ui.painter().circle_stroke(
+                        screen_pts[idx],
+                        7.0,
+                        egui::Stroke::new(2.0, egui::Color32::WHITE),
+                    );
+                    // Popup box slightly to the right of the cursor
+                    let lines = [
+                        format!("f = {:.3e} 1/fs", pt.frequency),
+                        format!("Re(Z)  = {:.4e}", pt.z_real),
+                        format!("-Im(Z) = {:.4e}", -pt.z_imag),
+                        format!("R\u{00B2}     = {:.4}", pt.fit_r2),
+                    ];
+                    let tip_font = egui::FontId::proportional(11.0);
+                    let bg = egui::Color32::from_rgba_unmultiplied(25, 25, 25, 220);
+                    let text_color = egui::Color32::from_gray(230);
+                    let origin = hover_pos + egui::Vec2::new(14.0, -10.0);
+                    let line_h = 16.0;
+                    let pad = 5.0;
+                    let box_rect = egui::Rect::from_min_size(
+                        egui::Pos2::new(origin.x - pad, origin.y - pad),
+                        egui::Vec2::new(178.0, lines.len() as f32 * line_h + 2.0 * pad),
+                    );
+                    ui.painter().rect_filled(box_rect, 4.0, bg);
+                    ui.painter().rect_stroke(
+                        box_rect,
+                        4.0,
+                        egui::Stroke::new(1.0, egui::Color32::from_gray(100)),
+                    );
+                    for (i, line) in lines.iter().enumerate() {
+                        ui.painter().text(
+                            egui::Pos2::new(origin.x, origin.y + i as f32 * line_h),
+                            egui::Align2::LEFT_TOP,
+                            line,
+                            tip_font.clone(),
+                            text_color,
+                        );
+                    }
+                }
+            }
+        }
     }
 
-    fn draw_bode_plot(
+    fn draw_timeseries_plot(
         &self,
         ui: &mut egui::Ui,
-        points: &[crate::simulation::eis::EisPoint],
+        shared: &crate::simulation::eis::EisSharedState,
     ) {
+        const LEFT_MARGIN: f32 = 62.0;
         let available = ui.available_size();
-        let plot_size = egui::Vec2::new(available.x - 20.0, 200.0_f32.min(available.y - 50.0));
-        let (rect, _response) = ui.allocate_exact_size(plot_size, egui::Sense::hover());
+        let plot_size = egui::Vec2::new(available.x - LEFT_MARGIN - 10.0, 280.0);
 
-        if !ui.is_rect_visible(rect) || points.is_empty() {
+        let (rect, _response) = ui
+            .horizontal(|ui| {
+                ui.add_space(LEFT_MARGIN);
+                ui.allocate_exact_size(plot_size, egui::Sense::hover())
+            })
+            .inner;
+
+        if !ui.is_rect_visible(rect) {
             return;
         }
 
+        // Background
         ui.painter()
-            .rect_filled(rect, 2.0, egui::Color32::from_gray(240));
+            .rect_filled(rect, 2.0, egui::Color32::from_gray(30));
         ui.painter()
-            .rect_stroke(rect, 2.0, egui::Stroke::new(1.0, egui::Color32::BLACK));
+            .rect_stroke(rect, 2.0, egui::Stroke::new(1.0, egui::Color32::from_gray(100)));
 
-        // Use log10(freq) for x-axis, log10(|Z|) for left y-axis
-        let log_freqs: Vec<f64> = points.iter().map(|p| (p.frequency as f64).log10()).collect();
-        let log_mags: Vec<f64> = points.iter().map(|p| p.magnitude.log10()).collect();
-        let phases: Vec<f64> = points.iter().map(|p| p.phase_deg).collect();
+        let ts = &shared.ts_t_rel;
+        let vs = &shared.ts_v;
+        let is = &shared.ts_i;
+        let phases = &shared.ts_is_recording;
 
-        let lf_min = log_freqs.iter().fold(f64::INFINITY, |a, &b| a.min(b));
-        let lf_max = log_freqs.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
-        let lm_min = log_mags.iter().fold(f64::INFINITY, |a, &b| a.min(b));
-        let lm_max = log_mags.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
-
-        let x_range = (lf_max - lf_min).max(1e-10);
-        let y_range = (lm_max - lm_min).max(1e-10);
-        let x_pad = x_range * 0.05;
-        let y_pad = y_range * 0.05;
-
-        let mag_color = egui::Color32::from_rgb(0, 100, 255);
-        let phase_color = egui::Color32::from_rgb(200, 50, 50);
-
-        // Draw |Z| line (left y-axis)
-        let mut mag_pts = Vec::new();
-        for (&lf, &lm) in log_freqs.iter().zip(log_mags.iter()) {
-            let x_norm = (lf - (lf_min - x_pad)) / (x_range + 2.0 * x_pad);
-            let y_norm = 1.0 - (lm - (lm_min - y_pad)) / (y_range + 2.0 * y_pad);
-            let sx = rect.min.x + x_norm as f32 * rect.width();
-            let sy = rect.min.y + y_norm as f32 * rect.height();
-            mag_pts.push(egui::Pos2::new(sx, sy));
-        }
-        for i in 0..mag_pts.len().saturating_sub(1) {
-            ui.painter().line_segment(
-                [mag_pts[i], mag_pts[i + 1]],
-                egui::Stroke::new(2.0, mag_color),
+        if ts.is_empty() {
+            ui.painter().text(
+                rect.center(),
+                egui::Align2::CENTER_CENTER,
+                "Waiting for data...",
+                egui::FontId::proportional(13.0),
+                egui::Color32::from_gray(160),
             );
-        }
-        for pt in &mag_pts {
-            ui.painter().circle_filled(*pt, 2.5, mag_color);
+            return;
         }
 
-        // Draw phase line (right y-axis, mapped to same rect)
-        let ph_min = phases.iter().fold(f64::INFINITY, |a, &b| a.min(b));
-        let ph_max = phases.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
-        let ph_range = (ph_max - ph_min).max(1.0);
-        let ph_pad = ph_range * 0.1;
+        let t_min = ts.iter().cloned().fold(f32::INFINITY, f32::min);
+        let t_max = ts.iter().cloned().fold(f32::NEG_INFINITY, f32::max);
+        let t_range = (t_max - t_min).max(1e-20);
 
-        let mut phase_pts = Vec::new();
-        for (&lf, &ph) in log_freqs.iter().zip(phases.iter()) {
-            let x_norm = (lf - (lf_min - x_pad)) / (x_range + 2.0 * x_pad);
-            let y_norm = 1.0 - (ph - (ph_min - ph_pad)) / (ph_range + 2.0 * ph_pad);
-            let sx = rect.min.x + x_norm as f32 * rect.width();
-            let sy = rect.min.y + y_norm as f32 * rect.height();
-            phase_pts.push(egui::Pos2::new(sx, sy));
-        }
-        for i in 0..phase_pts.len().saturating_sub(1) {
-            ui.painter().line_segment(
-                [phase_pts[i], phase_pts[i + 1]],
-                egui::Stroke::new(1.5, phase_color),
+        // Settle/record shading: find where recording starts
+        let first_record_t = ts
+            .iter()
+            .zip(phases.iter())
+            .find(|(_, &rec)| rec)
+            .map(|(&t, _)| t);
+
+        if let Some(rec_t) = first_record_t {
+            let x_split = rect.min.x + ((rec_t - t_min) / t_range) as f32 * rect.width();
+            let settle_rect = egui::Rect::from_min_max(
+                rect.min,
+                egui::Pos2::new(x_split.min(rect.max.x), rect.max.y),
             );
+            let record_rect = egui::Rect::from_min_max(
+                egui::Pos2::new(x_split.max(rect.min.x), rect.min.y),
+                rect.max,
+            );
+            ui.painter()
+                .rect_filled(settle_rect, 0.0, egui::Color32::from_rgba_unmultiplied(80, 60, 20, 60));
+            ui.painter()
+                .rect_filled(record_rect, 0.0, egui::Color32::from_rgba_unmultiplied(20, 60, 80, 60));
+            // Phase labels
+            let font_small = egui::FontId::proportional(10.0);
+            if settle_rect.width() > 30.0 {
+                ui.painter().text(
+                    egui::Pos2::new(settle_rect.min.x + 4.0, settle_rect.min.y + 4.0),
+                    egui::Align2::LEFT_TOP,
+                    "settling",
+                    font_small.clone(),
+                    egui::Color32::from_rgb(200, 160, 80),
+                );
+            }
+            if record_rect.width() > 40.0 {
+                ui.painter().text(
+                    egui::Pos2::new(record_rect.min.x + 4.0, record_rect.min.y + 4.0),
+                    egui::Align2::LEFT_TOP,
+                    "recording",
+                    font_small,
+                    egui::Color32::from_rgb(80, 180, 220),
+                );
+            }
         }
-        for pt in &phase_pts {
-            ui.painter().circle_filled(*pt, 2.5, phase_color);
+
+        let v_color = egui::Color32::from_rgb(80, 200, 120);   // green for voltage
+        let i_color = egui::Color32::from_rgb(220, 120, 60);   // orange for current
+        let label_color = egui::Color32::from_gray(200);
+        let font = egui::FontId::proportional(11.0);
+
+        // Helper: compute normalised y-range for a slice, return (min, max)
+        let data_range = |vals: &[f32]| -> (f32, f32) {
+            let lo = vals.iter().cloned().fold(f32::INFINITY, f32::min);
+            let hi = vals.iter().cloned().fold(f32::NEG_INFINITY, f32::max);
+            let span = (hi - lo).max(1e-30);
+            let pad = span * 0.15;
+            (lo - pad, hi + pad)
+        };
+
+        // Helper: map a (t, val) into screen space given a y range
+        let to_screen = |t: f32, val: f32, y_lo: f32, y_hi: f32| -> egui::Pos2 {
+            let x = rect.min.x + ((t - t_min) / t_range) * rect.width();
+            let y = rect.max.y - ((val - y_lo) / (y_hi - y_lo)) * rect.height();
+            egui::Pos2::new(x, y)
+        };
+
+        // Draw voltage trace
+        let (v_lo, v_hi) = data_range(vs);
+        {
+            let pts: Vec<egui::Pos2> = ts
+                .iter()
+                .zip(vs.iter())
+                .map(|(&t, &v)| to_screen(t, v, v_lo, v_hi))
+                .collect();
+            for w in pts.windows(2) {
+                ui.painter()
+                    .line_segment([w[0], w[1]], egui::Stroke::new(1.5, v_color));
+            }
+        }
+
+        // Draw best-fit sinusoid overlay (recording region only)
+        if self.eis_show_fit && (shared.fit_v_re != 0.0 || shared.fit_v_im != 0.0) {
+            if let Some(rec_start) = first_record_t {
+                let omega = 2.0 * std::f32::consts::PI * shared.current_freq;
+                let fit_color = egui::Color32::from_rgb(255, 230, 80); // bright yellow
+                // Generate a smooth curve over the recording region
+                let n_fit = 300usize;
+                let t_rec_end = t_max;
+                let fit_pts: Vec<egui::Pos2> = (0..=n_fit)
+                    .map(|i| {
+                        let t = rec_start + (t_rec_end - rec_start) * i as f32 / n_fit as f32;
+                        let t_fit = t - rec_start;
+                        // Add DC offset so the fit rides on top of the actual signal
+                        let v = shared.fit_v_dc
+                            + (shared.fit_v_re * (omega * t_fit).cos() as f64
+                                + shared.fit_v_im * (omega * t_fit).sin() as f64)
+                                as f32;
+                        to_screen(t, v, v_lo, v_hi)
+                    })
+                    .collect();
+                // Clip the fit curve strictly to the plot rect so early/wild
+                // estimates don't bleed outside the figure bounds.
+                let fit_painter = ui.painter().with_clip_rect(rect);
+                for w in fit_pts.windows(2) {
+                    fit_painter
+                        .line_segment([w[0], w[1]], egui::Stroke::new(1.5, fit_color));
+                }
+            }
+        }
+
+        // Draw current trace — normalised independently so it fills the plot height
+        let (i_lo, i_hi) = data_range(is);
+        {
+            let pts: Vec<egui::Pos2> = ts
+                .iter()
+                .zip(is.iter())
+                .map(|(&t, &i)| to_screen(t, i, i_lo, i_hi))
+                .collect();
+            for w in pts.windows(2) {
+                ui.painter()
+                    .line_segment([w[0], w[1]], egui::Stroke::new(1.5, i_color));
+            }
         }
 
         // Legend
-        let label_color = egui::Color32::BLACK;
-        let font = egui::FontId::proportional(11.0);
         ui.painter().text(
-            egui::Pos2::new(rect.min.x + 5.0, rect.min.y + 5.0),
-            egui::Align2::LEFT_TOP,
-            "|Z| (blue)",
+            egui::Pos2::new(rect.max.x - 8.0, rect.min.y + 6.0),
+            egui::Align2::RIGHT_TOP,
+            format!("V  [{:.2e} … {:.2e}]", v_lo, v_hi),
             font.clone(),
-            mag_color,
+            v_color,
         );
         ui.painter().text(
-            egui::Pos2::new(rect.min.x + 5.0, rect.min.y + 18.0),
-            egui::Align2::LEFT_TOP,
-            "Phase (red)",
+            egui::Pos2::new(rect.max.x - 8.0, rect.min.y + 20.0),
+            egui::Align2::RIGHT_TOP,
+            format!("I  [{:.2e} … {:.2e}]", i_lo, i_hi),
             font.clone(),
-            phase_color,
+            i_color,
         );
+
+        // X-axis label
         ui.painter().text(
-            egui::Pos2::new(rect.center().x, rect.max.y + 15.0),
+            egui::Pos2::new(rect.center().x, rect.max.y + 14.0),
             egui::Align2::CENTER_TOP,
-            "log10(Freq)",
-            font,
+            format!(
+                "t (fs)   freq = {:.2e} 1/fs   {} pts",
+                shared.current_freq,
+                ts.len()
+            ),
+            egui::FontId::proportional(10.0),
             label_color,
         );
+
+        // Y-axis min/max tick labels (V left, I right)
+        let font_tick = egui::FontId::proportional(9.0);
+        ui.painter().text(
+            egui::Pos2::new(rect.min.x - 2.0, rect.min.y),
+            egui::Align2::RIGHT_TOP,
+            format!("{:.1e}", v_hi),
+            font_tick.clone(),
+            v_color,
+        );
+        ui.painter().text(
+            egui::Pos2::new(rect.min.x - 2.0, rect.max.y),
+            egui::Align2::RIGHT_BOTTOM,
+            format!("{:.1e}", v_lo),
+            font_tick.clone(),
+            v_color,
+        );
+        ui.painter().text(
+            egui::Pos2::new(rect.max.x + 2.0, rect.min.y),
+            egui::Align2::LEFT_TOP,
+            format!("{:.1e}", i_hi),
+            font_tick.clone(),
+            i_color,
+        );
+        ui.painter().text(
+            egui::Pos2::new(rect.max.x + 2.0, rect.max.y),
+            egui::Align2::LEFT_BOTTOM,
+            format!("{:.1e}", i_lo),
+            font_tick,
+            i_color,
+        );
+
+        // Reserve vertical space for the x-axis label below the plot
+        ui.add_space(25.0);
     }
 
     fn export_eis_csv(&self, points: &[crate::simulation::eis::EisPoint]) {
-        let mut csv = String::from("frequency,z_real,z_imag,z_magnitude,phase_deg\n");
+        let mut csv = String::from("frequency,z_real,z_imag,z_magnitude,phase_deg,fit_r2\n");
         for pt in points {
             csv.push_str(&format!(
-                "{:.6e},{:.6e},{:.6e},{:.6e},{:.4}\n",
-                pt.frequency, pt.z_real, pt.z_imag, pt.magnitude, pt.phase_deg
+                "{:.6e},{:.6e},{:.6e},{:.6e},{:.4},{:.6}\n",
+                pt.frequency, pt.z_real, pt.z_imag, pt.magnitude, pt.phase_deg, pt.fit_r2
             ));
         }
         let path = "eis_results.csv";

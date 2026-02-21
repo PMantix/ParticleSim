@@ -8,6 +8,9 @@ use parking_lot::Mutex;
 pub static EIS_RESULTS: Lazy<Mutex<EisSharedState>> =
     Lazy::new(|| Mutex::new(EisSharedState::default()));
 
+/// Maximum time-series samples stored per frequency for live visualization.
+const TS_MAX_SAMPLES: usize = 2000;
+
 #[derive(Clone, Debug, Default)]
 pub struct EisSharedState {
     pub points: Vec<EisPoint>,
@@ -23,6 +26,19 @@ pub struct EisSharedState {
     /// Foil group assignments (for UI display)
     pub group_a_ids: Vec<u64>,
     pub group_b_ids: Vec<u64>,
+    /// Live time-series for V and I (reset each frequency).
+    /// `ts_t_rel` is time relative to the current frequency's t_start (fs).
+    /// `ts_is_recording` marks whether the sample fell in the recording phase.
+    pub ts_t_rel: Vec<f32>,
+    pub ts_v: Vec<f32>,
+    pub ts_i: Vec<f32>,
+    pub ts_is_recording: Vec<bool>,
+    /// Running best-fit V sinusoid: V_fit(t) = fit_v_dc + fit_v_re·cos(ω·t) + fit_v_im·sin(ω·t)
+    /// where t is relative to the start of the recording phase.
+    /// Updated each recording step (one step behind, fine for display).
+    pub fit_v_re: f64,
+    pub fit_v_im: f64,
+    pub fit_v_dc: f32,  // DC mean of V during recording (shifts displayed fit onto the signal)
 }
 
 #[derive(Clone, Debug)]
@@ -71,6 +87,8 @@ pub struct EisState {
     pub v_cos_acc: f64,
     pub i_sin_acc: f64,
     pub i_cos_acc: f64,
+    pub v_sq_acc: f64,   // sum of V²  — for AC variance
+    pub v_sum_acc: f64,  // sum of V   — for DC offset
     pub sample_count: usize,
 
     // Results
@@ -86,6 +104,10 @@ pub struct EisState {
 
     // Logging throttle
     log_counter: usize,
+
+    // Time-series subsampling: record one sample every ts_subsample steps
+    ts_subsample: usize,
+    ts_step_counter: usize,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -101,6 +123,9 @@ pub struct EisPoint {
     pub z_imag: f64,
     pub magnitude: f64,
     pub phase_deg: f64,
+    /// R² of the sinusoidal fit: fraction of V variance explained by the fundamental.
+    /// 1.0 = perfect fit; < 1.0 indicates harmonics, noise, or nonlinear response.
+    pub fit_r2: f64,
 }
 
 impl EisState {
@@ -144,6 +169,8 @@ impl EisState {
             v_cos_acc: 0.0,
             i_sin_acc: 0.0,
             i_cos_acc: 0.0,
+            v_sq_acc: 0.0,
+            v_sum_acc: 0.0,
             sample_count: 0,
             results: Vec::new(),
             group_a_ids,
@@ -151,6 +178,8 @@ impl EisState {
             saved_dc_currents,
             finished: false,
             log_counter: 0,
+            ts_subsample: 1,
+            ts_step_counter: 0,
         };
         // Initialize shared state
         let mut shared = EIS_RESULTS.lock();
@@ -165,6 +194,14 @@ impl EisState {
         shared.sample_count = 0;
         shared.group_a_ids = state.group_a_ids.clone();
         shared.group_b_ids = state.group_b_ids.clone();
+        // Pre-allocate to full capacity to avoid incremental Vec reallocations
+        shared.ts_t_rel = Vec::with_capacity(TS_MAX_SAMPLES);
+        shared.ts_v = Vec::with_capacity(TS_MAX_SAMPLES);
+        shared.ts_i = Vec::with_capacity(TS_MAX_SAMPLES);
+        shared.ts_is_recording = Vec::with_capacity(TS_MAX_SAMPLES);
+        shared.fit_v_re = 0.0;
+        shared.fit_v_im = 0.0;
+        shared.fit_v_dc = 0.0;
         state
     }
 
@@ -185,7 +222,7 @@ impl EisState {
         cell_voltage: f32,
         applied_current: f32,
         time: f32,
-        _dt: f32,
+        dt: f32,
     ) -> bool {
         if self.finished {
             return true;
@@ -216,13 +253,23 @@ impl EisState {
             );
         }
 
-        // Update shared state for GUI progress
-        {
-            let mut shared = EIS_RESULTS.lock();
-            shared.elapsed_fs = time - self.t_eis_start;
-            shared.current_freq = freq;
-            shared.sample_count = self.sample_count;
-            shared.phase = match self.phase {
+        // Compute subsample ratio once per frequency (targeting ~TS_MAX_SAMPLES display pts)
+        if self.ts_step_counter == 0 && dt > 0.0 {
+            let total_periods =
+                (self.config.settle_periods + self.config.periods_per_freq) as f32;
+            let total_steps_est = total_periods / (freq * dt);
+            self.ts_subsample =
+                ((total_steps_est / TS_MAX_SAMPLES as f32).ceil() as usize).max(1);
+        }
+
+        // Increment counter outside the lock so the lock is only acquired every
+        // ts_subsample steps rather than every single simulation step.  This
+        // eliminates the per-step mutex contention and format!/String allocation
+        // that caused heap fragmentation and renderer choppiness at low frequencies.
+        self.ts_step_counter += 1;
+        if self.ts_step_counter % self.ts_subsample == 0 {
+            // Build phase string outside the lock to minimise time holding it.
+            let phase_str = match self.phase {
                 EisPhase::Settling => format!(
                     "Settling ({:.0}/{:.0} fs)",
                     time - self.t_start,
@@ -235,6 +282,27 @@ impl EisState {
                     self.sample_count
                 ),
             };
+
+            let mut shared = EIS_RESULTS.lock();
+            shared.elapsed_fs = time - self.t_eis_start;
+            shared.current_freq = freq;
+            shared.sample_count = self.sample_count;
+            shared.phase = phase_str;
+
+            if shared.ts_t_rel.len() < TS_MAX_SAMPLES {
+                shared.ts_t_rel.push(time - self.t_start);
+                shared.ts_v.push(cell_voltage);
+                shared.ts_i.push(applied_current);
+                shared.ts_is_recording.push(self.phase == EisPhase::Recording);
+            }
+
+            // Update running best-fit coefficients
+            if self.phase == EisPhase::Recording && self.sample_count > 0 {
+                let n = self.sample_count as f64;
+                shared.fit_v_re = self.v_cos_acc * 2.0 / n;
+                shared.fit_v_im = self.v_sin_acc * 2.0 / n;
+                shared.fit_v_dc = (self.v_sum_acc / n) as f32;
+            }
         }
 
         match self.phase {
@@ -247,6 +315,8 @@ impl EisState {
                     self.v_cos_acc = 0.0;
                     self.i_sin_acc = 0.0;
                     self.i_cos_acc = 0.0;
+                    self.v_sq_acc = 0.0;
+                    self.v_sum_acc = 0.0;
                     self.sample_count = 0;
                     eprintln!(
                         "[EIS] Freq {}/{} ({:.2e}): settling complete, now recording",
@@ -270,6 +340,8 @@ impl EisState {
                 self.v_cos_acc += v * cos_val;
                 self.i_sin_acc += i * sin_val;
                 self.i_cos_acc += i * cos_val;
+                self.v_sq_acc += v * v;
+                self.v_sum_acc += v;
                 self.sample_count += 1;
 
                 // Check if we've recorded enough cycles
@@ -294,6 +366,18 @@ impl EisState {
         let v_im = self.v_sin_acc * 2.0 / n;
         let i_re = self.i_cos_acc * 2.0 / n;
         let i_im = self.i_sin_acc * 2.0 / n;
+
+        // R² of the V fit: fundamental power as a fraction of AC (DC-subtracted) variance.
+        //   P_fit    = (v_re² + v_im²) / 2   — RMS² of the best-fit sinusoid
+        //   V_dc     = v_sum_acc / N          — mean (DC offset)
+        //   P_ac     = mean(V²) - V_dc²       — AC variance (total power about the mean)
+        //   R²       = P_fit / P_ac
+        // Using AC variance instead of raw total power prevents the DC offset from
+        // artificially deflating R² when the signal rides on a large bias.
+        let p_fit = (v_re * v_re + v_im * v_im) * 0.5;
+        let v_dc = self.v_sum_acc / n;
+        let p_ac = (self.v_sq_acc / n - v_dc * v_dc).max(0.0);
+        let fit_r2 = if p_ac > 1e-60 { (p_fit / p_ac).min(1.0) } else { 1.0 };
 
         // Z = V / I  (complex division)
         let denom = i_re * i_re + i_im * i_im;
@@ -328,6 +412,7 @@ impl EisState {
             z_imag,
             magnitude,
             phase_deg,
+            fit_r2,
         };
         self.results.push(point.clone());
 
@@ -354,7 +439,20 @@ impl EisState {
         self.v_cos_acc = 0.0;
         self.i_sin_acc = 0.0;
         self.i_cos_acc = 0.0;
+        self.v_sq_acc = 0.0;
+        self.v_sum_acc = 0.0;
         self.sample_count = 0;
+        self.ts_step_counter = 0;
+        self.ts_subsample = 1;
+        // Clear time-series buffer and fit state for the new frequency
+        let mut shared = EIS_RESULTS.lock();
+        shared.ts_t_rel.clear();
+        shared.ts_v.clear();
+        shared.ts_i.clear();
+        shared.ts_is_recording.clear();
+        shared.fit_v_re = 0.0;
+        shared.fit_v_im = 0.0;
+        shared.fit_v_dc = 0.0;
         false
     }
 }

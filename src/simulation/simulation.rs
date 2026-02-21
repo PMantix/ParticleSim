@@ -746,16 +746,6 @@ impl Simulation {
         // Update global simulation time for GUI access
         *SIM_TIME.lock() = time;
 
-        // Check for NaN values at start of step
-        let nan_count = self
-            .bodies
-            .iter()
-            .filter(|b| !b.pos.x.is_finite() || !b.pos.y.is_finite() || !b.charge.is_finite())
-            .count();
-        if nan_count > 0 {
-            // NaN values detected at step start
-        }
-
         // Apply group linking constraints each frame (parallel within groups, opposite between groups)
         // Skip when switch charging is running to avoid overriding active/inactive step controls
         if self.switch_run_state != RunState::Running
@@ -1009,40 +999,16 @@ impl Simulation {
             body.az = 0.0; // Reset z-acceleration as well
         });
 
+        forces::prepare_spatial_structures(self);
         forces::attract(self);
         forces::apply_polar_forces(self);
         forces::apply_lj_forces(self);
         forces::apply_repulsive_forces(self);
         forces::apply_stack_pressure(self);
 
-        // Check for NaN values after force calculations
-        let nan_count = self
-            .bodies
-            .iter()
-            .filter(|b| !b.acc.x.is_finite() || !b.acc.y.is_finite() || !b.az.is_finite())
-            .count();
-        if nan_count > 0 {
-            // NaN values detected after force calculations
-        }
-
         // Apply out-of-plane forces if enabled
         if self.config.enable_out_of_plane {
             super::out_of_plane::apply_out_of_plane(self);
-        }
-
-        // Check for NaN values after out-of-plane physics
-        let nan_count = self
-            .bodies
-            .iter()
-            .filter(|b| {
-                !b.pos.x.is_finite()
-                    || !b.pos.y.is_finite()
-                    || !b.charge.is_finite()
-                    || !b.z.is_finite()
-            })
-            .count();
-        if nan_count > 0 {
-            // NaN values detected after out-of-plane physics
         }
 
         // Apply Li+ mobility enhancement (pressure-dependent collision softening)
@@ -1052,16 +1018,6 @@ impl Simulation {
         // Removed: frustration system replaced with simple Li+ collision softness
 
         self.iterate();
-
-        // Check for NaN values after iterate
-        let nan_count = self
-            .bodies
-            .iter()
-            .filter(|b| !b.pos.x.is_finite() || !b.pos.y.is_finite() || !b.charge.is_finite())
-            .count();
-        if nan_count > 0 {
-            // NaN values detected after iterate
-        }
 
         let num_passes = *COLLISION_PASSES.lock();
         for _ in 1..num_passes {
@@ -1103,7 +1059,10 @@ impl Simulation {
         self.process_foils_with_charge_conservation(time, &mut foil_current_recipients);
         // EIS: record voltage/current after foil processing
         if self.eis_state.is_some() {
-            let cell_voltage = self.compute_cell_voltage();
+            // Use charge-ratio voltage: (ratio_A - ratio_B) measures the electron
+            // excess/deficit of each electrode's metal network relative to neutral,
+            // matching the "Ratio" displayed in the Charging tab.
+            let cell_voltage = self.compute_cell_voltage_by_charge();
             // Sum applied current across all group_a foils (represents total current flow)
             let applied_current = if let Some(ref eis) = self.eis_state {
                 eis.group_a_ids
@@ -1142,11 +1101,8 @@ impl Simulation {
         let quadtree = &self.quadtree;
         let len = self.bodies.len();
         let bodies_ptr = self.bodies.as_ptr();
+        let bodies_slice = unsafe { std::slice::from_raw_parts(bodies_ptr, len) };
         for i in 0..len {
-            if i % 1000 == 0 && i > 0 {
-                // Processing electron updates in batches
-            }
-            let bodies_slice = unsafe { std::slice::from_raw_parts(bodies_ptr, len) };
             let body = &mut self.bodies[i];
             body.update_electrons(
                 bodies_slice,
@@ -1319,13 +1275,41 @@ impl Simulation {
         self.history_dirty = false;
     }
 
-    /// Compute the cell voltage as the potential difference between positive and negative foil centroids.
-    pub fn compute_cell_voltage(&self) -> f32 {
-        crate::plotting::analysis::calculate_cell_voltage(
-            &self.bodies,
-            &self.foils,
-            self.config.coulomb_constant,
-        )
+    /// Compute EIS cell voltage using electrode electron-charge ratio.
+    ///
+    /// For each EIS foil group, the BFS-expanded electron ratio (same as the
+    /// charging-tab "Ratio" display) is computed across all FoilMetal and
+    /// physically-connected LithiumMetal bodies.
+    ///
+    ///   ratio = total_electrons / total_neutral_electrons
+    ///   ratio = 1.0  → electrode at equilibrium
+    ///   ratio > 1.0  → electron excess  (reduced / anode-side during charging)
+    ///   ratio < 1.0  → electron deficit (oxidised / cathode-side during charging)
+    ///
+    /// Returns (ratio_A - ratio_B).  For a standard cell this is positive when
+    /// group A has more electrons than group B.
+    pub fn compute_cell_voltage_by_charge(&self) -> f32 {
+        if self.group_a.is_empty() || self.group_b.is_empty() {
+            return 0.0;
+        }
+
+        let group_ratio = |group: &std::collections::HashSet<u64>| -> f32 {
+            let foils_in_group: Vec<&crate::body::foil::Foil> = self
+                .foils
+                .iter()
+                .filter(|f| group.contains(&f.id))
+                .collect();
+            if foils_in_group.is_empty() {
+                return 1.0;
+            }
+            let sum: f32 = foils_in_group
+                .iter()
+                .map(|f| self.calculate_foil_electron_ratio(f))
+                .sum();
+            sum / foils_in_group.len() as f32
+        };
+
+        group_ratio(&self.group_a) - group_ratio(&self.group_b)
     }
 
     pub fn iterate(&mut self) {
