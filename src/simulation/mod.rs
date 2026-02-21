@@ -3,6 +3,7 @@
 
 //pub mod core;
 pub mod collision;
+pub mod eis;
 mod electron_hopping;
 pub mod forces;
 pub mod sei;

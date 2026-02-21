@@ -263,6 +263,16 @@ pub enum SimCommand {
     UpdateFoilMasses {
         mass: f32,
     },
+    // EIS commands
+    StartEIS {
+        amplitude: f32,
+        f_min: f32,
+        f_max: f32,
+        points_per_decade: f32,
+        periods_per_freq: usize,
+        settle_periods: usize,
+    },
+    StopEIS,
 }
 
 pub static SIM_COMMAND_SENDER: Lazy<Mutex<Option<Sender<SimCommand>>>> =

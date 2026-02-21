@@ -112,6 +112,7 @@ pub enum GuiTab {
     Charging,
     Measurement,
     Analysis,
+    EIS,
     Debug,
     Diagnostics,
     SoftDynamics,
@@ -308,6 +309,14 @@ pub struct Renderer {
 
     // Hovered species for Legend tab interaction
     pub hovered_species: Option<Species>,
+
+    // EIS UI state
+    pub eis_amplitude: f32,
+    pub eis_f_min: f32,
+    pub eis_f_max: f32,
+    pub eis_points_per_decade: f32,
+    pub eis_periods_per_freq: usize,
+    pub eis_settle_periods: usize,
 }
 
 impl quarkstrom::Renderer for Renderer {
@@ -581,6 +590,12 @@ impl quarkstrom::Renderer for Renderer {
             electrode_count: 5,
             electrode_y_offset: 0.0,
             hovered_species: None,
+            eis_amplitude: 0.001,
+            eis_f_min: 1e-3,
+            eis_f_max: 1e-1,
+            eis_points_per_decade: 3.0,
+            eis_periods_per_freq: 2,
+            eis_settle_periods: 1,
         }
     }
 

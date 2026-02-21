@@ -68,6 +68,10 @@ pub struct Simulation {
     // Foil metrics CSV writer state (written when manual measurements occur)
     foil_metrics_csv: Option<File>,
     foil_metrics_current_base: Option<String>,
+    // EIS state machine (None when not running)
+    pub eis_state: Option<super::eis::EisState>,
+    // Scratch buffers reused each step (avoid per-frame allocation)
+    scratch_foil_current_recipients: Vec<bool>,
 }
 
 impl Simulation {
@@ -120,6 +124,8 @@ impl Simulation {
             manual_measurement_recorder: None,
             foil_metrics_csv: None,
             foil_metrics_current_base: None,
+            eis_state: None,
+            scratch_foil_current_recipients: Vec::new(),
         };
         sim.initialize_history();
         sim
@@ -1046,9 +1052,65 @@ impl Simulation {
         self.update_surrounded_flags();
 
         // Track which bodies receive electrons from foil current this step
-        let mut foil_current_recipients = vec![false; self.bodies.len()];
+        // Reuse scratch buffer to avoid per-frame allocation
+        let n = self.bodies.len();
+        let mut foil_current_recipients = std::mem::take(&mut self.scratch_foil_current_recipients);
+        foil_current_recipients.resize(n, false);
+        foil_current_recipients.fill(false);
+        // EIS: apply sinusoidal perturbation to grouped foils before foil processing
+        if let Some(ref eis) = self.eis_state {
+            if !eis.finished {
+                let ac_value = eis.get_perturbation(time);
+                // Divide perturbation by group size so total current is symmetric:
+                // Total A perturbation = n_a * (ac/n_a) = ac
+                // Total B perturbation = n_b * (ac/n_b) = ac
+                // Net = 0 (charge conserved)
+                let n_a = eis.group_a_ids.len().max(1) as f32;
+                let n_b = eis.group_b_ids.len().max(1) as f32;
+                for &foil_id in &eis.group_a_ids {
+                    let dc = eis.saved_dc_currents.get(&foil_id).copied().unwrap_or(0.0);
+                    if let Some(foil) = self.foils.iter_mut().find(|f| f.id == foil_id) {
+                        foil.dc_current = dc + ac_value / n_a;
+                    }
+                }
+                for &foil_id in &eis.group_b_ids {
+                    let dc = eis.saved_dc_currents.get(&foil_id).copied().unwrap_or(0.0);
+                    if let Some(foil) = self.foils.iter_mut().find(|f| f.id == foil_id) {
+                        foil.dc_current = dc - ac_value / n_b;
+                    }
+                }
+            }
+        }
         // Apply foil current sources/sinks with charge conservation
         self.process_foils_with_charge_conservation(time, &mut foil_current_recipients);
+        // EIS: record voltage/current after foil processing
+        if self.eis_state.is_some() {
+            let cell_voltage = self.compute_cell_voltage();
+            // Sum applied current across all group_a foils (represents total current flow)
+            let applied_current = if let Some(ref eis) = self.eis_state {
+                eis.group_a_ids
+                    .iter()
+                    .filter_map(|&id| self.foils.iter().find(|f| f.id == id))
+                    .map(|f| f.dc_current)
+                    .sum::<f32>()
+            } else {
+                0.0
+            };
+            let dt = self.dt;
+            if let Some(ref mut eis) = self.eis_state {
+                let finished = eis.record_step(cell_voltage, applied_current, time, dt);
+                if finished {
+                    // Restore all saved DC biases
+                    let saved: Vec<(u64, f32)> =
+                        eis.saved_dc_currents.iter().map(|(&id, &dc)| (id, dc)).collect();
+                    for (foil_id, dc) in saved {
+                        if let Some(foil) = self.foils.iter_mut().find(|f| f.id == foil_id) {
+                            foil.dc_current = dc;
+                        }
+                    }
+                }
+            }
+        }
         // Ensure all body charges are up-to-date after foil current changes
         self.bodies
             .par_iter_mut()
@@ -1079,6 +1141,7 @@ impl Simulation {
         }
 
         self.perform_electron_hopping_with_exclusions(&foil_current_recipients);
+        self.scratch_foil_current_recipients = foil_current_recipients;
         self.perform_sei_formation();
 
         // One-time forced bootstrap (before periodic): if not yet bootstrapped and we have liquid species with near-zero temp
@@ -1229,6 +1292,15 @@ impl Simulation {
         // Update cursor to latest frame
         self.history_cursor = self.simple_history.len().saturating_sub(1);
         self.history_dirty = false;
+    }
+
+    /// Compute the cell voltage as the potential difference between positive and negative foil centroids.
+    pub fn compute_cell_voltage(&self) -> f32 {
+        crate::plotting::analysis::calculate_cell_voltage(
+            &self.bodies,
+            &self.foils,
+            self.config.coulomb_constant,
+        )
     }
 
     pub fn iterate(&mut self) {
