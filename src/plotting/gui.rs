@@ -42,6 +42,19 @@ pub fn show_plotting_controls(
                     plotting_system.create_plot_window(config);
                 }
 
+                if ui.button("Li+ Concentration vs X").clicked() {
+                    let config = PlotConfig {
+                        plot_type: PlotType::SpatialProfileX,
+                        quantity: Quantity::TotalSpeciesCount(Species::LithiumIon),
+                        title: "Li+ Concentration (X-axis)".to_string(),
+                        sampling_mode: SamplingMode::Continuous,
+                        spatial_bins: 100,
+                        time_window: 20.0,
+                        update_frequency: 2.0,
+                    };
+                    plotting_system.create_plot_window(config);
+                }
+
                 if ui.button("Charge Distribution vs X").clicked() {
                     let config = PlotConfig {
                         plot_type: PlotType::SpatialProfileX,
@@ -118,6 +131,34 @@ pub fn show_plotting_controls(
                         title: "Average Electron Count vs X".to_string(),
                         sampling_mode: SamplingMode::SingleTimestep,
                         spatial_bins: 80,
+                        time_window: 10.0,
+                        update_frequency: 1.0,
+                    };
+                    plotting_system.create_plot_window(config);
+                }
+            });
+
+            ui.horizontal(|ui| {
+                if ui.button("Cell Voltage vs Time").clicked() {
+                    let config = PlotConfig {
+                        plot_type: PlotType::TimeSeries,
+                        quantity: Quantity::CellVoltage,
+                        title: "Cell Voltage vs Time".to_string(),
+                        sampling_mode: SamplingMode::Continuous,
+                        spatial_bins: 50,
+                        time_window: 20.0,
+                        update_frequency: 2.0,
+                    };
+                    plotting_system.create_plot_window(config);
+                }
+
+                if ui.button("Potential Profile vs X").clicked() {
+                    let config = PlotConfig {
+                        plot_type: PlotType::SpatialProfileX,
+                        quantity: Quantity::ElectricPotential,
+                        title: "Electric Potential vs X".to_string(),
+                        sampling_mode: SamplingMode::SingleTimestep,
+                        spatial_bins: 100,
                         time_window: 10.0,
                         update_frequency: 1.0,
                     };
@@ -297,6 +338,7 @@ fn show_quantity_selector(ui: &mut egui::Ui, quantity: &mut Quantity, plot_type:
             if matches!(plot_type, PlotType::TimeSeries) {
                 ui.selectable_value(quantity, Quantity::FoilCurrent(1), "Foil Current (ID 1)");
                 ui.selectable_value(quantity, Quantity::ElectronHopRate, "Electron Hop Rate");
+                ui.selectable_value(quantity, Quantity::CellVoltage, "Cell Voltage");
             }
 
             // Spatial quantities only
@@ -309,6 +351,11 @@ fn show_quantity_selector(ui: &mut egui::Ui, quantity: &mut Quantity, plot_type:
                     Quantity::LocalFieldStrength,
                     "Local Field Strength",
                 );
+                ui.selectable_value(
+                    quantity,
+                    Quantity::ElectricPotential,
+                    "Electric Potential",
+                );
             }
         });
 }
@@ -316,11 +363,11 @@ fn show_quantity_selector(ui: &mut egui::Ui, quantity: &mut Quantity, plot_type:
 fn is_quantity_compatible_with_plot_type(quantity: &Quantity, plot_type: &PlotType) -> bool {
     match quantity {
         // These quantities only make sense for time series
-        Quantity::FoilCurrent(_) | Quantity::ElectronHopRate => {
+        Quantity::FoilCurrent(_) | Quantity::ElectronHopRate | Quantity::CellVoltage => {
             matches!(plot_type, PlotType::TimeSeries)
         }
-        // Local field strength is only meaningful for spatial plots
-        Quantity::LocalFieldStrength => {
+        // These are only meaningful for spatial plots
+        Quantity::LocalFieldStrength | Quantity::ElectricPotential => {
             matches!(
                 plot_type,
                 PlotType::SpatialProfileX | PlotType::SpatialProfileY
@@ -625,6 +672,8 @@ fn get_axis_labels(config: &crate::plotting::PlotConfig) -> (&'static str, &'sta
         Quantity::FoilCurrent(_) => "Current (A)",
         Quantity::ElectronHopRate => "Hop Rate (1/s)",
         Quantity::LocalFieldStrength => "Field Strength",
+        Quantity::CellVoltage => "Cell Voltage (sim units)",
+        Quantity::ElectricPotential => "Electric Potential (sim units)",
     };
 
     (x_label, y_label)
