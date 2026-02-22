@@ -171,15 +171,22 @@ pub fn add_rectangle(
                 body.species,
             );
             new_body.electrons.clear();
-            if matches!(
-                new_body.species,
-                Species::LithiumMetal | Species::ElectrolyteAnion | Species::EC | Species::DMC
-            ) {
+            // Add initial electrons based on species-specific count
+            let initial_count = new_body.initial_electron_count();
+            for _ in 0..initial_count {
                 new_body.electrons.push(Electron {
                     rel_pos: Vec2::zero(),
                     vel: Vec2::zero(),
                 });
             }
+            // Set initial lithium content for electrode materials
+            // Cathodes start lithiated (discharged battery state)
+            // Anodes start delithiated (discharged battery state)
+            new_body.lithium_content = match new_body.species {
+                Species::LFP | Species::LMFP | Species::NMC | Species::NCA => 1.0, // Cathodes: lithiated
+                Species::Graphite | Species::HardCarbon | Species::SiliconOxide | Species::LTO => 0.0, // Anodes: delithiated
+                _ => 0.0, // Non-electrode materials
+            };
             new_body.update_charge_from_electrons();
             new_body.update_species();
             simulation.bodies.push(new_body);

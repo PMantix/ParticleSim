@@ -194,7 +194,7 @@ fn resolve(sim: &mut Simulation, i: usize, j: usize, num_passes: usize) {
         need_sanitize = true;
     }
     if need_sanitize || !dist_sq.is_finite() {
-        eprintln!("[DIAG][resolve] i={} j={} sanitizing invalid inputs", i, j);
+        // Sanitize invalid inputs silently (can happen with stationary electrode particles)
         for &k in &[i, j] {
             let b = &mut sim.bodies[k];
             if !b.pos.x.is_finite() {
@@ -295,24 +295,14 @@ fn resolve(sim: &mut Simulation, i: usize, j: usize, num_passes: usize) {
     }
     let r_sq = r * r;
     let correction_scale = 1.0 / num_passes as f32;
-    // add a comment 
-    // DIAGNOSTIC: compute components of t and log anomalies
+    // Compute collision time components
     let disc_term = (d_dot_v * d_dot_v - v_sq * (d_sq - r_sq)).max(0.0);
     let sqrt_disc = disc_term.sqrt();
     let numerator = d_dot_v + sqrt_disc;
-    if !v_sq.is_finite() || v_sq == 0.0 || !numerator.is_finite() || !correction_scale.is_finite() {
-        eprintln!(
-            "[DIAG][resolve] i={} j={} anomalous t components: v_sq={:.6e} numerator={:.6e} disc_term={:.6e} d_dot_v={:.6e} d_sq={:.6e} r_sq={:.6e}",
-            i, j, v_sq, numerator, disc_term, d_dot_v, d_sq, r_sq
-        );
-    }
+    // Skip verbose diagnostic for stationary particles (v_sq == 0 is normal for electrodes)
     let t = correction_scale * numerator / v_sq;
     if !t.is_finite() {
-        eprintln!(
-            "[DIAG][resolve] i={} j={} non-finite t: t={:.6e} (scale={:.6e}, numerator={:.6e}, v_sq={:.6e})",
-            i, j, t, correction_scale, numerator, v_sq
-        );
-        // Fallback to purely positional correction
+        // Fallback to purely positional correction (expected for stationary particles)
         let dist = d_sq.sqrt();
         if dist.is_finite() && dist > 0.0 {
             let corr = r / dist - 1.0;
@@ -345,12 +335,8 @@ fn resolve(sim: &mut Simulation, i: usize, j: usize, num_passes: usize) {
     } else {
         0.0
     };
-    if !scale.is_finite() {
-        eprintln!(
-            "[DIAG][resolve] i={} j={} non-finite scale: scale={:.6e} d_dot_v={:.6e} d_sq={:.6e}",
-            i, j, scale, d_dot_v, d_sq
-        );
-    }
+    // Handle non-finite scale gracefully (can happen with stationary particles)
+    let scale = if scale.is_finite() { scale } else { 0.0 };
     let sep_x = d_xy.x * scale;
     let sep_y = d_xy.y * scale;
     let sep_z = dz * scale;
@@ -373,31 +359,14 @@ fn resolve(sim: &mut Simulation, i: usize, j: usize, num_passes: usize) {
     sim.bodies[j].pos += Vec2::new(v2x, v2y) * t;
     sim.bodies[j].z += v2z_new * t;
 
-    // DIAGNOSTIC: verify results remain finite
-    let bi = &sim.bodies[i];
-    let bj = &sim.bodies[j];
-    if !(bi.pos.x.is_finite()
-        && bi.pos.y.is_finite()
-        && bi.z.is_finite()
-        && bi.vel.x.is_finite()
-        && bi.vel.y.is_finite()
-        && bi.vz.is_finite())
-    {
-        eprintln!(
-            "[DIAG][resolve] i={} produced non-finite state: pos=({:.3},{:.3}) z={:.3} vel=({:.3},{:.3}) vz={:.3}",
-            i, bi.pos.x, bi.pos.y, bi.z, bi.vel.x, bi.vel.y, bi.vz
-        );
-    }
-    if !(bj.pos.x.is_finite()
-        && bj.pos.y.is_finite()
-        && bj.z.is_finite()
-        && bj.vel.x.is_finite()
-        && bj.vel.y.is_finite()
-        && bj.vz.is_finite())
-    {
-        eprintln!(
-            "[DIAG][resolve] j={} produced non-finite state: pos=({:.3},{:.3}) z={:.3} vel=({:.3},{:.3}) vz={:.3}",
-            j, bj.pos.x, bj.pos.y, bj.z, bj.vel.x, bj.vel.y, bj.vz
-        );
+    // Sanitize any non-finite results
+    for &k in &[i, j] {
+        let b = &mut sim.bodies[k];
+        if !b.pos.x.is_finite() { b.pos.x = 0.0; }
+        if !b.pos.y.is_finite() { b.pos.y = 0.0; }
+        if !b.z.is_finite() { b.z = 0.0; }
+        if !b.vel.x.is_finite() { b.vel.x = 0.0; }
+        if !b.vel.y.is_finite() { b.vel.y = 0.0; }
+        if !b.vz.is_finite() { b.vz = 0.0; }
     }
 }

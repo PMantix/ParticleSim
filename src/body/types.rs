@@ -24,6 +24,15 @@ pub enum Species {
     LLZT,
     S40B,
     SEI, // Solid Electrolyte Interphase
+    // Intercalation electrode materials
+    Graphite,      // Graphitic carbon anode
+    HardCarbon,    // Hard carbon anode
+    SiliconOxide,  // SiOₓ anode
+    LTO,           // Li₄Ti₅O₁₂ anode
+    LFP,           // LiFePO₄ cathode
+    LMFP,          // LiMn₀.₆Fe₀.₄PO₄ cathode
+    NMC,           // LiNiMnCoO₂ cathode
+    NCA,           // LiNiCoAlO₂ cathode
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -44,6 +53,9 @@ pub struct Body {
     pub surrounded_by_metal: bool,
     pub last_surround_pos: Vec2,
     pub last_surround_frame: usize,
+    /// Lithium content for intercalation electrode materials (0.0 = delithiated, 1.0 = fully lithiated)
+    /// Used for SOC visualization and intercalation physics
+    pub lithium_content: f32,
 }
 
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -96,6 +108,7 @@ impl Body {
             surrounded_by_metal: false,
             last_surround_pos: pos,
             last_surround_frame: 0,
+            lithium_content: 0.0, // Start delithiated, will be set based on initial SOC
         }
     }
 
@@ -118,8 +131,17 @@ impl Body {
                 | Species::LLZT
                 | Species::S40B
                 | Species::SEI
+                // Intercalation electrode materials - don't auto-convert
+                | Species::Graphite
+                | Species::HardCarbon
+                | Species::SiliconOxide
+                | Species::LTO
+                | Species::LFP
+                | Species::LMFP
+                | Species::NMC
+                | Species::NCA
         ) {
-            // Don't auto-convert FoilMetal, Anions, solvent molecules, or SEI
+            // Don't auto-convert FoilMetal, Anions, solvent molecules, SEI, or electrode materials
             return;
         }
 
@@ -153,7 +175,24 @@ impl Body {
             Species::LLZT => crate::config::LLZT_NEUTRAL_ELECTRONS,
             Species::S40B => crate::config::S40B_NEUTRAL_ELECTRONS,
             Species::SEI => 0, // SEI is insulating/neutral
+            // Intercalation electrode materials - each has its own neutral electron count
+            Species::Graphite => crate::config::GRAPHITE_NEUTRAL_ELECTRONS,
+            Species::HardCarbon => crate::config::HARD_CARBON_NEUTRAL_ELECTRONS,
+            Species::SiliconOxide => crate::config::SILICON_OXIDE_NEUTRAL_ELECTRONS,
+            Species::LTO => crate::config::LTO_NEUTRAL_ELECTRONS,
+            Species::LFP => crate::config::LFP_NEUTRAL_ELECTRONS,
+            Species::LMFP => crate::config::LMFP_NEUTRAL_ELECTRONS,
+            Species::NMC => crate::config::NMC_NEUTRAL_ELECTRONS,
+            Species::NCA => crate::config::NCA_NEUTRAL_ELECTRONS,
         }
+    }
+
+    /// Initial electron count when spawning this species.
+    /// By default, all species start at their neutral electron count.
+    /// For electrode materials, the GUI SOC slider can adjust this at spawn time.
+    pub fn initial_electron_count(&self) -> usize {
+        // Default: start at neutral state
+        self.neutral_electron_count()
     }
 
     /// Count nearby metal neighbors (LithiumMetal or FoilMetal) within
@@ -322,6 +361,8 @@ impl Species {
             EC | DMC | VC | FEC | EMC => 0.5, // Weak surface interaction (neutral solvents)
             LithiumMetal => 0.0,     // Already on surface
             FoilMetal | LLZO | LLZT | S40B | SEI => 0.0, // Already on or part of surface
+            // Intercalation electrode materials - already on surface
+            Graphite | HardCarbon | SiliconOxide | LTO | LFP | LMFP | NMC | NCA => 0.0,
         }
     }
 
@@ -408,6 +449,15 @@ impl Species {
             (_, LLZT) | (LLZT, _) => 0.0,
             (_, S40B) | (S40B, _) => 0.0,
             (_, SEI) | (SEI, _) => 0.0,
+            // Intercalation electrode materials don't participate in solvation
+            (_, Graphite) | (Graphite, _) => 0.0,
+            (_, HardCarbon) | (HardCarbon, _) => 0.0,
+            (_, SiliconOxide) | (SiliconOxide, _) => 0.0,
+            (_, LTO) | (LTO, _) => 0.0,
+            (_, LFP) | (LFP, _) => 0.0,
+            (_, LMFP) | (LMFP, _) => 0.0,
+            (_, NMC) | (NMC, _) => 0.0,
+            (_, NCA) | (NCA, _) => 0.0,
         }
     }
 }

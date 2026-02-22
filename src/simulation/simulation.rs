@@ -6,6 +6,7 @@ use super::forces;
 use super::history::PlaybackController;
 use crate::body::foil::LinkMode;
 use crate::config;
+use crate::electrode::ActiveMaterialRegion;
 use crate::manual_measurement::{ManualMeasurementConfig, ManualMeasurementRecorder};
 use crate::profile_scope;
 use crate::renderer::state::{
@@ -68,6 +69,12 @@ pub struct Simulation {
     // Foil metrics CSV writer state (written when manual measurements occur)
     foil_metrics_csv: Option<File>,
     foil_metrics_current_base: Option<String>,
+    // Active material regions for intercalation electrodes
+    pub active_regions: Vec<ActiveMaterialRegion>,
+    // EIS state machine (None when not running)
+    pub eis_state: Option<super::eis::EisState>,
+    // Scratch buffers reused each step (avoid per-frame allocation)
+    scratch_foil_current_recipients: Vec<bool>,
 }
 
 impl Simulation {
@@ -120,6 +127,9 @@ impl Simulation {
             manual_measurement_recorder: None,
             foil_metrics_csv: None,
             foil_metrics_current_base: None,
+            active_regions: Vec::new(),
+            eis_state: None,
+            scratch_foil_current_recipients: Vec::new(),
         };
         sim.initialize_history();
         sim
@@ -244,6 +254,20 @@ impl Simulation {
             recorder.stop_recording();
         }
         self.manual_measurement_recorder = None;
+    }
+    
+    /// Sync active region data to the renderer for SOC-based coloring
+    fn sync_active_region_render_data(&self) {
+        if self.active_regions.is_empty() {
+            return;
+        }
+        
+        let regions: Vec<(f32, f32, u8, f32)> = self.active_regions.iter()
+            .map(|r| (r.center_x, r.center_y, r.material as u8, r.state_of_charge))
+            .collect();
+        
+        let mut data = crate::renderer::state::ACTIVE_REGION_RENDER_DATA.lock();
+        data.regions = regions;
     }
 
     fn apply_switch_step_active_inactive(&mut self, foil_pairs: (Vec<u64>, Vec<u64>)) {
@@ -722,16 +746,6 @@ impl Simulation {
         // Update global simulation time for GUI access
         *SIM_TIME.lock() = time;
 
-        // Check for NaN values at start of step
-        let nan_count = self
-            .bodies
-            .iter()
-            .filter(|b| !b.pos.x.is_finite() || !b.pos.y.is_finite() || !b.charge.is_finite())
-            .count();
-        if nan_count > 0 {
-            // NaN values detected at step start
-        }
-
         // Apply group linking constraints each frame (parallel within groups, opposite between groups)
         // Skip when switch charging is running to avoid overriding active/inactive step controls
         if self.switch_run_state != RunState::Running
@@ -985,40 +999,16 @@ impl Simulation {
             body.az = 0.0; // Reset z-acceleration as well
         });
 
+        forces::prepare_spatial_structures(self);
         forces::attract(self);
         forces::apply_polar_forces(self);
         forces::apply_lj_forces(self);
         forces::apply_repulsive_forces(self);
         forces::apply_stack_pressure(self);
 
-        // Check for NaN values after force calculations
-        let nan_count = self
-            .bodies
-            .iter()
-            .filter(|b| !b.acc.x.is_finite() || !b.acc.y.is_finite() || !b.az.is_finite())
-            .count();
-        if nan_count > 0 {
-            // NaN values detected after force calculations
-        }
-
         // Apply out-of-plane forces if enabled
         if self.config.enable_out_of_plane {
             super::out_of_plane::apply_out_of_plane(self);
-        }
-
-        // Check for NaN values after out-of-plane physics
-        let nan_count = self
-            .bodies
-            .iter()
-            .filter(|b| {
-                !b.pos.x.is_finite()
-                    || !b.pos.y.is_finite()
-                    || !b.charge.is_finite()
-                    || !b.z.is_finite()
-            })
-            .count();
-        if nan_count > 0 {
-            // NaN values detected after out-of-plane physics
         }
 
         // Apply Li+ mobility enhancement (pressure-dependent collision softening)
@@ -1029,16 +1019,6 @@ impl Simulation {
 
         self.iterate();
 
-        // Check for NaN values after iterate
-        let nan_count = self
-            .bodies
-            .iter()
-            .filter(|b| !b.pos.x.is_finite() || !b.pos.y.is_finite() || !b.charge.is_finite())
-            .count();
-        if nan_count > 0 {
-            // NaN values detected after iterate
-        }
-
         let num_passes = *COLLISION_PASSES.lock();
         for _ in 1..num_passes {
             collision::collide(self);
@@ -1046,9 +1026,124 @@ impl Simulation {
         self.update_surrounded_flags();
 
         // Track which bodies receive electrons from foil current this step
-        let mut foil_current_recipients = vec![false; self.bodies.len()];
+        // Reuse scratch buffer to avoid per-frame allocation
+        let n = self.bodies.len();
+        let mut foil_current_recipients = std::mem::take(&mut self.scratch_foil_current_recipients);
+        foil_current_recipients.resize(n, false);
+        foil_current_recipients.fill(false);
+        // EIS: apply sinusoidal perturbation to grouped foils before foil processing
+        if let Some(ref eis) = self.eis_state {
+            if !eis.finished {
+                let ac_value = eis.get_perturbation(time);
+                let n_a = eis.group_a_ids.len().max(1) as f32;
+                let n_b = eis.group_b_ids.len().max(1) as f32;
+                match eis.mode {
+                    crate::simulation::eis::EisMode::Galvanostatic => {
+                        // Apply sinusoidal current perturbation to dc_current.
+                        for &foil_id in &eis.group_a_ids {
+                            let dc = eis.saved_dc_currents.get(&foil_id).copied().unwrap_or(0.0);
+                            if let Some(foil) = self.foils.iter_mut().find(|f| f.id == foil_id) {
+                                foil.dc_current = dc + ac_value / n_a;
+                            }
+                        }
+                        for &foil_id in &eis.group_b_ids {
+                            let dc = eis.saved_dc_currents.get(&foil_id).copied().unwrap_or(0.0);
+                            if let Some(foil) = self.foils.iter_mut().find(|f| f.id == foil_id) {
+                                foil.dc_current = dc - ac_value / n_b;
+                            }
+                        }
+                    }
+                    crate::simulation::eis::EisMode::Potentiostatic => {
+                        // Apply sinusoidal perturbation to the overpotential target_ratio.
+                        // The PID controller will then drive current to track the target,
+                        // and the measured current (PID output) is the response signal.
+                        for &foil_id in &eis.group_a_ids {
+                            let saved = eis.saved_target_ratios.get(&foil_id).copied().unwrap_or(1.0);
+                            if let Some(foil) = self.foils.iter_mut().find(|f| f.id == foil_id) {
+                                if let Some(ctrl) = foil.overpotential_controller.as_mut() {
+                                    ctrl.target_ratio = saved + ac_value / n_a;
+                                }
+                            }
+                        }
+                        for &foil_id in &eis.group_b_ids {
+                            let saved = eis.saved_target_ratios.get(&foil_id).copied().unwrap_or(1.0);
+                            if let Some(foil) = self.foils.iter_mut().find(|f| f.id == foil_id) {
+                                if let Some(ctrl) = foil.overpotential_controller.as_mut() {
+                                    ctrl.target_ratio = saved - ac_value / n_b;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
         // Apply foil current sources/sinks with charge conservation
         self.process_foils_with_charge_conservation(time, &mut foil_current_recipients);
+        // EIS: record voltage/current after foil processing
+        if self.eis_state.is_some() {
+            // Galvanostatic: V = Coulomb potential (measured response), I = dc_current (applied).
+            // Potentiostatic: V = overpotential target_ratio (applied command, clean sinusoid),
+            //                 I = PID output current (measured response).
+            let (cell_voltage, applied_current) = if let Some(ref eis) = self.eis_state {
+                match eis.mode {
+                    crate::simulation::eis::EisMode::Galvanostatic => {
+                        let a_ids: Vec<u64> = eis.group_a_ids.clone();
+                        let b_ids: Vec<u64> = eis.group_b_ids.clone();
+                        let v = self.compute_eis_voltage_by_potential(&a_ids, &b_ids);
+                        let i = eis.group_a_ids
+                            .iter()
+                            .filter_map(|&id| self.foils.iter().find(|f| f.id == id))
+                            .map(|f| f.dc_current)
+                            .sum::<f32>();
+                        (v, i)
+                    }
+                    crate::simulation::eis::EisMode::Potentiostatic => {
+                        // V = current target_ratio for group A (already includes perturbation).
+                        // Average across foils in the group so multi-foil setups are consistent.
+                        let n_a = eis.group_a_ids.len().max(1) as f32;
+                        let v = eis.group_a_ids
+                            .iter()
+                            .filter_map(|&id| self.foils.iter().find(|f| f.id == id))
+                            .filter_map(|f| f.overpotential_controller.as_ref())
+                            .map(|c| c.target_ratio)
+                            .sum::<f32>() / n_a;
+                        // I = PID output current (measured response).
+                        let i = eis.group_a_ids
+                            .iter()
+                            .filter_map(|&id| self.foils.iter().find(|f| f.id == id))
+                            .filter_map(|f| f.overpotential_controller.as_ref())
+                            .map(|c| c.last_output_current)
+                            .sum::<f32>();
+                        (v, i)
+                    }
+                }
+            } else {
+                (0.0, 0.0)
+            };
+            let dt = self.dt;
+            if let Some(ref mut eis) = self.eis_state {
+                let finished = eis.record_step(cell_voltage, applied_current, time, dt);
+                if finished {
+                    // Restore saved state for both modes
+                    let saved_dc: Vec<(u64, f32)> =
+                        eis.saved_dc_currents.iter().map(|(&id, &dc)| (id, dc)).collect();
+                    let saved_ratios: Vec<(u64, f32)> =
+                        eis.saved_target_ratios.iter().map(|(&id, &r)| (id, r)).collect();
+                    for (foil_id, dc) in saved_dc {
+                        if let Some(foil) = self.foils.iter_mut().find(|f| f.id == foil_id) {
+                            foil.dc_current = dc;
+                        }
+                    }
+                    for (foil_id, ratio) in saved_ratios {
+                        if let Some(foil) = self.foils.iter_mut().find(|f| f.id == foil_id) {
+                            if let Some(ctrl) = foil.overpotential_controller.as_mut() {
+                                ctrl.target_ratio = ratio;
+                            }
+                        }
+                    }
+                }
+            }
+        }
         // Ensure all body charges are up-to-date after foil current changes
         self.bodies
             .par_iter_mut()
@@ -1062,11 +1157,8 @@ impl Simulation {
         let quadtree = &self.quadtree;
         let len = self.bodies.len();
         let bodies_ptr = self.bodies.as_ptr();
+        let bodies_slice = unsafe { std::slice::from_raw_parts(bodies_ptr, len) };
         for i in 0..len {
-            if i % 1000 == 0 && i > 0 {
-                // Processing electron updates in batches
-            }
-            let bodies_slice = unsafe { std::slice::from_raw_parts(bodies_ptr, len) };
             let body = &mut self.bodies[i];
             body.update_electrons(
                 bodies_slice,
@@ -1079,7 +1171,15 @@ impl Simulation {
         }
 
         self.perform_electron_hopping_with_exclusions(&foil_current_recipients);
+        self.scratch_foil_current_recipients = foil_current_recipients;
         self.perform_sei_formation();
+        
+        // Perform intercalation/deintercalation for active material electrodes
+        self.perform_intercalation();
+        self.perform_deintercalation();
+        
+        // Sync active region data to renderer for SOC-based coloring
+        self.sync_active_region_render_data();
 
         // One-time forced bootstrap (before periodic): if not yet bootstrapped and we have liquid species with near-zero temp
         if !self.thermostat_bootstrapped {
@@ -1229,6 +1329,107 @@ impl Simulation {
         // Update cursor to latest frame
         self.history_cursor = self.simple_history.len().saturating_sub(1);
         self.history_dirty = false;
+    }
+
+    /// Compute EIS cell voltage using electrode electron-charge ratio.
+    ///
+    /// For each EIS foil group, the BFS-expanded electron ratio (same as the
+    /// charging-tab "Ratio" display) is computed across all FoilMetal and
+    /// physically-connected LithiumMetal bodies.
+    ///
+    ///   ratio = total_electrons / total_neutral_electrons
+    ///   ratio = 1.0  → electrode at equilibrium
+    ///   ratio > 1.0  → electron excess  (reduced / anode-side during charging)
+    ///   ratio < 1.0  → electron deficit (oxidised / cathode-side during charging)
+    ///
+    /// Returns (ratio_A - ratio_B).  For a standard cell this is positive when
+    /// group A has more electrons than group B.
+    pub fn compute_cell_voltage_by_charge(&self) -> f32 {
+        if self.group_a.is_empty() || self.group_b.is_empty() {
+            return 0.0;
+        }
+
+        let group_ratio = |group: &std::collections::HashSet<u64>| -> f32 {
+            let foils_in_group: Vec<&crate::body::foil::Foil> = self
+                .foils
+                .iter()
+                .filter(|f| group.contains(&f.id))
+                .collect();
+            if foils_in_group.is_empty() {
+                return 1.0;
+            }
+            let sum: f32 = foils_in_group
+                .iter()
+                .map(|f| self.calculate_foil_electron_ratio(f))
+                .sum();
+            sum / foils_in_group.len() as f32
+        };
+
+        group_ratio(&self.group_a) - group_ratio(&self.group_b)
+    }
+
+    /// Compute EIS cell voltage as the Coulomb electrostatic potential difference
+    /// between group A and group B electrode centroids.
+    ///
+    ///   V = k·Σ(q_i / max(|r_A - r_i|, r_min)) - k·Σ(q_i / max(|r_B - r_i|, r_min))
+    ///
+    /// Particles belonging to the probed foil group itself are excluded from the
+    /// sum: including them would cause divergence (the probe sits at the centroid
+    /// of those particles) and physically we want the potential *seen by* the
+    /// electrode from the rest of the system (counter-electrode + electrolyte).
+    /// A softcore cutoff r_min prevents blowup from any remaining nearby bodies.
+    pub fn compute_eis_voltage_by_potential(&self, group_a_ids: &[u64], group_b_ids: &[u64]) -> f32 {
+        let k = self.config.coulomb_constant;
+        // Softcore minimum — caps close-range contributions so individual ion
+        // thermal motion doesn't spike the signal.  ~5 Å is roughly 2 particle
+        // diameters and lies within the double-layer region, giving a smoothed
+        // but physically meaningful potential.
+        const R_MIN: f32 = 5.0; // Å
+
+        // Collect all body IDs belonging to each group (to exclude from their own sum)
+        let collect_body_ids = |foil_ids: &[u64]| -> std::collections::HashSet<u64> {
+            let mut ids = std::collections::HashSet::new();
+            for &fid in foil_ids {
+                if let Some(foil) = self.foils.iter().find(|f| f.id == fid) {
+                    ids.extend(foil.body_ids.iter().copied());
+                }
+            }
+            ids
+        };
+        let a_body_ids = collect_body_ids(group_a_ids);
+        let b_body_ids = collect_body_ids(group_b_ids);
+
+        // Compute centroid for a set of foil IDs
+        let group_centroid = |body_ids: &std::collections::HashSet<u64>| -> Option<ultraviolet::Vec2> {
+            let mut c = ultraviolet::Vec2::zero();
+            let mut n = 0u32;
+            for &bid in body_ids {
+                if let Some(b) = self.bodies.iter().find(|b| b.id == bid) {
+                    c += b.pos;
+                    n += 1;
+                }
+            }
+            if n > 0 { Some(c / n as f32) } else { None }
+        };
+
+        let (Some(pos_a), Some(pos_b)) = (group_centroid(&a_body_ids), group_centroid(&b_body_ids)) else {
+            return 0.0;
+        };
+
+        // Coulomb potential at probe, excluding the probe group's own particles.
+        let potential_at = |probe: ultraviolet::Vec2, exclude: &std::collections::HashSet<u64>| -> f32 {
+            let mut v = 0.0f32;
+            for body in &self.bodies {
+                if exclude.contains(&body.id) {
+                    continue;
+                }
+                let r = (probe - body.pos).mag().max(R_MIN);
+                v += k * body.charge / r;
+            }
+            v
+        };
+
+        potential_at(pos_a, &a_body_ids) - potential_at(pos_b, &b_body_ids)
     }
 
     pub fn iterate(&mut self) {

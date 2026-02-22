@@ -575,6 +575,86 @@ pub fn handle_command(cmd: SimCommand, simulation: &mut Simulation) {
             crate::species::update_species_props(crate::body::Species::FoilMetal, props);
             mark_dirty(simulation);
         }
+        SimCommand::SyncActiveMaterialRegions { regions } => {
+            simulation.active_regions = regions;
+            println!("📍 Synced {} active material regions to simulation", simulation.active_regions.len());
+            mark_dirty(simulation);
+        }
+        SimCommand::ClearActiveMaterialRegions => {
+            simulation.active_regions.clear();
+            println!("🗑️ Cleared all active material regions");
+            mark_dirty(simulation);
+        }
+        SimCommand::StartEIS {
+            amplitude,
+            f_min,
+            f_max,
+            points_per_decade,
+            periods_per_freq,
+            settle_periods,
+            mode,
+        } => {
+            let mut frequencies = crate::simulation::eis::EisConfig::log_spaced_frequencies(
+                f_min,
+                f_max,
+                points_per_decade,
+            );
+            frequencies.reverse(); // sweep high → low (standard EIS convention)
+            let config = crate::simulation::eis::EisConfig {
+                amplitude,
+                frequencies,
+                periods_per_freq,
+                settle_periods,
+                mode,
+            };
+            // Capture foil group assignments and save each foil's current state
+            let group_a_ids: Vec<u64> = simulation.group_a.iter().copied().collect();
+            let group_b_ids: Vec<u64> = simulation.group_b.iter().copied().collect();
+            let mut saved_dc_currents = std::collections::HashMap::new();
+            let mut saved_target_ratios = std::collections::HashMap::new();
+            for foil in &simulation.foils {
+                if simulation.group_a.contains(&foil.id)
+                    || simulation.group_b.contains(&foil.id)
+                {
+                    saved_dc_currents.insert(foil.id, foil.dc_current);
+                    if let Some(ctrl) = &foil.overpotential_controller {
+                        saved_target_ratios.insert(foil.id, ctrl.target_ratio);
+                    }
+                }
+            }
+            simulation.eis_state = Some(crate::simulation::eis::EisState::new(
+                config,
+                group_a_ids,
+                group_b_ids,
+                saved_dc_currents,
+                saved_target_ratios,
+                simulation.time,
+            ));
+            println!("EIS sweep started ({:?})", mode);
+            mark_dirty(simulation);
+        }
+        SimCommand::StopEIS => {
+            if let Some(ref eis) = simulation.eis_state {
+                // Restore saved state depending on mode
+                for (&foil_id, &dc) in &eis.saved_dc_currents {
+                    if let Some(foil) = simulation.foils.iter_mut().find(|f| f.id == foil_id) {
+                        foil.dc_current = dc;
+                    }
+                }
+                for (&foil_id, &ratio) in &eis.saved_target_ratios {
+                    if let Some(foil) = simulation.foils.iter_mut().find(|f| f.id == foil_id) {
+                        if let Some(ctrl) = foil.overpotential_controller.as_mut() {
+                            ctrl.target_ratio = ratio;
+                        }
+                    }
+                }
+            }
+            simulation.eis_state = None;
+            let mut shared = crate::simulation::eis::EIS_RESULTS.lock();
+            shared.is_running = false;
+            println!("EIS sweep stopped");
+            mark_dirty(simulation);
+        }
     }
 
     if state_changed {

@@ -4,9 +4,69 @@
 use super::types::{Body, Species};
 use crate::config::{
     ENABLE_ELECTRON_SEA_PROTECTION, FOIL_NEUTRAL_ELECTRONS, LITHIUM_METAL_NEUTRAL_ELECTRONS,
+    BASELINE_POTENTIAL, POTENTIAL_PER_CHARGE,
 };
 
+/// Calculate local electrochemical potential from charge
+/// Negative charge (excess electrons) → lower potential (more reducing)
+/// Positive charge (electron deficit) → higher potential (more oxidizing)
+pub fn local_potential_from_charge(charge: f32) -> f32 {
+    BASELINE_POTENTIAL + charge * POTENTIAL_PER_CHARGE
+}
+
 impl Body {
+    /// Get the equilibrium potential (V vs Li/Li⁺) for this species
+    /// This is the potential at which the species is in equilibrium
+    pub fn equilibrium_potential(&self) -> f32 {
+        match self.species {
+            Species::LithiumMetal | Species::LithiumIon => 0.0, // Li⁺/Li reference
+            Species::FoilMetal => 0.0, // Current collector, same as Li reference
+            Species::Graphite => 0.1,   // Graphite intercalation
+            Species::HardCarbon => 0.2, // Hard carbon
+            Species::SiliconOxide => 0.4, // SiOx
+            Species::LTO => 1.55,       // Li₄Ti₅O₁₂
+            Species::LFP => 3.4,        // LiFePO₄
+            Species::LMFP => 3.5,       // LiMnFePO₄  
+            Species::NMC => 3.7,        // LiNiMnCoO₂ (average)
+            Species::NCA => 3.7,        // LiNiCoAlO₂
+            Species::SEI => 0.8,        // SEI formation potential
+            // Electrolyte/solvent species - not directly involved in redox
+            Species::ElectrolyteAnion | Species::EC | Species::DMC | 
+            Species::VC | Species::FEC | Species::EMC => 0.8, // EC reduction ~0.8V
+            Species::LLZO | Species::LLZT | Species::S40B => 0.0, // Solid electrolytes
+        }
+    }
+    
+    /// Get the local electrochemical potential based on this body's charge
+    pub fn local_potential(&self) -> f32 {
+        local_potential_from_charge(self.charge)
+    }
+    
+    /// Get the overpotential required for electron donation (species-specific kinetics)
+    /// This represents the kinetic barrier for electron transfer from the material.
+    /// Fast kinetics → low overpotential, slow kinetics → high overpotential
+    pub fn donation_overpotential(&self) -> f32 {
+        match self.species {
+            Species::LithiumMetal => 0.05,   // Fast kinetics
+            Species::FoilMetal => 0.0,       // Current collector, no barrier
+            Species::Graphite => 0.1,        // Moderate kinetics
+            Species::HardCarbon => 0.15,     // Slower than graphite
+            Species::SiliconOxide => 0.12,   // Moderate
+            Species::LTO => 0.05,            // Fast kinetics (spinel structure)
+            Species::LFP => 0.1,             // Moderate (olivine)
+            Species::LMFP => 0.12,           // Slightly slower than LFP
+            Species::NMC => 0.08,            // Fast (layered)
+            Species::NCA => 0.08,            // Fast (layered)
+            _ => 0.1,                        // Default
+        }
+    }
+    
+    /// Check if electron donation is thermodynamically favorable
+    /// Electrons can only be donated when local_potential < equilibrium_potential + donation_overpotential
+    pub fn can_donate_electron(&self) -> bool {
+        self.local_potential() < self.equilibrium_potential() + self.donation_overpotential()
+    }
+    
     pub fn update_charge_from_electrons(&mut self) {
         match self.species {
             Species::FoilMetal => {
@@ -33,6 +93,13 @@ impl Body {
             Species::SEI => {
                 self.charge = 0.0; // SEI is always neutral
             }
+            // Intercalation electrode materials - charge based on electron excess
+            // neutral_electron_count() returns 0, so charge = -electrons.len()
+            // This allows electron hopping to work properly between electrode particles
+            Species::Graphite | Species::HardCarbon | Species::SiliconOxide | Species::LTO
+            | Species::LFP | Species::LMFP | Species::NMC | Species::NCA => {
+                self.charge = -(self.electrons.len() as f32 - self.neutral_electron_count() as f32);
+            }
         }
     }
     pub fn apply_redox(&mut self) {
@@ -41,6 +108,10 @@ impl Body {
         match self.species {
             Species::LithiumIon => {
                 if !self.electrons.is_empty() {
+                    // Always convert Li⁺ with an electron to Li⁰.
+                    // A neutral LithiumIon (charge=0) is physically invalid, so we must
+                    // convert regardless of potential gating. Potential gating belongs at
+                    // the electron-transfer decision in electron_hopping.rs, not here.
                     self.species = Species::LithiumMetal;
                     self.update_charge_from_electrons();
                 }
@@ -77,6 +148,11 @@ impl Body {
             }
             Species::SEI => {
                 // SEI never changes species (irreversible formation)
+            }
+            // Intercalation electrode materials - never change species (Li storage is tracked separately)
+            Species::Graphite | Species::HardCarbon | Species::SiliconOxide | Species::LTO
+            | Species::LFP | Species::LMFP | Species::NMC | Species::NCA => {
+                // Electrode materials don't undergo redox - Li intercalation is handled separately
             }
         }
 
