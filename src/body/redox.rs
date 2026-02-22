@@ -4,7 +4,7 @@
 use super::types::{Body, Species};
 use crate::config::{
     ENABLE_ELECTRON_SEA_PROTECTION, FOIL_NEUTRAL_ELECTRONS, LITHIUM_METAL_NEUTRAL_ELECTRONS,
-    BASELINE_POTENTIAL, POTENTIAL_PER_CHARGE, LITHIUM_PLATING_POTENTIAL, ENABLE_POTENTIAL_GATING,
+    BASELINE_POTENTIAL, POTENTIAL_PER_CHARGE,
 };
 
 /// Calculate local electrochemical potential from charge
@@ -41,6 +41,32 @@ impl Body {
     pub fn local_potential(&self) -> f32 {
         local_potential_from_charge(self.charge)
     }
+    
+    /// Get the overpotential required for electron donation (species-specific kinetics)
+    /// This represents the kinetic barrier for electron transfer from the material.
+    /// Fast kinetics → low overpotential, slow kinetics → high overpotential
+    pub fn donation_overpotential(&self) -> f32 {
+        match self.species {
+            Species::LithiumMetal => 0.05,   // Fast kinetics
+            Species::FoilMetal => 0.0,       // Current collector, no barrier
+            Species::Graphite => 0.1,        // Moderate kinetics
+            Species::HardCarbon => 0.15,     // Slower than graphite
+            Species::SiliconOxide => 0.12,   // Moderate
+            Species::LTO => 0.05,            // Fast kinetics (spinel structure)
+            Species::LFP => 0.1,             // Moderate (olivine)
+            Species::LMFP => 0.12,           // Slightly slower than LFP
+            Species::NMC => 0.08,            // Fast (layered)
+            Species::NCA => 0.08,            // Fast (layered)
+            _ => 0.1,                        // Default
+        }
+    }
+    
+    /// Check if electron donation is thermodynamically favorable
+    /// Electrons can only be donated when local_potential < equilibrium_potential + donation_overpotential
+    pub fn can_donate_electron(&self) -> bool {
+        self.local_potential() < self.equilibrium_potential() + self.donation_overpotential()
+    }
+    
     pub fn update_charge_from_electrons(&mut self) {
         match self.species {
             Species::FoilMetal => {
@@ -82,18 +108,12 @@ impl Body {
         match self.species {
             Species::LithiumIon => {
                 if !self.electrons.is_empty() {
-                    // Gate lithium plating by local potential
-                    // Li⁺ + e⁻ → Li⁰ only favorable at low potentials (near 0V)
-                    let can_plate = if ENABLE_POTENTIAL_GATING {
-                        self.local_potential() < LITHIUM_PLATING_POTENTIAL
-                    } else {
-                        true
-                    };
-                    
-                    if can_plate {
-                        self.species = Species::LithiumMetal;
-                        self.update_charge_from_electrons();
-                    }
+                    // Always convert Li⁺ with an electron to Li⁰.
+                    // A neutral LithiumIon (charge=0) is physically invalid, so we must
+                    // convert regardless of potential gating. Potential gating belongs at
+                    // the electron-transfer decision in electron_hopping.rs, not here.
+                    self.species = Species::LithiumMetal;
+                    self.update_charge_from_electrons();
                 }
             }
             Species::LithiumMetal => {
