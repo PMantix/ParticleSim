@@ -287,6 +287,7 @@ pub enum SimCommand {
         points_per_decade: f32,
         periods_per_freq: usize,
         settle_periods: usize,
+        mode: crate::simulation::eis::EisMode,
     },
     StopEIS,
 }

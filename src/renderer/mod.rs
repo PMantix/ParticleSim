@@ -329,6 +329,7 @@ pub struct Renderer {
     pub eis_periods_per_freq: usize,
     pub eis_settle_periods: usize,
     pub eis_show_fit: bool,
+    pub eis_mode: crate::simulation::eis::EisMode,
 }
 
 impl quarkstrom::Renderer for Renderer {
@@ -618,6 +619,7 @@ impl quarkstrom::Renderer for Renderer {
             eis_periods_per_freq: 2,
             eis_settle_periods: 1,
             eis_show_fit: true,
+            eis_mode: crate::simulation::eis::EisMode::Galvanostatic,
         }
     }
 

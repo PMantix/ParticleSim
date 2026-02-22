@@ -16,14 +16,39 @@ impl super::super::Renderer {
         egui::CollapsingHeader::new("Configuration")
             .default_open(true)
             .show(ui, |ui| {
+                // Mode selector
                 ui.horizontal(|ui| {
-                    ui.label("Amplitude (e/fs):");
+                    ui.label("Mode:");
+                    ui.selectable_value(
+                        &mut self.eis_mode,
+                        crate::simulation::eis::EisMode::Galvanostatic,
+                        "Galvanostatic (current)",
+                    );
+                    ui.selectable_value(
+                        &mut self.eis_mode,
+                        crate::simulation::eis::EisMode::Potentiostatic,
+                        "Potentiostatic (voltage)",
+                    );
+                });
+
+                // Amplitude — label changes with mode
+                let amp_label = match self.eis_mode {
+                    crate::simulation::eis::EisMode::Galvanostatic => "Amplitude (e/fs):",
+                    crate::simulation::eis::EisMode::Potentiostatic => "Amplitude (Δratio):",
+                };
+                ui.horizontal(|ui| {
+                    ui.label(amp_label);
                     ui.add(
                         egui::DragValue::new(&mut self.eis_amplitude)
                             .speed(0.0001)
                             .clamp_range(1e-8..=1.0)
                             .max_decimals(6),
                     );
+                    if self.eis_mode == crate::simulation::eis::EisMode::Potentiostatic {
+                        ui.label(egui::RichText::new("(foil must be in overpotential mode)")
+                            .small()
+                            .color(egui::Color32::from_rgb(200, 160, 80)));
+                    }
                 });
                 let dt = *crate::renderer::state::TIMESTEP.lock();
 
@@ -110,6 +135,7 @@ impl super::super::Renderer {
                         frequencies: freqs,
                         periods_per_freq: self.eis_periods_per_freq,
                         settle_periods: self.eis_settle_periods,
+                        mode: self.eis_mode,
                     };
                     let est_fs = est_cfg.estimated_total_fs();
                     let n_freqs = est_cfg.frequencies.len();
@@ -194,6 +220,7 @@ impl super::super::Renderer {
                                 points_per_decade: self.eis_points_per_decade,
                                 periods_per_freq: self.eis_periods_per_freq,
                                 settle_periods: self.eis_settle_periods,
+                                mode: self.eis_mode,
                             });
                         }
                     }
@@ -545,6 +572,7 @@ impl super::super::Renderer {
         };
 
         // Draw voltage trace
+        // Draw both traces first so we have both y-ranges before the fit overlay
         let (v_lo, v_hi) = data_range(vs);
         {
             let pts: Vec<egui::Pos2> = ts
@@ -555,36 +583,6 @@ impl super::super::Renderer {
             for w in pts.windows(2) {
                 ui.painter()
                     .line_segment([w[0], w[1]], egui::Stroke::new(1.5, v_color));
-            }
-        }
-
-        // Draw best-fit sinusoid overlay (recording region only)
-        if self.eis_show_fit && (shared.fit_v_re != 0.0 || shared.fit_v_im != 0.0) {
-            if let Some(rec_start) = first_record_t {
-                let omega = 2.0 * std::f32::consts::PI * shared.current_freq;
-                let fit_color = egui::Color32::from_rgb(255, 230, 80); // bright yellow
-                // Generate a smooth curve over the recording region
-                let n_fit = 300usize;
-                let t_rec_end = t_max;
-                let fit_pts: Vec<egui::Pos2> = (0..=n_fit)
-                    .map(|i| {
-                        let t = rec_start + (t_rec_end - rec_start) * i as f32 / n_fit as f32;
-                        let t_fit = t - rec_start;
-                        // Add DC offset so the fit rides on top of the actual signal
-                        let v = shared.fit_v_dc
-                            + (shared.fit_v_re * (omega * t_fit).cos() as f64
-                                + shared.fit_v_im * (omega * t_fit).sin() as f64)
-                                as f32;
-                        to_screen(t, v, v_lo, v_hi)
-                    })
-                    .collect();
-                // Clip the fit curve strictly to the plot rect so early/wild
-                // estimates don't bleed outside the figure bounds.
-                let fit_painter = ui.painter().with_clip_rect(rect);
-                for w in fit_pts.windows(2) {
-                    fit_painter
-                        .line_segment([w[0], w[1]], egui::Stroke::new(1.5, fit_color));
-                }
             }
         }
 
@@ -599,6 +597,36 @@ impl super::super::Renderer {
             for w in pts.windows(2) {
                 ui.painter()
                     .line_segment([w[0], w[1]], egui::Stroke::new(1.5, i_color));
+            }
+        }
+
+        // Best-fit overlay on the *response* signal (V for galvanostatic, I for potentiostatic)
+        if self.eis_show_fit && (shared.fit_response_re != 0.0 || shared.fit_response_im != 0.0) {
+            if let Some(rec_start) = first_record_t {
+                use crate::simulation::eis::EisMode;
+                let omega = 2.0 * std::f32::consts::PI * shared.current_freq;
+                let fit_color = egui::Color32::from_rgb(255, 230, 80);
+                let n_fit = 300usize;
+                let t_rec_end = t_max;
+                let (y_lo, y_hi) = match shared.mode {
+                    EisMode::Galvanostatic => (v_lo, v_hi),
+                    EisMode::Potentiostatic => (i_lo, i_hi),
+                };
+                let fit_pts: Vec<egui::Pos2> = (0..=n_fit)
+                    .map(|i| {
+                        let t = rec_start + (t_rec_end - rec_start) * i as f32 / n_fit as f32;
+                        let t_fit = t - rec_start;
+                        let val = shared.fit_response_dc
+                            + (shared.fit_response_re * (omega * t_fit).cos() as f64
+                                + shared.fit_response_im * (omega * t_fit).sin() as f64)
+                                as f32;
+                        to_screen(t, val, y_lo, y_hi)
+                    })
+                    .collect();
+                let fit_painter = ui.painter().with_clip_rect(rect);
+                for w in fit_pts.windows(2) {
+                    fit_painter.line_segment([w[0], w[1]], egui::Stroke::new(1.5, fit_color));
+                }
             }
         }
 

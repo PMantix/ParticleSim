@@ -17,6 +17,7 @@ pub struct EisSharedState {
     pub current_freq_idx: usize,
     pub total_frequencies: usize,
     pub is_running: bool,
+    pub mode: EisMode,
     /// Detailed progress info for UI
     pub phase: String,
     pub elapsed_fs: f32,
@@ -33,12 +34,22 @@ pub struct EisSharedState {
     pub ts_v: Vec<f32>,
     pub ts_i: Vec<f32>,
     pub ts_is_recording: Vec<bool>,
-    /// Running best-fit V sinusoid: V_fit(t) = fit_v_dc + fit_v_re·cos(ω·t) + fit_v_im·sin(ω·t)
+    /// Running best-fit sinusoid for the *response* signal.
+    /// Galvanostatic: fitted to V.  Potentiostatic: fitted to I.
+    /// fit(t) = fit_response_dc + fit_response_re·cos(ω·t) + fit_response_im·sin(ω·t)
     /// where t is relative to the start of the recording phase.
-    /// Updated each recording step (one step behind, fine for display).
-    pub fit_v_re: f64,
-    pub fit_v_im: f64,
-    pub fit_v_dc: f32,  // DC mean of V during recording (shifts displayed fit onto the signal)
+    pub fit_response_re: f64,
+    pub fit_response_im: f64,
+    pub fit_response_dc: f32,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Default)]
+pub enum EisMode {
+    #[default]
+    /// Galvanostatic: apply sinusoidal current, measure voltage.
+    Galvanostatic,
+    /// Potentiostatic: apply sinusoidal overpotential target, measure current.
+    Potentiostatic,
 }
 
 #[derive(Clone, Debug)]
@@ -47,6 +58,7 @@ pub struct EisConfig {
     pub frequencies: Vec<f32>,
     pub periods_per_freq: usize,
     pub settle_periods: usize,
+    pub mode: EisMode,
 }
 
 impl EisConfig {
@@ -89,15 +101,31 @@ pub struct EisState {
     pub i_cos_acc: f64,
     pub v_sq_acc: f64,   // sum of V²  — for AC variance
     pub v_sum_acc: f64,  // sum of V   — for DC offset
+    pub i_sum_acc: f64,  // sum of I   — for DC offset (used by 3-param LS fit)
     pub sample_count: usize,
+
+    // Basis-function accumulators for 3-parameter LS fit.
+    // The simple 2/N formula assumes Σcos²=N/2, Σsin²=N/2, Σcos·sin=0 — true only for
+    // integer periods.  Accumulating these sums lets us solve the exact normal equations
+    // and get correct amplitudes for any (fractional) number of recorded periods.
+    pub cos_sq_acc: f64,   // Σ cos²(ωt)
+    pub sin_sq_acc: f64,   // Σ sin²(ωt)
+    pub cos_sin_acc: f64,  // Σ cos(ωt)·sin(ωt)
+    pub cos_sum_acc: f64,  // Σ cos(ωt)
+    pub sin_sum_acc: f64,  // Σ sin(ωt)
 
     // Results
     pub results: Vec<EisPoint>,
 
-    // Foil group assignments and saved DC biases (foil_id -> saved dc_current)
+    pub mode: EisMode,
+
+    // Foil group assignments
     pub group_a_ids: Vec<u64>,
     pub group_b_ids: Vec<u64>,
+    /// Galvanostatic: saved dc_current per foil (restored after sweep).
     pub saved_dc_currents: std::collections::HashMap<u64, f32>,
+    /// Potentiostatic: saved target_ratio per foil (restored after sweep).
+    pub saved_target_ratios: std::collections::HashMap<u64, f32>,
 
     // Whether EIS is finished
     pub finished: bool,
@@ -134,12 +162,15 @@ impl EisState {
         group_a_ids: Vec<u64>,
         group_b_ids: Vec<u64>,
         saved_dc_currents: std::collections::HashMap<u64, f32>,
+        saved_target_ratios: std::collections::HashMap<u64, f32>,
         start_time: f32,
     ) -> Self {
         let total = config.frequencies.len();
         let est_time = config.estimated_total_fs();
+        let mode = config.mode;
         eprintln!(
-            "[EIS] Started sweep: {} frequencies from {:.2e} to {:.2e} (1/fs)",
+            "[EIS] Started sweep ({:?}): {} frequencies from {:.2e} to {:.2e} (1/fs)",
+            mode,
             total,
             config.frequencies.first().unwrap_or(&0.0),
             config.frequencies.last().unwrap_or(&0.0),
@@ -154,11 +185,8 @@ impl EisState {
             "[EIS] Group A (+ perturbation): {:?}, Group B (- perturbation): {:?}",
             group_a_ids, group_b_ids,
         );
-        eprintln!(
-            "[EIS] Saved DC biases: {:?}",
-            saved_dc_currents,
-        );
         let state = Self {
+            mode,
             config,
             current_freq_idx: 0,
             phase: EisPhase::Settling,
@@ -171,11 +199,18 @@ impl EisState {
             i_cos_acc: 0.0,
             v_sq_acc: 0.0,
             v_sum_acc: 0.0,
+            i_sum_acc: 0.0,
             sample_count: 0,
+            cos_sq_acc: 0.0,
+            sin_sq_acc: 0.0,
+            cos_sin_acc: 0.0,
+            cos_sum_acc: 0.0,
+            sin_sum_acc: 0.0,
             results: Vec::new(),
             group_a_ids,
             group_b_ids,
             saved_dc_currents,
+            saved_target_ratios,
             finished: false,
             log_counter: 0,
             ts_subsample: 1,
@@ -192,6 +227,7 @@ impl EisState {
         shared.needed_fs = est_time;
         shared.current_freq = *state.config.frequencies.first().unwrap_or(&0.0);
         shared.sample_count = 0;
+        shared.mode = state.mode;
         shared.group_a_ids = state.group_a_ids.clone();
         shared.group_b_ids = state.group_b_ids.clone();
         // Pre-allocate to full capacity to avoid incremental Vec reallocations
@@ -199,9 +235,9 @@ impl EisState {
         shared.ts_v = Vec::with_capacity(TS_MAX_SAMPLES);
         shared.ts_i = Vec::with_capacity(TS_MAX_SAMPLES);
         shared.ts_is_recording = Vec::with_capacity(TS_MAX_SAMPLES);
-        shared.fit_v_re = 0.0;
-        shared.fit_v_im = 0.0;
-        shared.fit_v_dc = 0.0;
+        shared.fit_response_re = 0.0;
+        shared.fit_response_im = 0.0;
+        shared.fit_response_dc = 0.0;
         state
     }
 
@@ -296,12 +332,21 @@ impl EisState {
                 shared.ts_is_recording.push(self.phase == EisPhase::Recording);
             }
 
-            // Update running best-fit coefficients
+            // Update running best-fit for the *response* signal.
+            // Galvanostatic: response is V (Coulomb potential).
+            // Potentiostatic: response is I (PID current output).
             if self.phase == EisPhase::Recording && self.sample_count > 0 {
                 let n = self.sample_count as f64;
-                shared.fit_v_re = self.v_cos_acc * 2.0 / n;
-                shared.fit_v_im = self.v_sin_acc * 2.0 / n;
-                shared.fit_v_dc = (self.v_sum_acc / n) as f32;
+                let (sig_cos, sig_sin, sig_sum) = match self.mode {
+                    EisMode::Galvanostatic => (self.v_cos_acc, self.v_sin_acc, self.v_sum_acc),
+                    EisMode::Potentiostatic => (self.i_cos_acc, self.i_sin_acc, self.i_sum_acc),
+                };
+                let (fit_re, fit_im) = self.ls_fit_re_im(sig_cos, sig_sin, sig_sum);
+                // C_ls = (Σ signal − Σcos·A − Σsin·B) / N
+                let fit_dc = (sig_sum - self.cos_sum_acc * fit_re - self.sin_sum_acc * fit_im) / n;
+                shared.fit_response_re = fit_re;
+                shared.fit_response_im = fit_im;
+                shared.fit_response_dc = fit_dc as f32;
             }
         }
 
@@ -317,7 +362,13 @@ impl EisState {
                     self.i_cos_acc = 0.0;
                     self.v_sq_acc = 0.0;
                     self.v_sum_acc = 0.0;
+                    self.i_sum_acc = 0.0;
                     self.sample_count = 0;
+                    self.cos_sq_acc = 0.0;
+                    self.sin_sq_acc = 0.0;
+                    self.cos_sin_acc = 0.0;
+                    self.cos_sum_acc = 0.0;
+                    self.sin_sum_acc = 0.0;
                     eprintln!(
                         "[EIS] Freq {}/{} ({:.2e}): settling complete, now recording",
                         self.current_freq_idx + 1,
@@ -342,6 +393,12 @@ impl EisState {
                 self.i_cos_acc += i * cos_val;
                 self.v_sq_acc += v * v;
                 self.v_sum_acc += v;
+                self.i_sum_acc += i;
+                self.cos_sq_acc += cos_val * cos_val;
+                self.sin_sq_acc += sin_val * sin_val;
+                self.cos_sin_acc += cos_val * sin_val;
+                self.cos_sum_acc += cos_val;
+                self.sin_sum_acc += sin_val;
                 self.sample_count += 1;
 
                 // Check if we've recorded enough cycles
@@ -356,16 +413,67 @@ impl EisState {
         false
     }
 
+    /// Solve the 3-parameter least-squares sinusoidal fit:
+    ///   signal(t) = A·cos(ωt) + B·sin(ωt) + C
+    ///
+    /// Returns (A, B) — the cosine and sine amplitudes — via Cramer's rule on the
+    /// 3×3 normal-equation matrix built from the accumulated basis sums.
+    ///
+    /// The simple formula `2/N · Σ signal·cos(ωt)` assumes Σcos²=N/2 and Σcos·sin=0,
+    /// which only holds for integer numbers of periods.  This method is exact for any
+    /// window length: for integer periods the extra terms cancel and it reduces to 2/N.
+    fn ls_fit_re_im(&self, sig_cos: f64, sig_sin: f64, sig_sum: f64) -> (f64, f64) {
+        let n = self.sample_count as f64;
+        if n < 3.0 {
+            let s = if n > 0.0 { 2.0 / n } else { 0.0 };
+            return (sig_cos * s, sig_sin * s);
+        }
+
+        // Build the 3×3 normal-equation matrix M:
+        //   [[scc, scs, sc ],
+        //    [scs, sss, ss ],
+        //    [sc,  ss,  n  ]]
+        // where scc=Σcos², sss=Σsin², scs=Σcos·sin, sc=Σcos, ss=Σsin.
+        let scc = self.cos_sq_acc;
+        let sss = self.sin_sq_acc;
+        let scs = self.cos_sin_acc;
+        let sc  = self.cos_sum_acc;
+        let ss  = self.sin_sum_acc;
+
+        // det(M) expanding along the first row
+        let det = scc * (sss * n - ss * ss)
+                - scs * (scs * n - ss * sc)
+                + sc  * (scs * ss - sss * sc);
+
+        // Guard against degenerate matrices (all-zero or near-singular).
+        // det scales as O(N³); use a relative threshold.
+        if det.abs() < 1e-10 * n * n * n {
+            return (sig_cos * 2.0 / n, sig_sin * 2.0 / n);
+        }
+
+        // Cramer's rule — replace first column with RHS to get A (cosine component)
+        let a = (sig_cos * (sss * n  - ss  * ss)
+               - scs    * (sig_sin * n - ss  * sig_sum)
+               + sc     * (sig_sin * ss  - sss * sig_sum)) / det;
+
+        // Cramer's rule — replace second column with RHS to get B (sine component)
+        let b = (scc     * (sig_sin * n - ss  * sig_sum)
+               - sig_cos * (scs * n     - ss  * sc)
+               + sc      * (scs * sig_sum - sig_sin * sc)) / det;
+
+        (a, b)
+    }
+
     fn finish_frequency_point(&mut self) {
         if self.sample_count == 0 {
             return;
         }
         let n = self.sample_count as f64;
-        // Extract complex amplitudes via lock-in (factor of 2/N for single-sided)
-        let v_re = self.v_cos_acc * 2.0 / n;
-        let v_im = self.v_sin_acc * 2.0 / n;
-        let i_re = self.i_cos_acc * 2.0 / n;
-        let i_im = self.i_sin_acc * 2.0 / n;
+        // Extract complex amplitudes via 3-parameter least-squares fit.
+        // This is correct for any (fractional) number of recorded periods, unlike the
+        // simple 2/N formula which assumes exact orthogonality (integer periods only).
+        let (v_re, v_im) = self.ls_fit_re_im(self.v_cos_acc, self.v_sin_acc, self.v_sum_acc);
+        let (i_re, i_im) = self.ls_fit_re_im(self.i_cos_acc, self.i_sin_acc, self.i_sum_acc);
 
         // R² of the V fit: fundamental power as a fraction of AC (DC-subtracted) variance.
         //   P_fit    = (v_re² + v_im²) / 2   — RMS² of the best-fit sinusoid
@@ -441,7 +549,13 @@ impl EisState {
         self.i_cos_acc = 0.0;
         self.v_sq_acc = 0.0;
         self.v_sum_acc = 0.0;
+        self.i_sum_acc = 0.0;
         self.sample_count = 0;
+        self.cos_sq_acc = 0.0;
+        self.sin_sq_acc = 0.0;
+        self.cos_sin_acc = 0.0;
+        self.cos_sum_acc = 0.0;
+        self.sin_sum_acc = 0.0;
         self.ts_step_counter = 0;
         self.ts_subsample = 1;
         // Clear time-series buffer and fit state for the new frequency
@@ -450,9 +564,9 @@ impl EisState {
         shared.ts_v.clear();
         shared.ts_i.clear();
         shared.ts_is_recording.clear();
-        shared.fit_v_re = 0.0;
-        shared.fit_v_im = 0.0;
-        shared.fit_v_dc = 0.0;
+        shared.fit_response_re = 0.0;
+        shared.fit_response_im = 0.0;
+        shared.fit_response_dc = 0.0;
         false
     }
 }
