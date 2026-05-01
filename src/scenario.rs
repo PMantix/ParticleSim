@@ -160,8 +160,18 @@ fn apply_configuration(init_config: InitConfig) -> Result<(), Box<dyn std::error
         }
     }
 
-    // Add default 1M LiPF6 electrolyte solution with 5471 total particles
-    add_default_electrolyte(tx.clone(), global_width, global_height)?;
+    // Add the default 1M LiPF6 electrolyte ONLY if the TOML didn't supply its own
+    // [[particles.random]] entries. The default exists for init_config.toml which
+    // has no random block; custom scenarios (e.g. measurement_configs/*.toml) that
+    // specify their own random particles should not be double-loaded.
+    if init_config.particles.random.is_empty() {
+        add_default_electrolyte(tx.clone(), global_width, global_height)?;
+    } else {
+        println!(
+            "Skipping default electrolyte ({} [[particles.random]] entries supplied by scenario)",
+            init_config.particles.random.len()
+        );
+    }
 
     println!("Initial configuration loaded successfully!");
     Ok(())

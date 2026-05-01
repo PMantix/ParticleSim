@@ -4,7 +4,7 @@
 
 **Purpose:** establish the dimensionless mapping between the simulator and the experimental cell that motivated this work, so impedance features in the simulator can be interpreted against (and compared to) the experimental observation that increasing AC excitation amplitude causes HF |Z| ↓ and LF |Z| ↑.
 
-**Top-line claim:** the *position of impedance features within each system's accessible frequency band* should map under the dimensionless groups Pe = ωL²/D and ωRC, even though absolute frequencies differ by ~10 orders of magnitude. The mapping supports **qualitative trend comparisons** between simulator and experiment, not quantitative magnitude correspondence — see the caveats section for why.
+**Top-line claim:** the *position of impedance features within each system's accessible frequency band* should map under the dimensionless groups Pe = ωL²/D (the **AC diffusion Péclet number** — diffusion time vs perturbation period) and ωRC (the **dimensionless RC time** — kinetic relaxation vs perturbation period), even though absolute frequencies differ by ~10 orders of magnitude. The mapping supports **qualitative trend comparisons** between simulator and experiment, not quantitative magnitude correspondence — see the caveats section for why.
 
 ---
 
@@ -55,7 +55,9 @@ The "experimental D_Li⁺ ≈ 3 × 10⁻¹⁰ m²/s" and "simulator D_Li⁺ ≈ 
 
 ## Dimensionless groups
 
-### Pe = ω · L² / D — diffusion-time vs perturbation-time
+### AC diffusion Péclet number: Pe = ω · L² / D — diffusion-time vs perturbation-time
+
+The ratio of the characteristic ionic diffusion time (L²/D across the inter-electrode gap) to the perturbation period (1/ω). Sometimes called the *dimensionless frequency for diffusion* or *reduced Warburg frequency* in EIS literature; we use "Pe" by analogy to the steady Péclet number `vL/D`, with `ωL` standing in as the oscillatory transport speed.
 
 Tells us whether the system has time to diffuse during one perturbation period.
 - **Pe ≪ 1:** Warburg / diffusion-limited regime. Concentration profile follows the perturbation.
@@ -70,7 +72,9 @@ Tells us whether the system has time to diffuse during one perturbation period.
 
 The experimental EIS band (0.1 Hz – 1 MHz, 7 decades) sits *above* Pe ≈ 1 — i.e., the experiment barely touches the Warburg regime at its lowest frequency, and is otherwise in the bulk-resistive regime. To cover the same Pe range, the simulator's measurement band should run from ~1 MHz to ~10 GHz, centered near 160 MHz.
 
-### ω · R · C — kinetic-relaxation timescale
+### Dimensionless RC time: ω · R · C — kinetic-relaxation timescale
+
+The ratio of the perturbation period to the interfacial RC relaxation time of an electrochemical arc. Each Nyquist semicircle has its own product (R_SEI·C_SEI, R_ct·C_dl, …); the apex of the arc sits where ωRC = 1.
 
 Each arc in the Nyquist has its own R·C time constant; the arc apex sits at ω = 1/(RC).
 
@@ -81,7 +85,9 @@ Each arc in the Nyquist has its own R·C time constant; the arc apex sits at ω 
 
 The simulator does not yet have an SEI/film + charge-transfer separation visible in a Nyquist (no validation run done; that's Phase 1). After Phase 1, we should be able to populate this row and check the simulator's mapping at Pe·ωRC space.
 
-### λ_D / L — screening vs geometry
+### Debye-to-gap ratio: λ_D / L — screening vs geometry
+
+The ratio of the electrostatic screening length (Debye length λ_D) to the inter-electrode separation L. Sets whether the electrolyte's diffuse double layer is a thin boundary feature (λ_D/L ≪ 1, real cell) or a substantial fraction of the cell (λ_D/L → O(1), strongly geometry-dependent EIS response).
 
 | Quantity | Real cell | Simulator |
 |---|---|---|
