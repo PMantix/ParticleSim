@@ -32,7 +32,9 @@ impl Simulation {
 
         // Debug: track electrode hopping attempts
         let frame = DEBUG_FRAME_COUNTER.fetch_add(1, Ordering::Relaxed);
-        let debug_this_frame = frame % 500 == 0; // Print every 500 frames
+        // Per-500-frame [HOPPING] diagnostics. Off by default; enable with
+        // `--features hopping_debug` when investigating electron-transfer behavior.
+        let debug_this_frame = cfg!(feature = "hopping_debug") && frame % 500 == 0;
         
         let mut foil_with_excess = 0usize;
         let mut foil_with_deficit = 0usize;

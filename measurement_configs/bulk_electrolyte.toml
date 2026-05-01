@@ -1,0 +1,38 @@
+# Bulk electrolyte scenario — used by `cargo run --release --bin measure_diffusivity`
+# (Phase 0a of docs/EIS_AMPLITUDE_STUDY_PLAN.md).
+#
+# 1M LiPF6 in 1:1 EC:DMC, no electrodes. Composition and particle counts match the
+# default GUI scenario's electrolyte (see add_default_electrolyte in scenario.rs).
+# Domain matches the project standard 600x400 used throughout the rest of the
+# codebase, so measured diffusivity is comparable to anything run in the default
+# scenario.
+#
+# Total: 5471 particles
+#   342 LithiumIon, 342 ElectrolyteAnion (PF6-), 2393 EC, 2394 DMC
+
+[simulation]
+domain_width = 600.0
+domain_height = 400.0
+initial_temperature = 300.0  # Room temperature, K
+# Disabled to keep all KE in the in-plane translational reservoir (the only one
+# the thermostat reaches). Bound-electron energy already drains slowly; we don't
+# want a Z reservoir compounding it.
+enable_out_of_plane = false
+
+[particles]
+
+[[particles.random]]
+count = 342
+species = "LithiumIon"
+
+[[particles.random]]
+count = 342
+species = "ElectrolyteAnion"
+
+[[particles.random]]
+count = 2393
+species = "EC"
+
+[[particles.random]]
+count = 2394
+species = "DMC"

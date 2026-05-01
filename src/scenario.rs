@@ -4,18 +4,32 @@
 use crate::body::Species;
 use crate::init_config::InitConfig;
 use crate::renderer::state::{SimCommand, SIM_COMMAND_SENDER};
+use once_cell::sync::Lazy;
+use parking_lot::Mutex;
 use ultraviolet::Vec2;
+
+/// Optional override for the scenario file path. If None, falls back to the
+/// project default `init_config.toml`. Set from `main()` based on the
+/// `--scenario` CLI flag before `app::run()` is called.
+pub static SCENARIO_PATH: Lazy<Mutex<Option<String>>> = Lazy::new(|| Mutex::new(None));
 
 /// Load and apply the initial scenario configuration
 pub fn load_and_apply_scenario() -> Result<(), Box<dyn std::error::Error>> {
-    // Load initial configuration from init_config.toml
-    let init_config = match InitConfig::load_default() {
+    let override_path = SCENARIO_PATH.lock().clone();
+    let (load_result, source_label) = match &override_path {
+        Some(path) => (
+            InitConfig::load_from_file(path),
+            format!("{} (--scenario override)", path),
+        ),
+        None => (InitConfig::load_default(), "init_config.toml".to_string()),
+    };
+    let init_config = match load_result {
         Ok(config) => {
-            println!("Loaded initial configuration from init_config.toml");
+            println!("Loaded initial configuration from {}", source_label);
             config
         }
         Err(e) => {
-            eprintln!("Failed to load init_config.toml: {}", e);
+            eprintln!("Failed to load {}: {}", source_label, e);
             eprintln!("Using default hardcoded configuration");
             return Err(e);
         }
