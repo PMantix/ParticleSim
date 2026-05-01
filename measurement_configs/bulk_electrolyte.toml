@@ -14,6 +14,10 @@
 domain_width = 600.0
 domain_height = 400.0
 initial_temperature = 300.0  # Room temperature, K
+# Disabled to keep all KE in the in-plane translational reservoir (the only one
+# the thermostat reaches). Bound-electron energy already drains slowly; we don't
+# want a Z reservoir compounding it.
+enable_out_of_plane = false
 
 [particles]
 
