@@ -1077,52 +1077,74 @@ impl Simulation {
                 }
             }
         }
+        // EIS: measure voltage BEFORE foil processing so V and I are synchronised.
+        // V reflects the charge state that the PID will react to; I is the PID's
+        // response.  Measuring V after hopping would give V a one-step phase advance
+        // (V already includes the effect of I), creating apparent inductive artefacts.
+        let eis_pre_voltage = if self.eis_state.as_ref().map_or(false, |e| !e.finished) {
+            let eis = self.eis_state.as_ref().unwrap();
+            let a_ids: Vec<u64> = eis.group_a_ids.clone();
+            let b_ids: Vec<u64> = eis.group_b_ids.clone();
+            let probe_a: Vec<u64> = eis.probe_a_ids.clone();
+            let probe_b: Vec<u64> = eis.probe_b_ids.clone();
+            Some(self.compute_eis_voltage_by_potential(&a_ids, &b_ids, &probe_a, &probe_b))
+        } else {
+            None
+        };
         // Apply foil current sources/sinks with charge conservation
         self.process_foils_with_charge_conservation(time, &mut foil_current_recipients);
-        // EIS: record voltage/current after foil processing
-        if self.eis_state.is_some() {
-            // Galvanostatic: V = Coulomb potential (measured response), I = dc_current (applied).
-            // Potentiostatic: V = overpotential target_ratio (applied command, clean sinusoid),
-            //                 I = PID output current (measured response).
-            let (cell_voltage, applied_current) = if let Some(ref eis) = self.eis_state {
-                match eis.mode {
+        // EIS: record voltage (pre-foil) and current (post-foil) for lock-in detection.
+        if let Some(cell_voltage) = eis_pre_voltage {
+            // I is read after foil processing so the PID has computed its output.
+            //   Galvanostatic:  I = dc_current (applied, known sinusoid)
+            //   Potentiostatic: I = PID last_output_current (measured response)
+            //
+            // Sign convention: positive I should correspond to increasing V.
+            // In galvanostatic mode, positive dc_current adds electrons to group-A,
+            // which increases negative charge and DECREASES Coulomb potential V.
+            // We negate the current so that "conventional current" (positive = V increases)
+            // is consistent with V = potential_A - potential_B.
+            let applied_current = if let Some(ref eis) = self.eis_state {
+                let raw_i: f32 = match eis.mode {
                     crate::simulation::eis::EisMode::Galvanostatic => {
-                        let a_ids: Vec<u64> = eis.group_a_ids.clone();
-                        let b_ids: Vec<u64> = eis.group_b_ids.clone();
-                        let v = self.compute_eis_voltage_by_potential(&a_ids, &b_ids);
-                        let i = eis.group_a_ids
+                        eis.group_a_ids
                             .iter()
                             .filter_map(|&id| self.foils.iter().find(|f| f.id == id))
                             .map(|f| f.dc_current)
-                            .sum::<f32>();
-                        (v, i)
+                            .sum::<f32>()
                     }
                     crate::simulation::eis::EisMode::Potentiostatic => {
-                        // V = current target_ratio for group A (already includes perturbation).
-                        // Average across foils in the group so multi-foil setups are consistent.
-                        let n_a = eis.group_a_ids.len().max(1) as f32;
-                        let v = eis.group_a_ids
-                            .iter()
-                            .filter_map(|&id| self.foils.iter().find(|f| f.id == id))
-                            .filter_map(|f| f.overpotential_controller.as_ref())
-                            .map(|c| c.target_ratio)
-                            .sum::<f32>() / n_a;
-                        // I = PID output current (measured response).
-                        let i = eis.group_a_ids
+                        eis.group_a_ids
                             .iter()
                             .filter_map(|&id| self.foils.iter().find(|f| f.id == id))
                             .filter_map(|f| f.overpotential_controller.as_ref())
                             .map(|c| c.last_output_current)
-                            .sum::<f32>();
-                        (v, i)
+                            .sum::<f32>()
+                    }
+                };
+                // Negate: internal "positive I = add electrons = decrease V" becomes
+                //         EIS "positive I = increase V" (conventional current convention)
+                -raw_i
+            } else {
+                0.0
+            };
+            // Read actual electron delta from group-A foils (discrete hopping events)
+            // Negate for same sign convention: positive delta = V increases
+            let actual_delta: i32 = if let Some(ref eis) = self.eis_state {
+                let mut delta = 0i32;
+                for &id in &eis.group_a_ids {
+                    if let Some(foil) = self.foils.iter_mut().find(|f| f.id == id) {
+                        delta += foil.electron_delta_since_measure;
+                        foil.electron_delta_since_measure = 0;
                     }
                 }
+                -delta
             } else {
-                (0.0, 0.0)
+                0
             };
             let dt = self.dt;
             if let Some(ref mut eis) = self.eis_state {
-                let finished = eis.record_step(cell_voltage, applied_current, time, dt);
+                let finished = eis.record_step(cell_voltage, applied_current, actual_delta, time, dt);
                 if finished {
                     // Restore saved state for both modes
                     let saved_dc: Vec<(u64, f32)> =
@@ -1331,43 +1353,6 @@ impl Simulation {
         self.history_dirty = false;
     }
 
-    /// Compute EIS cell voltage using electrode electron-charge ratio.
-    ///
-    /// For each EIS foil group, the BFS-expanded electron ratio (same as the
-    /// charging-tab "Ratio" display) is computed across all FoilMetal and
-    /// physically-connected LithiumMetal bodies.
-    ///
-    ///   ratio = total_electrons / total_neutral_electrons
-    ///   ratio = 1.0  → electrode at equilibrium
-    ///   ratio > 1.0  → electron excess  (reduced / anode-side during charging)
-    ///   ratio < 1.0  → electron deficit (oxidised / cathode-side during charging)
-    ///
-    /// Returns (ratio_A - ratio_B).  For a standard cell this is positive when
-    /// group A has more electrons than group B.
-    pub fn compute_cell_voltage_by_charge(&self) -> f32 {
-        if self.group_a.is_empty() || self.group_b.is_empty() {
-            return 0.0;
-        }
-
-        let group_ratio = |group: &std::collections::HashSet<u64>| -> f32 {
-            let foils_in_group: Vec<&crate::body::foil::Foil> = self
-                .foils
-                .iter()
-                .filter(|f| group.contains(&f.id))
-                .collect();
-            if foils_in_group.is_empty() {
-                return 1.0;
-            }
-            let sum: f32 = foils_in_group
-                .iter()
-                .map(|f| self.calculate_foil_electron_ratio(f))
-                .sum();
-            sum / foils_in_group.len() as f32
-        };
-
-        group_ratio(&self.group_a) - group_ratio(&self.group_b)
-    }
-
     /// Compute EIS cell voltage as the Coulomb electrostatic potential difference
     /// between group A and group B electrode centroids.
     ///
@@ -1378,7 +1363,13 @@ impl Simulation {
     /// of those particles) and physically we want the potential *seen by* the
     /// electrode from the rest of the system (counter-electrode + electrolyte).
     /// A softcore cutoff r_min prevents blowup from any remaining nearby bodies.
-    pub fn compute_eis_voltage_by_potential(&self, group_a_ids: &[u64], group_b_ids: &[u64]) -> f32 {
+    pub fn compute_eis_voltage_by_potential(
+        &self,
+        group_a_ids: &[u64],
+        group_b_ids: &[u64],
+        probe_a_ids: &[u64],
+        probe_b_ids: &[u64],
+    ) -> f32 {
         let k = self.config.coulomb_constant;
         // Softcore minimum — caps close-range contributions so individual ion
         // thermal motion doesn't spike the signal.  ~5 Å is roughly 2 particle
@@ -1399,37 +1390,37 @@ impl Simulation {
         let a_body_ids = collect_body_ids(group_a_ids);
         let b_body_ids = collect_body_ids(group_b_ids);
 
-        // Compute centroid for a set of foil IDs
-        let group_centroid = |body_ids: &std::collections::HashSet<u64>| -> Option<ultraviolet::Vec2> {
-            let mut c = ultraviolet::Vec2::zero();
-            let mut n = 0u32;
-            for &bid in body_ids {
-                if let Some(b) = self.bodies.iter().find(|b| b.id == bid) {
-                    c += b.pos;
-                    n += 1;
-                }
+        // Spatially-averaged Coulomb potential using pre-selected fixed probe body
+        // IDs.  Each probe sees different local ion noise but the same bulk AC
+        // signal, so averaging N probes reduces noise by ~√N.  Probes are chosen
+        // once at EIS start and stay fixed for the entire sweep.
+        let group_avg_potential = |probe_ids: &[u64],
+                                   exclude: &std::collections::HashSet<u64>| -> f32 {
+            if probe_ids.is_empty() {
+                return 0.0;
             }
-            if n > 0 { Some(c / n as f32) } else { None }
-        };
-
-        let (Some(pos_a), Some(pos_b)) = (group_centroid(&a_body_ids), group_centroid(&b_body_ids)) else {
-            return 0.0;
-        };
-
-        // Coulomb potential at probe, excluding the probe group's own particles.
-        let potential_at = |probe: ultraviolet::Vec2, exclude: &std::collections::HashSet<u64>| -> f32 {
-            let mut v = 0.0f32;
-            for body in &self.bodies {
-                if exclude.contains(&body.id) {
+            let mut total_v = 0.0f64;
+            let mut n_probes = 0u32;
+            for &pid in probe_ids {
+                let Some(probe_body) = self.bodies.iter().find(|b| b.id == pid) else {
                     continue;
+                };
+                let probe = probe_body.pos;
+                let mut v = 0.0f32;
+                for body in &self.bodies {
+                    if exclude.contains(&body.id) {
+                        continue;
+                    }
+                    let r = (probe - body.pos).mag().max(R_MIN);
+                    v += k * body.charge / r;
                 }
-                let r = (probe - body.pos).mag().max(R_MIN);
-                v += k * body.charge / r;
+                total_v += v as f64;
+                n_probes += 1;
             }
-            v
+            if n_probes > 0 { (total_v / n_probes as f64) as f32 } else { 0.0 }
         };
 
-        potential_at(pos_a, &a_body_ids) - potential_at(pos_b, &b_body_ids)
+        group_avg_potential(probe_a_ids, &a_body_ids) - group_avg_potential(probe_b_ids, &b_body_ids)
     }
 
     pub fn iterate(&mut self) {

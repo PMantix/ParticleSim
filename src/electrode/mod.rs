@@ -9,7 +9,6 @@
 
 pub mod material;
 pub mod region;
-pub mod intercalation;
 
 pub use material::*;
 pub use region::*;

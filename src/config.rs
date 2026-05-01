@@ -157,8 +157,6 @@ pub const ELECTRODE_CATHODE_MAX_ELECTRONS: usize = 2; // Cathodes (LFP, NMC, etc
 pub const BASELINE_POTENTIAL: f32 = 2.0;
 /// Potential change per unit charge (V/e). Negative charge → lower potential
 pub const POTENTIAL_PER_CHARGE: f32 = 2.0;
-/// Lithium plating threshold (V vs Li/Li⁺). Li⁺ + e⁻ → Li⁰ only below this
-pub const LITHIUM_PLATING_POTENTIAL: f32 = 0.5;
 /// SEI formation threshold (V vs Li/Li⁺). EC reduction only below this
 pub const SEI_FORMATION_POTENTIAL: f32 = 1.0;
 /// Enable electrochemical potential gating for reactions

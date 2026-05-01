@@ -14,6 +14,12 @@ pub fn local_potential_from_charge(charge: f32) -> f32 {
     BASELINE_POTENTIAL + charge * POTENTIAL_PER_CHARGE
 }
 
+// The four methods below (equilibrium_potential, local_potential, donation_overpotential,
+// can_donate_electron) implement the Phase 2 thermodynamic donation gating from
+// docs/ELECTRODE_MATERIALS_PLAN.md. Currently unused because ENABLE_DONATION_GATING is
+// disabled (the gating logic has known bugs documented in the plan). Kept in place for
+// when Phase 2 is revisited; allow(dead_code) suppresses the warning meanwhile.
+#[allow(dead_code)]
 impl Body {
     /// Get the equilibrium potential (V vs Li/Li⁺) for this species
     /// This is the potential at which the species is in equilibrium

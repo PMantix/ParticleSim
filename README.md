@@ -53,6 +53,11 @@ This repository contains a modular, parallelized particle simulation for large-s
   - Spatial profile plots (charge, velocity, field distributions)
   - Full domain binning regardless of particle locations
   - Export in CSV, JSON, or TSV formats
+- **EIS (Electrochemical Impedance Spectroscopy) Diagnostics**:
+  - Frequency-domain impedance analysis via AC voltage perturbation
+  - Live Nyquist plot with real-time circuit model fitting
+  - DC-corrected R² goodness-of-fit display
+  - Configurable frequency range and perturbation amplitude
 - **Interactive GUI**:
   - Manual step-by-step execution for debugging
   - Particle selection with detailed diagnostics
@@ -204,9 +209,21 @@ The simulation includes a comprehensive plotting system for real-time data analy
 - **State Management**: Save/load simulation states for reproducible experiments
 - **Playback History**: Scrub through the recorded history buffer, adjust replay speed, and seamlessly resume live simulation. Save files now include frame, time, and thermostat metadata while remaining backward compatible.
 - **Configurable Physics**: Modify parameters in real-time through the GUI
-- **Comprehensive Testing**: Run the test suite with `cargo test`
-- **Performance Profiling**: Enable with `cargo run --features profiling`
-- **Thermostat Debug (Optional)**: Enable detailed thermostat logging (scales, per-frame temperature diagnostics) with `--features thermostat_debug`.
+- **Comprehensive Testing**: Run the test suite with `cargo test --features unit_tests`
+- **Performance Profiling**: Enable with `cargo run --release --features profiling`
+- **Thermostat Debug (Optional)**: Enable detailed thermostat logging with `--features thermostat_debug`
+- **DOE Parameter Sweeps**: Run `cargo run --release --features doe --bin doe_runner`; results go to `doe_results/`
+
+### Feature Flags
+| Flag | Purpose |
+|---|---|
+| `unit_tests` | Enables unit test suite |
+| `profiling` | Enables `profile_scope!` instrumentation |
+| `doe` | Enables Design of Experiments runner |
+| `debug_quadtree` | Visualizes quadtree structure |
+| `thermostat_debug` | Per-frame thermostat diagnostics |
+| `command_debug` | Logs GUI→simulation commands |
+| `debug_bins` | Enables debug binary targets (e.g., `minimal_test`) |
 
 ### Temperature Definitions
 The simulation distinguishes between:

@@ -26,6 +26,8 @@ pub enum Quantity {
     FoilCurrent(u64), // foil_id
     ElectronHopRate,
     LocalFieldStrength,
+    CellVoltage,
+    ElectricPotential,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -107,6 +109,7 @@ impl PlottingSystem {
         current_time: f32,
         domain_width: f32,
         domain_height: f32,
+        coulomb_constant: f32,
     ) {
         let window_ids: Vec<String> = self.windows.keys().cloned().collect();
 
@@ -140,6 +143,7 @@ impl PlottingSystem {
                                 true,
                                 domain_width,
                                 domain_height,
+                                coulomb_constant,
                             );
                         }
                         PlotType::SpatialProfileY => {
@@ -150,10 +154,17 @@ impl PlottingSystem {
                                 false,
                                 domain_width,
                                 domain_height,
+                                coulomb_constant,
                             );
                         }
                         PlotType::TimeSeries => {
-                            Self::update_time_series_static(window, bodies, foils, current_time);
+                            Self::update_time_series_static(
+                                window,
+                                bodies,
+                                foils,
+                                current_time,
+                                coulomb_constant,
+                            );
                         }
                     }
                     window.last_update = current_time;
@@ -169,6 +180,7 @@ impl PlottingSystem {
         is_x_axis: bool,
         domain_width: f32,
         domain_height: f32,
+        coulomb_constant: f32,
     ) {
         // Use analysis functions for better modularity
         match window.config.quantity {
@@ -235,6 +247,31 @@ impl PlottingSystem {
                     let x_pos = -domain_size + (i as f32 + 0.5) * bin_size;
                     window.data.x_data.push(x_pos as f64);
                     window.data.y_data.push(field_strength as f64);
+                }
+            }
+            Quantity::ElectricPotential => {
+                let potentials = analysis::calculate_potential_distribution(
+                    bodies,
+                    is_x_axis,
+                    domain_width,
+                    domain_height,
+                    window.config.spatial_bins,
+                    coulomb_constant,
+                );
+                window.data.x_data.clear();
+                window.data.y_data.clear();
+
+                let domain_size = if is_x_axis {
+                    domain_width
+                } else {
+                    domain_height
+                };
+                let bin_size = (2.0 * domain_size) / window.config.spatial_bins as f32;
+
+                for (i, &potential) in potentials.iter().enumerate() {
+                    let x_pos = -domain_size + (i as f32 + 0.5) * bin_size;
+                    window.data.x_data.push(x_pos as f64);
+                    window.data.y_data.push(potential as f64);
                 }
             }
             _ => {
@@ -316,8 +353,12 @@ impl PlottingSystem {
         bodies: &[Body],
         foils: &[Foil],
         current_time: f32,
+        coulomb_constant: f32,
     ) {
         let value = match window.config.quantity {
+            Quantity::CellVoltage => {
+                analysis::calculate_cell_voltage(bodies, foils, coulomb_constant)
+            }
             Quantity::TotalSpeciesCount(species) => {
                 // Use analysis function for species populations
                 let populations = analysis::calculate_species_populations(bodies);

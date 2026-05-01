@@ -104,30 +104,6 @@ impl ActiveMaterialRegion {
         self
     }
     
-    /// Create a region with explicit capacity
-    pub fn with_capacity(mut self, capacity: usize) -> Self {
-        self.lithium_capacity = capacity.max(1);
-        // Recalculate SOC with new capacity
-        self.state_of_charge = self.lithium_count as f32 / self.lithium_capacity as f32;
-        self
-    }
-    
-    /// Set the associated foil (current collector)
-    pub fn with_foil(mut self, foil_id: u64) -> Self {
-        self.foil_id = Some(foil_id);
-        self
-    }
-    
-    /// Add a surface body to this region
-    pub fn add_surface_body(&mut self, body_id: u64) {
-        self.surface_body_ids.insert(body_id);
-    }
-    
-    /// Check if a body belongs to this region's surface
-    pub fn contains_body(&self, body_id: u64) -> bool {
-        self.surface_body_ids.contains(&body_id)
-    }
-    
     /// Update state of charge from lithium count
     fn update_soc(&mut self) {
         self.state_of_charge = if self.lithium_capacity > 0 {
@@ -150,18 +126,6 @@ impl ActiveMaterialRegion {
         true
     }
     
-    /// Attempt to intercalate multiple Li atoms
-    /// Returns number actually intercalated (may be less than requested)
-    pub fn intercalate_many(&mut self, count: usize) -> usize {
-        let available = self.lithium_capacity - self.lithium_count;
-        let actual = count.min(available);
-        
-        self.lithium_count += actual;
-        self.total_intercalated += actual;
-        self.update_soc();
-        actual
-    }
-    
     /// Attempt to deintercalate one Li atom
     /// Returns true if successful, false if empty
     pub fn deintercalate(&mut self) -> bool {
@@ -175,45 +139,19 @@ impl ActiveMaterialRegion {
         true
     }
     
-    /// Attempt to deintercalate multiple Li atoms
-    /// Returns number actually deintercalated (may be less than requested)
-    pub fn deintercalate_many(&mut self, count: usize) -> usize {
-        let actual = count.min(self.lithium_count);
-        
-        self.lithium_count -= actual;
-        self.total_deintercalated += actual;
-        self.update_soc();
-        actual
-    }
-    
-    /// Get current open circuit voltage based on SOC
-    pub fn open_circuit_voltage(&self) -> f32 {
-        self.material.open_circuit_voltage(self.state_of_charge)
-    }
-    
     /// Get color for visualization based on current SOC
     pub fn current_color(&self) -> [u8; 4] {
         self.material.color_at_soc(self.state_of_charge)
     }
-    
+
     /// Check if fully lithiated
     pub fn is_full(&self) -> bool {
         self.lithium_count >= self.lithium_capacity
     }
-    
-    /// Check if fully delithiated  
+
+    /// Check if fully delithiated
     pub fn is_empty(&self) -> bool {
         self.lithium_count == 0
-    }
-    
-    /// Remaining capacity (how many more Li can be stored)
-    pub fn remaining_capacity(&self) -> usize {
-        self.lithium_capacity - self.lithium_count
-    }
-    
-    /// Get utilization percentage
-    pub fn utilization(&self) -> f32 {
-        self.state_of_charge * 100.0
     }
 }
 
@@ -223,51 +161,50 @@ mod tests {
 
     #[test]
     fn test_intercalation_limits() {
-        let mut region = ActiveMaterialRegion::new(MaterialType::Graphite, 100.0)
-            .with_capacity(10);
-        
+        // Graphite site_density = 0.1 → capacity = 100 * 0.1 = 10
+        let mut region = ActiveMaterialRegion::new(MaterialType::Graphite, 100.0);
+        let capacity = region.lithium_capacity;
+        assert_eq!(capacity, 10);
         assert!(region.is_empty());
-        assert_eq!(region.remaining_capacity(), 10);
-        
-        // Intercalate up to capacity
-        for i in 0..10 {
+
+        for i in 0..capacity {
             assert!(region.intercalate(), "Failed at i={}", i);
         }
-        
-        // Should fail when full
         assert!(!region.intercalate());
         assert!(region.is_full());
     }
 
     #[test]
     fn test_deintercalation_limits() {
+        // LFP site_density = 0.05 → capacity = 100 * 0.05 = 5
         let mut region = ActiveMaterialRegion::new(MaterialType::LFP, 100.0)
-            .with_capacity(5)
             .with_initial_soc(1.0);
-        
+        let capacity = region.lithium_capacity;
+        assert_eq!(capacity, 5);
         assert!(region.is_full());
-        
-        // Deintercalate all
-        for _ in 0..5 {
+
+        for _ in 0..capacity {
             assert!(region.deintercalate());
         }
-        
-        // Should fail when empty
         assert!(!region.deintercalate());
         assert!(region.is_empty());
     }
 
     #[test]
     fn test_soc_tracking() {
-        let mut region = ActiveMaterialRegion::new(MaterialType::Graphite, 100.0)
-            .with_capacity(100);
-        
+        // Graphite site_density = 0.1 → capacity = 1000 * 0.1 = 100
+        let mut region = ActiveMaterialRegion::new(MaterialType::Graphite, 1000.0);
+        assert_eq!(region.lithium_capacity, 100);
         assert_eq!(region.state_of_charge, 0.0);
-        
-        region.intercalate_many(50);
+
+        for _ in 0..50 {
+            assert!(region.intercalate());
+        }
         assert!((region.state_of_charge - 0.5).abs() < 0.01);
-        
-        region.intercalate_many(50);
+
+        for _ in 0..50 {
+            assert!(region.intercalate());
+        }
         assert!((region.state_of_charge - 1.0).abs() < 0.01);
     }
 }

@@ -288,6 +288,9 @@ pub enum SimCommand {
         periods_per_freq: usize,
         settle_periods: usize,
         mode: crate::simulation::eis::EisMode,
+        repeats_per_freq: usize,
+        voltage_probes: usize,
+        c_virtual: f64,
     },
     StopEIS,
 }

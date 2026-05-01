@@ -7,14 +7,31 @@ use crate::config;
 use crate::profile_scope;
 use crate::simulation::Simulation;
 
+/// Build all spatial structures needed by the force phase once per step.
+///
+/// This avoids redundant rebuilds of the quadtree and cell list that would
+/// otherwise happen inside each individual force function.
+pub fn prepare_spatial_structures(sim: &mut Simulation) {
+    profile_scope!("forces_prepare_spatial");
+    sim.quadtree.build(&mut sim.bodies);
+    if sim.use_cell_list() {
+        let lj_cutoff = crate::species::max_lj_cutoff();
+        let repulsion_cutoff = crate::species::max_repulsion_cutoff();
+        let polar_cutoff = 3.0 * lj_cutoff;
+        let max_cutoff = polar_cutoff.max(repulsion_cutoff).max(lj_cutoff);
+        sim.cell_list.cell_size = max_cutoff;
+        sim.cell_list.rebuild(&sim.bodies);
+    }
+}
+
 /// Compute electric field and force on all bodies using the quadtree.
 ///
-/// - Builds the quadtree for the current body positions.
 /// - Computes the electric field at each body due to all others.
 /// - Adds background field and updates acceleration (F = qE).
+///
+/// Note: The quadtree must already be built via `prepare_spatial_structures`.
 pub fn attract(sim: &mut Simulation) {
     profile_scope!("forces_attract");
-    sim.quadtree.build(&mut sim.bodies);
     sim.quadtree
         .field(&mut sim.bodies, sim.config.coulomb_constant);
     for body in &mut sim.bodies {
@@ -42,13 +59,9 @@ pub fn apply_polar_forces(sim: &mut Simulation) {
 
     let epsilon_sq = config::QUADTREE_EPSILON * config::QUADTREE_EPSILON;
 
-    // Optionally use the cell list for neighbor search at high densities.
+    // Use the cell list for neighbor search at high densities.
+    // Spatial structures are already built by prepare_spatial_structures().
     let use_cell = sim.use_cell_list();
-    if use_cell {
-        let max_cutoff = 3.0 * crate::species::max_lj_cutoff();
-        sim.cell_list.cell_size = max_cutoff;
-        sim.cell_list.rebuild(&sim.bodies);
-    }
 
     for i in 0..sim.bodies.len() {
         if !matches!(sim.bodies[i].species, Species::EC | Species::DMC) {
@@ -169,13 +182,8 @@ pub fn apply_polar_forces(sim: &mut Simulation) {
 pub fn apply_lj_forces(sim: &mut Simulation) {
     profile_scope!("forces_lj");
     let max_cutoff = crate::species::max_lj_cutoff();
+    // Spatial structures are already built by prepare_spatial_structures().
     let use_cell = sim.use_cell_list();
-    if use_cell {
-        sim.cell_list.cell_size = max_cutoff;
-        sim.cell_list.rebuild(&sim.bodies);
-    } else {
-        sim.quadtree.build(&mut sim.bodies);
-    }
 
     for i in 0..sim.bodies.len() {
         if !sim.bodies[i].species.lj_enabled() {
@@ -245,13 +253,8 @@ pub fn apply_repulsive_forces(sim: &mut Simulation) {
     if max_cutoff <= 0.0 {
         return;
     }
+    // Spatial structures are already built by prepare_spatial_structures().
     let use_cell = sim.use_cell_list();
-    if use_cell {
-        sim.cell_list.cell_size = max_cutoff;
-        sim.cell_list.rebuild(&sim.bodies);
-    } else {
-        sim.quadtree.build(&mut sim.bodies);
-    }
 
     for i in 0..sim.bodies.len() {
         if !sim.bodies[i].species.repulsion_enabled() {

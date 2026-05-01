@@ -26,6 +26,7 @@ mod tests {
             z: 0.0,
             vz: 0.0,
             az: 0.0,
+            lithium_content: 0.0,
         };
         let mut bodies = vec![body];
 
@@ -97,6 +98,7 @@ mod tests {
                 z: 0.0,
                 vz: 0.0,
                 az: 0.0,
+                lithium_content: 0.0,
             },
             Body {
                 pos: Vec2::new(0.5, 0.0), // overlapping radii
@@ -115,6 +117,7 @@ mod tests {
                 z: 0.0,
                 vz: 0.0,
                 az: 0.0,
+                lithium_content: 0.0,
             },
         ];
 

@@ -154,19 +154,19 @@ impl Simulation {
                 _ => {} // Don't thermostat ions - they're electrostatically constrained
             }
         }
-        // Recompute liquid temperature after scaling for debug
-        let mut _new_liquid_ke = 0.0f32; // debug only
-        for body in &self.bodies {
-            match body.species {
-                Species::LithiumIon | Species::ElectrolyteAnion | Species::EC | Species::DMC => {
-                    _new_liquid_ke += 0.5 * body.mass * body.vel.mag_sq();
-                }
-                _ => {}
-            }
-        }
+        // Recompute liquid temperature after scaling (debug builds only)
         #[cfg(feature = "thermostat_debug")]
         {
-            let new_ke_per_particle = _new_liquid_ke / liquid_count as f32;
+            let mut new_liquid_ke = 0.0f32;
+            for body in &self.bodies {
+                match body.species {
+                    Species::LithiumIon | Species::ElectrolyteAnion | Species::EC | Species::DMC => {
+                        new_liquid_ke += 0.5 * body.mass * body.vel.mag_sq();
+                    }
+                    _ => {}
+                }
+            }
+            let new_ke_per_particle = new_liquid_ke / liquid_count as f32;
             let new_liquid_temp = new_ke_per_particle / BOLTZMANN_CONSTANT;
             if self.frame % 1000 == 0 {
                 tdbg!("[thermostat-summary] frame={} N_liquid={} T_liquid={:.2}K target={:.2}K scale={:.4}", self.frame, liquid_count, new_liquid_temp, target_temp, scale);
