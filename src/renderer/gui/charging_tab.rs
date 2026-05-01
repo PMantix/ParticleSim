@@ -196,6 +196,53 @@ impl super::super::Renderer {
                         self.conventional_target_ratio = target;
                         *crate::renderer::state::PERSIST_UI_CONV_TARGET.lock() = Some(target);
                         ui.small("Group B receives complementary target (2 - target)");
+
+                        // PID tuning controls
+                        ui.add_space(4.0);
+                        ui.separator();
+                        ui.label(egui::RichText::new("PID Tuning").strong());
+                        ui.horizontal(|ui| {
+                            ui.label("P:");
+                            ui.add(egui::DragValue::new(&mut self.conv_pid_kp).speed(0.1).clamp_range(0.0..=1000.0));
+                            ui.label("I:");
+                            ui.add(egui::DragValue::new(&mut self.conv_pid_ki).speed(0.01).clamp_range(0.0..=100.0));
+                            ui.label("D:");
+                            ui.add(egui::DragValue::new(&mut self.conv_pid_kd).speed(0.01).clamp_range(0.0..=100.0));
+                        });
+                        ui.horizontal(|ui| {
+                            if ui.button("Apply PID to all grouped foils").clicked() {
+                                let foils = crate::renderer::state::FOILS.lock();
+                                if let Some(tx) = crate::renderer::state::SIM_COMMAND_SENDER.lock().as_ref() {
+                                    for foil in foils.iter() {
+                                        if matches!(foil.charging_mode, crate::body::foil::ChargingMode::Overpotential) {
+                                            let _ = tx.send(crate::renderer::state::SimCommand::SetFoilPIDGains {
+                                                foil_id: foil.id,
+                                                kp: self.conv_pid_kp,
+                                                ki: self.conv_pid_ki,
+                                                kd: self.conv_pid_kd,
+                                            });
+                                        }
+                                    }
+                                }
+                            }
+                            // Presets
+                            if ui.small_button("Conservative").clicked() {
+                                self.conv_pid_kp = 5.0;
+                                self.conv_pid_ki = 0.05;
+                                self.conv_pid_kd = 0.2;
+                            }
+                            if ui.small_button("Balanced").clicked() {
+                                self.conv_pid_kp = 10.0;
+                                self.conv_pid_ki = 0.1;
+                                self.conv_pid_kd = 0.5;
+                            }
+                            if ui.small_button("Aggressive").clicked() {
+                                self.conv_pid_kp = 20.0;
+                                self.conv_pid_ki = 0.2;
+                                self.conv_pid_kd = 1.0;
+                            }
+                        });
+                        ui.small("Tip: Set D=0 to test if derivative term causes apparent EIS inductance");
                     } else {
                         let mut current = self.conventional_current_setpoint;
                         ui.horizontal(|ui| {

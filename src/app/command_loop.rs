@@ -593,6 +593,9 @@ pub fn handle_command(cmd: SimCommand, simulation: &mut Simulation) {
             periods_per_freq,
             settle_periods,
             mode,
+            repeats_per_freq,
+            voltage_probes,
+            c_virtual,
         } => {
             let mut frequencies = crate::simulation::eis::EisConfig::log_spaced_frequencies(
                 f_min,
@@ -606,6 +609,9 @@ pub fn handle_command(cmd: SimCommand, simulation: &mut Simulation) {
                 periods_per_freq,
                 settle_periods,
                 mode,
+                repeats_per_freq,
+                voltage_probes,
+                c_virtual,
             };
             // Capture foil group assignments and save each foil's current state
             let group_a_ids: Vec<u64> = simulation.group_a.iter().copied().collect();
@@ -622,10 +628,56 @@ pub fn handle_command(cmd: SimCommand, simulation: &mut Simulation) {
                     }
                 }
             }
+            // Select fixed probe body IDs for voltage spatial averaging.
+            // Probes are distributed evenly across all foils in the group
+            // (round-robin), so each electrode gets equal representation.
+            // 0 means "use all foil bodies".
+            let select_probes = |foil_ids: &[u64], max_probes: usize| -> Vec<u64> {
+                // Collect body IDs per foil
+                let mut per_foil: Vec<Vec<u64>> = Vec::new();
+                for &fid in foil_ids {
+                    if let Some(foil) = simulation.foils.iter().find(|f| f.id == fid) {
+                        let mut ids: Vec<u64> = foil.body_ids.iter().copied().collect();
+                        // Shuffle each foil's bodies so the selection is random within each foil
+                        for i in (1..ids.len()).rev() {
+                            let j = fastrand::usize(0..=i);
+                            ids.swap(i, j);
+                        }
+                        per_foil.push(ids);
+                    }
+                }
+                let total: usize = per_foil.iter().map(|v| v.len()).sum();
+                if max_probes == 0 || total <= max_probes {
+                    return per_foil.into_iter().flatten().collect();
+                }
+                // Round-robin: pick from each foil in turn until we have enough
+                let mut selected = Vec::with_capacity(max_probes);
+                let mut indices = vec![0usize; per_foil.len()];
+                'outer: loop {
+                    for (f, ids) in per_foil.iter().enumerate() {
+                        if indices[f] < ids.len() {
+                            selected.push(ids[indices[f]]);
+                            indices[f] += 1;
+                            if selected.len() >= max_probes {
+                                break 'outer;
+                            }
+                        }
+                    }
+                    // If all foils exhausted, break (shouldn't happen since total > max_probes)
+                    if indices.iter().zip(per_foil.iter()).all(|(&i, v)| i >= v.len()) {
+                        break;
+                    }
+                }
+                selected
+            };
+            let probe_a_ids = select_probes(&group_a_ids, voltage_probes);
+            let probe_b_ids = select_probes(&group_b_ids, voltage_probes);
             simulation.eis_state = Some(crate::simulation::eis::EisState::new(
                 config,
                 group_a_ids,
                 group_b_ids,
+                probe_a_ids,
+                probe_b_ids,
                 saved_dc_currents,
                 saved_target_ratios,
                 simulation.time,

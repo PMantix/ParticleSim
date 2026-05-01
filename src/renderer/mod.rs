@@ -271,6 +271,10 @@ pub struct Renderer {
     pub conventional_is_overpotential: bool,
     pub conventional_current_setpoint: f32,
     pub conventional_target_ratio: f32,
+    // PID tuning (Conventional overpotential mode)
+    pub conv_pid_kp: f32,
+    pub conv_pid_ki: f32,
+    pub conv_pid_kd: f32,
     // Dipole visualization
     pub show_dipoles: bool,
     pub dipole_scale: f32,
@@ -328,8 +332,23 @@ pub struct Renderer {
     pub eis_points_per_decade: f32,
     pub eis_periods_per_freq: usize,
     pub eis_settle_periods: usize,
+    pub eis_repeats_per_freq: usize,
+    pub eis_voltage_probes: usize,
     pub eis_show_fit: bool,
+    pub eis_show_probes: bool,
     pub eis_mode: crate::simulation::eis::EisMode,
+    // Diagnostic toggles
+    pub eis_show_actual_i: bool,
+    pub eis_c_virtual: f64,
+    // Nyquist debug reference lines
+    pub eis_hline_enabled: bool,
+    pub eis_hline_val: f64,
+    pub eis_vline_enabled: bool,
+    pub eis_vline_val: f64,
+    // Nyquist zoom state
+    pub eis_nyquist_bounds: Option<[f64; 4]>,   // [x_min, x_max, y_min, y_max]
+    pub eis_nyquist_set_range: bool,             // "Set Range" mode active
+    pub eis_nyquist_drag_start: Option<egui::Pos2>, // screen-space drag origin
 }
 
 impl quarkstrom::Renderer for Renderer {
@@ -572,6 +591,9 @@ impl quarkstrom::Renderer for Renderer {
             conventional_is_overpotential: init_conv_is_over,
             conventional_current_setpoint: init_conv_current,
             conventional_target_ratio: init_conv_target,
+            conv_pid_kp: 20.0,
+            conv_pid_ki: 0.4,
+            conv_pid_kd: 0.2,
             show_dipoles: false,
             dipole_scale: 20.0,
             //manual_measurement_recorder: None,
@@ -618,8 +640,20 @@ impl quarkstrom::Renderer for Renderer {
             eis_points_per_decade: 3.0,
             eis_periods_per_freq: 2,
             eis_settle_periods: 1,
+            eis_repeats_per_freq: 1,
+            eis_voltage_probes: 10,
             eis_show_fit: true,
+            eis_show_probes: false,
             eis_mode: crate::simulation::eis::EisMode::Galvanostatic,
+            eis_show_actual_i: true,
+            eis_c_virtual: 1e-3,
+            eis_hline_enabled: false,
+            eis_hline_val: 0.0,
+            eis_vline_enabled: false,
+            eis_vline_val: 0.0,
+            eis_nyquist_bounds: None,
+            eis_nyquist_set_range: false,
+            eis_nyquist_drag_start: None,
         }
     }
 

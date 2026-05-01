@@ -41,7 +41,7 @@ impl super::super::Renderer {
                     ui.add(
                         egui::DragValue::new(&mut self.eis_amplitude)
                             .speed(0.0001)
-                            .clamp_range(1e-8..=1.0)
+                            .clamp_range(1e-8..=100.0)
                             .max_decimals(6),
                     );
                     if self.eis_mode == crate::simulation::eis::EisMode::Potentiostatic {
@@ -103,7 +103,7 @@ impl super::super::Renderer {
                     ui.add(
                         egui::DragValue::new(&mut self.eis_points_per_decade)
                             .speed(0.5)
-                            .clamp_range(1.0..=20.0),
+                            .clamp_range(1.0..=100.0),
                     );
                 });
                 ui.horizontal(|ui| {
@@ -122,6 +122,45 @@ impl super::super::Renderer {
                             .clamp_range(0..=20),
                     );
                 });
+                ui.horizontal(|ui| {
+                    ui.label("Repeats per freq:");
+                    ui.add(
+                        egui::DragValue::new(&mut self.eis_repeats_per_freq)
+                            .speed(1)
+                            .clamp_range(1..=20),
+                    );
+                });
+                ui.horizontal(|ui| {
+                    ui.label("Voltage probes:");
+                    ui.add(
+                        egui::DragValue::new(&mut self.eis_voltage_probes)
+                            .speed(1)
+                            .clamp_range(0..=200usize),
+                    );
+                    if self.eis_voltage_probes == 0 {
+                        ui.label(egui::RichText::new("(all)").small());
+                    }
+                    ui.checkbox(&mut self.eis_show_probes, "Show");
+                });
+
+                // Diagnostic controls
+                ui.separator();
+                ui.label(egui::RichText::new("Diagnostics").strong());
+                ui.horizontal(|ui| {
+                    ui.checkbox(&mut self.eis_show_actual_i, "Show actual electron I");
+                    ui.label(egui::RichText::new("(cyan trace)").small().color(egui::Color32::from_rgb(80, 220, 220)));
+                });
+                ui.horizontal(|ui| {
+                    ui.label("Virtual cap C:");
+                    ui.add(
+                        egui::DragValue::new(&mut self.eis_c_virtual)
+                            .speed(1e-5)
+                            .clamp_range(1e-6..=1.0)
+                            .max_decimals(6),
+                    );
+                    ui.label(egui::RichText::new("(green dashed V_cap)").small().color(egui::Color32::from_rgb(80, 200, 120)));
+                });
+                ui.separator();
 
                 // Show estimated time before starting
                 {
@@ -136,6 +175,9 @@ impl super::super::Renderer {
                         periods_per_freq: self.eis_periods_per_freq,
                         settle_periods: self.eis_settle_periods,
                         mode: self.eis_mode,
+                        repeats_per_freq: self.eis_repeats_per_freq,
+                        voltage_probes: self.eis_voltage_probes,
+                        c_virtual: self.eis_c_virtual,
                     };
                     let est_fs = est_cfg.estimated_total_fs();
                     let n_freqs = est_cfg.frequencies.len();
@@ -184,12 +226,22 @@ impl super::super::Renderer {
                                 let _ = tx.send(SimCommand::StopEIS);
                             }
                         }
-                        ui.label(format!(
+                        let freq_label = format!(
                             "Freq {}/{} ({:.2e} 1/fs)",
                             shared.current_freq_idx + 1,
                             shared.total_frequencies,
                             shared.current_freq,
-                        ));
+                        );
+                        if shared.total_repeats > 1 {
+                            ui.label(format!(
+                                "{}, repeat {}/{}",
+                                freq_label,
+                                shared.current_repeat + 1,
+                                shared.total_repeats,
+                            ));
+                        } else {
+                            ui.label(freq_label);
+                        }
                     });
                     ui.label(format!("Phase: {}", shared.phase));
                     ui.label(format!(
@@ -221,6 +273,9 @@ impl super::super::Renderer {
                                 periods_per_freq: self.eis_periods_per_freq,
                                 settle_periods: self.eis_settle_periods,
                                 mode: self.eis_mode,
+                                repeats_per_freq: self.eis_repeats_per_freq,
+                                voltage_probes: self.eis_voltage_probes,
+                                c_virtual: self.eis_c_virtual,
                             });
                         }
                     }
@@ -253,7 +308,45 @@ impl super::super::Renderer {
         egui::CollapsingHeader::new("Nyquist Plot")
             .default_open(true)
             .show(ui, |ui| {
+                // Debug reference lines
+                ui.horizontal(|ui| {
+                    ui.checkbox(&mut self.eis_hline_enabled, "H line  -Im(Z) =");
+                    ui.add_enabled(
+                        self.eis_hline_enabled,
+                        egui::DragValue::new(&mut self.eis_hline_val)
+                            .speed(1e-4)
+                            .max_decimals(6),
+                    );
+                    ui.add_space(16.0);
+                    ui.checkbox(&mut self.eis_vline_enabled, "V line  Re(Z) =");
+                    ui.add_enabled(
+                        self.eis_vline_enabled,
+                        egui::DragValue::new(&mut self.eis_vline_val)
+                            .speed(1e-4)
+                            .max_decimals(6),
+                    );
+                });
+                // Zoom controls
+                ui.horizontal(|ui| {
+                    let label = if self.eis_nyquist_set_range { "Set Range (active)" } else { "Set Range" };
+                    if ui.selectable_label(self.eis_nyquist_set_range, label).clicked() {
+                        self.eis_nyquist_set_range = !self.eis_nyquist_set_range;
+                        if !self.eis_nyquist_set_range {
+                            self.eis_nyquist_drag_start = None;
+                        }
+                    }
+                    if ui.add_enabled(self.eis_nyquist_bounds.is_some(), egui::Button::new("Reset View")).clicked() {
+                        self.eis_nyquist_bounds = None;
+                    }
+                });
                 self.draw_nyquist_plot(ui, &shared.points);
+            });
+
+        // Bode plot: |Z| and phase(Z) vs log(freq)
+        egui::CollapsingHeader::new("Bode Plot")
+            .default_open(true)
+            .show(ui, |ui| {
+                self.draw_bode_plot(ui, &shared.points);
             });
 
         // Data table
@@ -268,7 +361,12 @@ impl super::super::Renderer {
                         ui.label("-Im(Z)");
                         ui.label("|Z|");
                         ui.label("Phase (deg)");
-                        ui.label("R²");
+                        ui.label("R²(V)");
+                        ui.label("R²(I)");
+                        ui.label("V amp");
+                        ui.label("V phase (deg)");
+                        ui.label("I amp");
+                        ui.label("I phase (deg)");
                         ui.end_row();
 
                         for pt in &shared.points {
@@ -277,7 +375,12 @@ impl super::super::Renderer {
                             ui.label(format!("{:.4e}", -pt.z_imag));
                             ui.label(format!("{:.4e}", pt.magnitude));
                             ui.label(format!("{:.2}", pt.phase_deg));
-                            ui.label(format!("{:.4}", pt.fit_r2));
+                            ui.label(format!("{:.4}", pt.fit_r2_v));
+                            ui.label(format!("{:.4}", pt.fit_r2_i));
+                            ui.label(format!("{:.4e}", pt.fit_v_amp));
+                            ui.label(format!("{:.2}", pt.fit_v_phase_deg));
+                            ui.label(format!("{:.4e}", pt.fit_i_amp));
+                            ui.label(format!("{:.2}", pt.fit_i_phase_deg));
                             ui.end_row();
                         }
                     });
@@ -291,19 +394,27 @@ impl super::super::Renderer {
     }
 
     fn draw_nyquist_plot(
-        &self,
+        &mut self,
         ui: &mut egui::Ui,
         points: &[crate::simulation::eis::EisPoint],
     ) {
+        let hline = if self.eis_hline_enabled { Some(self.eis_hline_val) } else { None };
+        let vline = if self.eis_vline_enabled { Some(self.eis_vline_val) } else { None };
         const LEFT_MARGIN: f32 = 62.0;
         let available = ui.available_size();
         let plot_size = egui::Vec2::new(available.x - LEFT_MARGIN - 10.0, 300.0);
 
-        // Indent right so y-axis tick labels have room on the left
+        // Use click_and_drag sense when Set Range mode is active, hover otherwise
+        let sense = if self.eis_nyquist_set_range {
+            egui::Sense::click_and_drag()
+        } else {
+            egui::Sense::hover()
+        };
+
         let (rect, response) = ui
             .horizontal(|ui| {
                 ui.add_space(LEFT_MARGIN);
-                ui.allocate_exact_size(plot_size, egui::Sense::hover())
+                ui.allocate_exact_size(plot_size, sense)
             })
             .inner;
 
@@ -311,52 +422,100 @@ impl super::super::Renderer {
             return;
         }
 
+        // Dark background (matches Signal Time Series style)
         ui.painter()
-            .rect_filled(rect, 2.0, egui::Color32::from_gray(240));
+            .rect_filled(rect, 2.0, egui::Color32::from_gray(30));
         ui.painter()
-            .rect_stroke(rect, 2.0, egui::Stroke::new(1.0, egui::Color32::BLACK));
+            .rect_stroke(rect, 2.0, egui::Stroke::new(1.0, egui::Color32::from_gray(100)));
 
-        // Compute ranges for Re(Z) and -Im(Z)
+        // Compute data ranges
         let re_vals: Vec<f64> = points.iter().map(|p| p.z_real).collect();
         let neg_im_vals: Vec<f64> = points.iter().map(|p| -p.z_imag).collect();
 
-        let re_min = re_vals.iter().fold(f64::INFINITY, |a, &b| a.min(b));
-        let re_max = re_vals.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
-        let im_min = neg_im_vals.iter().fold(f64::INFINITY, |a, &b| a.min(b));
-        let im_max = neg_im_vals.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
+        // Use custom bounds if set, otherwise auto-fit
+        let (x_min, x_max, y_min, y_max) = if let Some(b) = self.eis_nyquist_bounds {
+            (b[0], b[1], b[2], b[3])
+        } else {
+            let re_min = re_vals.iter().fold(f64::INFINITY, |a, &b| a.min(b));
+            let re_max = re_vals.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
+            let im_min = neg_im_vals.iter().fold(f64::INFINITY, |a, &b| a.min(b));
+            let im_max = neg_im_vals.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
+            let re_range = (re_max - re_min).max(1e-20);
+            let im_range = (im_max - im_min).max(1e-20);
+            let re_pad = re_range * 0.1;
+            let im_pad = im_range * 0.1;
+            (re_min - re_pad, re_max + re_pad, im_min - im_pad, im_max + im_pad)
+        };
 
-        let re_range = (re_max - re_min).max(1e-20);
-        let im_range = (im_max - im_min).max(1e-20);
-        let re_pad = re_range * 0.1;
-        let im_pad = im_range * 0.1;
-        let x_min = re_min - re_pad;
-        let x_max = re_max + re_pad;
-        let y_min = im_min - im_pad;
-        let y_max = im_max + im_pad;
+        let x_span = (x_max - x_min).max(1e-30);
+        let y_span = (y_max - y_min).max(1e-30);
 
-        let data_color = egui::Color32::from_rgb(0, 100, 255);
+        // Frequency gradient colors: green (high freq) → orange (low freq)
+        let color_hi = [80u8, 200, 120];  // green — high frequency
+        let color_lo = [220u8, 120, 60];  // orange — low frequency
 
-        // Draw data points and lines
+        // Compute frequency range for normalization
+        let freq_min = points.iter().map(|p| p.frequency).fold(f32::INFINITY, f32::min);
+        let freq_max = points.iter().map(|p| p.frequency).fold(f32::NEG_INFINITY, f32::max);
+        let freq_range = (freq_max - freq_min).max(1e-30);
+
+        let color_for_freq = |freq: f32| -> egui::Color32 {
+            let t = ((freq - freq_min) / freq_range).clamp(0.0, 1.0); // 0=low, 1=high
+            let r = color_lo[0] as f32 + (color_hi[0] as f32 - color_lo[0] as f32) * t;
+            let g = color_lo[1] as f32 + (color_hi[1] as f32 - color_lo[1] as f32) * t;
+            let b = color_lo[2] as f32 + (color_hi[2] as f32 - color_lo[2] as f32) * t;
+            egui::Color32::from_rgb(r as u8, g as u8, b as u8)
+        };
+
+        // Convert data → screen coords
         let mut screen_pts = Vec::new();
         for (re, neg_im) in re_vals.iter().zip(neg_im_vals.iter()) {
-            let x_norm = (re - x_min) / (x_max - x_min);
-            let y_norm = 1.0 - (neg_im - y_min) / (y_max - y_min);
+            let x_norm = (re - x_min) / x_span;
+            let y_norm = 1.0 - (neg_im - y_min) / y_span;
             let sx = rect.min.x + x_norm as f32 * rect.width();
             let sy = rect.min.y + y_norm as f32 * rect.height();
             screen_pts.push(egui::Pos2::new(sx, sy));
         }
 
+        // Clip all data drawing to the plot rectangle
+        let plot_painter = ui.painter().with_clip_rect(rect);
+
+        // Draw line segments with frequency gradient
         for i in 0..screen_pts.len().saturating_sub(1) {
-            ui.painter().line_segment(
+            let avg_freq = (points[i].frequency + points[i + 1].frequency) * 0.5;
+            let c = color_for_freq(avg_freq);
+            plot_painter.line_segment(
                 [screen_pts[i], screen_pts[i + 1]],
-                egui::Stroke::new(1.5, data_color),
+                egui::Stroke::new(1.5, c),
             );
         }
-        for pt in &screen_pts {
-            ui.painter().circle_filled(*pt, 3.0, data_color);
+        // Draw points with frequency gradient
+        for (i, pt) in screen_pts.iter().enumerate() {
+            let c = color_for_freq(points[i].frequency);
+            plot_painter.circle_filled(*pt, 3.0, c);
         }
 
-        // Axis labels — use theme text color so they're readable in dark mode
+        // Debug reference lines
+        let ref_color = egui::Color32::from_rgb(220, 60, 60);
+        let ref_stroke = egui::Stroke::new(1.5, ref_color);
+        if let Some(h_val) = hline {
+            let y_norm = 1.0 - ((h_val - y_min) / y_span) as f32;
+            let sy = rect.min.y + y_norm * rect.height();
+            plot_painter.line_segment(
+                [egui::Pos2::new(rect.min.x, sy), egui::Pos2::new(rect.max.x, sy)],
+                ref_stroke,
+            );
+        }
+        if let Some(v_val) = vline {
+            let x_norm = ((v_val - x_min) / x_span) as f32;
+            let sx = rect.min.x + x_norm * rect.width();
+            plot_painter.line_segment(
+                [egui::Pos2::new(sx, rect.min.y), egui::Pos2::new(sx, rect.max.y)],
+                ref_stroke,
+            );
+        }
+
+        // Axis labels
         let label_color = ui.visuals().text_color();
         let font = egui::FontId::proportional(12.0);
         ui.painter().text(
@@ -398,63 +557,117 @@ impl super::super::Renderer {
         // Reserve vertical space for the x-axis label below the plot
         ui.add_space(25.0);
 
-        // Hover tooltip: highlight nearest point within 30 px and show values
-        let hover_pos = if response.hovered() {
-            ui.ctx().pointer_hover_pos()
-        } else {
-            None
-        };
-        if let Some(hover_pos) = hover_pos {
-            if let Some((idx, dist_sq)) = screen_pts
-                .iter()
-                .enumerate()
-                .map(|(i, &p)| {
-                    (
-                        i,
-                        (p.x - hover_pos.x).powi(2) + (p.y - hover_pos.y).powi(2),
-                    )
-                })
-                .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))
-            {
-                if dist_sq < 30.0f32.powi(2) {
-                    let pt = &points[idx];
-                    // Ring around the hovered point
-                    ui.painter().circle_stroke(
-                        screen_pts[idx],
-                        7.0,
-                        egui::Stroke::new(2.0, egui::Color32::WHITE),
+        // --- Drag-to-zoom logic (only when Set Range mode is active) ---
+        if self.eis_nyquist_set_range {
+            // Helper: convert screen pos → data coords
+            let screen_to_data = |sp: egui::Pos2| -> (f64, f64) {
+                let xn = ((sp.x - rect.min.x) / rect.width()).clamp(0.0, 1.0) as f64;
+                let yn = ((sp.y - rect.min.y) / rect.height()).clamp(0.0, 1.0) as f64;
+                let data_x = x_min + xn * x_span;
+                let data_y = y_min + (1.0 - yn) * y_span;
+                (data_x, data_y)
+            };
+
+            if response.drag_started() {
+                if let Some(pos) = ui.ctx().pointer_interact_pos() {
+                    self.eis_nyquist_drag_start = Some(pos);
+                }
+            }
+
+            // Draw selection rectangle while dragging
+            if let Some(start) = self.eis_nyquist_drag_start {
+                if let Some(current) = ui.ctx().pointer_interact_pos() {
+                    let sel_rect = egui::Rect::from_two_pos(start, current).intersect(rect);
+                    ui.painter().rect_filled(
+                        sel_rect,
+                        0.0,
+                        egui::Color32::from_rgba_unmultiplied(80, 200, 120, 40),
                     );
-                    // Popup box slightly to the right of the cursor
-                    let lines = [
-                        format!("f = {:.3e} 1/fs", pt.frequency),
-                        format!("Re(Z)  = {:.4e}", pt.z_real),
-                        format!("-Im(Z) = {:.4e}", -pt.z_imag),
-                        format!("R\u{00B2}     = {:.4}", pt.fit_r2),
-                    ];
-                    let tip_font = egui::FontId::proportional(11.0);
-                    let bg = egui::Color32::from_rgba_unmultiplied(25, 25, 25, 220);
-                    let text_color = egui::Color32::from_gray(230);
-                    let origin = hover_pos + egui::Vec2::new(14.0, -10.0);
-                    let line_h = 16.0;
-                    let pad = 5.0;
-                    let box_rect = egui::Rect::from_min_size(
-                        egui::Pos2::new(origin.x - pad, origin.y - pad),
-                        egui::Vec2::new(178.0, lines.len() as f32 * line_h + 2.0 * pad),
-                    );
-                    ui.painter().rect_filled(box_rect, 4.0, bg);
                     ui.painter().rect_stroke(
-                        box_rect,
-                        4.0,
-                        egui::Stroke::new(1.0, egui::Color32::from_gray(100)),
+                        sel_rect,
+                        0.0,
+                        egui::Stroke::new(1.0, egui::Color32::from_rgb(80, 200, 120)),
                     );
-                    for (i, line) in lines.iter().enumerate() {
-                        ui.painter().text(
-                            egui::Pos2::new(origin.x, origin.y + i as f32 * line_h),
-                            egui::Align2::LEFT_TOP,
-                            line,
-                            tip_font.clone(),
-                            text_color,
+                }
+            }
+
+            if response.drag_released() {
+                if let Some(start) = self.eis_nyquist_drag_start.take() {
+                    if let Some(end) = ui.ctx().pointer_interact_pos() {
+                        let sel = egui::Rect::from_two_pos(start, end).intersect(rect);
+                        // Only apply if the selection is large enough (>5px each axis)
+                        if sel.width() > 5.0 && sel.height() > 5.0 {
+                            let (dx0, dy0) = screen_to_data(sel.min);
+                            let (dx1, dy1) = screen_to_data(sel.max);
+                            self.eis_nyquist_bounds = Some([
+                                dx0.min(dx1), dx0.max(dx1),
+                                dy0.min(dy1), dy0.max(dy1),
+                            ]);
+                        }
+                    }
+                }
+                self.eis_nyquist_set_range = false;
+            }
+        }
+
+        // Hover tooltip (only when NOT in Set Range mode)
+        if !self.eis_nyquist_set_range {
+            let hover_pos = if response.hovered() {
+                ui.ctx().pointer_hover_pos()
+            } else {
+                None
+            };
+            if let Some(hover_pos) = hover_pos {
+                if let Some((idx, dist_sq)) = screen_pts
+                    .iter()
+                    .enumerate()
+                    .map(|(i, &p)| {
+                        (
+                            i,
+                            (p.x - hover_pos.x).powi(2) + (p.y - hover_pos.y).powi(2),
+                        )
+                    })
+                    .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))
+                {
+                    if dist_sq < 30.0f32.powi(2) {
+                        let pt = &points[idx];
+                        plot_painter.circle_stroke(
+                            screen_pts[idx],
+                            7.0,
+                            egui::Stroke::new(2.0, egui::Color32::WHITE),
                         );
+                        let lines = [
+                            format!("f = {:.3e} 1/fs", pt.frequency),
+                            format!("Re(Z)  = {:.4e}", pt.z_real),
+                            format!("-Im(Z) = {:.4e}", -pt.z_imag),
+                            format!("R\u{00B2}(V)  = {:.4}", pt.fit_r2_v),
+                            format!("R\u{00B2}(I)  = {:.4}", pt.fit_r2_i),
+                        ];
+                        let tip_font = egui::FontId::proportional(11.0);
+                        let bg = egui::Color32::from_rgba_unmultiplied(25, 25, 25, 220);
+                        let text_color = egui::Color32::from_gray(230);
+                        let origin = hover_pos + egui::Vec2::new(14.0, -10.0);
+                        let line_h = 16.0;
+                        let pad = 5.0;
+                        let box_rect = egui::Rect::from_min_size(
+                            egui::Pos2::new(origin.x - pad, origin.y - pad),
+                            egui::Vec2::new(178.0, lines.len() as f32 * line_h + 2.0 * pad),
+                        );
+                        ui.painter().rect_filled(box_rect, 4.0, bg);
+                        ui.painter().rect_stroke(
+                            box_rect,
+                            4.0,
+                            egui::Stroke::new(1.0, egui::Color32::from_gray(100)),
+                        );
+                        for (i, line) in lines.iter().enumerate() {
+                            ui.painter().text(
+                                egui::Pos2::new(origin.x, origin.y + i as f32 * line_h),
+                                egui::Align2::LEFT_TOP,
+                                line,
+                                tip_font.clone(),
+                                text_color,
+                            );
+                        }
                     }
                 }
             }
@@ -600,30 +813,100 @@ impl super::super::Renderer {
             }
         }
 
-        // Best-fit overlay on the *response* signal (V for galvanostatic, I for potentiostatic)
-        if self.eis_show_fit && (shared.fit_response_re != 0.0 || shared.fit_response_im != 0.0) {
+        let actual_i_color = egui::Color32::from_rgb(80, 220, 220); // cyan for actual electron I
+        let vcap_color = egui::Color32::from_rgb(120, 220, 120); // light green for V_cap
+
+        // Draw actual electron current trace (cyan) — normalised independently
+        if self.eis_show_actual_i && !shared.ts_actual_i.is_empty() {
+            let (ai_lo, ai_hi) = data_range(&shared.ts_actual_i);
+            let pts: Vec<egui::Pos2> = ts
+                .iter()
+                .zip(shared.ts_actual_i.iter())
+                .map(|(&t, &ai)| to_screen(t, ai, ai_lo, ai_hi))
+                .collect();
+            for w in pts.windows(2) {
+                ui.painter()
+                    .line_segment([w[0], w[1]], egui::Stroke::new(1.0, actual_i_color));
+            }
+        }
+
+        // Draw virtual capacitor V_cap trace (dashed green) — normalised to V range
+        if !shared.ts_v_cap.is_empty() {
+            let (vc_lo, vc_hi) = data_range(&shared.ts_v_cap);
+            let pts: Vec<egui::Pos2> = ts
+                .iter()
+                .zip(shared.ts_v_cap.iter())
+                .map(|(&t, &vc)| to_screen(t, vc, vc_lo, vc_hi))
+                .collect();
+            // Dashed line
+            for w in pts.windows(2) {
+                let dx = w[1].x - w[0].x;
+                let dy = w[1].y - w[0].y;
+                let seg_len = (dx * dx + dy * dy).sqrt();
+                if seg_len < 3.0 {
+                    // Short segment — draw solid
+                    ui.painter().line_segment([w[0], w[1]], egui::Stroke::new(1.0, vcap_color));
+                } else {
+                    // Draw dashes
+                    let dash = 4.0;
+                    let gap = 3.0;
+                    let total = dash + gap;
+                    let steps = (seg_len / total).ceil() as usize;
+                    for s in 0..steps {
+                        let t0 = (s as f32 * total / seg_len).min(1.0);
+                        let t1 = ((s as f32 * total + dash) / seg_len).min(1.0);
+                        let p0 = egui::Pos2::new(w[0].x + dx * t0, w[0].y + dy * t0);
+                        let p1 = egui::Pos2::new(w[0].x + dx * t1, w[0].y + dy * t1);
+                        ui.painter().line_segment([p0, p1], egui::Stroke::new(1.0, vcap_color));
+                    }
+                }
+            }
+        }
+
+        let fit_painter = ui.painter().with_clip_rect(rect);
+        let n_fit = 300usize;
+
+        // Best-fit overlay on V (Coulomb potential) — always, both modes.
+        if self.eis_show_fit && (shared.fit_v_re != 0.0 || shared.fit_v_im != 0.0) {
             if let Some(rec_start) = first_record_t {
-                use crate::simulation::eis::EisMode;
                 let omega = 2.0 * std::f32::consts::PI * shared.current_freq;
-                let fit_color = egui::Color32::from_rgb(255, 230, 80);
-                let n_fit = 300usize;
+                let fit_color = egui::Color32::from_rgb(255, 230, 80); // yellow on V
                 let t_rec_end = t_max;
-                let (y_lo, y_hi) = match shared.mode {
-                    EisMode::Galvanostatic => (v_lo, v_hi),
-                    EisMode::Potentiostatic => (i_lo, i_hi),
-                };
                 let fit_pts: Vec<egui::Pos2> = (0..=n_fit)
                     .map(|i| {
                         let t = rec_start + (t_rec_end - rec_start) * i as f32 / n_fit as f32;
                         let t_fit = t - rec_start;
-                        let val = shared.fit_response_dc
-                            + (shared.fit_response_re * (omega * t_fit).cos() as f64
-                                + shared.fit_response_im * (omega * t_fit).sin() as f64)
-                                as f32;
-                        to_screen(t, val, y_lo, y_hi)
+                        let val = shared.fit_v_dc
+                            + (shared.fit_v_re * (omega * t_fit).cos() as f64
+                                + shared.fit_v_im * (omega * t_fit).sin() as f64) as f32;
+                        to_screen(t, val, v_lo, v_hi)
                     })
                     .collect();
-                let fit_painter = ui.painter().with_clip_rect(rect);
+                for w in fit_pts.windows(2) {
+                    fit_painter.line_segment([w[0], w[1]], egui::Stroke::new(1.5, fit_color));
+                }
+            }
+        }
+
+        // Best-fit overlay on I — potentiostatic mode only (I is also a measured signal).
+        if self.eis_show_fit
+            && shared.mode == crate::simulation::eis::EisMode::Potentiostatic
+            && (shared.fit_i_re != 0.0 || shared.fit_i_im != 0.0)
+        {
+            if let Some(rec_start) = first_record_t {
+                let omega = 2.0 * std::f32::consts::PI * shared.current_freq;
+                let fit_color = egui::Color32::from_rgb(255, 180, 60); // amber on I
+                let t_rec_end = t_max;
+                let fit_pts: Vec<egui::Pos2> = (0..=n_fit)
+                    .map(|i| {
+                        let t = rec_start + (t_rec_end - rec_start) * i as f32 / n_fit as f32;
+                        let t_fit = t - rec_start;
+                        let val = shared.fit_i_dc
+                            + (shared.fit_i_re * (omega * t_fit).cos() as f64
+                                + shared.fit_i_im * (omega * t_fit).sin() as f64) as f32;
+                        to_screen(t, val, i_lo, i_hi)
+                    })
+                    .collect();
                 for w in fit_pts.windows(2) {
                     fit_painter.line_segment([w[0], w[1]], egui::Stroke::new(1.5, fit_color));
                 }
@@ -631,20 +914,44 @@ impl super::super::Renderer {
         }
 
         // Legend
+        let mut legend_y = rect.min.y + 6.0;
+        let legend_step = 14.0;
         ui.painter().text(
-            egui::Pos2::new(rect.max.x - 8.0, rect.min.y + 6.0),
+            egui::Pos2::new(rect.max.x - 8.0, legend_y),
             egui::Align2::RIGHT_TOP,
             format!("V  [{:.2e} … {:.2e}]", v_lo, v_hi),
             font.clone(),
             v_color,
         );
+        legend_y += legend_step;
         ui.painter().text(
-            egui::Pos2::new(rect.max.x - 8.0, rect.min.y + 20.0),
+            egui::Pos2::new(rect.max.x - 8.0, legend_y),
             egui::Align2::RIGHT_TOP,
             format!("I  [{:.2e} … {:.2e}]", i_lo, i_hi),
             font.clone(),
             i_color,
         );
+        if self.eis_show_actual_i && !shared.ts_actual_i.is_empty() {
+            legend_y += legend_step;
+            ui.painter().text(
+                egui::Pos2::new(rect.max.x - 8.0, legend_y),
+                egui::Align2::RIGHT_TOP,
+                "I_actual (electron hops)",
+                font.clone(),
+                actual_i_color,
+            );
+        }
+        if !shared.ts_v_cap.is_empty() {
+            legend_y += legend_step;
+            let _ = legend_y; // suppress unused warning
+            ui.painter().text(
+                egui::Pos2::new(rect.max.x - 8.0, legend_y),
+                egui::Align2::RIGHT_TOP,
+                "V_cap (virtual capacitor)",
+                font.clone(),
+                vcap_color,
+            );
+        }
 
         // X-axis label
         ui.painter().text(
@@ -694,12 +1001,296 @@ impl super::super::Renderer {
         ui.add_space(25.0);
     }
 
+    fn draw_bode_plot(
+        &self,
+        ui: &mut egui::Ui,
+        points: &[crate::simulation::eis::EisPoint],
+    ) {
+        if points.len() < 2 {
+            ui.label("Need at least 2 points for Bode plot.");
+            return;
+        }
+
+        const LEFT_MARGIN: f32 = 62.0;
+        let available = ui.available_size();
+        let plot_w = available.x - LEFT_MARGIN - 10.0;
+        let sub_h = 120.0;
+        let gap = 8.0;
+
+        // Frequency gradient colors (same as Nyquist)
+        let color_hi = [80u8, 200, 120]; // green — high freq
+        let color_lo = [220u8, 120, 60]; // orange — low freq
+        let freq_min = points.iter().map(|p| p.frequency).fold(f32::INFINITY, f32::min);
+        let freq_max = points.iter().map(|p| p.frequency).fold(f32::NEG_INFINITY, f32::max);
+        let freq_range = (freq_max - freq_min).max(1e-30);
+        let color_for_freq = |freq: f32| -> egui::Color32 {
+            let t = ((freq - freq_min) / freq_range).clamp(0.0, 1.0);
+            let r = color_lo[0] as f32 + (color_hi[0] as f32 - color_lo[0] as f32) * t;
+            let g = color_lo[1] as f32 + (color_hi[1] as f32 - color_lo[1] as f32) * t;
+            let b = color_lo[2] as f32 + (color_hi[2] as f32 - color_lo[2] as f32) * t;
+            egui::Color32::from_rgb(r as u8, g as u8, b as u8)
+        };
+
+        let label_color = ui.visuals().text_color();
+        let font_tick = egui::FontId::proportional(9.0);
+
+        // X-axis: log10(freq) — shared
+        let log_freqs: Vec<f64> = points.iter().map(|p| (p.frequency as f64).log10()).collect();
+        let lf_min = log_freqs.iter().cloned().fold(f64::INFINITY, f64::min);
+        let lf_max = log_freqs.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+        let lf_span = (lf_max - lf_min).max(1e-10);
+        let lf_pad = lf_span * 0.05;
+        let x_lo = lf_min - lf_pad;
+        let x_hi = lf_max + lf_pad;
+        let x_span = x_hi - x_lo;
+
+        // --- Sub-plot 1: log10(|Z|) ---
+        let log_mags: Vec<f64> = points.iter().map(|p| p.magnitude.max(1e-30).log10()).collect();
+        let mag_min = log_mags.iter().cloned().fold(f64::INFINITY, f64::min);
+        let mag_max = log_mags.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+        let mag_span = (mag_max - mag_min).max(1e-10);
+        let mag_pad = mag_span * 0.1;
+        let y1_lo = mag_min - mag_pad;
+        let y1_hi = mag_max + mag_pad;
+        let y1_span = y1_hi - y1_lo;
+
+        let (rect1, _) = ui
+            .horizontal(|ui| {
+                ui.add_space(LEFT_MARGIN);
+                ui.allocate_exact_size(egui::Vec2::new(plot_w, sub_h), egui::Sense::hover())
+            })
+            .inner;
+
+        if ui.is_rect_visible(rect1) {
+            ui.painter().rect_filled(rect1, 2.0, egui::Color32::from_gray(30));
+            ui.painter().rect_stroke(rect1, 2.0, egui::Stroke::new(1.0, egui::Color32::from_gray(100)));
+
+            let clip = ui.painter().with_clip_rect(rect1);
+            // Points + lines
+            let mut screen_pts = Vec::with_capacity(points.len());
+            for i in 0..points.len() {
+                let sx = rect1.min.x + ((log_freqs[i] - x_lo) / x_span) as f32 * rect1.width();
+                let sy = rect1.max.y - ((log_mags[i] - y1_lo) / y1_span) as f32 * rect1.height();
+                screen_pts.push(egui::Pos2::new(sx, sy));
+            }
+            for i in 0..screen_pts.len().saturating_sub(1) {
+                let c = color_for_freq((points[i].frequency + points[i + 1].frequency) * 0.5);
+                clip.line_segment([screen_pts[i], screen_pts[i + 1]], egui::Stroke::new(1.5, c));
+            }
+            for (i, sp) in screen_pts.iter().enumerate() {
+                clip.circle_filled(*sp, 3.0, color_for_freq(points[i].frequency));
+            }
+
+            // Y-axis label
+            ui.painter().text(
+                egui::Pos2::new(rect1.min.x - 36.0, rect1.center().y),
+                egui::Align2::CENTER_CENTER,
+                "log|Z|",
+                egui::FontId::proportional(11.0),
+                label_color,
+            );
+            // Y ticks
+            for i in 0..=4 {
+                let frac = i as f32 / 4.0;
+                let y_val = y1_lo + (y1_hi - y1_lo) * (1.0 - frac as f64);
+                ui.painter().text(
+                    egui::Pos2::new(rect1.min.x - 4.0, rect1.min.y + frac * rect1.height()),
+                    egui::Align2::RIGHT_CENTER,
+                    format!("{:.2}", y_val),
+                    font_tick.clone(),
+                    label_color,
+                );
+            }
+        }
+
+        ui.add_space(gap);
+
+        // --- Sub-plot 2: phase(Z) in degrees ---
+        let phases: Vec<f64> = points.iter().map(|p| p.phase_deg).collect();
+        let actual_phases: Vec<f64> = points.iter().map(|p| p.z_actual_imag.atan2(p.z_actual_real).to_degrees()).collect();
+        let cap_phases: Vec<f64> = points.iter().map(|p| p.z_cap_imag.atan2(p.z_cap_real).to_degrees()).collect();
+
+        // Expand y-range to encompass all phase traces
+        let mut ph_min = phases.iter().cloned().fold(f64::INFINITY, f64::min);
+        let mut ph_max = phases.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+        let has_actual = points.iter().any(|p| p.z_actual_real != 0.0 || p.z_actual_imag != 0.0);
+        let has_cap = points.iter().any(|p| p.z_cap_real != 0.0 || p.z_cap_imag != 0.0);
+        if has_actual {
+            ph_min = ph_min.min(actual_phases.iter().cloned().fold(f64::INFINITY, f64::min));
+            ph_max = ph_max.max(actual_phases.iter().cloned().fold(f64::NEG_INFINITY, f64::max));
+        }
+        if has_cap {
+            ph_min = ph_min.min(cap_phases.iter().cloned().fold(f64::INFINITY, f64::min));
+            ph_max = ph_max.max(cap_phases.iter().cloned().fold(f64::NEG_INFINITY, f64::max));
+        }
+        let ph_span = (ph_max - ph_min).max(1e-10);
+        let ph_pad = ph_span * 0.15;
+        let y2_lo = ph_min - ph_pad;
+        let y2_hi = ph_max + ph_pad;
+        let y2_span = y2_hi - y2_lo;
+
+        let (rect2, _) = ui
+            .horizontal(|ui| {
+                ui.add_space(LEFT_MARGIN);
+                ui.allocate_exact_size(egui::Vec2::new(plot_w, sub_h), egui::Sense::hover())
+            })
+            .inner;
+
+        if ui.is_rect_visible(rect2) {
+            ui.painter().rect_filled(rect2, 2.0, egui::Color32::from_gray(30));
+            ui.painter().rect_stroke(rect2, 2.0, egui::Stroke::new(1.0, egui::Color32::from_gray(100)));
+
+            let clip = ui.painter().with_clip_rect(rect2);
+
+            // Phase=0 dashed line (capacitive/inductive boundary)
+            if y2_lo < 0.0 && y2_hi > 0.0 {
+                let y_zero = rect2.max.y - ((0.0 - y2_lo) / y2_span) as f32 * rect2.height();
+                let dash_len = 6.0;
+                let gap_len = 4.0;
+                let mut x = rect2.min.x;
+                while x < rect2.max.x {
+                    let x_end = (x + dash_len).min(rect2.max.x);
+                    clip.line_segment(
+                        [egui::Pos2::new(x, y_zero), egui::Pos2::new(x_end, y_zero)],
+                        egui::Stroke::new(1.0, egui::Color32::from_gray(120)),
+                    );
+                    x += dash_len + gap_len;
+                }
+            }
+
+            // Points + lines (Z_pid phase)
+            let mut screen_pts = Vec::with_capacity(points.len());
+            for i in 0..points.len() {
+                let sx = rect2.min.x + ((log_freqs[i] - x_lo) / x_span) as f32 * rect2.width();
+                let sy = rect2.max.y - ((phases[i] - y2_lo) / y2_span) as f32 * rect2.height();
+                screen_pts.push(egui::Pos2::new(sx, sy));
+            }
+            for i in 0..screen_pts.len().saturating_sub(1) {
+                let c = color_for_freq((points[i].frequency + points[i + 1].frequency) * 0.5);
+                clip.line_segment([screen_pts[i], screen_pts[i + 1]], egui::Stroke::new(1.5, c));
+            }
+            for (i, sp) in screen_pts.iter().enumerate() {
+                clip.circle_filled(*sp, 3.0, color_for_freq(points[i].frequency));
+            }
+
+            // Z_actual phase overlay (dashed cyan)
+            if has_actual {
+                let actual_color = egui::Color32::from_rgb(80, 220, 220);
+                let mut apt = Vec::with_capacity(points.len());
+                for i in 0..points.len() {
+                    let sx = rect2.min.x + ((log_freqs[i] - x_lo) / x_span) as f32 * rect2.width();
+                    let sy = rect2.max.y - ((actual_phases[i] - y2_lo) / y2_span) as f32 * rect2.height();
+                    apt.push(egui::Pos2::new(sx, sy));
+                }
+                for w in apt.windows(2) {
+                    // Dashed
+                    let dx = w[1].x - w[0].x;
+                    let dy = w[1].y - w[0].y;
+                    let seg = (dx * dx + dy * dy).sqrt();
+                    let dash = 5.0;
+                    let gap = 3.0;
+                    let total = dash + gap;
+                    let steps = (seg / total).ceil() as usize;
+                    for s in 0..steps {
+                        let t0 = (s as f32 * total / seg).min(1.0);
+                        let t1 = ((s as f32 * total + dash) / seg).min(1.0);
+                        clip.line_segment(
+                            [egui::Pos2::new(w[0].x + dx * t0, w[0].y + dy * t0),
+                             egui::Pos2::new(w[0].x + dx * t1, w[0].y + dy * t1)],
+                            egui::Stroke::new(1.5, actual_color),
+                        );
+                    }
+                }
+            }
+
+            // Z_cap phase overlay (dotted green)
+            if has_cap {
+                let cap_color = egui::Color32::from_rgb(120, 220, 120);
+                let mut cpt = Vec::with_capacity(points.len());
+                for i in 0..points.len() {
+                    let sx = rect2.min.x + ((log_freqs[i] - x_lo) / x_span) as f32 * rect2.width();
+                    let sy = rect2.max.y - ((cap_phases[i] - y2_lo) / y2_span) as f32 * rect2.height();
+                    cpt.push(egui::Pos2::new(sx, sy));
+                }
+                for w in cpt.windows(2) {
+                    // Dotted (short dashes)
+                    let dx = w[1].x - w[0].x;
+                    let dy = w[1].y - w[0].y;
+                    let seg = (dx * dx + dy * dy).sqrt();
+                    let dot = 2.0;
+                    let gap = 3.0;
+                    let total = dot + gap;
+                    let steps = (seg / total).ceil() as usize;
+                    for s in 0..steps {
+                        let t0 = (s as f32 * total / seg).min(1.0);
+                        let t1 = ((s as f32 * total + dot) / seg).min(1.0);
+                        clip.line_segment(
+                            [egui::Pos2::new(w[0].x + dx * t0, w[0].y + dy * t0),
+                             egui::Pos2::new(w[0].x + dx * t1, w[0].y + dy * t1)],
+                            egui::Stroke::new(1.5, cap_color),
+                        );
+                    }
+                }
+            }
+
+            // Y-axis label
+            ui.painter().text(
+                egui::Pos2::new(rect2.min.x - 36.0, rect2.center().y),
+                egui::Align2::CENTER_CENTER,
+                "phase(°)",
+                egui::FontId::proportional(11.0),
+                label_color,
+            );
+            // Y ticks
+            for i in 0..=4 {
+                let frac = i as f32 / 4.0;
+                let y_val = y2_lo + (y2_hi - y2_lo) * (1.0 - frac as f64);
+                ui.painter().text(
+                    egui::Pos2::new(rect2.min.x - 4.0, rect2.min.y + frac * rect2.height()),
+                    egui::Align2::RIGHT_CENTER,
+                    format!("{:.1}", y_val),
+                    font_tick.clone(),
+                    label_color,
+                );
+            }
+        }
+
+        // Shared x-axis ticks
+        for i in 0..=4 {
+            let frac = i as f32 / 4.0;
+            let x_val = x_lo + (x_hi - x_lo) * frac as f64;
+            ui.painter().text(
+                egui::Pos2::new(rect2.min.x + frac * rect2.width(), rect2.max.y + 3.0),
+                egui::Align2::CENTER_TOP,
+                format!("{:.2}", x_val),
+                font_tick.clone(),
+                label_color,
+            );
+        }
+
+        // X-axis label
+        ui.painter().text(
+            egui::Pos2::new(rect2.center().x, rect2.max.y + 15.0),
+            egui::Align2::CENTER_TOP,
+            "log₁₀(freq)  [1/fs]",
+            egui::FontId::proportional(11.0),
+            label_color,
+        );
+
+        ui.add_space(25.0);
+    }
+
     fn export_eis_csv(&self, points: &[crate::simulation::eis::EisPoint]) {
-        let mut csv = String::from("frequency,z_real,z_imag,z_magnitude,phase_deg,fit_r2\n");
+        let mut csv = String::from(
+            "frequency,z_real,z_imag,z_magnitude,phase_deg,fit_r2_v,fit_r2_i,fit_v_amp,fit_v_phase_deg,fit_i_amp,fit_i_phase_deg,z_actual_real,z_actual_imag,z_cap_real,z_cap_imag\n"
+        );
         for pt in points {
             csv.push_str(&format!(
-                "{:.6e},{:.6e},{:.6e},{:.6e},{:.4},{:.6}\n",
-                pt.frequency, pt.z_real, pt.z_imag, pt.magnitude, pt.phase_deg, pt.fit_r2
+                "{:.6e},{:.6e},{:.6e},{:.6e},{:.4},{:.6},{:.6},{:.6e},{:.4},{:.6e},{:.4},{:.6e},{:.6e},{:.6e},{:.6e}\n",
+                pt.frequency, pt.z_real, pt.z_imag, pt.magnitude, pt.phase_deg,
+                pt.fit_r2_v, pt.fit_r2_i,
+                pt.fit_v_amp, pt.fit_v_phase_deg, pt.fit_i_amp, pt.fit_i_phase_deg,
+                pt.z_actual_real, pt.z_actual_imag, pt.z_cap_real, pt.z_cap_imag,
             ));
         }
         let path = "eis_results.csv";
