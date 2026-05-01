@@ -58,6 +58,7 @@ This repository contains a modular, parallelized particle simulation for large-s
   - Live Nyquist plot with real-time circuit model fitting
   - DC-corrected R² goodness-of-fit display
   - Configurable frequency range and perturbation amplitude
+  - Amplitude-dependence study planned — see [docs/EIS_AMPLITUDE_STUDY_PLAN.md](docs/EIS_AMPLITUDE_STUDY_PLAN.md) for the spec and [docs/eis_similitude.md](docs/eis_similitude.md) for the simulator-vs-experiment dimensionless mapping
 - **Interactive GUI**:
   - Manual step-by-step execution for debugging
   - Particle selection with detailed diagnostics
