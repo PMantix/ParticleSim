@@ -136,6 +136,7 @@ codegen-units = 16  # Use parallel codegen units for faster compilation
 profiling = []
 debug_quadtree = []
 thermostat_debug = []
+hopping_debug = []
 command_debug = []
 doe = []
 unit_tests = []
