@@ -41,12 +41,14 @@ impl super::Renderer {
 
                 // Update plotting system with new data
                 let current_time = *crate::renderer::state::SIM_TIME.lock();
+                let coulomb_constant = self.sim_config.coulomb_constant;
                 self.plotting_system.update_plots(
                     &self.bodies,
                     &self.foils,
                     current_time,
                     self.domain_width,
                     self.domain_height,
+                    coulomb_constant,
                 );
 
                 // Update diagnostics
@@ -953,6 +955,33 @@ impl super::Renderer {
 
         // Draw manual measurement visualization
         self.draw_manual_measurements(ctx);
+
+        // Draw EIS voltage probe markers
+        if self.eis_show_probes {
+            let shared = crate::simulation::eis::EIS_RESULTS.lock();
+            if shared.is_running || !shared.probe_a_ids.is_empty() {
+                // Group A probes — cyan ring
+                for &pid in &shared.probe_a_ids {
+                    if let Some(body) = self.bodies.iter().find(|b| b.id == pid) {
+                        ctx.draw_circle(
+                            self.get_display_position(body),
+                            body.radius * 2.5,
+                            [0, 220, 255, 120],
+                        );
+                    }
+                }
+                // Group B probes — magenta ring
+                for &pid in &shared.probe_b_ids {
+                    if let Some(body) = self.bodies.iter().find(|b| b.id == pid) {
+                        ctx.draw_circle(
+                            self.get_display_position(body),
+                            body.radius * 2.5,
+                            [255, 80, 220, 120],
+                        );
+                    }
+                }
+            }
+        }
 
         // Screen capture overlays removed
     }
