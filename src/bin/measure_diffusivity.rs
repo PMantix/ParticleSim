@@ -69,6 +69,16 @@ fn linear_fit(samples: &[(f32, f32)]) -> Option<LinearFit> {
     Some(LinearFit { slope, intercept, r2 })
 }
 
+/// Parse a u64 from either decimal or `0x`-prefixed hex (e.g. `0xDEADBEEF`).
+/// Plain `s.parse::<u64>()` only accepts base-10.
+fn parse_u64_flexible(s: &str) -> Option<u64> {
+    if let Some(rest) = s.strip_prefix("0x").or_else(|| s.strip_prefix("0X")) {
+        u64::from_str_radix(rest, 16).ok()
+    } else {
+        s.parse::<u64>().ok()
+    }
+}
+
 fn template_body(species: Species) -> Body {
     let charge = match species {
         Species::LithiumIon => 1.0,
@@ -106,9 +116,9 @@ fn main() {
                 i += 1;
                 seed = args
                     .get(i)
-                    .and_then(|s| s.parse().ok())
+                    .and_then(|s| parse_u64_flexible(s))
                     .unwrap_or_else(|| {
-                        eprintln!("--seed expects a u64");
+                        eprintln!("--seed expects a u64 (decimal or 0x-prefixed hex)");
                         print_usage_and_exit();
                     });
             }
