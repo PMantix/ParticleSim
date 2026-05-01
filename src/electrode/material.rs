@@ -12,17 +12,6 @@ pub enum ElectrodeRole {
     Cathode,
 }
 
-/// Mechanism by which lithium is stored
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
-pub enum StorageMechanism {
-    /// Li⁺ + e⁻ → Li⁰ (metallic plating/stripping)
-    Plating,
-    /// Li⁺ + e⁻ + Host ↔ Li-Host (reversible insertion)
-    Intercalation,
-    /// Li + Host → LiₓHost (alloying with volume change)
-    Alloying,
-}
-
 /// Known electrode material types
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum MaterialType {
@@ -59,33 +48,6 @@ impl MaterialType {
             MaterialType::LMFP => ElectrodeRole::Cathode,
             MaterialType::NMC => ElectrodeRole::Cathode,
             MaterialType::NCA => ElectrodeRole::Cathode,
-        }
-    }
-
-    /// Get the storage mechanism
-    pub fn mechanism(&self) -> StorageMechanism {
-        match self {
-            MaterialType::LithiumMetal => StorageMechanism::Plating,
-            MaterialType::SiliconOxide => StorageMechanism::Alloying,
-            _ => StorageMechanism::Intercalation,
-        }
-    }
-
-    /// Maximum lithium stoichiometry (Li per formula unit)
-    /// For graphite: LiC₆ → 1.0
-    /// For LFP: LiFePO₄ → 1.0
-    /// For NMC: Li(Ni,Mn,Co)O₂ → ~1.0 practical
-    pub fn max_stoichiometry(&self) -> f32 {
-        match self {
-            MaterialType::LithiumMetal => f32::INFINITY, // No limit
-            MaterialType::Graphite => 1.0,      // LiC₆
-            MaterialType::HardCarbon => 1.0,    // Approximate
-            MaterialType::SiliconOxide => 2.5,  // Li₂.₅SiO (practical)
-            MaterialType::LTO => 3.0,           // Li₄Ti₅O₁₂ → Li₇Ti₅O₁₂
-            MaterialType::LFP => 1.0,           // LiFePO₄
-            MaterialType::LMFP => 1.0,          // LiMn₀.₆Fe₀.₄PO₄
-            MaterialType::NMC => 1.0,           // LiNiₓMnyCo_zO₂
-            MaterialType::NCA => 1.0,           // LiNi₀.₈Co₀.₁₅Al₀.₀₅O₂
         }
     }
 
@@ -148,22 +110,6 @@ impl MaterialType {
                 // Similar to NMC but slightly different shape
                 4.2 - 0.6 * soc
             }
-        }
-    }
-
-    /// Desolvation energy barrier in eV
-    /// This is the activation energy for Li⁺ to shed its solvent shell
-    pub fn desolvation_barrier(&self) -> f32 {
-        match self {
-            MaterialType::LithiumMetal => 0.25, // Lower barrier for metal
-            MaterialType::Graphite => 0.35,
-            MaterialType::HardCarbon => 0.30,
-            MaterialType::SiliconOxide => 0.30,
-            MaterialType::LTO => 0.28,
-            MaterialType::LFP => 0.40,
-            MaterialType::LMFP => 0.42,
-            MaterialType::NMC => 0.45,
-            MaterialType::NCA => 0.45,
         }
     }
 

@@ -407,5 +407,6 @@ pub enum CellPreset {
     GraphiteLFP,
     GraphiteNMC,
     LTOLFP,
+    #[allow(dead_code)] // GUI placeholder for user-configured cells
     Custom,
 }
