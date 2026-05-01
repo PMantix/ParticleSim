@@ -11,3 +11,22 @@ debug/*.dll
 
 # Simulation outputs
 doe_results/*.csv
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# IDE local config (keep .continue/rules tracked)
+.continue/agents/
+.continue/mcpServers/
+
+# Built artifacts
+rust_out
+
+# Experimental EIS output (use doe_results/ for new outputs going forward)
+eis_results*.csv
+eis_results*.xlsx
+eis_timeseries/
+
+# Research screenshots (kept locally only)
+images/
