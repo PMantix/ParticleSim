@@ -8,12 +8,18 @@
 use particle_sim::app::spawn::add_random;
 use particle_sim::body::{Body, Species};
 use particle_sim::init_config::InitConfig;
+use particle_sim::simulation::utils::compute_liquid_temperature;
 use particle_sim::simulation::Simulation;
 use std::collections::BTreeMap;
 use ultraviolet::Vec2;
 
 fn print_usage_and_exit() -> ! {
-    eprintln!("Usage: measure_diffusivity --scenario <path.toml> [--seed <u64>]");
+    eprintln!(
+        "Usage: measure_diffusivity --scenario <path.toml> \
+         [--seed <u64>] \
+         [--equilibrate-fs <float>] \
+         [--log-every-fs <float>]"
+    );
     std::process::exit(2);
 }
 
@@ -36,6 +42,8 @@ fn template_body(species: Species) -> Body {
 fn main() {
     let mut scenario: Option<String> = None;
     let mut seed: u64 = 0xC0FFEE;
+    let mut equilibrate_fs: f32 = 50_000.0;
+    let mut log_every_fs: f32 = 5_000.0;
 
     let args: Vec<String> = std::env::args().skip(1).collect();
     let mut i = 0;
@@ -52,6 +60,26 @@ fn main() {
                     .and_then(|s| s.parse().ok())
                     .unwrap_or_else(|| {
                         eprintln!("--seed expects a u64");
+                        print_usage_and_exit();
+                    });
+            }
+            "--equilibrate-fs" => {
+                i += 1;
+                equilibrate_fs = args
+                    .get(i)
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or_else(|| {
+                        eprintln!("--equilibrate-fs expects a float");
+                        print_usage_and_exit();
+                    });
+            }
+            "--log-every-fs" => {
+                i += 1;
+                log_every_fs = args
+                    .get(i)
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or_else(|| {
+                        eprintln!("--log-every-fs expects a float");
                         print_usage_and_exit();
                     });
             }
@@ -117,4 +145,43 @@ fn main() {
     for (species, count) in &hist {
         println!("  {}: {}", species, count);
     }
+
+    let dt = sim.dt;
+    let initial_temp = compute_liquid_temperature(&sim.bodies);
+    let total_steps = (equilibrate_fs / dt).max(0.0) as usize;
+    println!();
+    println!(
+        "Equilibrating for {} fs (dt={} fs, ~{} steps); log every {} fs",
+        equilibrate_fs, dt, total_steps, log_every_fs
+    );
+    println!(
+        "[t={:>7.0} fs] T_liquid = {:>7.2} K  (frame {})",
+        0.0, initial_temp, sim.frame
+    );
+
+    let mut sim_time_fs: f32 = 0.0;
+    let mut next_log_time: f32 = if log_every_fs > 0.0 {
+        log_every_fs
+    } else {
+        f32::INFINITY
+    };
+    while sim_time_fs + 0.5 * dt < equilibrate_fs {
+        sim.step();
+        sim_time_fs += dt;
+        if sim_time_fs >= next_log_time {
+            let t = compute_liquid_temperature(&sim.bodies);
+            println!(
+                "[t={:>7.0} fs] T_liquid = {:>7.2} K  (frame {})",
+                sim_time_fs, t, sim.frame
+            );
+            next_log_time += log_every_fs;
+        }
+    }
+
+    let final_temp = compute_liquid_temperature(&sim.bodies);
+    println!();
+    println!(
+        "Equilibration complete: T_liquid {:.2} K -> {:.2} K  ({} steps, {} fs simulated)",
+        initial_temp, final_temp, sim.frame, sim_time_fs
+    );
 }
