@@ -106,12 +106,15 @@ ParticleSim is a 2D simulator (particles confined to a plane, `z=0`) but uses tr
 
 Goal: demonstrate that small-signal EIS on a known-good configuration produces an interpretable, Randles-like Nyquist.
 
-### Sub-task 1.0 — Scenario preset infrastructure
+### Sub-task 1.0 — Scenario loading mechanism ✅ RESOLVED 2026-05-01
 
-There is no scenario-preset loader today. `src/scenario.rs` only loads `init_config.toml`. `measurement_configs/` is parsed as `ManualMeasurement` configs, not scenarios. Phase 1 introduces this:
+Resolution: rather than introduce a new `ScenarioPreset` enum, we reuse the existing `InitConfig` schema and load any TOML file in `measurement_configs/` via the `--scenario <path>` CLI flag added during Phase 0a (commit `4fc9e01` on `feature/eis-amplitude-study`). This is the spec's "alternative" option B, chosen because:
 
-- Decide the schema. Recommended: extend `init_config.toml`'s shape with an optional top-level `[scenario_preset]` block carrying a name + parameters, registered against a small `ScenarioPreset` enum in `src/scenario.rs`. Reuses existing TOML parsing.
-- Alternative: a separate loader keyed off `--preset <name>` CLI flag plus a directory of preset TOMLs. Heavier; only worth it if we expect many presets.
+- It's already implemented and exercised by `measurement_configs/bulk_electrolyte.toml`.
+- The `InitConfig` schema is expressive enough for the validation scenarios anticipated through Phase 5.
+- A typed `ScenarioPreset` enum can be added later if we discover scenarios that need parameterization beyond what TOML literals support (e.g., generating particle layouts procedurally).
+
+Files: `src/scenario.rs::SCENARIO_PATH`, `src/main.rs::parse_cli_args`, `src/init_config.rs`.
 
 ### Sub-task 1.1 — `EisValidationFlatSymmetric` preset
 
