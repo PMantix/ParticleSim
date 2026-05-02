@@ -55,6 +55,7 @@ def main():
     ap.add_argument("--r2-floor", type=float, default=0.85, help="discard points with R²(V) below this from 'best' selection")
     ap.add_argument("--vamp-min", type=float, default=0.030, help="V_amp lower bound (V) — below this, fits are noise-dominated")
     ap.add_argument("--vamp-max", type=float, default=0.150, help="V_amp upper bound (V) — above this, nonlinearity inflates |Z| and Re(Z)")
+    ap.add_argument("--phase-min", type=float, default=-100.0, help="Phase floor (deg) — below this is the saturation regime (V lags I by >90°), unphysical for passive cell")
     args = ap.parse_args()
 
     if args.logs:
@@ -87,11 +88,12 @@ def main():
         pts = by_freq[key]
         ideal = [p for p in pts
                  if p["fit_r2_v"] >= args.r2_floor
-                 and args.vamp_min <= p["fit_v_amp"] <= args.vamp_max]
+                 and args.vamp_min <= p["fit_v_amp"] <= args.vamp_max
+                 and p["phase_deg"] >= args.phase_min]
         if ideal:
             best.append(max(ideal, key=lambda p: p["fit_r2_v"]))
             continue
-        # Fallback: highest R² regardless of V_amp (flagged in stdout)
+        # Fallback: highest R² regardless of V_amp / phase (flagged in stdout)
         relaxed = [p for p in pts if p["fit_r2_v"] >= args.r2_floor]
         if relaxed:
             chosen = max(relaxed, key=lambda p: p["fit_r2_v"])
