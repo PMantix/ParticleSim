@@ -42,3 +42,4 @@
 {"id": "doe-024", "ts": "2026-05-02T16:58:14Z", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
 {"id": "doe-021", "ts": "2026-05-02T13:56:49-04:00", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-021_amp0.002_freq5e-6to5e-5.log", "wall_seconds": 7563}
 {"id": "doe-025", "ts": "2026-05-02T14:22:19-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-026", "ts": "2026-05-02T14:22:37-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
