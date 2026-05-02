@@ -71,3 +71,4 @@
 {"id": "doe-cos-007", "ts": "2026-05-02T19:42:39-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
 {"id": "doe-cos-008", "ts": "2026-05-02T19:42:56-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
 {"id": "doe-cos-003", "ts": "2026-05-02T19:45:48-04:00", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-cos-003_amp0.02_freq5e-4to5e-3_cos.log", "wall_seconds": 246}
+{"id": "doe-cos-006", "ts": "2026-05-02T19:46:37-04:00", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-cos-006_amp0.06_freq5e-4to5e-3_cos.log", "wall_seconds": 245}
