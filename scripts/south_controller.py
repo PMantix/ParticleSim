@@ -45,6 +45,7 @@ META_DIR = REPO / "doe_results" / "eis_doe_lf"
 
 POLL_S = 60
 RAYON_THREADS_DEFAULT = 4
+MAX_CONCURRENT = 4
 HOST = os.environ.get("COMPUTERNAME") or socket.gethostname()
 BRANCH = "feature/eis-amplitude-study"
 
@@ -177,6 +178,18 @@ def next_unclaimed(jobs: list[dict], statuses: list[dict]) -> dict | None:
     return None
 
 
+def count_running(jobs: list[dict], statuses: list[dict]) -> int:
+    n = 0
+    for j in jobs:
+        id_ = j.get("id")
+        if not id_ or id_ == "STOP":
+            continue
+        last = latest_status_for(statuses, id_)
+        if last and last.get("status") == "running":
+            n += 1
+    return n
+
+
 def claim_and_launch(j: dict) -> None:
     id_ = j["id"]
     binary = j.get("binary", "eis_quick_sweep")
@@ -291,7 +304,14 @@ def main() -> int:
             ack_stop_record()
             break
         else:
-            claim_and_launch(nxt)
+            running = count_running(jobs, statuses)
+            if running >= MAX_CONCURRENT:
+                log(
+                    f"idle (concurrency cap: {running}/{MAX_CONCURRENT} running, "
+                    f"holding {nxt.get('id')})"
+                )
+            else:
+                claim_and_launch(nxt)
 
         time.sleep(POLL_S)
 
