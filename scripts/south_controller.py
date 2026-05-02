@@ -288,6 +288,16 @@ def ack_stop_record() -> None:
 
 
 def main() -> int:
+    # Force UTF-8 stdout/stderr with errors='replace' so messages from North
+    # (which may contain non-cp1252 characters like arrows or Greek letters)
+    # don't crash the controller on Windows. cp1252 is the default Windows
+    # console codepage and can't encode e.g. U+2192.
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError):
+            pass
+
     log(
         f"controller starting (poll={POLL_S}s, max_concurrent={MAX_CONCURRENT}, "
         f"rayon_threads={RAYON_THREADS_DEFAULT}, host={HOST}, branch={BRANCH})"
