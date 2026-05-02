@@ -17,12 +17,34 @@ periodically; the user is the wakeup signal.
 |---|---|---|
 | `coordination/north_jobs.jsonl` | **North** appends | South reads |
 | `coordination/south_status.jsonl` | **South** appends | North reads |
+| `coordination/north_to_south.jsonl` | **North** appends | South reads |
+| `coordination/south_to_north.jsonl` | **South** appends | North reads |
 | `doe_results/eis_doe_lf/<job_id>.log` | **South** writes | North reads |
 | `coordination/PROTOCOL.md` (this file) | Either edits as needed | Both read |
 
 Each side **only writes its own file**. This avoids merge conflicts —
 both sides can `git pull --rebase` without the other's commits ever
 touching their own state file.
+
+## Messaging (free-form, between sides)
+
+The job queue / status log are append-only and rigid. For anything that
+doesn't fit — questions, findings, rationale, ad-hoc requests, "FYI"
+context — each side has its own outbox and reads the other's:
+
+- **South writes** `coordination/south_to_north.jsonl`; North reads it.
+- **North writes** `coordination/north_to_south.jsonl`; South reads it.
+
+Schema (one JSON object per line):
+
+```json
+{"ts": "2026-05-02T14:00:00Z", "from": "south", "subject": "short tag", "body": "free-form prose", "ref": "optional: doe-001, commit sha, file:line"}
+```
+
+Treat it like email — the writer doesn't expect a reply on the same
+line; the receiver acknowledges either by acting (changing the cap,
+queueing a job, etc.) or by posting to its own outbox. Read your inbox
+on every poll/pull.
 
 ## File formats
 

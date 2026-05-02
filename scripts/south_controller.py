@@ -40,6 +40,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 NORTH = REPO / "coordination" / "north_jobs.jsonl"
 SOUTH = REPO / "coordination" / "south_status.jsonl"
+INBOX = REPO / "coordination" / "north_to_south.jsonl"
 STOP_FLAG = REPO / "coordination" / "SOUTH_STOP"
 META_DIR = REPO / "doe_results" / "eis_doe_lf"
 
@@ -178,6 +179,21 @@ def next_unclaimed(jobs: list[dict], statuses: list[dict]) -> dict | None:
     return None
 
 
+def process_inbox(seen_count: int) -> int:
+    rows = read_jsonl(INBOX)
+    for r in rows[seen_count:]:
+        ts = r.get("ts", "?")
+        subj = r.get("subject", "(no subject)")
+        ref = r.get("ref")
+        suffix = f" (ref={ref})" if ref else ""
+        log(f"north->south msg [{ts}] {subj}{suffix}")
+        body = (r.get("body") or "").strip()
+        if body:
+            for ln in body.splitlines():
+                log(f"  | {ln}")
+    return len(rows)
+
+
 def count_running(jobs: list[dict], statuses: list[dict]) -> int:
     n = 0
     for j in jobs:
@@ -277,6 +293,8 @@ def main() -> int:
         f"rayon_threads={RAYON_THREADS_DEFAULT}, host={HOST}, branch={BRANCH})"
     )
 
+    inbox_seen = 0  # surface any pre-existing messages on first iteration
+
     def handle_sigint(signum, frame):
         log("SIGINT received, exiting")
         sys.exit(0)
@@ -291,6 +309,7 @@ def main() -> int:
             break
 
         git_pull_rebase()
+        inbox_seen = process_inbox(inbox_seen)
         jobs = read_jsonl(NORTH)
         statuses = read_jsonl(SOUTH)
         process_completions(jobs, statuses)
