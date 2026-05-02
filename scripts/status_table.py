@@ -109,7 +109,7 @@ def main() -> None:
         exp_str = "-" if exp is None else str(exp)
         print(f"| {id_} | {status} | `{args}` | {exp_str} | {fmt_wall(wall)} | {rc_str} |")
 
-    summary = " · ".join(f"{v} {k}" for k, v in sorted(counts.items()))
+    summary = " | ".join(f"{v} {k}" for k, v in sorted(counts.items()))
     print(f"\n_{summary}_")
 
 
