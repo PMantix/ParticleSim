@@ -77,15 +77,20 @@ def main():
         pts.sort(key=lambda p: p["frequency"])
 
     fig = make_subplots(
-        rows=2, cols=2,
-        specs=[[{"rowspan": 2}, {}], [None, {}]],
+        rows=3, cols=2,
+        specs=[
+            [{"rowspan": 3}, {}],
+            [None, {}],
+            [None, {}],
+        ],
         subplot_titles=(
             "Nyquist — one trace per amplitude",
             "Bode |Z|",
+            "Bode phase",
             "R²(V) vs frequency",
         ),
         column_widths=[0.45, 0.55],
-        horizontal_spacing=0.08, vertical_spacing=0.12,
+        horizontal_spacing=0.08, vertical_spacing=0.10,
     )
 
     amps_sorted = sorted(by_amp.keys())
@@ -132,6 +137,23 @@ def main():
             ),
         ), row=1, col=2)
 
+        # Bode phase
+        fig.add_trace(go.Scatter(
+            x=[p["frequency"] for p in pts],
+            y=[p["phase_deg"] for p in pts],
+            mode="lines+markers",
+            marker=dict(size=6, color=color),
+            line=dict(color=color, width=1.5),
+            name=label,
+            legendgroup=legendgroup, showlegend=False,
+            customdata=[(p["magnitude"], p["fit_r2_v"], p["fit_v_amp"], p["src"]) for p in pts],
+            hovertemplate=(
+                "f = %{x:.3e} /fs<br>phase = %{y:+.2f}°<br>"
+                "|Z| = %{customdata[0]:.3e}<br>R²(V) = %{customdata[1]:.4f}<br>"
+                "V_amp = %{customdata[2]:.3e}<br>src = %{customdata[3]}<extra>" + label + "</extra>"
+            ),
+        ), row=2, col=2)
+
         # R²
         fig.add_trace(go.Scatter(
             x=[p["frequency"] for p in pts],
@@ -147,24 +169,35 @@ def main():
                 "|Z| = %{customdata[0]:.3e}<br>V_amp = %{customdata[1]:.3e}<br>"
                 "src = %{customdata[2]}<extra>" + label + "</extra>"
             ),
-        ), row=2, col=2)
+        ), row=3, col=2)
 
-    fig.add_hline(y=0.95, line=dict(color="green", dash="dash", width=1), row=2, col=2)
-    fig.add_hline(y=0.85, line=dict(color="red", dash="dash", width=1), row=2, col=2)
+    # Reference lines
+    fig.add_hline(y=-90, line=dict(color="gray", dash="dot", width=0.7), annotation_text="−90° (capacitor)", annotation_position="bottom right", row=2, col=2)
+    fig.add_hline(y=-45, line=dict(color="gray", dash="dot", width=0.7), annotation_text="−45° (Warburg)", annotation_position="top right", row=2, col=2)
+    fig.add_hline(y=0.95, line=dict(color="green", dash="dash", width=1), row=3, col=2)
+    fig.add_hline(y=0.85, line=dict(color="red", dash="dash", width=1), row=3, col=2)
 
     fig.update_xaxes(title_text="Re(Z)", row=1, col=1, zeroline=True, zerolinecolor="rgba(0,0,0,0.3)")
     fig.update_yaxes(title_text="−Im(Z)", row=1, col=1, zeroline=True, zerolinecolor="rgba(0,0,0,0.3)")
     fig.update_xaxes(title_text="frequency (1/fs)", type="log", row=1, col=2)
     fig.update_yaxes(title_text="|Z|", type="log", row=1, col=2)
     fig.update_xaxes(title_text="frequency (1/fs)", type="log", row=2, col=2)
-    fig.update_yaxes(title_text="R²(V)", row=2, col=2, range=[0, 1.05])
+    fig.update_yaxes(title_text="phase (°)", row=2, col=2)
+    fig.update_xaxes(title_text="frequency (1/fs)", type="log", row=3, col=2)
+    fig.update_yaxes(title_text="R²(V)", row=3, col=2, range=[0, 1.05])
 
     fig.update_layout(
         title=f"EIS DOE master — {len(paths)} jobs · {len(all_points)} pts · {n_amp} amplitudes "
-              f"<br><sub>Where amplitude traces overlap on Nyquist = linear regime; where they fan out = amplitude-dependence (Phase 5 signal)</sub>",
+              f"<br><sub>Click an amplitude in the legend to toggle its Nyquist + Bode + R² traces together. Double-click to isolate.</sub>",
         height=900,
         hovermode="closest",
-        legend=dict(orientation="v", yanchor="top", y=1.0, xanchor="left", x=1.02),
+        legend=dict(
+            orientation="v",
+            yanchor="top", y=1.0,
+            xanchor="left", x=1.02,
+            groupclick="togglegroup",  # click any legend entry → toggles all traces in that legendgroup
+            title=dict(text="<b>amplitude</b><br><sup>(click to toggle)</sup>"),
+        ),
     )
 
     out = Path(args.out)
