@@ -50,6 +50,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("logs", nargs="*", help="log files; default: doe_results/eis_doe_lf/*.log")
     ap.add_argument("--out", default=str(REPO_ROOT / "images" / "eis_validation_runs" / "master_nyquist.png"))
+    ap.add_argument("--r2-filter", type=float, default=0.85, help="drop points with R²(V) below this from each amplitude trace")
     args = ap.parse_args()
 
     if args.logs:
@@ -65,22 +66,28 @@ def main():
         all_points.extend(parse_log(p))
     print(f"Parsed {len(all_points)} points from {len(paths)} log files.")
 
-    # Group by amplitude (round for floating-point key stability)
-    by_amp: Dict[float, List[Dict]] = {}
+    # Group by amplitude (round for floating-point key stability), then drop low-R² per trace
+    by_amp_raw: Dict[float, List[Dict]] = {}
     for p in all_points:
-        by_amp.setdefault(round(p["fit_i_amp"], 9), []).append(p)
-    for pts in by_amp.values():
-        pts.sort(key=lambda p: p["frequency"])
+        by_amp_raw.setdefault(round(p["fit_i_amp"], 9), []).append(p)
+    by_amp: Dict[float, List[Dict]] = {}
+    dropped_total = 0
+    for amp, pts in by_amp_raw.items():
+        kept = [p for p in pts if p["fit_r2_v"] >= args.r2_filter]
+        kept.sort(key=lambda p: p["frequency"])
+        if kept:
+            by_amp[amp] = kept
+        dropped_total += len(pts) - len(kept)
 
     # Print summary table
-    print(f"\n{len(by_amp)} distinct amplitudes:")
+    print(f"\n{len(by_amp)} amplitudes after R²(V) ≥ {args.r2_filter} filter (dropped {dropped_total}/{len(all_points)} raw points):")
     for amp in sorted(by_amp.keys()):
         pts = by_amp[amp]
+        raw_n = len(by_amp_raw[amp])
         fmin = min(p["frequency"] for p in pts)
         fmax = max(p["frequency"] for p in pts)
-        npts = len(pts)
         meanr2 = np.mean([p["fit_r2_v"] for p in pts])
-        print(f"  I = {amp:>9.2e}  ·  {npts:>3} points  ·  f ∈ [{fmin:.2e}, {fmax:.2e}]  ·  mean R²(V) = {meanr2:.3f}")
+        print(f"  I = {amp:>9.2e}  ·  {len(pts):>2}/{raw_n:>2} kept  ·  f ∈ [{fmin:.2e}, {fmax:.2e}]  ·  mean R²(V) = {meanr2:.3f}")
 
     fig = plt.figure(figsize=(15, 11))
     gs = fig.add_gridspec(3, 3, hspace=0.45, wspace=0.32)

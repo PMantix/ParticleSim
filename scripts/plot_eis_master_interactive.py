@@ -55,6 +55,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("logs", nargs="*", help="log files; default: doe_results/eis_doe_lf/*.log")
     ap.add_argument("--out", default=str(REPO_ROOT / "images" / "eis_validation_runs" / "master_nyquist.html"))
+    ap.add_argument("--r2-filter", type=float, default=0.85, help="drop points with R²(V) below this from each amplitude trace")
     args = ap.parse_args()
 
     if args.logs:
@@ -70,11 +71,19 @@ def main():
         all_points.extend(parse_log(p))
     print(f"Parsed {len(all_points)} points from {len(paths)} log files.")
 
-    by_amp: Dict[float, List[Dict]] = {}
+    by_amp_raw: Dict[float, List[Dict]] = {}
     for p in all_points:
-        by_amp.setdefault(round(p["fit_i_amp"], 9), []).append(p)
-    for pts in by_amp.values():
-        pts.sort(key=lambda p: p["frequency"])
+        by_amp_raw.setdefault(round(p["fit_i_amp"], 9), []).append(p)
+    by_amp: Dict[float, List[Dict]] = {}
+    dropped_total = 0
+    for amp, pts in by_amp_raw.items():
+        kept = [p for p in pts if p["fit_r2_v"] >= args.r2_filter]
+        kept.sort(key=lambda p: p["frequency"])
+        if kept:
+            by_amp[amp] = kept
+        dropped_total += len(pts) - len(kept)
+    print(f"R²(V) ≥ {args.r2_filter} filter: dropped {dropped_total}/{len(all_points)} raw points; "
+          f"{sum(len(v) for v in by_amp.values())} kept across {len(by_amp)} amplitudes")
 
     fig = make_subplots(
         rows=3, cols=2,
