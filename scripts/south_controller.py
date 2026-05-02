@@ -46,7 +46,7 @@ META_DIR = REPO / "doe_results" / "eis_doe_lf"
 
 POLL_S = 15
 RAYON_THREADS_DEFAULT = 4
-MAX_CONCURRENT = 8
+MAX_CONCURRENT = 12
 HOST = os.environ.get("COMPUTERNAME") or socket.gethostname()
 BRANCH = "feature/eis-amplitude-study"
 
