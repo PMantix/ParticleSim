@@ -55,3 +55,4 @@
 {"id": "doe-029", "ts": "2026-05-02T17:06:01-04:00", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-029_amp0.08_freq5e-5to2e-4_ppd6.log", "wall_seconds": 2042}
 {"id": "doe-030", "ts": "2026-05-02T17:06:19-04:00", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-030_amp0.10_freq5e-5to2e-4_ppd6.log", "wall_seconds": 2043}
 {"id": "doe-011", "ts": "2026-05-02T19:39:46-04:00", "status": "failed", "exit_code": 127, "log": "doe_results/eis_doe_lf/doe-011_amp0.0006_freq5e-7to5e-6.log", "wall_seconds": 36230, "error": "binary exited with code 127"}
+{"id": "doe-020", "ts": "2026-05-02T19:39:48-04:00", "status": "failed", "exit_code": 127, "log": "doe_results/eis_doe_lf/doe-020_amp6e-5_freq5e-7to5e-6.log", "wall_seconds": 34241, "error": "binary exited with code 127"}
