@@ -51,3 +51,4 @@
 {"id": "doe-026", "ts": "2026-05-02T16:40:56-04:00", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-026_amp0.0006_freq5e-6to5e-5_seedDEADBEEF.log", "wall_seconds": 8297}
 {"id": "doe-025", "ts": "2026-05-02T16:41:13-04:00", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-025_amp0.0003_freq5e-6to5e-5.log", "wall_seconds": 8330}
 {"id": "doe-027", "ts": "2026-05-02T17:04:25-04:00", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-027_amp0.02_freq5e-5to2e-4_ppd6.log", "wall_seconds": 1979}
+{"id": "doe-028", "ts": "2026-05-02T17:05:13-04:00", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-028_amp0.04_freq5e-5to2e-4_ppd6.log", "wall_seconds": 2015}
