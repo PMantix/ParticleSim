@@ -30,3 +30,6 @@ eis_timeseries/
 
 # Research screenshots (kept locally only)
 images/
+
+# Per-job workdirs created by scripts/run_job.sh
+runs/

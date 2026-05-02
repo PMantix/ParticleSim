@@ -144,6 +144,42 @@ file's commits only ever come from one side.
 South polls roughly **every 5 minutes** when idle (no jobs queued).
 While a job is running, no polling needed — finish it, then poll once.
 
+## Parallel jobs (South wrapper)
+
+`eis_quick_sweep` writes time-series CSVs to a hardcoded, CWD-relative
+path (`eis_timeseries/`). Two concurrent runs in the same CWD would
+overwrite each other's files. To run jobs in parallel, South uses
+`scripts/run_job.sh`, which gives each job an isolated workdir at
+`runs/<job-id>/` (gitignored).
+
+Wrapper usage (replaces the `cargo run` step in South's loop):
+
+```bash
+scripts/run_job.sh \
+  --id <job-id> \
+  --log <log-path> \
+  --binary eis_quick_sweep \
+  -- <binary args verbatim from north_jobs.jsonl>
+```
+
+The wrapper:
+- Resolves the prebuilt binary at `target/release/<binary>[.exe]` (run
+  `cargo build --release --bin <binary>` first).
+- Absolutizes `--scenario` against the repo root, inserting the default
+  `measurement_configs/eis_validation_flat_symmetric.toml` if absent.
+- `cd`s into `runs/<job-id>/` before exec, so `eis_timeseries/` lands
+  inside the workdir.
+- Tees a small `[run_job]` header (id, paths, start/end timestamps,
+  rc) into the log.
+
+With this in place, North can queue jobs that are safe to run
+concurrently. Suggested ceiling on the current Windows host (Ryzen 9
+7950X3D, 16C/32T, 128 GB, NVMe): **2–4 concurrent jobs**, possibly more
+with diminishing returns since the sim is multi-threaded internally.
+South decides serial vs. fan-out based on queue depth and the
+concurrency ceiling, and reports concurrency choices via the `note`
+field on the relevant `south_status.jsonl` rows.
+
 ## Pre-flight checks (one-time, both sides)
 
 - `git config user.email` returns something. If not, set it.
