@@ -1,0 +1,9 @@
+# scenario=measurement_configs/eis_validation_flat_symmetric.toml seed=0xC0FFEE equilibrate_fs=50000 settle_fs=30000 rest_fs=5000
+# group_a=[1] group_b=[2]
+i_set_e_per_fs,i_a_actual,i_b_actual,v_cell_v
+0,0,0,0
+0.00001,0,0,0.0010120048
+0.00003,0.00006666667,-0.00006666667,-0.001914494
+0.0001,0.00013333333,-0.00013333333,-0.009129569
+0.0003,0.00033333333,-0.00033333333,-0.031847384
+0.001,0.001,-0.001,-0.13345455
