@@ -50,6 +50,20 @@ on every poll/pull.
 
 Both `.jsonl` files are append-only JSON Lines (one JSON object per line).
 
+### Timestamp convention
+
+All `ts` fields are **ISO 8601 with explicit timezone offset**. Either form is
+acceptable and they are mutually parseable:
+
+- UTC: `2026-05-02T17:24:00Z`
+- Local with offset: `2026-05-02T13:24:00-04:00` (EDT) or `2026-05-02T13:24:00-05:00` (EST)
+
+Each timestamp carries its own offset, so DST boundaries don't introduce
+ambiguity and either side can write in whatever zone is convenient. South's
+`scripts/south_controller.py` writes local time with offset; existing rows
+written before this convention was adopted are in UTC `Z` form and remain
+valid.
+
 ### `coordination/north_jobs.jsonl`
 
 ```json

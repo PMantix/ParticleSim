@@ -51,12 +51,16 @@ HOST = os.environ.get("COMPUTERNAME") or socket.gethostname()
 BRANCH = "feature/eis-amplitude-study"
 
 
-def now_utc() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+def now_local() -> str:
+    """ISO 8601 with explicit local timezone offset (e.g. -04:00 in EDT,
+    -05:00 in EST). Each timestamp carries its own offset so DST boundaries
+    don't introduce ambiguity, and either side of the protocol can write in
+    UTC ('Z') or local ('±HH:MM') and they remain mutually parseable."""
+    return datetime.now().astimezone().isoformat(timespec="seconds")
 
 
 def log(msg: str) -> None:
-    print(f"[ctrl {now_utc()}] {msg}", flush=True)
+    print(f"[ctrl {now_local()}] {msg}", flush=True)
 
 
 def read_jsonl(path: Path) -> list[dict]:
@@ -149,7 +153,7 @@ def process_completions(jobs: list[dict], statuses: list[dict]) -> int:
         status = "done" if exit_code == 0 else "failed"
         row: dict = {
             "id": id_,
-            "ts": now_utc(),
+            "ts": now_local(),
             "status": status,
             "exit_code": exit_code,
             "log": log_path,
@@ -216,7 +220,7 @@ def claim_and_launch(j: dict) -> None:
     note = f"south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS={rayon}"
     row = {
         "id": id_,
-        "ts": now_utc(),
+        "ts": now_local(),
         "status": "running",
         "host": HOST,
         "note": note,
@@ -275,7 +279,7 @@ def stopping_via_flag() -> bool:
 def ack_stop_record() -> None:
     row = {
         "id": "STOP",
-        "ts": now_utc(),
+        "ts": now_local(),
         "status": "done",
         "host": HOST,
         "note": "south_controller.py acked STOP record, exiting",
