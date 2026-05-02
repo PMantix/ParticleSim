@@ -142,7 +142,71 @@ The append-only design means rebases never produce conflicts — each
 file's commits only ever come from one side.
 
 South polls roughly **every 5 minutes** when idle (no jobs queued).
-While a job is running, no polling needed — finish it, then poll once.
+While jobs are running, no polling needed — finish them, then poll once.
+
+## Fan-out (running multiple jobs in parallel)
+
+South's hardware (Ryzen 9 7950X3D, 16C/32T, 128 GB RAM) can run several
+cargo binaries concurrently. The validation scenario has ~3500 bodies;
+Rayon doesn't scale linearly past ~4 cores at that size, so the sweet
+spot is **~4 concurrent jobs × ~4 Rayon threads each** (≈ 16 cores
+utilized). Adjust based on observed CPU saturation.
+
+### Required setup for parallel jobs
+
+Each cargo process **must** be given a unique `EIS_TS_DIR` env var,
+otherwise their `eis_timeseries/eis_ts_*.csv` outputs collide and
+overwrite each other. The binary reads `EIS_TS_DIR` (added in commit
+adding the fan-out support) and falls back to `eis_timeseries/` if
+unset. Recommended pattern:
+
+```bash
+# in the wrapper, per parallel job:
+JOB_ID=doe-002
+export EIS_TS_DIR="eis_timeseries_${JOB_ID}"
+export RAYON_NUM_THREADS=4   # cap per-job parallelism
+cargo run --release --bin eis_quick_sweep -- <args> > <log_path> 2>&1
+```
+
+After the run, the per-job timeseries CSVs in
+`eis_timeseries_doe-002/` are job-specific. They can be committed
+along with the run log if North wants them, or deleted to save space.
+
+### Parallel claim semantics
+
+To avoid two parallel processes claiming the same job, claims must be
+serialized via a single point of commit. Recommended structure:
+
+1. **Single controller process** on South pulls the queue.
+2. Controller selects the next K un-claimed jobs (where K is the desired
+   fan-out, e.g. 4).
+3. Controller appends K `running` records to `south_status.jsonl` in a
+   single commit, pushes immediately.
+4. Controller spawns K cargo subprocesses with unique `EIS_TS_DIR`s.
+5. As each subprocess finishes, controller appends its `done`/`failed`
+   record to `south_status.jsonl` (single-writer, so file-append races
+   are not an issue) and `git add`s the corresponding log file.
+6. When all K finish (or after a debounce timer to batch commits),
+   controller commits + pushes.
+7. Controller pulls the queue and starts the next batch of K.
+
+Don't have multiple parallel jobs each call `git commit` — only the
+controller commits.
+
+### Recommended fan-out by job size
+
+For mixed-size queues, prefer running same-cost jobs together so the
+batch finishes around the same wall-time:
+
+| Job decade (f_min) | Wall (per job, ~80 steps/s) | Suggested concurrency |
+|---|---|---|
+| 5e-4 to 5e-3 | ~2 min | 8 (small jobs, low Rayon needs) |
+| 5e-5 to 5e-4 | ~12 min | 4 |
+| 5e-6 to 5e-5 | ~100 min | 4 |
+| 5e-7 to 5e-6 | ~16 hr | 2-4 (long jobs, high Rayon benefit) |
+
+These numbers are from Mac perf; expect Windows Ryzen to be similar or
+slightly faster per-step. Update with empirical data as it lands.
 
 ## Parallel jobs (South wrapper)
 

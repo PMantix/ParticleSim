@@ -860,9 +860,12 @@ impl EisState {
     /// perturbation, making them look one-sided.  Use v_ac / i_ac to see the
     /// symmetric AC oscillation directly.
     fn save_timeseries_csv(freq_idx: usize, freq: f32, shared: &EisSharedState) {
-        let dir = std::path::Path::new("eis_timeseries");
+        // EIS_TS_DIR env var lets parallel DOE runs target unique output dirs;
+        // unset → default `eis_timeseries/`.
+        let dir_str = std::env::var("EIS_TS_DIR").unwrap_or_else(|_| "eis_timeseries".to_string());
+        let dir = std::path::Path::new(&dir_str);
         if let Err(e) = std::fs::create_dir_all(dir) {
-            eprintln!("[EIS] Could not create eis_timeseries/: {}", e);
+            eprintln!("[EIS] Could not create {}: {}", dir.display(), e);
             return;
         }
         let filename = format!("eis_ts_{:03}_{:.3e}.csv", freq_idx + 1, freq);
