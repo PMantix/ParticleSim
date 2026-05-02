@@ -33,3 +33,6 @@ images/
 
 # Per-job workdirs created by scripts/run_job.sh
 runs/
+
+# Messaging server bearer token (shared with peer over git inbox; never commit)
+.doe_token
