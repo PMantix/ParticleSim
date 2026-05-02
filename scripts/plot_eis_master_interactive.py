@@ -112,42 +112,59 @@ def main():
         horizontal_spacing=0.08, vertical_spacing=0.12,
     )
 
-    # ── Nyquist (best, colored by log f) ──
-    if best:
+    # ── Nyquist — separate in-range (connected) from fallback (X markers) ──
+    in_range = [p for p in best if not p.get("_fallback")]
+    fallback = [p for p in best if p.get("_fallback")]
+    if in_range:
         fig.add_trace(go.Scatter(
-            x=[p["z_real"] for p in best],
-            y=[-p["z_imag"] for p in best],
+            x=[p["z_real"] for p in in_range],
+            y=[-p["z_imag"] for p in in_range],
             mode="lines+markers",
             marker=dict(
-                size=10,
-                color=[math.log10(p["frequency"]) for p in best],
+                size=11,
+                color=[math.log10(p["frequency"]) for p in in_range],
                 colorscale="Viridis",
                 colorbar=dict(title="log₁₀ f", x=0.42, len=0.95),
                 line=dict(color="black", width=1),
             ),
-            line=dict(color="rgba(0,0,0,0.4)", width=1, dash="dash"),
+            line=dict(color="rgba(0,0,0,0.5)", width=1, dash="dash"),
             customdata=[(p["frequency"], p["fit_r2_v"], p["fit_v_amp"],
-                         p["fit_i_amp"], p["src"]) for p in best],
+                         p["fit_i_amp"], p["src"]) for p in in_range],
             hovertemplate=(
                 "f = %{customdata[0]:.3e} /fs<br>"
-                "Re(Z) = %{x:.4e}<br>"
-                "−Im(Z) = %{y:.4e}<br>"
-                "|Z| = %{customdata[0]:.3e} (n/a, see hover for V_amp)<br>"
+                "Re(Z) = %{x:.4e}<br>−Im(Z) = %{y:.4e}<br>"
                 "R²(V) = %{customdata[1]:.4f}<br>"
                 "V_amp = %{customdata[2]:.3e}<br>"
                 "I_amp = %{customdata[3]:.3e}<br>"
-                "src = %{customdata[4]}<extra></extra>"
+                "src = %{customdata[4]}<extra>linear-regime</extra>"
             ),
-            showlegend=False,
-            name="best",
+            name="linear-regime",
         ), row=1, col=1)
-        for p in best:
-            fig.add_annotation(
-                x=p["z_real"], y=-p["z_imag"],
-                text=f"  {p['frequency']:.1e}",
-                showarrow=False, xanchor="left", yanchor="middle",
-                font=dict(size=9), row=1, col=1,
-            )
+    if fallback:
+        fig.add_trace(go.Scatter(
+            x=[p["z_real"] for p in fallback],
+            y=[-p["z_imag"] for p in fallback],
+            mode="markers",
+            marker=dict(size=8, symbol="x", color="rgba(120,120,120,0.55)"),
+            customdata=[(p["frequency"], p["fit_r2_v"], p["fit_v_amp"],
+                         p["fit_i_amp"], p["src"]) for p in fallback],
+            hovertemplate=(
+                "f = %{customdata[0]:.3e} /fs<br>"
+                "Re(Z) = %{x:.4e}<br>−Im(Z) = %{y:.4e}<br>"
+                "R²(V) = %{customdata[1]:.4f}<br>"
+                "V_amp = %{customdata[2]:.3e}<br>"
+                "I_amp = %{customdata[3]:.3e}<br>"
+                "src = %{customdata[4]}<extra>V_amp out of range</extra>"
+            ),
+            name="V_amp out of range",
+        ), row=1, col=1)
+    for p in in_range:
+        fig.add_annotation(
+            x=p["z_real"], y=-p["z_imag"],
+            text=f"  {p['frequency']:.1e}",
+            showarrow=False, xanchor="left", yanchor="middle",
+            font=dict(size=9), row=1, col=1,
+        )
 
     # ── Bode |Z| — one trace per amplitude + best overlay ──
     palette = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd",

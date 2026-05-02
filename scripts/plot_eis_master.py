@@ -116,26 +116,35 @@ def main():
     ax_phs = fig.add_subplot(gs[1, 1:])
     ax_r2 = fig.add_subplot(gs[2, :])
 
-    # Nyquist (best only) — color by log f
-    if best:
-        re_z = np.array([p["z_real"] for p in best])
-        im_z = np.array([-p["z_imag"] for p in best])
-        freqs = np.array([p["frequency"] for p in best])
-        sc = ax_nyq.scatter(re_z, im_z, c=np.log10(freqs), cmap="viridis", s=80, edgecolor="k", zorder=3)
-        ax_nyq.plot(re_z, im_z, "k--", lw=0.6, alpha=0.5, zorder=2)
-        for p in best:
-            ax_nyq.annotate(
-                f"  {p['frequency']:.2e}",
-                (p["z_real"], -p["z_imag"]),
-                fontsize=7, va="center", ha="left",
-            )
-        ax_nyq.axhline(0, color="k", lw=0.5)
-        ax_nyq.axvline(0, color="k", lw=0.5)
+    # Nyquist — separate in-range (solid, connected) from fallback (X, faded)
+    in_range = [p for p in best if not p.get("_fallback")]
+    fallback = [p for p in best if p.get("_fallback")]
+    if in_range:
+        re_z = np.array([p["z_real"] for p in in_range])
+        im_z = np.array([-p["z_imag"] for p in in_range])
+        freqs = np.array([p["frequency"] for p in in_range])
+        # Connect only the in-range points so the trace reflects clean physics
+        ax_nyq.plot(re_z, im_z, "k--", lw=1.0, alpha=0.7, zorder=2)
+        sc = ax_nyq.scatter(re_z, im_z, c=np.log10(freqs), cmap="viridis",
+                            s=90, edgecolor="k", zorder=4, label="linear-regime")
+        for p in in_range:
+            ax_nyq.annotate(f"  {p['frequency']:.2e}",
+                            (p["z_real"], -p["z_imag"]),
+                            fontsize=7, va="center", ha="left")
         plt.colorbar(sc, ax=ax_nyq, label="log₁₀ f (1/fs)")
+    if fallback:
+        re_z_fb = np.array([p["z_real"] for p in fallback])
+        im_z_fb = np.array([-p["z_imag"] for p in fallback])
+        ax_nyq.scatter(re_z_fb, im_z_fb, marker="x", s=50, c="gray",
+                       alpha=0.5, zorder=3, label="V_amp out of range")
+    ax_nyq.axhline(0, color="k", lw=0.5)
+    ax_nyq.axvline(0, color="k", lw=0.5)
     ax_nyq.set_xlabel("Re(Z)")
     ax_nyq.set_ylabel("−Im(Z)")
-    ax_nyq.set_title(f"Master Nyquist — {len(best)} best-R² points")
+    ax_nyq.set_title(f"Master Nyquist — {len(in_range)} linear-regime ★ + {len(fallback)} fallback ✕")
     ax_nyq.grid(alpha=0.3)
+    if fallback:
+        ax_nyq.legend(loc="best", fontsize=8)
 
     # Bode |Z| — all points scatter, best highlighted
     by_amp: Dict[float, List[Dict]] = {}
