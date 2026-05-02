@@ -45,7 +45,7 @@ META_DIR = REPO / "doe_results" / "eis_doe_lf"
 
 POLL_S = 60
 RAYON_THREADS_DEFAULT = 4
-MAX_CONCURRENT = 4
+MAX_CONCURRENT = 8
 HOST = os.environ.get("COMPUTERNAME") or socket.gethostname()
 BRANCH = "feature/eis-amplitude-study"
 
@@ -272,7 +272,10 @@ def ack_stop_record() -> None:
 
 
 def main() -> int:
-    log(f"controller starting (poll={POLL_S}s, host={HOST}, branch={BRANCH})")
+    log(
+        f"controller starting (poll={POLL_S}s, max_concurrent={MAX_CONCURRENT}, "
+        f"rayon_threads={RAYON_THREADS_DEFAULT}, host={HOST}, branch={BRANCH})"
+    )
 
     def handle_sigint(signum, frame):
         log("SIGINT received, exiting")
