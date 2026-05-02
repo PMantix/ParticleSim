@@ -336,13 +336,24 @@ impl EisState {
     }
 
     /// Get the sinusoidal perturbation current for the current time.
+    ///
+    /// Uses **cosine** rather than sine so the integrated charge over each
+    /// cycle is symmetric about zero. With a sine input
+    /// (I = A·sin(ωt)), ΔQ(t) = A·(1−cos(ωt))/ω is **always ≥ 0**: the
+    /// cell accumulates positive charge throughout every cycle and never
+    /// crosses back through equilibrium, biasing the steady state to a
+    /// permanently positively-charged configuration. With cosine
+    /// (I = A·cos(ωt)), ΔQ(t) = A·sin(ωt)/ω swings symmetrically between
+    /// −A/ω and +A/ω and the cell oscillates around true equilibrium.
+    /// The lock-in (re·cos + im·sin + dc fit) is waveform-agnostic and
+    /// extracts Z correctly either way.
     pub fn get_perturbation(&self, time: f32) -> f32 {
         if self.finished {
             return 0.0;
         }
         let freq = self.config.frequencies[self.current_freq_idx];
         let omega = 2.0 * std::f32::consts::PI * freq;
-        self.config.amplitude * (omega * (time - self.t_start)).sin()
+        self.config.amplitude * (omega * (time - self.t_start)).cos()
     }
 
     /// Record one simulation step's voltage and current data.
