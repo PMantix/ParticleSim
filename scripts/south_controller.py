@@ -43,7 +43,7 @@ SOUTH = REPO / "coordination" / "south_status.jsonl"
 STOP_FLAG = REPO / "coordination" / "SOUTH_STOP"
 META_DIR = REPO / "doe_results" / "eis_doe_lf"
 
-POLL_S = 300
+POLL_S = 60
 RAYON_THREADS_DEFAULT = 4
 HOST = os.environ.get("COMPUTERNAME") or socket.gethostname()
 BRANCH = "feature/eis-amplitude-study"
