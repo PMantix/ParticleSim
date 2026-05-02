@@ -101,10 +101,50 @@ def run_git(args: list[str], check: bool = False) -> subprocess.CompletedProcess
     return r
 
 
+def commit_pending_http_writes() -> None:
+    """The messaging server appends to north_jobs.jsonl /
+    north_to_south.jsonl on POST without committing. Those unstaged
+    changes block subsequent `git pull --rebase`, so the controller
+    commits them on each iteration before pulling."""
+    r = run_git(["status", "--porcelain", "--", "coordination/"], check=False)
+    if r.returncode != 0 or not r.stdout.strip():
+        return
+    pending: list[str] = []
+    for ln in r.stdout.splitlines():
+        if not ln or len(ln) < 4:
+            continue
+        code = ln[:2]
+        path = ln[3:].strip().strip('"')
+        # ' M' = modified tracked file. We only auto-commit appends to the
+        # two North-owned files; anything else is unexpected and we leave it.
+        if code.strip() == "M" and path in (
+            "coordination/north_jobs.jsonl",
+            "coordination/north_to_south.jsonl",
+        ):
+            pending.append(path)
+    if not pending:
+        return
+    log(f"auto-commit HTTP writes: {', '.join(pending)}")
+    for p in pending:
+        run_git(["add", "--", p], check=False)
+    r = run_git(
+        ["commit", "-m", f"[DOE] HTTP channel: append via messaging_server ({', '.join(pending)})"],
+        check=False,
+    )
+    if r.returncode != 0 and "nothing to commit" not in (r.stdout + r.stderr):
+        log(f"auto-commit failed: {r.stdout.strip()} {r.stderr.strip()}")
+
+
 def git_pull_rebase() -> None:
+    commit_pending_http_writes()
     r = run_git(["pull", "--rebase"], check=False)
     if r.returncode != 0:
-        log(f"pull --rebase failed: {r.stderr.strip()}")
+        msg = r.stderr.strip()
+        # Stale "unstaged changes" race during my own edits is expected and
+        # noisy. Ignore that one specific case; surface anything else.
+        if "You have unstaged changes" in msg:
+            return
+        log(f"pull --rebase failed: {msg}")
 
 
 def git_commit_push(msg: str, paths: list[str]) -> None:
