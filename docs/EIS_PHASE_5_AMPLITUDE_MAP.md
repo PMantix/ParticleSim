@@ -16,6 +16,36 @@ This is foundational input for the larger Phase 5 (conditioning + measurement) p
 
 The full Phase 5 conditioning+measurement state machine (loading saved states between amplitude variants, running conditioning waveforms, then probing) is **not** addressed here — it requires Phase 4 morphology metrics and RNG state serialization (Phase 5 prerequisite from the plan).
 
+## Important: this map does NOT yet replicate the experimental amplitude-impedance observation
+
+The experimental motivating observation (`docs/EIS_AMPLITUDE_STUDY_PLAN.md` Background) is:
+
+> Increasing AC excitation amplitude causes (a) reduced impedance at high frequency and (b) increased impedance at low frequency. Hypothesized mechanism: high-amplitude excitation drives interface evolution to a rough/mossy state. The increased active surface area lowers charge-transfer impedance (HF), while tortuous transport through the rough/mossy SEI region raises mass-transport impedance (LF).
+
+**Our current data does NOT show this.** |Z| is amplitude-invariant to within 1–4% across the 2.5× amplitude range tested — the cell's measured impedance does not depend on the probe amplitude (within the linear and quasi-linear regimes). This is not a contradiction with the experimental observation; it is a methodological gap:
+
+- **Experiment:** amplitude conditions the morphology (over many cycles, possibly many seconds), and then EIS is measured *on the conditioned cell* (typically at small amplitude). |Z|(post-conditioning) depends on A_conditioning because morphology evolved.
+- **This DOE:** each job starts from a fresh-equilibrate baseline and runs only ~8 cycles per frequency. The cell never carries morphological history between amplitudes. We measure how the lock-in's *probe-amplitude response* of a *fixed cell* depends on amplitude — which is fundamentally a different question.
+
+To replicate the experimental phenomenon we need:
+
+1. **Phase 4 (morphology metrics)** — implement `MorphologyMetrics` struct measuring `interface_arc_length`, `interface_roughness_rms`, `dead_li_fraction`, `accessible_surface_atoms`. Scaffold landed in `src/simulation/morphology.rs`.
+2. **Phase 5 prerequisite (RNG state serialization)** — required to deterministically load the same baseline state for each amplitude variant.
+3. **Phase 5 state machine (`EisAmplitudeStudy`)** — drives a conditioning waveform at A_cond for `conditioning_duration_fs`, then probes at a small fixed measurement amplitude, then resets state and repeats with a new A_cond.
+4. **Phase 4.3 (conditioning-duration calibration)** — pick `conditioning_duration_fs` from morphology saturation curve.
+
+Until these are built, we cannot observe the experimental amplitude→morphology→impedance chain. The current Phase 3 / Phase 5-amplitude-map characterization is necessary but not sufficient.
+
+### What within-job evidence of morphology evolution would look like
+
+Even in the absence of Phase 4/5, hints of morphology evolution would appear in our existing deep-dive captures as:
+
+- **Cycle-to-cycle drift in V_cell envelope** within a single sweep — observed at amp=0.40 (Lissajous shows 4 distinct loop traces) but driven by voltage clipping, not morphology.
+- **Net cumulative foil electron-count drift** — pure cycle-balanced AC integrates to zero per cycle; non-zero drift indicates asymmetric plating/stripping.
+- **Asymmetric forward vs reverse cycle shapes** — different Butler-Volmer kinetics for ox vs red would manifest as in-phase voltage offsets ~constant in V (which we *do* observe — the −2 mV in-phase noise floor signature).
+
+The −2 mV constant in-phase voltage we observed at all amplitudes is consistent with kinetic asymmetry between forward and reverse foil↔electrolyte reactions. This is a hint of incipient asymmetry — but not enough to drive morphological evolution in 8 cycles.
+
 ## Question being answered
 
 For our validation cell (flat symmetric Li-metal foils, EC/DMC + LiPF6 electrolyte), at each frequency in the accessible range:
