@@ -74,3 +74,4 @@
 {"id": "doe-cos-006", "ts": "2026-05-02T19:46:37-04:00", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-cos-006_amp0.06_freq5e-4to5e-3_cos.log", "wall_seconds": 245}
 {"id": "doe-cos-001", "ts": "2026-05-02T20:05:57-04:00", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-cos-001_amp0.02_freq5e-5to5e-4_cos.log", "wall_seconds": 1485}
 {"id": "doe-cos-004", "ts": "2026-05-02T20:07:01-04:00", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-cos-004_amp0.06_freq5e-5to5e-4_cos.log", "wall_seconds": 1501}
+{"id": "doe-cos-007", "ts": "2026-05-02T20:08:51-04:00", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-cos-007_amp0.04_freq5e-5to2e-4_cos.log", "wall_seconds": 1565}
