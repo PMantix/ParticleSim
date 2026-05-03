@@ -102,3 +102,4 @@
 {"id": "doe-cos-018", "ts": "2026-05-03T08:46:30-04:00", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-cos-018_amp0.04_freq5e-5to5e-4_ppd10_cos.log", "wall_seconds": 2802}
 {"id": "doe-cos-019", "ts": "2026-05-03T08:46:32-04:00", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-cos-019_amp0.05_freq5e-5to5e-4_ppd10_cos.log", "wall_seconds": 2792}
 {"id": "doe-cos-020", "ts": "2026-05-03T08:47:05-04:00", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-cos-020_amp0.06_freq5e-5to5e-4_ppd10_cos.log", "wall_seconds": 2803}
+{"id": "doe-cos-021", "ts": "2026-05-03T08:47:23-04:00", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-cos-021_amp0.07_freq5e-5to5e-4_ppd10_cos.log", "wall_seconds": 2809}
