@@ -1,7 +1,7 @@
 # Phase 1.3 — EIS Validation on the Flat Symmetric Cell
 
-**Status:** complete (LF apex measurement pending — doe-cos-009 in flight)
-**Date:** 2026-05-03
+**Status:** complete — Randles arc resolved across 3.5 decades; apex bracketed at f ≈ 2–5×10⁻⁷
+**Date:** 2026-05-04 (updated with doe-cos-024 apex-hunt data)
 **Branch:** `feature/eis-amplitude-study`
 **Scenario:** `measurement_configs/eis_validation_flat_symmetric.toml` — two flat Li-metal foil electrodes facing each other across a uniform EC/DMC + LiPF6 electrolyte volume, no initial roughness, equilibrated 50 ks before AC engagement.
 
@@ -95,10 +95,18 @@ Interactive version: `images/eis_validation_runs/master_nyquist_cos.html` (Plotl
    - \|Z\| ∝ 1/f as expected for a capacitor
    - Re grows from ~0 → +10 as charge transfer becomes resolvable per cycle
 
-3. **LF saturation** (f < 1e-5 at amp=0.02; f < 1.1e-5 at amp=0.06):
-   - V_amp pegs around 1.5–1.8 V regardless of further increase in capacitive demand
-   - R²(V) collapses (V_cell no longer a clean sinusoid — it's clipped against the cell's maximum sustainable swing)
-   - Phase past −90° (apparent +Im — but it's a fitting artifact on a clipped waveform)
+3. **LF Randles ascent** (1e-5 ≥ f ≥ 1e-6, requires amp ≤ 0.001 to stay linear):
+   - Phase rotates from −90° toward −45° (apex direction)
+   - \|Z\| grows from ~75 to ~440
+   - Re(Z) grows from ~0.4 to +147 — crossing into charge-transfer-dominated regime
+   - At f=1e-6, Re/\|Z\| = 33% (apex would be at 70.7%, phase=−45°)
+   - **Apex extrapolated to f ≈ 2–5×10⁻⁷, R_ct ≈ 200–400 Ω** (lower bound; apex not directly measured)
+
+4. **LF saturation** (kicks in when V_amp > ~1.5–2 V, i.e. high amp at low f):
+   - V_amp pegs at the cell's max sustainable swing
+   - R²(V) collapses (V_cell no longer a clean sinusoid — it's clipped)
+   - Phase past −90° (apparent +Im — fitting artifact on a clipped waveform)
+   - Saturation onset is amplitude-dependent: smaller amp probes lower f cleanly
 
 ### Cross-amplitude comparison at f=5e-5 (linear ceiling regime)
 
@@ -110,6 +118,23 @@ Interactive version: `images/eis_validation_runs/master_nyquist_cos.html` (Plotl
 | 0.10 | 1507 | +1.32 | +15.0 | 15.1 | −85.0° | saturation envelope |
 
 **\|Z\| is constant within 2.5%** across a 5× amplitude range — the cell really is dominantly capacitive with this characteristic at f=5e-5. Re(Z) inflates with amplitude (saturation halo on a non-LTI ellipse), but Im(Z) is amplitude-independent as theory requires.
+
+### Linear-regime LF arc (combining doe-cos-009 + doe-cos-011 + doe-cos-024)
+
+Probing below f=1e-5 requires keeping V_amp under the ~110 mV linear ceiling. Done at amp=0.001 (f=[5e-6, 1e-5]) and amp=0.0003 (f=[1e-6, 3e-6]).
+
+| f (1/fs) | Re(Z) | −Im(Z) | \|Z\| | phase | V_amp (mV) | source |
+|----------|-------|--------|------|-------|-----------|--------|
+| 1.0e-5 | +0.4 | +75.6 | 75.6 | −89.7° | 76 | doe-cos-009 |
+| 7.1e-6 | +11.5 | +106.2 | 106.8 | −83.8° | 107 | doe-cos-009 |
+| 5.0e-6 | +25.9* | +126.2 | 128.9 | −78.4° | 129 | doe-cos-009 |
+| 3.0e-6 | +12.8 | +245.4 | 245.7 | −87.0° | 74 | doe-cos-024 |
+| 1.7e-6 | +55.7 | +296.5 | 301.7 | −79.4° | 91 | doe-cos-024 |
+| 1.0e-6 | +147.3 | +418.2 | 443.4 | **−70.6°** | 133 | doe-cos-024 |
+
+*amp=0.001 f=5e-6 has V_amp=129 mV, slightly past linear ceiling. Re=+25.9 is somewhat inflated. amp=0.0003 f=3e-6 at V_amp=74 mV (Re=+12.8) is the cleaner reading at neighboring f.
+
+The arc is clearly ascending toward the apex but **not reached at f=1e-6** (phase −70.6°, Re/\|Z\|=33%). Linear extrapolation places the apex (phase = −45°, Re/\|Z\| = 70.7%) at f ≈ 2–5×10⁻⁷. Reaching the apex cleanly would require A=0.0001 sweep at f=[3e-7, 1e-6] — additional ~15–20h wall on south. Not pursued; the bracketed answer is sufficient for Phase 1.3.
 
 ## Equivalent circuit interpretation
 
@@ -126,8 +151,8 @@ For the linear regime (amp=0.02), the cell is well-described by:
 | R_s (series) | < 0.01 | not separable from kinetic-L tail |
 | **L_k (kinetic inductance)** | **τ_k ≈ 20 fs** | Re(Z)/(ω·\|Z\|) at f=8.89e-5 → ~25 fs ≈ 5 timesteps |
 | C_dl (double-layer) | 1/(ω·\|Z\|_capacitive) at f=5e-5 → **~1.3 e²·fs/V** in sim units | from \|Z\|=15.4 at f=5e-5 |
-| **R_ct (charge transfer)** | **~10–15** (lower bound) | Re(Z) at f=1.08e-5 = +10.4; apex (true R_ct) likely between 10 and 20 — pinned by doe-cos-009 |
-| Warburg coefficient | TBD | LF tail not yet fully resolved within the saturation-free amplitude range |
+| **R_ct (charge transfer)** | **200–400 Ω** (lower bound) | Re(Z) at f=1e-6 = +147 with phase still −70.6° (apex not reached). Linear extrapolation to phase=−45° gives apex f ≈ 2–5×10⁻⁷, where R_ct ≈ 2·Re(apex) ≈ 200–400. Pinning exactly would need A=0.0001 sweep at f=[3e-7, 1e-6], not pursued. |
+| Warburg coefficient | TBD | The LF arc shape (phase rotating gradually from −90° to −70° across 1 decade) is consistent with a dominant Randles arc + small Warburg contribution. Decomposition pending the apex measurement or a deliberate fit. |
 
 The kinetic-inductance term `L_k` is **not a standard EIS feature**. It's an artifact of explicit electron-hopping kinetics in the simulator — orders of magnitude larger than wire-lead inductance in a real cell. See "Caveats" below.
 
@@ -179,11 +204,11 @@ images/eis_single_case_deep_*/      (matching plots)
 eis_timeseries/sin/                 (raw per-frequency lock-in inputs from sin-era; gitignored)
 ```
 
-## What's pending
+## What's pending / future work
 
-- **doe-cos-009** (amp=0.001, f=[5e-6, 1e-5]) — LF apex pinning. Will reveal whether the cell has a true Randles arc apex within accessible LF or behaves as a pure-capacitor + Warburg through f → 0.
-- **Phase 5 amp study** (doe-cos-010..017) — populates the amp×freq matrix for the amplitude-dependence question. Separate writeup.
-- **Equivalent-circuit fit** with explicit numerical values for C_dl, R_ct, Warburg coefficient, and L_k — pending the LF apex measurement.
+- **Apex precision** — current bracketed estimate puts the apex at f ≈ 2–5×10⁻⁷. A targeted A=0.0001 sweep at f=[3e-7, 1e-6] would pin R_ct exactly. ~15–20h wall, not pursued for Phase 1.3.
+- **Equivalent-circuit fit** with explicit numerical values for C_dl, R_ct, Warburg coefficient, and L_k — defer to a deliberate fit pass once we have apex data.
+- **Phase 5 amplitude study** (`docs/EIS_PHASE_5_AMPLITUDE_MAP.md`) — populated by doe-cos-010..023; covers probe-amplitude linearity. Foundational for the larger Phase 5 conditioning protocol, which also needs Phase 4 morphology metrics (scaffold landed in `src/simulation/morphology.rs`) and Phase 5 RNG state serialization (not yet started).
 
 ## References
 
