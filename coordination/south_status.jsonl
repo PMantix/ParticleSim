@@ -111,3 +111,4 @@
 {"id": "doe-cos-024", "ts": "2026-05-03T14:19:14-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
 {"id": "doe-cos-024", "ts": "2026-05-04T02:40:24-04:00", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-cos-024_amp3e-4_freq1e-6to3e-6_cos.log", "wall_seconds": 44465}
 {"id": "doe-cos-025", "ts": "2026-05-04T19:28:55-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-cos-026", "ts": "2026-05-04T19:29:13-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
