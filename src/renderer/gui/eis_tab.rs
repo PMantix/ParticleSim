@@ -301,6 +301,10 @@ impl super::super::Renderer {
             if !shared.is_running {
                 ui.label("No EIS data yet. Configure and start a sweep.");
             }
+            // Show morphology even when no EIS data — the metrics are
+            // independent of EIS state.
+            ui.separator();
+            self.show_morphology_section(ui);
             return;
         }
 
@@ -392,8 +396,15 @@ impl super::super::Renderer {
             self.export_eis_csv(&shared.points);
         }
 
-        // ----- Phase 4.2: Morphology metrics live display + CSV log toggle ----
         ui.separator();
+        self.show_morphology_section(ui);
+    }
+
+    /// Phase 4.2: morphology metrics section — extracted so we can render it
+    /// from `show_eis_tab` regardless of whether an EIS sweep has produced
+    /// data points yet (the original placement was below an early-return that
+    /// hid it whenever no EIS data was loaded).
+    fn show_morphology_section(&mut self, ui: &mut egui::Ui) {
         egui::CollapsingHeader::new("Morphology metrics (Phase 4.2)")
             .default_open(false)
             .show(ui, |ui| {
