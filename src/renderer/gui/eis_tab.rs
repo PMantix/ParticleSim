@@ -391,6 +391,89 @@ impl super::super::Renderer {
         if ui.button("Export CSV").clicked() {
             self.export_eis_csv(&shared.points);
         }
+
+        // ----- Phase 4.2: Morphology metrics live display + CSV log toggle ----
+        ui.separator();
+        egui::CollapsingHeader::new("Morphology metrics (Phase 4.2)")
+            .default_open(false)
+            .show(ui, |ui| {
+                let snapshot = crate::renderer::state::MORPHOLOGY_LATEST.lock().clone();
+                ui.horizontal(|ui| {
+                    ui.label("Latest values:");
+                    if snapshot.is_none() {
+                        ui.label("(not yet computed — enable logging or run a sim step)");
+                    }
+                });
+                if let Some(m) = snapshot {
+                    egui::Grid::new("morphology_metrics_grid")
+                        .num_columns(2)
+                        .spacing([12.0, 4.0])
+                        .show(ui, |ui| {
+                            ui.label("arc_length / lateral");
+                            ui.label(format!("{:.4}", m.interface_arc_length_per_unit_lateral));
+                            ui.end_row();
+                            ui.label("roughness_rms (Å)");
+                            ui.label(format!("{:.3}", m.interface_roughness_rms_angstroms));
+                            ui.end_row();
+                            ui.label("dead_li_fraction");
+                            ui.label(format!("{:.4}", m.dead_li_fraction));
+                            ui.end_row();
+                            ui.label("accessible_surface_atoms");
+                            ui.label(format!("{}", m.accessible_surface_atoms));
+                            ui.end_row();
+                        });
+                }
+
+                ui.separator();
+                ui.label("CSV logging:");
+                ui.horizontal(|ui| {
+                    ui.label("path");
+                    ui.add(
+                        egui::TextEdit::singleline(&mut self.morphology_log_path)
+                            .desired_width(280.0),
+                    );
+                });
+                ui.horizontal(|ui| {
+                    ui.label("log every");
+                    ui.add(
+                        egui::DragValue::new(&mut self.morphology_log_every_frames)
+                            .clamp_range(1..=1_000_000)
+                            .speed(10.0),
+                    );
+                    ui.label("frames");
+                });
+                ui.horizontal(|ui| {
+                    let label = if self.morphology_log_enabled {
+                        "Stop logging"
+                    } else {
+                        "Start logging"
+                    };
+                    if ui.button(label).clicked() {
+                        if let Some(tx) = SIM_COMMAND_SENDER.lock().as_ref() {
+                            if self.morphology_log_enabled {
+                                let _ = tx.send(SimCommand::StopMorphologyLog);
+                                self.morphology_log_enabled = false;
+                            } else {
+                                let _ = tx.send(SimCommand::StartMorphologyLog {
+                                    path: std::path::PathBuf::from(self.morphology_log_path.clone()),
+                                    log_every_frames: self.morphology_log_every_frames,
+                                });
+                                self.morphology_log_enabled = true;
+                            }
+                        }
+                    }
+                    if self.morphology_log_enabled {
+                        ui.colored_label(egui::Color32::LIGHT_GREEN, "● recording");
+                    }
+                });
+                ui.label(
+                    egui::RichText::new(
+                        "CSV: frame,time_fs,arc_length_norm,roughness_rms,dead_li_frac,accessible_atoms",
+                    )
+                    .small()
+                    .color(egui::Color32::GRAY),
+                );
+            });
     }
 
     fn draw_nyquist_plot(

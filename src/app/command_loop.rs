@@ -707,6 +707,27 @@ pub fn handle_command(cmd: SimCommand, simulation: &mut Simulation) {
             println!("EIS sweep stopped");
             mark_dirty(simulation);
         }
+        SimCommand::StartMorphologyLog { path, log_every_frames } => {
+            match crate::simulation::morphology_log::MorphologyLogger::open(
+                path.clone(),
+                log_every_frames,
+            ) {
+                Ok(logger) => {
+                    println!(
+                        "morphology log opened: {} (every {} frames)",
+                        path.display(),
+                        log_every_frames
+                    );
+                    simulation.morphology_logger = Some(logger);
+                }
+                Err(e) => eprintln!("morphology log open failed: {e}"),
+            }
+        }
+        SimCommand::StopMorphologyLog => {
+            if simulation.morphology_logger.take().is_some() {
+                println!("morphology log closed");
+            }
+        }
     }
 
     if state_changed {

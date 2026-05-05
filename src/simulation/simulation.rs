@@ -73,6 +73,8 @@ pub struct Simulation {
     pub active_regions: Vec<ActiveMaterialRegion>,
     // EIS state machine (None when not running)
     pub eis_state: Option<super::eis::EisState>,
+    // Phase 4.2: per-run morphology metrics CSV writer (None when disabled).
+    pub morphology_logger: Option<super::morphology_log::MorphologyLogger>,
     // Scratch buffers reused each step (avoid per-frame allocation)
     scratch_foil_current_recipients: Vec<bool>,
 }
@@ -129,6 +131,7 @@ impl Simulation {
             foil_metrics_current_base: None,
             active_regions: Vec::new(),
             eis_state: None,
+            morphology_logger: None,
             scratch_foil_current_recipients: Vec::new(),
         };
         sim.initialize_history();
@@ -1298,6 +1301,13 @@ impl Simulation {
         // Also write foil metrics at the same cadence, after recorder borrow ends
         if wrote_measurements {
             self.write_foil_metrics_if_due(self.frame, simulation_time_fs);
+        }
+
+        // Phase 4.2: morphology metrics log + live snapshot.
+        if let Some(logger) = self.morphology_logger.as_mut() {
+            if let Some(metrics) = logger.write_if_due(self.frame, self.time, &self.bodies) {
+                *crate::renderer::state::MORPHOLOGY_LATEST.lock() = Some(metrics);
+            }
         }
 
         // Capture history with lightweight ring buffer approach

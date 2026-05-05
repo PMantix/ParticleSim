@@ -349,6 +349,10 @@ pub struct Renderer {
     pub eis_nyquist_bounds: Option<[f64; 4]>,   // [x_min, x_max, y_min, y_max]
     pub eis_nyquist_set_range: bool,             // "Set Range" mode active
     pub eis_nyquist_drag_start: Option<egui::Pos2>, // screen-space drag origin
+    // Phase 4.2: morphology metrics CSV log controls
+    pub morphology_log_enabled: bool,
+    pub morphology_log_path: String,
+    pub morphology_log_every_frames: usize,
 }
 
 impl quarkstrom::Renderer for Renderer {
@@ -654,6 +658,9 @@ impl quarkstrom::Renderer for Renderer {
             eis_nyquist_bounds: None,
             eis_nyquist_set_range: false,
             eis_nyquist_drag_start: None,
+            morphology_log_enabled: false,
+            morphology_log_path: "doe_results/morphology/morphology.csv".to_string(),
+            morphology_log_every_frames: 1000,
         }
     }
 
