@@ -36,6 +36,12 @@ use std::sync::mpsc::channel;
 use std::time::Instant;
 use ultraviolet::Vec2;
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum DcrMode {
+    Galvanostatic,
+    Potentiostatic,
+}
+
 fn template_body(species: Species) -> Body {
     let charge = match species {
         Species::LithiumIon => 1.0,
@@ -75,6 +81,7 @@ fn main() {
     let mut pre_hold_fs: f32 = 10_000.0;
     let mut out_dir_arg: Option<String> = None;
     let mut run_id_arg: Option<String> = None;
+    let mut mode: DcrMode = DcrMode::Galvanostatic;
 
     // --- Args -----------------------------------------------------------
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -124,6 +131,17 @@ fn main() {
             "--run-id" => {
                 i += 1;
                 run_id_arg = Some(args[i].clone());
+            }
+            "--mode" => {
+                i += 1;
+                mode = match args[i].as_str() {
+                    "galvanostatic" | "galvano" | "g" => DcrMode::Galvanostatic,
+                    "potentiostatic" | "potentio" | "p" => DcrMode::Potentiostatic,
+                    other => {
+                        eprintln!("--mode: expected galvanostatic|potentiostatic, got {other}");
+                        std::process::exit(2);
+                    }
+                };
             }
             other => {
                 eprintln!("Unknown arg: {}", other);
@@ -236,23 +254,28 @@ fn main() {
 
     let dt = sim.dt;
     println!(
-        "dt={} fs  group_a={:?}  group_b={:?}",
-        dt, group_a, group_b
+        "dt={} fs  group_a={:?}  group_b={:?}  mode={:?}",
+        dt, group_a, group_b, mode
     );
 
-    // --- Equilibrate + pre-hold ----------------------------------------
+    // Potentiostatic: enable overpotential controllers on group foils with
+    // neutral target (1.0). The pulse injects perturbations on top of this.
+    if mode == DcrMode::Potentiostatic {
+        for foil in sim.foils.iter_mut() {
+            if group_a.contains(&foil.id) || group_b.contains(&foil.id) {
+                foil.enable_overpotential_mode(1.0);
+            }
+        }
+    }
+
+    // --- Equilibrate (no logging — thermalization only) -----------------
     let n_eq = (equilibrate_fs / dt) as usize;
     println!("equilibrating {} fs ({} steps)", equilibrate_fs, n_eq);
     for _ in 0..n_eq {
         sim.step();
     }
-    let n_pre = (pre_hold_fs / dt) as usize;
-    println!("zero-current pre-hold {} fs ({} steps)", pre_hold_fs, n_pre);
-    for _ in 0..n_pre {
-        sim.step();
-    }
 
-    // --- Output paths --------------------------------------------------
+    // --- Output paths (open before pre-hold so we can log it) ----------
     let run_id = run_id_arg.unwrap_or_else(|| {
         format!(
             "amp{:.3e}_ton{:.0}fs_trest{:.0}fs_n{}",
@@ -269,6 +292,88 @@ fn main() {
     let mut series_f = fs::File::create(&series_path).expect("series.csv");
     let mut summary_f = fs::File::create(&summary_path).expect("summary.csv");
     writeln!(series_f, "t_fs,step,phase,i_applied,v_cell").unwrap();
+
+    // We need step counters declared before pre-hold logging.
+    let mut step_global = 0usize;
+    let mut sim_time_fs = 0.0_f32;
+
+    // Helper closures (defined before pre-hold so they can be used during it).
+    let read_v = |sim: &Simulation| -> f32 {
+        sim.compute_eis_voltage_by_potential(&group_a, &group_b, &probe_a, &probe_b)
+    };
+
+    let read_applied_current = |sim: &Simulation| -> f32 {
+        match mode {
+            DcrMode::Galvanostatic => {
+                if let Some(foil) = sim.foils.iter().find(|f| group_a.contains(&f.id)) {
+                    foil.dc_current
+                } else {
+                    0.0
+                }
+            }
+            DcrMode::Potentiostatic => {
+                let mut tot = 0.0_f32;
+                let mut n = 0;
+                for foil in &sim.foils {
+                    if group_a.contains(&foil.id) {
+                        if let Some(ctrl) = foil.overpotential_controller.as_ref() {
+                            tot += ctrl.last_output_current;
+                            n += 1;
+                        }
+                    }
+                }
+                if n > 0 { tot / n as f32 } else { 0.0 }
+            }
+        }
+    };
+
+    let apply_perturbation = |sim: &mut Simulation, amp_a: f32, amp_b: f32| {
+        for foil in sim.foils.iter_mut() {
+            let in_a = group_a.contains(&foil.id);
+            let in_b = group_b.contains(&foil.id);
+            if !in_a && !in_b {
+                continue;
+            }
+            match mode {
+                DcrMode::Galvanostatic => {
+                    foil.dc_current = if in_a { amp_a } else { amp_b };
+                }
+                DcrMode::Potentiostatic => {
+                    if let Some(ctrl) = foil.overpotential_controller.as_mut() {
+                        ctrl.target_ratio = 1.0 + if in_a { amp_a } else { amp_b };
+                    }
+                }
+            }
+        }
+    };
+
+    // --- Pre-hold (no perturbation, LOGGED so the rest period is visible) ---
+    let n_pre = (pre_hold_fs / dt) as usize;
+    println!("pre-hold {} fs ({} steps)", pre_hold_fs, n_pre);
+    // Log the pre-hold start sample.
+    let v_initial = read_v(&sim);
+    writeln!(
+        series_f,
+        "{:.3},{},pre_hold,{:.6e},{:.6e}",
+        sim_time_fs, step_global, 0.0, v_initial
+    )
+    .unwrap();
+    for s in 0..n_pre {
+        sim.step();
+        step_global += 1;
+        sim_time_fs += dt;
+        let last = s + 1 == n_pre;
+        if (s + 1) % log_stride == 0 || last {
+            let v = read_v(&sim);
+            let i = read_applied_current(&sim);
+            writeln!(
+                series_f,
+                "{:.3},{},pre_hold,{:.6e},{:.6e}",
+                sim_time_fs, step_global, i, v
+            )
+            .unwrap();
+        }
+    }
     writeln!(
         summary_f,
         "pulse_idx,v_pre,v_post_onset,v_pulse_end,v_relax_end,i_amp,r0_apparent"
@@ -283,23 +388,11 @@ fn main() {
         num_pulses, duration_on_fs, n_on, duration_rest_fs, n_rest
     );
 
-    let read_v = |sim: &Simulation| -> f32 {
-        sim.compute_eis_voltage_by_potential(&group_a, &group_b, &probe_a, &probe_b)
-    };
-
-    let set_currents = |sim: &mut Simulation, i_a: f32, i_b: f32| {
-        for foil in sim.foils.iter_mut() {
-            if group_a.contains(&foil.id) {
-                foil.dc_current = i_a;
-            } else if group_b.contains(&foil.id) {
-                foil.dc_current = i_b;
-            }
-        }
-    };
+    // (apply_perturbation and read_applied_current closures already defined
+    // above before pre-hold logging.)
 
     let t0 = Instant::now();
-    let mut step_global = 0usize;
-    let mut sim_time_fs = 0.0_f32;
+    // step_global and sim_time_fs already declared above for pre-hold logging.
 
     for pulse_idx in 0..num_pulses {
         // ---- V_pre (read at zero current, just before turn-on) ------
@@ -314,9 +407,11 @@ fn main() {
         }
 
         // ---- Pulse-on phase ---------------------------------------
-        let i_a = amplitude / n_a;
-        let i_b = -amplitude / n_b;
-        set_currents(&mut sim, i_a, i_b);
+        // Per-foil amplitude split: A gets +amp/n_a, B gets -amp/n_b.
+        // In potentiostatic mode the "amplitude" is a target_ratio offset.
+        let amp_a = amplitude / n_a;
+        let amp_b = -amplitude / n_b;
+        apply_perturbation(&mut sim, amp_a, amp_b);
 
         // First step: capture V_post_onset for R0 estimation. Always log
         // — phase-transition samples are too important to skip with a stride.
@@ -324,10 +419,11 @@ fn main() {
         step_global += 1;
         sim_time_fs += dt;
         let v_post_onset = read_v(&sim);
+        let i_post_onset = read_applied_current(&sim);
         writeln!(
             series_f,
             "{:.3},{},on,{:.6e},{:.6e}",
-            sim_time_fs, step_global, amplitude, v_post_onset
+            sim_time_fs, step_global, i_post_onset, v_post_onset
         )
         .unwrap();
 
@@ -338,10 +434,11 @@ fn main() {
             let last_on_step = s + 1 == n_on;
             if (s + 1) % log_stride == 0 || last_on_step {
                 let v = read_v(&sim);
+                let i = read_applied_current(&sim);
                 writeln!(
                     series_f,
                     "{:.3},{},on,{:.6e},{:.6e}",
-                    sim_time_fs, step_global, amplitude, v
+                    sim_time_fs, step_global, i, v
                 )
                 .unwrap();
             }
@@ -349,17 +446,19 @@ fn main() {
         let v_pulse_end = read_v(&sim);
 
         // ---- Rest phase -------------------------------------------
-        set_currents(&mut sim, 0.0, 0.0);
+        // Galvanostatic: zero current. Potentiostatic: target_ratio back to 1.0.
+        apply_perturbation(&mut sim, 0.0, 0.0);
         // First rest step: always log (phase-transition sample).
         if n_rest > 0 {
             sim.step();
             step_global += 1;
             sim_time_fs += dt;
             let v = read_v(&sim);
+            let i = read_applied_current(&sim);
             writeln!(
                 series_f,
                 "{:.3},{},rest,{:.6e},{:.6e}",
-                sim_time_fs, step_global, 0.0, v
+                sim_time_fs, step_global, i, v
             )
             .unwrap();
         }
@@ -370,10 +469,11 @@ fn main() {
             let last_rest_step = s + 1 == n_rest;
             if (s + 1) % log_stride == 0 || last_rest_step {
                 let v = read_v(&sim);
+                let i = read_applied_current(&sim);
                 writeln!(
                     series_f,
                     "{:.3},{},rest,{:.6e},{:.6e}",
-                    sim_time_fs, step_global, 0.0, v
+                    sim_time_fs, step_global, i, v
                 )
                 .unwrap();
             }
