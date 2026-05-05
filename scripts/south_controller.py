@@ -207,9 +207,22 @@ def process_completions(jobs: list[dict], statuses: list[dict]) -> int:
         except OSError as e:
             log(f"could not rename {meta_path.name}: {e}")
         log(f"completion {id_}: exit={exit_code} wall={wall}s")
+        # For binaries that produce sibling output files alongside the log
+        # (e.g. dcr_pulse_sweep: dense_series.csv, pulse_summary.csv,
+        # summary.txt), also stage the log's parent directory so all
+        # outputs get committed. eis_quick_sweep's siblings live in
+        # gitignored eis_timeseries/ so the parent stage is harmless there.
+        paths_to_stage = [
+            str(SOUTH.relative_to(REPO)).replace("\\", "/"),
+            log_path,
+        ]
+        if log_path:
+            log_parent = str(Path(log_path).parent).replace("\\", "/")
+            if log_parent and log_parent != "." and log_parent not in paths_to_stage:
+                paths_to_stage.append(log_parent)
         git_commit_push(
             f"[DOE] finish {id_} (exit={exit_code}, wall={wall}s)",
-            [str(SOUTH.relative_to(REPO)).replace("\\", "/"), log_path],
+            paths_to_stage,
         )
         handled += 1
     return handled
