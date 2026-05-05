@@ -125,3 +125,4 @@
 {"id": "dcr-pulse-005", "ts": "2026-05-05T08:41:20-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
 {"id": "dcr-pulse-005", "ts": "2026-05-05T08:41:37-04:00", "status": "failed", "exit_code": 3, "log": "doe_results/dcr_pulse_sweep/dcr-005_amp6e-2/run.log", "wall_seconds": 0, "error": "binary exited with code 3"}
 {"id": "dcr-pulse-006", "ts": "2026-05-05T08:41:39-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "dcr-pulse-006", "ts": "2026-05-05T08:41:57-04:00", "status": "failed", "exit_code": 3, "log": "doe_results/dcr_pulse_sweep/dcr-006_amp1e-1/run.log", "wall_seconds": 0, "error": "binary exited with code 3"}
