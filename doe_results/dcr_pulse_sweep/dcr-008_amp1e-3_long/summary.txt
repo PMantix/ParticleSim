@@ -1,0 +1,12 @@
+scenario=C:/Users/Yeyian PC/Desktop/ParticleSim-master/ParticleSim/measurement_configs/eis_validation_flat_symmetric.toml
+seed=0xC0FFEE
+amplitude=0.001
+duration_on_fs=5000
+duration_rest_fs=10000
+num_pulses=5
+log_stride=2
+equilibrate_fs=20000
+pre_hold_fs=5000
+dt_fs=5
+n_steps=15000
+wall_seconds=226.4
