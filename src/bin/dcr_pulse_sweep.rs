@@ -250,7 +250,73 @@ fn main() {
     };
     let probe_a: Vec<u64> = collect_foil_bodies(&group_a);
     let probe_b: Vec<u64> = collect_foil_bodies(&group_b);
-    println!("probe bodies: A={} B={}", probe_a.len(), probe_b.len());
+    println!("metal probe bodies: A={} B={}", probe_a.len(), probe_b.len());
+
+    // Bulk-electrolyte probes: pick electrolyte-species bodies in slabs near
+    // each foil's bulk-facing side. Slab is 10–50 Å past the foil's centroid
+    // x toward the cell center. Captures the ionic potential gradient that
+    // develops due to ion redistribution under polarization.
+    let foil_centroid_x = |foil_ids: &[u64]| -> f32 {
+        let mut sx = 0.0_f32;
+        let mut n = 0.0_f32;
+        for &fid in foil_ids {
+            if let Some(foil) = sim.foils.iter().find(|f| f.id == fid) {
+                for bid in &foil.body_ids {
+                    if let Some(b) = sim.bodies.iter().find(|b| b.id == *bid) {
+                        sx += b.pos.x;
+                        n += 1.0;
+                    }
+                }
+            }
+        }
+        if n > 0.0 { sx / n } else { 0.0 }
+    };
+    let foil_a_x = foil_centroid_x(&group_a);
+    let foil_b_x = foil_centroid_x(&group_b);
+    let bulk_slab = |foil_x: f32, toward_center_sign: f32| -> Vec<u64> {
+        // Slab spans foil_x + sign*10 to foil_x + sign*50 (10 to 50 Å into
+        // the bulk, on the cell-center side of the foil).
+        let x_min = foil_x + toward_center_sign * 10.0;
+        let x_max = foil_x + toward_center_sign * 50.0;
+        let (lo, hi) = if x_min < x_max { (x_min, x_max) } else { (x_max, x_min) };
+        sim.bodies
+            .iter()
+            .filter(|b| {
+                matches!(
+                    b.species,
+                    Species::LithiumIon
+                        | Species::ElectrolyteAnion
+                        | Species::EC
+                        | Species::DMC
+                        | Species::VC
+                        | Species::FEC
+                        | Species::EMC
+                ) && b.pos.x >= lo
+                    && b.pos.x <= hi
+            })
+            .map(|b| b.id)
+            .collect()
+    };
+    // For left foil (x < 0): "toward center" is +x, so sign = +1.
+    // For right foil (x > 0): "toward center" is -x, so sign = -1.
+    let probe_bulk_a: Vec<u64> = bulk_slab(foil_a_x, if foil_a_x < 0.0 { 1.0 } else { -1.0 });
+    let probe_bulk_b: Vec<u64> = bulk_slab(foil_b_x, if foil_b_x < 0.0 { 1.0 } else { -1.0 });
+    println!(
+        "bulk probe bodies: A={} (slab near foil_a_x={:.1}), B={} (slab near foil_b_x={:.1})",
+        probe_bulk_a.len(),
+        foil_a_x,
+        probe_bulk_b.len(),
+        foil_b_x
+    );
+
+    // Pre-build exclude sets for each probe group:
+    // - metal probes exclude their own foil's bodies (avoid self-interaction)
+    // - bulk probes exclude the probe IDs themselves (avoid divergent r=0)
+    use std::collections::HashSet;
+    let exclude_metal_a: HashSet<u64> = probe_a.iter().copied().collect();
+    let exclude_metal_b: HashSet<u64> = probe_b.iter().copied().collect();
+    let exclude_bulk_a: HashSet<u64> = probe_bulk_a.iter().copied().collect();
+    let exclude_bulk_b: HashSet<u64> = probe_bulk_b.iter().copied().collect();
 
     let dt = sim.dt;
     println!(
@@ -291,7 +357,11 @@ fn main() {
     let info_path = out_dir.join("summary.txt");
     let mut series_f = fs::File::create(&series_path).expect("series.csv");
     let mut summary_f = fs::File::create(&summary_path).expect("summary.csv");
-    writeln!(series_f, "t_fs,step,phase,i_applied,v_cell").unwrap();
+    writeln!(
+        series_f,
+        "t_fs,step,phase,i_applied,v_cell,v_metal_a,v_metal_b,v_bulk_a,v_bulk_b"
+    )
+    .unwrap();
 
     // We need step counters declared before pre-hold logging.
     let mut step_global = 0usize;
@@ -300,6 +370,17 @@ fn main() {
     // Helper closures (defined before pre-hold so they can be used during it).
     let read_v = |sim: &Simulation| -> f32 {
         sim.compute_eis_voltage_by_potential(&group_a, &group_b, &probe_a, &probe_b)
+    };
+
+    // Returns (V_metal_a, V_metal_b, V_bulk_a, V_bulk_b).
+    // Each potential is averaged over its probe positions, with appropriate
+    // self/foil exclusion.
+    let read_v_components = |sim: &Simulation| -> (f32, f32, f32, f32) {
+        let v_ma = sim.compute_potential_at_probes(&probe_a, &exclude_metal_a);
+        let v_mb = sim.compute_potential_at_probes(&probe_b, &exclude_metal_b);
+        let v_ba = sim.compute_potential_at_probes(&probe_bulk_a, &exclude_bulk_a);
+        let v_bb = sim.compute_potential_at_probes(&probe_bulk_b, &exclude_bulk_b);
+        (v_ma, v_mb, v_ba, v_bb)
     };
 
     let read_applied_current = |sim: &Simulation| -> f32 {
@@ -347,17 +428,44 @@ fn main() {
         }
     };
 
+    // Helper to write a single dense_series row with all 4 V components.
+    fn log_row(
+        f: &mut fs::File,
+        t_fs: f32,
+        step: usize,
+        phase: &str,
+        i: f32,
+        v_cell: f32,
+        v_metal_a: f32,
+        v_metal_b: f32,
+        v_bulk_a: f32,
+        v_bulk_b: f32,
+    ) {
+        let _ = writeln!(
+            f,
+            "{:.3},{},{},{:.6e},{:.6e},{:.6e},{:.6e},{:.6e},{:.6e}",
+            t_fs, step, phase, i, v_cell, v_metal_a, v_metal_b, v_bulk_a, v_bulk_b
+        );
+    }
+
     // --- Pre-hold (no perturbation, LOGGED so the rest period is visible) ---
     let n_pre = (pre_hold_fs / dt) as usize;
     println!("pre-hold {} fs ({} steps)", pre_hold_fs, n_pre);
     // Log the pre-hold start sample.
     let v_initial = read_v(&sim);
-    writeln!(
-        series_f,
-        "{:.3},{},pre_hold,{:.6e},{:.6e}",
-        sim_time_fs, step_global, 0.0, v_initial
-    )
-    .unwrap();
+    let (vma, vmb, vba, vbb) = read_v_components(&sim);
+    log_row(
+        &mut series_f,
+        sim_time_fs,
+        step_global,
+        "pre_hold",
+        0.0,
+        v_initial,
+        vma,
+        vmb,
+        vba,
+        vbb,
+    );
     for s in 0..n_pre {
         sim.step();
         step_global += 1;
@@ -365,13 +473,20 @@ fn main() {
         let last = s + 1 == n_pre;
         if (s + 1) % log_stride == 0 || last {
             let v = read_v(&sim);
+            let (vma, vmb, vba, vbb) = read_v_components(&sim);
             let i = read_applied_current(&sim);
-            writeln!(
-                series_f,
-                "{:.3},{},pre_hold,{:.6e},{:.6e}",
-                sim_time_fs, step_global, i, v
-            )
-            .unwrap();
+            log_row(
+                &mut series_f,
+                sim_time_fs,
+                step_global,
+                "pre_hold",
+                i,
+                v,
+                vma,
+                vmb,
+                vba,
+                vbb,
+            );
         }
     }
     writeln!(
@@ -397,13 +512,9 @@ fn main() {
     for pulse_idx in 0..num_pulses {
         // ---- V_pre (read at zero current, just before turn-on) ------
         let v_pre = read_v(&sim);
+        let (vma, vmb, vba, vbb) = read_v_components(&sim);
         if step_global % log_stride == 0 {
-            writeln!(
-                series_f,
-                "{:.3},{},pre,{:.6e},{:.6e}",
-                sim_time_fs, step_global, 0.0, v_pre
-            )
-            .unwrap();
+            log_row(&mut series_f, sim_time_fs, step_global, "pre", 0.0, v_pre, vma, vmb, vba, vbb);
         }
 
         // ---- Pulse-on phase ---------------------------------------
@@ -419,13 +530,12 @@ fn main() {
         step_global += 1;
         sim_time_fs += dt;
         let v_post_onset = read_v(&sim);
+        let (vma, vmb, vba, vbb) = read_v_components(&sim);
         let i_post_onset = read_applied_current(&sim);
-        writeln!(
-            series_f,
-            "{:.3},{},on,{:.6e},{:.6e}",
-            sim_time_fs, step_global, i_post_onset, v_post_onset
-        )
-        .unwrap();
+        log_row(
+            &mut series_f, sim_time_fs, step_global, "on", i_post_onset,
+            v_post_onset, vma, vmb, vba, vbb,
+        );
 
         for s in 1..n_on {
             sim.step();
@@ -434,13 +544,9 @@ fn main() {
             let last_on_step = s + 1 == n_on;
             if (s + 1) % log_stride == 0 || last_on_step {
                 let v = read_v(&sim);
+                let (vma, vmb, vba, vbb) = read_v_components(&sim);
                 let i = read_applied_current(&sim);
-                writeln!(
-                    series_f,
-                    "{:.3},{},on,{:.6e},{:.6e}",
-                    sim_time_fs, step_global, i, v
-                )
-                .unwrap();
+                log_row(&mut series_f, sim_time_fs, step_global, "on", i, v, vma, vmb, vba, vbb);
             }
         }
         let v_pulse_end = read_v(&sim);
@@ -454,13 +560,9 @@ fn main() {
             step_global += 1;
             sim_time_fs += dt;
             let v = read_v(&sim);
+            let (vma, vmb, vba, vbb) = read_v_components(&sim);
             let i = read_applied_current(&sim);
-            writeln!(
-                series_f,
-                "{:.3},{},rest,{:.6e},{:.6e}",
-                sim_time_fs, step_global, i, v
-            )
-            .unwrap();
+            log_row(&mut series_f, sim_time_fs, step_global, "rest", i, v, vma, vmb, vba, vbb);
         }
         for s in 1..n_rest {
             sim.step();
@@ -469,13 +571,9 @@ fn main() {
             let last_rest_step = s + 1 == n_rest;
             if (s + 1) % log_stride == 0 || last_rest_step {
                 let v = read_v(&sim);
+                let (vma, vmb, vba, vbb) = read_v_components(&sim);
                 let i = read_applied_current(&sim);
-                writeln!(
-                    series_f,
-                    "{:.3},{},rest,{:.6e},{:.6e}",
-                    sim_time_fs, step_global, i, v
-                )
-                .unwrap();
+                log_row(&mut series_f, sim_time_fs, step_global, "rest", i, v, vma, vmb, vba, vbb);
             }
         }
         let v_relax_end = read_v(&sim);
