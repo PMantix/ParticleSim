@@ -129,3 +129,4 @@
 {"id": "dcr-pulse-007", "ts": "2026-05-05T08:43:50-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
 {"id": "dcr-pulse-008", "ts": "2026-05-05T08:44:07-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
 {"id": "dcr-pulse-007", "ts": "2026-05-05T08:46:29-04:00", "status": "done", "exit_code": 0, "log": "doe_results/dcr_pulse_sweep/dcr-007_amp2e-1/run.log", "wall_seconds": 153}
+{"id": "dcr-pulse-008", "ts": "2026-05-05T08:48:49-04:00", "status": "done", "exit_code": 0, "log": "doe_results/dcr_pulse_sweep/dcr-008_amp1e-3_long/run.log", "wall_seconds": 271}

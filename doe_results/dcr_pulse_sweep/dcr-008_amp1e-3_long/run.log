@@ -1,0 +1,29 @@
+[run_job] id=dcr-pulse-008
+[run_job] binary=dcr_pulse_sweep
+[run_job] workdir=/c/Users/Yeyian PC/Desktop/ParticleSim-master/ParticleSim
+[run_job] exe=/c/Users/Yeyian PC/Desktop/ParticleSim-master/ParticleSim/target/release/dcr_pulse_sweep.exe
+[run_job] log=/c/Users/Yeyian PC/Desktop/ParticleSim-master/ParticleSim/doe_results/dcr_pulse_sweep/dcr-008_amp1e-3_long/run.log
+[run_job] args: --amplitude 0.001 --duration-on-fs 5000 --duration-rest-fs 10000 --num-pulses 5 --equilibrate-fs 20000 --pre-hold-fs 5000 --log-stride 2 --run-id dcr-008_amp1e-3_long --scenario /c/Users/Yeyian PC/Desktop/ParticleSim-master/ParticleSim/measurement_configs/eis_validation_flat_symmetric.toml
+[run_job] start=2026-05-05T12:44:10Z
+Successfully placed 86 random bodies
+Successfully placed 86 random bodies
+Successfully placed 598 random bodies
+Successfully placed 599 random bodies
+scenario=C:/Users/Yeyian PC/Desktop/ParticleSim-master/ParticleSim/measurement_configs/eis_validation_flat_symmetric.toml seed=0xC0FFEE
+bodies=3449 foils=2
+probe bodies: A=130 B=130
+dt=5 fs  group_a=[1]  group_b=[2]
+equilibrating 20000 fs (4000 steps)
+zero-current pre-hold 5000 fs (1000 steps)
+pulses=5 duration_on=5000 fs (1000 steps)  duration_rest=10000 fs (2000 steps)
+pulse 0: V_pre=-0.0044 V_post_onset=-0.0043 V_pulse_end=-0.0159 V_relax_end=-0.0145 R0=6.860e-2
+pulse 1: V_pre=-0.0145 V_post_onset=-0.0231 V_pulse_end=-0.0352 V_relax_end=-0.0273 R0=-8.666e0
+pulse 2: V_pre=-0.0273 V_post_onset=-0.0307 V_pulse_end=-0.0374 V_relax_end=-0.0382 R0=-3.327e0
+pulse 3: V_pre=-0.0382 V_post_onset=-0.0423 V_pulse_end=-0.0521 V_relax_end=-0.0584 R0=-4.111e0
+pulse 4: V_pre=-0.0584 V_post_onset=-0.0599 V_pulse_end=-0.0736 V_relax_end=-0.0662 R0=-1.457e0
+
+DCR pulse sweep finished: 5 pulses, 15000 steps, 226.4s wall, sim time 75000 fs
+wrote doe_results/dcr_pulse_sweep/dcr-008_amp1e-3_long\dense_series.csv
+wrote doe_results/dcr_pulse_sweep/dcr-008_amp1e-3_long\pulse_summary.csv
+wrote doe_results/dcr_pulse_sweep/dcr-008_amp1e-3_long\summary.txt
+[run_job] end=2026-05-05T12:48:41Z rc=0
