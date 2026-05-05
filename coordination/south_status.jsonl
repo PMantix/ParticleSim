@@ -114,3 +114,4 @@
 {"id": "doe-cos-026", "ts": "2026-05-04T19:29:13-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
 {"id": "doe-cos-027", "ts": "2026-05-04T19:29:30-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
 {"id": "doe-cos-025", "ts": "2026-05-05T02:45:28-04:00", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-cos-025_amp1.5e-4_freq2e-6to1e-5_cos.log", "wall_seconds": 26186}
+{"id": "dcr-pulse-001", "ts": "2026-05-05T08:40:02-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
