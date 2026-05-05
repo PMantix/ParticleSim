@@ -14,7 +14,7 @@ User reviews each metric section here and greenlights or requests adjustment bef
 |---|---|---|---|
 | roughness | `interface_roughness_rms_angstroms` | landed (pre-existing) | not re-validated here |
 | 1 | `interface_arc_length_per_unit_lateral` | implemented + validated (frontier-trace v1) | below |
-| 2 | `dead_li_fraction` | stub (`f32::NAN`) | pending |
+| 2 | `dead_li_fraction` | implemented + validated (union-find v1) | below |
 | 3 | `accessible_surface_atoms` | implemented + validated | below |
 
 ---
@@ -178,9 +178,88 @@ PASS. All 5 synthetic scenarios pass within tolerance at the default bin width. 
 
 ## Metric #2 — `dead_li_fraction`
 
-**Status:** stub (`f32::NAN`). Will be filled in once #1 is greenlit.
+**Source:** `src/simulation/morphology.rs:dead_li_fraction` + `classify_li_metal_dead`.
 
-Planned algorithm: connected-component analysis on a particle-proximity graph with cutoff `2.5 × Li_metal_radius`. Use existing `cell_list.rs:find_neighbors_within` rather than rebuilding spatial structure. Report fraction of LithiumMetal particles disconnected from the percolating cluster touching the foil.
+### Algorithm — union-find on a metal-proximity graph (v1)
+
+1. Collect all `LithiumMetal` and `FoilMetal` bodies into a metal-particle index list.
+2. Build a union-find disjoint-set structure over those particles. For every pair within `DEAD_LI_CUTOFF_FACTOR × LithiumMetal.radius()` (default `2.5 × 1.52 ≈ 3.80 Å`), call `union(i, j)`.
+3. Mark every component root that contains any `FoilMetal` particle as **alive** (foil-connected).
+4. For each `LithiumMetal`, the per-atom classification is `alive` (root marked) or `dead` (root not marked).
+5. `dead_li_fraction = N_dead / N_total_LiMetal`.
+
+Naive O(N²) edge construction. For 10³ metal particles that's 10⁶ pair checks — well under the per-frame cost of one collision pass. Switch to `cell_list.rs:find_neighbors_within` if it ever becomes hot.
+
+The 2.5× factor is ~25% past pure geometric contact (`2 r ≈ 3.04 Å`). A thin SEI gap < ~0.7 Å keeps the cluster connected, but a typical fully-detached gap of ≥ 2 Å does not. The factor is tunable.
+
+### Edge cases (defined by convention)
+
+- **No `LithiumMetal`** → `0.0`. No Li to be dead.
+- **`LithiumMetal` exists but no `FoilMetal` anywhere** → `1.0`. With no foil to anchor the percolating cluster, every Li is dead by definition. (This matches the `accessible_surface_atoms` convention for a `dead_li_island`-style scenario.)
+- **Empty bodies** → `0.0`.
+
+### Per-atom classifier
+
+`classify_li_metal_dead(&[Body]) -> Vec<Option<bool>>` returns a per-body label aligned to the input slice: `Some(true)` = dead Li, `Some(false)` = alive Li, `None` = non-Li-metal. Used by the demo binary to color particles in the visualization.
+
+### Unit tests
+
+`cargo test --features unit_tests --release morphology` — 20/20 pass (13 prior + 7 new for dead_li_fraction):
+
+| Test | Asserts |
+|---|---|
+| `dead_li_fraction_zero_for_no_li_metal` | only foils, no Li → 0.0 |
+| `dead_li_fraction_zero_for_empty` | no bodies → 0.0 |
+| `dead_li_fraction_zero_for_connected_li` | foil + adjacent Li column → 0.0 |
+| `dead_li_fraction_one_for_no_foil` | Li chain, no foil → 1.0 |
+| `dead_li_fraction_partial_with_isolated_cluster` | foil + 50 connected + 10 isolated → 10/60 |
+| `dead_li_fraction_classifies_per_atom` | per-atom labels match component membership |
+| `dead_li_fraction_isolated_single_atom` | foil + 50 connected + 1 isolated → 1/51 |
+
+### Synthetic-scenario validation
+
+`morphology_demo --metric dead_li_fraction` builds 5 scenarios spanning the convention edge cases plus a "partial stripping" scenario meant to mimic late-cycle plating where one foil's plated layer detaches.
+
+![dead_li_fraction](../images/morphology_validation/dead_li_fraction.png)
+
+| Scenario | Description | Expected | Computed | Judgment |
+|---|---|---:|---:|---|
+| `connected_li_at_foil` | foil + adjacent 50-atom Li column (distance 2 < 3.8 Å cutoff) | 0.0000 | 0.0000 | PASS |
+| `single_isolated_atom` | foil + 50 connected Li + 1 stranded atom | 0.0196 | 0.0196 | PASS |
+| `dead_10_atom_island` | foil + 50 connected Li + 10-atom dead island | 0.1667 | 0.1667 | PASS |
+| `no_foil_all_dead` | 10 Li atoms in a chain, no foil | 1.0000 | 1.0000 | PASS |
+| `partial_stripping_one_side` | one foil's plated layer detached + extra mid-cell stranded cluster | 0.4118 | 0.4118 | PASS |
+
+The `partial_stripping_one_side` panel is the most physically interesting: the right foil's column + plated Li is fully connected (green); the left foil exists but its plated layer is 5 Å away (above the 3.8 Å cutoff) so the entire left plated layer is classified dead; an additional 5-atom stranded cluster sits mid-cell, also dead. This is the exact morphology DCR Phase 5 expects to see develop after high-C-rate cycling.
+
+### Tunables
+
+| Constant | Default | Where | Notes |
+|---|---|---|---|
+| `DEAD_LI_CUTOFF_FACTOR` | 2.5 | `src/simulation/morphology.rs` | A pair of metal atoms is "connected" iff distance < `factor × LithiumMetal.radius()` ≈ 3.80 Å. Smaller → more permissive (looser clusters break apart); larger → more restrictive. The DOE for this would test sensitivity vs. real-sim plated geometries — deferred until DCR Phase 5 produces such snapshots. |
+
+### Judgment
+
+PASS. All 5 synthetic scenarios match expected fractions exactly (within numerical precision). The per-atom classifier produces correct labels. Edge-case conventions (no Li, no foil, empty) are explicit and documented. Naive O(N²) is fine for the validation cell; cell_list optimization is a follow-up.
+
+### Follow-ups (not blocking)
+
+- **`cell_list` integration.** Use `cell_list.rs:find_neighbors_within` to drop edge-construction from O(N²) to O(N) once the metric runs in the per-frame hot path.
+- **Cutoff DOE on real-sim snapshots.** Once DCR Phase 5 produces post-cycling plated states, sweep `DEAD_LI_CUTOFF_FACTOR ∈ {2.0, 2.5, 3.0, 4.0}` to characterize whether the dead-fraction trend is sensitive to the choice.
+- **CSV/GUI integration (Phase 4.2 of the amplitude plan).** Hook dead_li_fraction into the per-frame metrics CSV that the EIS run-loop emits.
+
+---
+
+## Phase 4 milestone
+
+With #2 landed, all four metrics in `MorphologyMetrics` are now implemented:
+
+- `interface_roughness_rms_angstroms` (pre-existing)
+- `interface_arc_length_per_unit_lateral` (#1)
+- `dead_li_fraction` (#2)
+- `accessible_surface_atoms` (#3)
+
+Phase 4 of `EIS_AMPLITUDE_STUDY_PLAN.md` and Phase 5 of `EIS_DCR_PULSE_PLAN.md` can now consume the metrics directly. Phase 4.2 (CSV/GUI integration) and the marching-squares v2 / cell_list optimization remain follow-up items.
 
 ## How to re-run this report
 
@@ -191,10 +270,12 @@ cargo test --features unit_tests --release morphology
 # synthetic-scenario eval + JSON for a single metric
 cargo run --release --bin morphology_demo -- --metric accessible_surface_atoms
 cargo run --release --bin morphology_demo -- --metric interface_arc_length [--y-bin 5.0]
+cargo run --release --bin morphology_demo -- --metric dead_li_fraction
 
 # render the multi-panel PNG (matches the JSON file name)
 python3 scripts/plot_morphology_demo.py --metric accessible_surface_atoms
 python3 scripts/plot_morphology_demo.py --metric interface_arc_length
+python3 scripts/plot_morphology_demo.py --metric dead_li_fraction
 
 # arc-length grid-resolution DOE (sweeps y_bin ∈ {1, 2, 3, 5, 7.5, 10, 15, 20} Å)
 python3 scripts/morphology_grid_doe.py

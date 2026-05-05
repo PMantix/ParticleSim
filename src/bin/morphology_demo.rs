@@ -16,8 +16,9 @@
 use particle_sim::body::{Body, Species};
 use particle_sim::io::load_state;
 use particle_sim::simulation::morphology::{
-    self, compute_morphology_metrics, extract_metal_frontiers, interface_arc_length_with_bin,
-    is_li_metal_accessible, ARC_LENGTH_DEFAULT_Y_BIN_ANGSTROMS,
+    self, classify_li_metal_dead, compute_morphology_metrics, extract_metal_frontiers,
+    interface_arc_length_with_bin, is_li_metal_accessible, ARC_LENGTH_DEFAULT_Y_BIN_ANGSTROMS,
+    DEAD_LI_CUTOFF_FACTOR,
 };
 use std::fs;
 use std::path::PathBuf;
@@ -623,6 +624,184 @@ fn run_arc_length(scenarios: &[Scenario], out_path: &PathBuf, y_bin: f32) {
     println!("\nwrote {}", out_path.display());
 }
 
+// ---------------------------------------------------------------------------
+// dead_li_fraction scenarios + run loop
+// ---------------------------------------------------------------------------
+
+fn build_scenarios_dead_li() -> Vec<Scenario> {
+    let mut scenarios = Vec::new();
+
+    // (1) Connected baseline: foil + adjacent Li column → 0.0.
+    let mut s1 = flat_foil_column(-150.0, 50, 2.0, -50.0, Species::FoilMetal);
+    s1.extend(flat_foil_column(-148.0, 50, 2.0, -50.0, Species::LithiumMetal));
+    scenarios.push(Scenario {
+        name: "connected_li_at_foil",
+        description: "FoilMetal at x=-150 + LithiumMetal column at x=-148. \
+                      All Li atoms connect to the foil through the chain → 0.0.",
+        expected: 0.0,
+        tolerance: 1e-3,
+        bodies: s1,
+    });
+
+    // (2) Single isolated Li atom 50 Å from the foil-attached cluster.
+    let mut s2 = flat_foil_column(-150.0, 50, 2.0, -50.0, Species::FoilMetal);
+    s2.extend(flat_foil_column(-148.0, 50, 2.0, -50.0, Species::LithiumMetal));
+    s2.push(make_body(Species::LithiumMetal, Vec2::new(50.0, 0.0)));
+    let expected2 = 1.0 / 51.0;
+    scenarios.push(Scenario {
+        name: "single_isolated_atom",
+        description: "Foil + connected Li (50) + 1 isolated Li atom 50 Å away. \
+                      Expected = 1/51 ≈ 0.0196.",
+        expected: expected2 as f64,
+        tolerance: 1e-3,
+        bodies: s2,
+    });
+
+    // (3) 10-atom dead island floating in mid-cell.
+    let mut s3 = flat_foil_column(-150.0, 50, 2.0, -50.0, Species::FoilMetal);
+    s3.extend(flat_foil_column(-148.0, 50, 2.0, -50.0, Species::LithiumMetal));
+    s3.extend(flat_foil_column(0.0, 10, 2.0, -10.0, Species::LithiumMetal));
+    let expected3 = 10.0 / 60.0;
+    scenarios.push(Scenario {
+        name: "dead_10_atom_island",
+        description: "Foil + connected Li (50) + 10-atom dead island in mid-cell. \
+                      Expected = 10/60 ≈ 0.167.",
+        expected: expected3 as f64,
+        tolerance: 1e-3,
+        bodies: s3,
+    });
+
+    // (4) No foil, Li chain only → 1.0.
+    let s4 = flat_foil_column(0.0, 10, 2.0, -10.0, Species::LithiumMetal);
+    scenarios.push(Scenario {
+        name: "no_foil_all_dead",
+        description: "10 Li atoms in a chain, no foil anywhere. All dead → 1.0.",
+        expected: 1.0,
+        tolerance: 1e-3,
+        bodies: s4,
+    });
+
+    // (5) Two-foil cell with one half disconnected: foil + Li attached to the
+    // *right* foil, but one stranded cluster in the middle plus the entire
+    // *left* foil's plated layer detached after a stripping event.
+    // Mimics late-cycle plating partial detachment.
+    let mut s5 = Vec::new();
+    // Right foil (intact attached Li).
+    s5.extend(flat_foil_column(150.0, 50, 2.0, -50.0, Species::FoilMetal));
+    s5.extend(flat_foil_column(148.0, 50, 2.0, -50.0, Species::LithiumMetal));
+    // Left foil (still intact) but its plated Li layer is detached.
+    s5.extend(flat_foil_column(-150.0, 50, 2.0, -50.0, Species::FoilMetal));
+    // Plated Li layer detached: at x=-145 (5 Å gap from foil at -150 → distance 5 > 3.8 cutoff).
+    s5.extend(flat_foil_column(-145.0, 30, 2.0, -30.0, Species::LithiumMetal));
+    // Mid-cell stranded cluster of 5 atoms.
+    s5.extend(flat_foil_column(0.0, 5, 2.0, -5.0, Species::LithiumMetal));
+    // Total Li = 50 (right, attached) + 30 (left, detached) + 5 (mid) = 85.
+    // Dead = 30 + 5 = 35. Fraction = 35/85 ≈ 0.412.
+    let expected5 = 35.0 / 85.0;
+    scenarios.push(Scenario {
+        name: "partial_stripping_one_side",
+        description: "Two foils. Right foil's Li is attached; left foil's Li layer (30 atoms) is \
+                      detached by a 5 Å gap; an additional 5-atom stranded cluster sits in mid-cell. \
+                      Expected = 35/85 ≈ 0.412.",
+        expected: expected5 as f64,
+        tolerance: 1e-3,
+        bodies: s5,
+    });
+
+    scenarios
+}
+
+fn run_dead_li(scenarios: &[Scenario], out_path: &PathBuf) {
+    let r_li = Species::LithiumMetal.radius();
+    let cutoff = DEAD_LI_CUTOFF_FACTOR * r_li;
+
+    let mut json = String::new();
+    json.push_str("{\n");
+    json.push_str("  \"metric\": \"dead_li_fraction\",\n");
+    json.push_str(&format!("  \"cutoff_factor\": {},\n", DEAD_LI_CUTOFF_FACTOR));
+    json.push_str(&format!("  \"cutoff_angstroms\": {:.3},\n", cutoff));
+    json.push_str("  \"scenarios\": [\n");
+
+    for (si, s) in scenarios.iter().enumerate() {
+        let m = compute_morphology_metrics(&s.bodies);
+        let computed = m.dead_li_fraction as f64;
+        let is_info = s.expected.is_nan() || s.tolerance.is_nan();
+        let pass = !is_info && (computed - s.expected).abs() <= s.tolerance;
+        let judgment = if is_info {
+            "INFO"
+        } else if pass {
+            "PASS"
+        } else {
+            "FAIL"
+        };
+
+        let class = classify_li_metal_dead(&s.bodies);
+        let n_li = class.iter().filter(|c| c.is_some()).count();
+        let n_dead = class.iter().filter(|c| **c == Some(true)).count();
+
+        let expected_str = if s.expected.is_nan() {
+            "n/a".to_string()
+        } else {
+            format!("{:>6.4}", s.expected)
+        };
+        println!(
+            "[{}/{}] {:30} expected={}  computed={:>6.4}  Li={:>4} Dead={:>4}  {}",
+            si + 1,
+            scenarios.len(),
+            s.name,
+            expected_str,
+            computed,
+            n_li,
+            n_dead,
+            judgment
+        );
+
+        let expected_json = if s.expected.is_nan() {
+            "null".to_string()
+        } else {
+            format!("{}", s.expected)
+        };
+        json.push_str("    {\n");
+        json.push_str(&format!("      \"name\": \"{}\",\n", s.name));
+        json.push_str(&format!(
+            "      \"description\": \"{}\",\n",
+            s.description.replace('"', "\\\"")
+        ));
+        json.push_str(&format!("      \"expected\": {},\n", expected_json));
+        json.push_str(&format!("      \"computed\": {},\n", computed));
+        json.push_str(&format!("      \"judgment\": \"{}\",\n", judgment));
+        json.push_str("      \"particles\": [\n");
+        for (i, b) in s.bodies.iter().enumerate() {
+            let sep = if i + 1 == s.bodies.len() { "" } else { "," };
+            // dead_status: "alive" / "dead" / "n/a"
+            let status = match class[i] {
+                Some(true) => "dead",
+                Some(false) => "alive",
+                None => "n/a",
+            };
+            json.push_str(&format!(
+                "        {{\"species\":\"{}\",\"x\":{:.4},\"y\":{:.4},\"r\":{:.4},\"dead_status\":\"{}\"}}{}\n",
+                species_str(b.species),
+                b.pos.x,
+                b.pos.y,
+                b.radius,
+                status,
+                sep
+            ));
+        }
+        json.push_str("      ]\n");
+        let comma = if si + 1 == scenarios.len() { "" } else { "," };
+        json.push_str(&format!("    }}{comma}\n"));
+    }
+    json.push_str("  ]\n}\n");
+
+    if let Some(parent) = out_path.parent() {
+        fs::create_dir_all(parent).expect("create output dir");
+    }
+    fs::write(out_path, json).expect("write json");
+    println!("\nwrote {}", out_path.display());
+}
+
 fn main() {
     let (metric, out_path, load_state_path, y_bin_override) = parse_args();
     match metric.as_str() {
@@ -642,8 +821,11 @@ fn main() {
             run_arc_length(&scenarios, &out_path, y_bin);
         }
         "dead_li_fraction" => {
-            eprintln!("metric 'dead_li_fraction' is not implemented yet.");
-            std::process::exit(2);
+            let mut scenarios = build_scenarios_dead_li();
+            if let Some(p) = load_state_path {
+                append_real_sim_scenario(&mut scenarios, &p);
+            }
+            run_dead_li(&scenarios, &out_path);
         }
         other => {
             eprintln!("unknown metric: {other}");

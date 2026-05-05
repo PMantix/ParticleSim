@@ -13,7 +13,8 @@
 //   - `interface_arc_length_per_unit_lateral` (#1) is implemented as a
 //     frontier-trace algorithm (single-valued y → x); does not yet
 //     handle overhangs/islands. See report for the limitation note.
-//   - `dead_li_fraction` (#2) remains a stub returning NaN.
+//   - `dead_li_fraction` (#2) is implemented via union-find on a
+//     metal-proximity graph; naive O(N²) edge construction.
 //   - There is no CSV / GUI integration yet (Phase 4.2). The metrics
 //     are pure functions on `&[Body]` so they can be wired into either
 //     when the time comes.
@@ -57,7 +58,7 @@ pub fn compute_morphology_metrics(bodies: &[Body]) -> MorphologyMetrics {
     MorphologyMetrics {
         interface_arc_length_per_unit_lateral: interface_arc_length(bodies),
         interface_roughness_rms_angstroms: roughness_rms_angstroms(bodies),
-        dead_li_fraction: stub_dead_li_fraction(bodies),
+        dead_li_fraction: dead_li_fraction(bodies),
         accessible_surface_atoms: accessible_surface_atoms(bodies),
     }
 }
@@ -308,14 +309,124 @@ fn roughness_rms_angstroms(bodies: &[Body]) -> f32 {
 }
 
 // ---------------------------------------------------------------------------
-// Stubs — to implement in Phase 4 follow-up
+// Implemented metric: dead_li_fraction
 // ---------------------------------------------------------------------------
 
-fn stub_dead_li_fraction(_bodies: &[Body]) -> f32 {
-    // TODO Phase 4: connected-component analysis on a particle-proximity
-    // graph with cutoff `2.5 × Li_metal_radius`. Use existing
-    // `cell_list.rs:find_neighbors_within` rather than rebuilding.
-    f32::NAN
+/// Cutoff factor for the metal proximity graph: a pair of metal atoms is
+/// considered connected iff their center distance is below
+/// `DEAD_LI_CUTOFF_FACTOR * Species::LithiumMetal.radius()`.
+///
+/// Default 2.5 — about 25% past pure geometric contact (2 r ≈ 3.04 Å), so a
+/// thin SEI gap on the order of < 0.7 Å keeps the cluster connected, but a
+/// 2 Å gap (typical for fully detached islands) does not.
+pub const DEAD_LI_CUTOFF_FACTOR: f32 = 2.5;
+
+/// Iterative union-find with path halving + union-by-rank.
+struct UnionFind {
+    parent: Vec<usize>,
+    rank: Vec<u8>,
+}
+
+impl UnionFind {
+    fn new(n: usize) -> Self {
+        Self { parent: (0..n).collect(), rank: vec![0; n] }
+    }
+
+    fn find(&mut self, mut i: usize) -> usize {
+        while self.parent[i] != i {
+            self.parent[i] = self.parent[self.parent[i]];
+            i = self.parent[i];
+        }
+        i
+    }
+
+    fn union(&mut self, a: usize, b: usize) {
+        let ra = self.find(a);
+        let rb = self.find(b);
+        if ra == rb {
+            return;
+        }
+        match self.rank[ra].cmp(&self.rank[rb]) {
+            std::cmp::Ordering::Less => self.parent[ra] = rb,
+            std::cmp::Ordering::Greater => self.parent[rb] = ra,
+            std::cmp::Ordering::Equal => {
+                self.parent[rb] = ra;
+                self.rank[ra] += 1;
+            }
+        }
+    }
+}
+
+/// Per-body classification: `Some(true)` if the body is a LithiumMetal that is
+/// disconnected from every FoilMetal-containing component (i.e. "dead Li").
+/// `Some(false)` if it is a LithiumMetal connected to a foil. `None` for
+/// non-LithiumMetal bodies.
+///
+/// Returned vector is parallel to `bodies` so callers can join with positions
+/// for visualization without re-running the connectivity analysis.
+pub fn classify_li_metal_dead(bodies: &[Body]) -> Vec<Option<bool>> {
+    let r_li = Species::LithiumMetal.radius();
+    let cutoff = DEAD_LI_CUTOFF_FACTOR * r_li;
+    let cutoff_sq = cutoff * cutoff;
+
+    // Indices of all metal particles (Li or Foil) in `bodies`.
+    let metal_idx: Vec<usize> = bodies
+        .iter()
+        .enumerate()
+        .filter(|(_, b)| matches!(b.species, Species::LithiumMetal | Species::FoilMetal))
+        .map(|(i, _)| i)
+        .collect();
+
+    let mut result = vec![None; bodies.len()];
+    if metal_idx.is_empty() {
+        return result;
+    }
+
+    let mut uf = UnionFind::new(metal_idx.len());
+    for i in 0..metal_idx.len() {
+        let bi = &bodies[metal_idx[i]];
+        for j in (i + 1)..metal_idx.len() {
+            let bj = &bodies[metal_idx[j]];
+            if (bi.pos - bj.pos).mag_sq() < cutoff_sq {
+                uf.union(i, j);
+            }
+        }
+    }
+
+    // Component roots that touch foil are "alive". Use a boolean mask sized to
+    // metal_idx.len() — any root index can be looked up directly.
+    let mut root_is_alive: Vec<bool> = vec![false; metal_idx.len()];
+    for (i, &body_i) in metal_idx.iter().enumerate() {
+        if bodies[body_i].species == Species::FoilMetal {
+            let r = uf.find(i);
+            root_is_alive[r] = true;
+        }
+    }
+
+    for (i, &body_i) in metal_idx.iter().enumerate() {
+        if bodies[body_i].species == Species::LithiumMetal {
+            let r = uf.find(i);
+            result[body_i] = Some(!root_is_alive[r]);
+        }
+    }
+    result
+}
+
+/// Fraction of LithiumMetal particles disconnected from any FoilMetal
+/// percolating cluster. 0.0 = all Li connected to a foil; 1.0 = no Li
+/// connected to any foil.
+///
+/// Edge cases:
+/// - No LithiumMetal in `bodies` → 0.0 (no Li to be dead).
+/// - LithiumMetal exists but no FoilMetal anywhere → 1.0 (everything dead).
+fn dead_li_fraction(bodies: &[Body]) -> f32 {
+    let classification = classify_li_metal_dead(bodies);
+    let li_flags: Vec<bool> = classification.into_iter().flatten().collect();
+    if li_flags.is_empty() {
+        return 0.0;
+    }
+    let n_dead = li_flags.iter().filter(|&&dead| dead).count();
+    n_dead as f32 / li_flags.len() as f32
 }
 
 /// Count LithiumMetal particles that have at least one *liquid electrolyte*
@@ -624,6 +735,118 @@ mod tests {
             perturbed < 1.5,
             "moderate perturbations should not push past 1.5 ({})",
             perturbed
+        );
+    }
+
+    // -------------------------------------------------------------------
+    // Tests for dead_li_fraction
+    // -------------------------------------------------------------------
+
+    #[test]
+    fn dead_li_fraction_zero_for_no_li_metal() {
+        // Only foils, no LithiumMetal — no Li to be dead.
+        let bodies = flat_foil_column(-150.0, 50, Species::FoilMetal);
+        let m = compute_morphology_metrics(&bodies);
+        assert_eq!(m.dead_li_fraction, 0.0);
+    }
+
+    #[test]
+    fn dead_li_fraction_zero_for_empty() {
+        let bodies: Vec<Body> = Vec::new();
+        let m = compute_morphology_metrics(&bodies);
+        assert_eq!(m.dead_li_fraction, 0.0);
+    }
+
+    #[test]
+    fn dead_li_fraction_zero_for_connected_li() {
+        // Foil at x=-150 + adjacent Li column at x=-148 (distance 2.0 < cutoff 3.8).
+        // All Li atoms connect to foil through the chain.
+        let mut bodies = flat_foil_column(-150.0, 50, Species::FoilMetal);
+        bodies.extend(flat_foil_column(-148.0, 50, Species::LithiumMetal));
+        let m = compute_morphology_metrics(&bodies);
+        assert_eq!(m.dead_li_fraction, 0.0);
+    }
+
+    #[test]
+    fn dead_li_fraction_one_for_no_foil() {
+        // Li chain only (10 atoms, step 2.0 within cutoff). No foil → 1.0 dead.
+        let bodies = flat_foil_column(0.0, 10, Species::LithiumMetal);
+        let m = compute_morphology_metrics(&bodies);
+        assert!(
+            (m.dead_li_fraction - 1.0).abs() < 1e-6,
+            "no foil → all Li dead, got {}",
+            m.dead_li_fraction
+        );
+    }
+
+    #[test]
+    fn dead_li_fraction_partial_with_isolated_cluster() {
+        // Foil + connected Li (50 atoms) + isolated 10-atom cluster.
+        // Expected: 10 / (50 + 10) ≈ 0.1667.
+        let mut bodies = flat_foil_column(-150.0, 50, Species::FoilMetal);
+        bodies.extend(flat_foil_column(-148.0, 50, Species::LithiumMetal));
+        // Isolated cluster at x=0, step 2.0 (within Li-Li cutoff 3.8 → cluster
+        // is internally connected). Far from any foil.
+        bodies.extend(flat_foil_column(0.0, 10, Species::LithiumMetal));
+        let m = compute_morphology_metrics(&bodies);
+        let expected = 10.0_f32 / 60.0_f32;
+        assert!(
+            (m.dead_li_fraction - expected).abs() < 1e-3,
+            "expected {}, got {}",
+            expected,
+            m.dead_li_fraction
+        );
+    }
+
+    #[test]
+    fn dead_li_fraction_classifies_per_atom() {
+        // Build the same partial scenario, then ask the per-atom classifier:
+        // connected Li atoms should be Some(false); isolated cluster atoms Some(true);
+        // foils Should be None.
+        let mut bodies = flat_foil_column(-150.0, 50, Species::FoilMetal);
+        bodies.extend(flat_foil_column(-148.0, 50, Species::LithiumMetal));
+        bodies.extend(flat_foil_column(0.0, 10, Species::LithiumMetal));
+
+        let class = classify_li_metal_dead(&bodies);
+        assert_eq!(class.len(), bodies.len());
+
+        // First 50 are foil → None.
+        for c in &class[0..50] {
+            assert_eq!(*c, None);
+        }
+        // Next 50 are connected Li → Some(false).
+        for c in &class[50..100] {
+            assert_eq!(*c, Some(false));
+        }
+        // Last 10 are isolated cluster → Some(true).
+        for c in &class[100..110] {
+            assert_eq!(*c, Some(true));
+        }
+    }
+
+    #[test]
+    fn dead_li_fraction_isolated_single_atom() {
+        // Foil + connected Li + one singleton Li 50 Å away.
+        let mut bodies = flat_foil_column(-150.0, 50, Species::FoilMetal);
+        bodies.extend(flat_foil_column(-148.0, 50, Species::LithiumMetal));
+        let mut iso = Body::new(
+            Vec2::new(50.0, 0.0),
+            Vec2::zero(),
+            Species::LithiumMetal.mass(),
+            Species::LithiumMetal.radius(),
+            0.0,
+            Species::LithiumMetal,
+        );
+        iso.id = 99_999;
+        bodies.push(iso);
+
+        let m = compute_morphology_metrics(&bodies);
+        let expected = 1.0_f32 / 51.0_f32;
+        assert!(
+            (m.dead_li_fraction - expected).abs() < 1e-3,
+            "expected {}, got {}",
+            expected,
+            m.dead_li_fraction
         );
     }
 
