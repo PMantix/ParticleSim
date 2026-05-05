@@ -60,15 +60,19 @@ LOG="$(absolutize "$LOG")"
 
 EXE="$REPO_ROOT/target/release/${BINARY}.exe"
 [[ -x "$EXE" ]] || EXE="$REPO_ROOT/target/release/${BINARY}"
+
+# Always try to build before invoking — cargo is a no-op when up-to-date,
+# so the only cost on a stale source is the actual rebuild. This catches
+# the case where the binary exists but its source has changed since the
+# last build (e.g. a new CLI flag landed).
+mkdir -p "$(dirname "${LOG}")"
+echo "run_job.sh: ensuring $BINARY is up-to-date (cargo build --release --bin $BINARY)..." >&2
+(cd "$REPO_ROOT" && cargo build --release --bin "$BINARY") >>"$LOG" 2>&1
+build_rc=$?
+[[ -x "$EXE" ]] || EXE="$REPO_ROOT/target/release/${BINARY}.exe"
 if [[ ! -x "$EXE" ]]; then
-  echo "run_job.sh: binary not found at target/release/${BINARY}[.exe]; attempting auto-build..." >&2
-  mkdir -p "$(dirname "${LOG}")"
-  (cd "$REPO_ROOT" && cargo build --release --bin "$BINARY") >>"$LOG" 2>&1
-  [[ -x "$EXE" ]] || EXE="$REPO_ROOT/target/release/${BINARY}.exe"
-  if [[ ! -x "$EXE" ]]; then
-    echo "run_job.sh: auto-build failed for $BINARY" >&2
-    exit 3
-  fi
+  echo "run_job.sh: build failed for $BINARY (rc=$build_rc)" >&2
+  exit 3
 fi
 
 SCENARIO_DEFAULT="$REPO_ROOT/measurement_configs/eis_validation_flat_symmetric.toml"
