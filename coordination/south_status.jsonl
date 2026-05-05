@@ -139,3 +139,4 @@
 {"id": "dcr-pulse-001-retry", "ts": "2026-05-05T08:56:01-04:00", "status": "done", "exit_code": 0, "log": "doe_results/dcr_pulse_sweep/dcr-001r_amp5e-3/run.log", "wall_seconds": 162}
 {"id": "dcr-pulse-002-retry", "ts": "2026-05-05T08:56:18-04:00", "status": "done", "exit_code": 0, "log": "doe_results/dcr_pulse_sweep/dcr-002r_amp1e-2/run.log", "wall_seconds": 163}
 {"id": "dcr-pulse-003-retry", "ts": "2026-05-05T08:56:51-04:00", "status": "done", "exit_code": 0, "log": "doe_results/dcr_pulse_sweep/dcr-003r_amp2e-2/run.log", "wall_seconds": 166}
+{"id": "dcr-pulse-004-retry", "ts": "2026-05-05T08:57:09-04:00", "status": "done", "exit_code": 0, "log": "doe_results/dcr_pulse_sweep/dcr-004r_amp4e-2/run.log", "wall_seconds": 166}
