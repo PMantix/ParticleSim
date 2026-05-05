@@ -304,6 +304,12 @@ pub enum SimCommand {
         log_every_frames: usize,
     },
     StopMorphologyLog,
+    /// Load an init_config TOML scenario (e.g. measurement_configs/*.toml)
+    /// and spawn its rectangles, foils, and random fills. Sets domain size
+    /// to match the config.
+    LoadInitConfigToml {
+        path: std::path::PathBuf,
+    },
 }
 
 pub static SIM_COMMAND_SENDER: Lazy<Mutex<Option<Sender<SimCommand>>>> =

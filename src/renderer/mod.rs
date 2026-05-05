@@ -353,6 +353,9 @@ pub struct Renderer {
     pub morphology_log_enabled: bool,
     pub morphology_log_path: String,
     pub morphology_log_every_frames: usize,
+    // Init-config TOML loader (scenario tab)
+    pub init_config_selected: Option<String>,
+    pub init_config_custom_path: String,
 }
 
 impl quarkstrom::Renderer for Renderer {
@@ -661,6 +664,8 @@ impl quarkstrom::Renderer for Renderer {
             morphology_log_enabled: false,
             morphology_log_path: "doe_results/morphology/morphology.csv".to_string(),
             morphology_log_every_frames: 1000,
+            init_config_selected: None,
+            init_config_custom_path: String::new(),
         }
     }
 

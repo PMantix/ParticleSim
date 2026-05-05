@@ -519,9 +519,7 @@ fn build_scenarios_arc_length() -> Vec<Scenario> {
 }
 
 /// Frontier polylines (per side) used for the arc_length JSON dump.
-#[derive(Clone)]
 struct ArcLengthSnapshot {
-    y_bin: f32,
     left: Vec<(f32, f32)>,  // (y, x)
     right: Vec<(f32, f32)>, // (y, x)
 }
@@ -529,7 +527,6 @@ struct ArcLengthSnapshot {
 fn snapshot_frontiers(bodies: &[Body], y_bin: f32) -> ArcLengthSnapshot {
     let (left, right) = extract_metal_frontiers(bodies, y_bin);
     ArcLengthSnapshot {
-        y_bin,
         left: left.iter().map(|p| (p.y, p.x)).collect(),
         right: right.iter().map(|p| (p.y, p.x)).collect(),
     }

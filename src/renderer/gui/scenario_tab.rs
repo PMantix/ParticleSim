@@ -5,6 +5,78 @@ use std::collections::HashSet;
 impl super::super::Renderer {
     pub fn show_scenario_tab(&mut self, ui: &mut egui::Ui) {
         ui.heading("🌐 Scenario & Domain");
+
+        // ----- Load init_config TOML preset (measurement_configs/*.toml) -----
+        ui.group(|ui| {
+            ui.label("Load init_config TOML");
+            ui.horizontal(|ui| {
+                ui.label("Preset:");
+                let preset_dir = std::path::Path::new("measurement_configs");
+                let mut presets: Vec<String> = match std::fs::read_dir(preset_dir) {
+                    Ok(rd) => rd
+                        .filter_map(|e| e.ok())
+                        .filter(|e| {
+                            e.path()
+                                .extension()
+                                .and_then(|s| s.to_str())
+                                .map(|s| s.eq_ignore_ascii_case("toml"))
+                                .unwrap_or(false)
+                        })
+                        .filter_map(|e| e.file_name().into_string().ok())
+                        .collect(),
+                    Err(_) => Vec::new(),
+                };
+                presets.sort();
+                let selected_label = self
+                    .init_config_selected
+                    .clone()
+                    .unwrap_or_else(|| "Select…".to_string());
+                egui::ComboBox::from_id_source("init_config_combo")
+                    .selected_text(selected_label)
+                    .show_ui(ui, |ui| {
+                        for name in &presets {
+                            ui.selectable_value(
+                                &mut self.init_config_selected,
+                                Some(name.clone()),
+                                name,
+                            );
+                        }
+                    });
+                if ui.button("Load").clicked() {
+                    if let Some(name) = &self.init_config_selected {
+                        let path = preset_dir.join(name);
+                        if let Some(tx) = SIM_COMMAND_SENDER.lock().as_ref() {
+                            let _ = tx.send(SimCommand::LoadInitConfigToml { path });
+                        }
+                    }
+                }
+            });
+            ui.horizontal(|ui| {
+                ui.label("Or path:");
+                ui.add(
+                    egui::TextEdit::singleline(&mut self.init_config_custom_path)
+                        .desired_width(360.0)
+                        .hint_text("path/to/scenario.toml"),
+                );
+                if ui.button("Load custom").clicked() {
+                    let p = std::path::PathBuf::from(self.init_config_custom_path.clone());
+                    if !self.init_config_custom_path.is_empty() {
+                        if let Some(tx) = SIM_COMMAND_SENDER.lock().as_ref() {
+                            let _ = tx.send(SimCommand::LoadInitConfigToml { path: p });
+                        }
+                    }
+                }
+            });
+            ui.label(
+                egui::RichText::new(
+                    "Spawns the scenario's metal rectangles, foils, and random fills. Adds to the \
+                     current scene — use the delete controls below to clear first if needed.",
+                )
+                .small()
+                .color(egui::Color32::GRAY),
+            );
+        });
+
         ui.group(|ui| {
             ui.label("️ Delete Particles");
             ui.horizontal(|ui| {

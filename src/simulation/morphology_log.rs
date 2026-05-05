@@ -13,12 +13,11 @@ use crate::body::Body;
 use crate::simulation::morphology::{compute_morphology_metrics, MorphologyMetrics};
 use std::fs::File;
 use std::io::{BufWriter, Write};
-use std::path::PathBuf;
+use std::path::Path;
 
 /// Per-run morphology CSV writer state.
 pub struct MorphologyLogger {
-    pub path: PathBuf,
-    pub log_every_frames: usize,
+    log_every_frames: usize,
     file: BufWriter<File>,
     /// Last `frame` value at which a row was written. Initialised to None so
     /// the first eligible frame is logged.
@@ -28,18 +27,17 @@ pub struct MorphologyLogger {
 impl MorphologyLogger {
     /// Open the log file at `path`, creating directories as needed and
     /// writing the CSV header.
-    pub fn open(path: PathBuf, log_every_frames: usize) -> std::io::Result<Self> {
+    pub fn open(path: &Path, log_every_frames: usize) -> std::io::Result<Self> {
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)?;
         }
-        let f = File::create(&path)?;
+        let f = File::create(path)?;
         let mut buf = BufWriter::new(f);
         writeln!(
             buf,
             "frame,time_fs,arc_length_norm,roughness_rms,dead_li_frac,accessible_atoms"
         )?;
         Ok(Self {
-            path,
             log_every_frames: log_every_frames.max(1),
             file: buf,
             last_logged_frame: None,
@@ -115,7 +113,7 @@ mod tests {
         let path = dir.join("morphology.csv");
         let _ = std::fs::remove_file(&path);
 
-        let mut logger = MorphologyLogger::open(path.clone(), 1000).unwrap();
+        let mut logger = MorphologyLogger::open(&path, 1000).unwrap();
         let bodies = flat_foil_column(-150.0, 50, Species::FoilMetal);
 
         let res = logger.write_if_due(0, 0.0, &bodies);
@@ -144,7 +142,7 @@ mod tests {
         let path = dir.join("morphology_baseline.csv");
         let _ = std::fs::remove_file(&path);
 
-        let mut logger = MorphologyLogger::open(path.clone(), 100).unwrap();
+        let mut logger = MorphologyLogger::open(&path, 100).unwrap();
 
         // Flat 2-foil baseline: same bodies as the morphology integration
         // tests use for arc_length_one_for_flat_foils.
