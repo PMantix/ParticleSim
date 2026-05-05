@@ -143,3 +143,4 @@
 {"id": "dcr-pulse-005-retry", "ts": "2026-05-05T08:57:26-04:00", "status": "done", "exit_code": 0, "log": "doe_results/dcr_pulse_sweep/dcr-005r_amp6e-2/run.log", "wall_seconds": 165}
 {"id": "dcr-pulse-006-retry", "ts": "2026-05-05T08:57:43-04:00", "status": "done", "exit_code": 0, "log": "doe_results/dcr_pulse_sweep/dcr-006r_amp1e-1/run.log", "wall_seconds": 166}
 {"id": "doe-cos-026", "ts": "2026-05-05T09:18:39-04:00", "status": "failed", "exit_code": 2, "log": "doe_results/eis_doe_lf/doe-cos-026_amp1.5e-4_freq1e-6to3e-6_cos.log", "wall_seconds": 49758, "error": "binary exited with code 2"}
+{"id": "dcr-galvano-extreme-1", "ts": "2026-05-05T14:13:51-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
