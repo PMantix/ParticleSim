@@ -59,10 +59,14 @@ pub fn compute_morphology_metrics(bodies: &[Body]) -> MorphologyMetrics {
     }
 }
 
+/// Cutoff multiplier for the accessibility predicate. Centers within
+/// `(r_self + r_other) * ACCESSIBLE_CONTACT_FACTOR` are "in contact".
+pub const ACCESSIBLE_CONTACT_FACTOR: f32 = 1.3;
+
 /// True if `s` is a *liquid* electrolyte species (ions or solvent molecules).
 /// Excludes solid electrolytes (LLZO/LLZT/S40B) and SEI — those represent
 /// passivation, not the bulk electrolyte the metal is "exposed" to.
-fn is_liquid_electrolyte(s: Species) -> bool {
+pub fn is_liquid_electrolyte(s: Species) -> bool {
     matches!(
         s,
         Species::LithiumIon
@@ -73,6 +77,22 @@ fn is_liquid_electrolyte(s: Species) -> bool {
             | Species::FEC
             | Species::EMC
     )
+}
+
+/// True iff `li` is a LithiumMetal body that has at least one liquid-electrolyte
+/// neighbor within `(r_self + r_other) * ACCESSIBLE_CONTACT_FACTOR`. Returns
+/// false for non-LithiumMetal species. Naive O(N) over `bodies`; intended for
+/// per-particle visualization, not hot-path use.
+pub fn is_li_metal_accessible(li: &Body, bodies: &[Body]) -> bool {
+    if li.species != Species::LithiumMetal {
+        return false;
+    }
+    bodies.iter().any(|e| {
+        is_liquid_electrolyte(e.species) && {
+            let cutoff = (li.radius + e.radius) * ACCESSIBLE_CONTACT_FACTOR;
+            (li.pos - e.pos).mag_sq() < cutoff * cutoff
+        }
+    })
 }
 
 // ---------------------------------------------------------------------------
@@ -171,12 +191,8 @@ fn stub_dead_li_fraction(_bodies: &[Body]) -> f32 {
 }
 
 /// Count LithiumMetal particles that have at least one *liquid electrolyte*
-/// neighbor (ion or solvent molecule) within `(r_self + r_other) * CONTACT_FACTOR`.
-///
-/// `CONTACT_FACTOR = 1.3` — i.e. neighbor centers within 30% past pure
-/// geometric contact. Wide enough to catch first-shell solvation/passivation
-/// neighbors, narrow enough that an atom several Å inside the bulk metal
-/// won't be falsely flagged.
+/// neighbor (ion or solvent molecule) within
+/// `(r_self + r_other) * ACCESSIBLE_CONTACT_FACTOR`.
 ///
 /// Solid-electrolyte and SEI species don't count: they represent passivation,
 /// not the "exposed-to-electrolyte" surface this metric tries to measure.
@@ -185,27 +201,10 @@ fn stub_dead_li_fraction(_bodies: &[Body]) -> f32 {
 /// ~10⁴ electrolyte) that's ~10⁷ comparisons — well under the per-frame cost
 /// of one collision pass. If it ever becomes hot, switch to `cell_list`.
 fn accessible_surface_atoms(bodies: &[Body]) -> u32 {
-    const CONTACT_FACTOR: f32 = 1.3;
-
-    let electrolyte: Vec<&Body> = bodies
+    bodies
         .iter()
-        .filter(|b| is_liquid_electrolyte(b.species))
-        .collect();
-    if electrolyte.is_empty() {
-        return 0;
-    }
-
-    let mut count: u32 = 0;
-    for li in bodies.iter().filter(|b| b.species == Species::LithiumMetal) {
-        for e in &electrolyte {
-            let cutoff = (li.radius + e.radius) * CONTACT_FACTOR;
-            if (li.pos - e.pos).mag_sq() < cutoff * cutoff {
-                count += 1;
-                break;
-            }
-        }
-    }
-    count
+        .filter(|b| b.species == Species::LithiumMetal && is_li_metal_accessible(b, bodies))
+        .count() as u32
 }
 
 #[cfg(all(test, feature = "unit_tests"))]
@@ -242,6 +241,152 @@ mod tests {
             m.interface_roughness_rms_angstroms < 0.5,
             "perfectly flat foil should give roughness < 0.5 Å, got {}",
             m.interface_roughness_rms_angstroms
+        );
+    }
+
+    /// Helper: build a single column of arbitrary species at fixed x with offset y.
+    fn column(x: f32, n: usize, y0: f32, dy: f32, species: Species) -> Vec<Body> {
+        (0..n)
+            .map(|i| {
+                let y = y0 + (i as f32) * dy;
+                let mut b = Body::new(
+                    Vec2::new(x, y),
+                    Vec2::zero(),
+                    species.mass(),
+                    species.radius(),
+                    0.0,
+                    species,
+                );
+                b.id = (10_000 + i) as u64;
+                b
+            })
+            .collect()
+    }
+
+    /// Cutoff for the (Li-metal, EC) pair under CONTACT_FACTOR=1.3.
+    /// Used to position electrolyte particles deterministically just inside
+    /// or just outside reach.
+    const LI_EC_CUTOFF: f32 = (1.52 + 2.5) * 1.3; // ≈ 5.226 Å
+
+    #[test]
+    fn accessible_surface_zero_with_no_electrolyte() {
+        let bodies = flat_foil_column(-150.0, 50, Species::LithiumMetal);
+        let m = compute_morphology_metrics(&bodies);
+        assert_eq!(m.accessible_surface_atoms, 0);
+    }
+
+    #[test]
+    fn accessible_surface_counts_only_frontier() {
+        // 5 columns of LithiumMetal at x = -150, -148, -146, -144, -142, 50 atoms each.
+        // Only the outermost column (x = -142) is within (LI_EC_CUTOFF ≈ 5.23) of EC at x = -138.
+        let mut bodies = Vec::new();
+        for k in 0..5 {
+            let x = -150.0 + (k as f32) * 2.0;
+            bodies.extend(flat_foil_column(x, 50, Species::LithiumMetal));
+        }
+        bodies.extend(column(-138.0, 50, -50.0, 2.0, Species::EC));
+
+        // Sanity: distance from x=-142 to x=-138 is 4.0 (< 5.23, reaches);
+        // distance from x=-144 to x=-138 is 6.0 (> 5.23, doesn't).
+        assert!(4.0 < LI_EC_CUTOFF && 6.0 > LI_EC_CUTOFF);
+
+        let m = compute_morphology_metrics(&bodies);
+        assert_eq!(
+            m.accessible_surface_atoms, 50,
+            "only the frontier column (50 atoms) should count"
+        );
+    }
+
+    #[test]
+    fn accessible_surface_counts_with_lithium_ion() {
+        // Same 5-column geometry but electrolyte = LithiumIon (radius 0.76).
+        // LI_LI+ cutoff = (1.52 + 0.76) * 1.3 ≈ 2.96. Place ions at x = -140 (2 Å from frontier).
+        let mut bodies = Vec::new();
+        for k in 0..5 {
+            let x = -150.0 + (k as f32) * 2.0;
+            bodies.extend(flat_foil_column(x, 50, Species::LithiumMetal));
+        }
+        bodies.extend(column(-140.0, 50, -50.0, 2.0, Species::LithiumIon));
+
+        let m = compute_morphology_metrics(&bodies);
+        assert_eq!(
+            m.accessible_surface_atoms, 50,
+            "frontier should also be detected via LithiumIon neighbors"
+        );
+    }
+
+    #[test]
+    fn accessible_surface_grows_with_protrusions() {
+        // Baseline: 5 columns + EC frontier at x=-138 → count = 50.
+        let mut bodies = Vec::new();
+        for k in 0..5 {
+            let x = -150.0 + (k as f32) * 2.0;
+            bodies.extend(flat_foil_column(x, 50, Species::LithiumMetal));
+        }
+        bodies.extend(column(-138.0, 50, -50.0, 2.0, Species::EC));
+        let baseline = compute_morphology_metrics(&bodies).accessible_surface_atoms;
+        assert_eq!(baseline, 50);
+
+        // Add 5 dendrite Li atoms at x=-140 (2 Å further toward EC at -138, distance 2 < 5.23).
+        // These are new Li atoms that ARE accessible.
+        for i in 0..5 {
+            let mut b = Body::new(
+                Vec2::new(-140.0, (i as f32) * 4.0 - 8.0),
+                Vec2::zero(),
+                Species::LithiumMetal.mass(),
+                Species::LithiumMetal.radius(),
+                0.0,
+                Species::LithiumMetal,
+            );
+            b.id = (20_000 + i) as u64;
+            bodies.push(b);
+        }
+        let with_dendrites = compute_morphology_metrics(&bodies).accessible_surface_atoms;
+        assert!(
+            with_dendrites > baseline,
+            "protrusions should increase accessible count: {} -> {}",
+            baseline,
+            with_dendrites
+        );
+    }
+
+    #[test]
+    fn accessible_surface_counts_dead_li_island() {
+        // Isolated 10-atom Li chain in EC bath. Each Li sandwiched by ECs above/below.
+        // Li at (4i, 0) for i=0..9. EC at (4i, ±3) for i=0..9 — distance 3 < 5.23 ✓.
+        let mut bodies = Vec::new();
+        for i in 0..10 {
+            let mut b = Body::new(
+                Vec2::new((i as f32) * 4.0, 0.0),
+                Vec2::zero(),
+                Species::LithiumMetal.mass(),
+                Species::LithiumMetal.radius(),
+                0.0,
+                Species::LithiumMetal,
+            );
+            b.id = (i + 1) as u64;
+            bodies.push(b);
+        }
+        let mut next_id = 30_000u64;
+        for i in 0..10 {
+            for dy in [-3.0, 3.0] {
+                let mut b = Body::new(
+                    Vec2::new((i as f32) * 4.0, dy),
+                    Vec2::zero(),
+                    Species::EC.mass(),
+                    Species::EC.radius(),
+                    0.0,
+                    Species::EC,
+                );
+                b.id = next_id;
+                next_id += 1;
+                bodies.push(b);
+            }
+        }
+        let m = compute_morphology_metrics(&bodies);
+        assert_eq!(
+            m.accessible_surface_atoms, 10,
+            "all 10 atoms in an isolated Li island surrounded by EC should count"
         );
     }
 
