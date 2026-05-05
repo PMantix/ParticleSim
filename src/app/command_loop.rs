@@ -1,10 +1,30 @@
+use crate::body::{Body, Species};
 use crate::io::{load_state, save_state};
 use crate::profile_scope;
 use crate::renderer::state::{SimCommand, PAUSED};
 use crate::simulation::Simulation;
 use std::sync::atomic::Ordering;
+use ultraviolet::Vec2;
 
 use super::spawn;
+
+/// Build a Body template suitable for spawn::add_rectangle / add_random.
+/// Mirrors the helper that eis_quick_sweep / dcr_pulse_sweep use locally.
+fn template_body_for_species(species: Species) -> Body {
+    let charge = match species {
+        Species::LithiumIon => 1.0,
+        Species::ElectrolyteAnion => -1.0,
+        _ => 0.0,
+    };
+    Body::new(
+        Vec2::zero(),
+        Vec2::zero(),
+        species.mass(),
+        species.radius(),
+        charge,
+        species,
+    )
+}
 
 pub fn handle_command(cmd: SimCommand, simulation: &mut Simulation) {
     profile_scope!("command_handling");
@@ -376,11 +396,28 @@ pub fn handle_command(cmd: SimCommand, simulation: &mut Simulation) {
                 }
                 simulation.group_b.insert(id);
             }
+            // Publish current group state so the GUI (Charging-tab manual
+            // assignment, EIS-tab readout) reflects it without needing to
+            // start an EIS sweep first.
+            {
+                let mut shared = crate::simulation::eis::EIS_RESULTS.lock();
+                let mut a_sorted: Vec<u64> = simulation.group_a.iter().copied().collect();
+                let mut b_sorted: Vec<u64> = simulation.group_b.iter().copied().collect();
+                a_sorted.sort_unstable();
+                b_sorted.sort_unstable();
+                shared.group_a_ids = a_sorted;
+                shared.group_b_ids = b_sorted;
+            }
             mark_dirty(simulation);
         }
         SimCommand::ClearFoilGroups => {
             simulation.group_a.clear();
             simulation.group_b.clear();
+            {
+                let mut shared = crate::simulation::eis::EIS_RESULTS.lock();
+                shared.group_a_ids.clear();
+                shared.group_b_ids.clear();
+            }
             mark_dirty(simulation);
         }
         SimCommand::ConventionalSetCurrent { current } => {
@@ -706,6 +743,94 @@ pub fn handle_command(cmd: SimCommand, simulation: &mut Simulation) {
             shared.is_running = false;
             println!("EIS sweep stopped");
             mark_dirty(simulation);
+        }
+        SimCommand::StartMorphologyLog { path, log_every_frames } => {
+            match crate::simulation::morphology_log::MorphologyLogger::open(
+                &path,
+                log_every_frames,
+            ) {
+                Ok(logger) => {
+                    println!(
+                        "morphology log opened: {} (every {} frames)",
+                        path.display(),
+                        log_every_frames
+                    );
+                    simulation.morphology_logger = Some(logger);
+                }
+                Err(e) => eprintln!("morphology log open failed: {e}"),
+            }
+        }
+        SimCommand::StopMorphologyLog => {
+            if simulation.morphology_logger.take().is_some() {
+                println!("morphology log closed");
+            }
+        }
+        SimCommand::LoadInitConfigToml { path } => {
+            match crate::init_config::InitConfig::load_from_file(path.to_string_lossy().as_ref()) {
+                Ok(cfg) => {
+                    if let Some(sim_cfg) = cfg.simulation.as_ref() {
+                        let (full_w, full_h) = sim_cfg.domain_size();
+                        simulation.domain_width = full_w / 2.0;
+                        simulation.domain_height = full_h / 2.0;
+                        simulation
+                            .cell_list
+                            .update_domain_size(simulation.domain_width, simulation.domain_height);
+                        *crate::renderer::state::DOMAIN_WIDTH.lock() = full_w;
+                        *crate::renderer::state::DOMAIN_HEIGHT.lock() = full_h;
+                    }
+                    let (full_w, full_h) = cfg
+                        .simulation
+                        .as_ref()
+                        .map(|s| s.domain_size())
+                        .unwrap_or((600.0, 400.0));
+                    for rect in &cfg.particles.metal_rectangles {
+                        match rect.to_species() {
+                            Ok(species) => {
+                                let body = template_body_for_species(species);
+                                let (x, y) = rect.to_origin_coords();
+                                spawn::add_rectangle(
+                                    simulation,
+                                    body,
+                                    x,
+                                    y,
+                                    rect.width,
+                                    rect.height,
+                                );
+                            }
+                            Err(e) => eprintln!("LoadInitConfigToml: skip metal_rectangle: {e}"),
+                        }
+                    }
+                    for foil in &cfg.particles.foil_rectangles {
+                        let (x, y) = foil.to_origin_coords();
+                        spawn::add_foil(
+                            simulation,
+                            foil.width,
+                            foil.height,
+                            x,
+                            y,
+                            crate::body::Species::FoilMetal.radius(),
+                            foil.current,
+                        );
+                    }
+                    for entry in &cfg.particles.random {
+                        match entry.to_species() {
+                            Ok(species) => {
+                                let body = template_body_for_species(species);
+                                spawn::add_random(simulation, body, entry.count, full_w, full_h);
+                            }
+                            Err(e) => eprintln!("LoadInitConfigToml: skip random entry: {e}"),
+                        }
+                    }
+                    println!(
+                        "loaded init_config TOML: {} ({} bodies, {} foils)",
+                        path.display(),
+                        simulation.bodies.len(),
+                        simulation.foils.len()
+                    );
+                    mark_dirty(simulation);
+                }
+                Err(e) => eprintln!("LoadInitConfigToml({}) failed: {e}", path.display()),
+            }
         }
     }
 

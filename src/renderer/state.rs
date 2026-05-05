@@ -32,6 +32,10 @@ pub static SAVE_COMPRESS: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(true));
 pub static SAVE_INCLUDE_HISTORY: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(true));
 // Last applied thermostat scale factor for diagnostics
 pub static LAST_THERMOSTAT_SCALE: Lazy<Mutex<f32>> = Lazy::new(|| Mutex::new(1.0));
+// Phase 4.2: latest morphology metrics snapshot. Sim thread writes after
+// each periodic compute; GUI thread reads to display live values.
+pub static MORPHOLOGY_LATEST: Lazy<Mutex<Option<crate::simulation::morphology::MorphologyMetrics>>> =
+    Lazy::new(|| Mutex::new(None));
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SaveFormat {
@@ -293,6 +297,19 @@ pub enum SimCommand {
         c_virtual: f64,
     },
     StopEIS,
+    // Phase 4.2: morphology log control. Path is opened on Start; existing
+    // log is closed on Stop.
+    StartMorphologyLog {
+        path: std::path::PathBuf,
+        log_every_frames: usize,
+    },
+    StopMorphologyLog,
+    /// Load an init_config TOML scenario (e.g. measurement_configs/*.toml)
+    /// and spawn its rectangles, foils, and random fills. Sets domain size
+    /// to match the config.
+    LoadInitConfigToml {
+        path: std::path::PathBuf,
+    },
 }
 
 pub static SIM_COMMAND_SENDER: Lazy<Mutex<Option<Sender<SimCommand>>>> =

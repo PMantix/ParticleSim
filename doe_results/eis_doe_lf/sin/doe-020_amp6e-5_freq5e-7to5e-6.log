@@ -1,0 +1,227 @@
+[run_job] id=doe-020
+[run_job] workdir=/c/Users/Yeyian PC/Desktop/ParticleSim-master/ParticleSim/runs/doe-020
+[run_job] exe=/c/Users/Yeyian PC/Desktop/ParticleSim-master/ParticleSim/target/release/eis_quick_sweep.exe
+[run_job] log=/c/Users/Yeyian PC/Desktop/ParticleSim-master/ParticleSim/doe_results/eis_doe_lf/doe-020_amp6e-5_freq5e-7to5e-6.log
+[run_job] args: --amplitude 6e-5 --f-min 5e-7 --f-max 5e-6 --scenario /c/Users/Yeyian PC/Desktop/ParticleSim-master/ParticleSim/measurement_configs/eis_validation_flat_symmetric.toml
+[run_job] start=2026-05-02T14:08:58Z
+Successfully placed 86 random bodies
+Successfully placed 86 random bodies
+Successfully placed 598 random bodies
+Successfully placed 599 random bodies
+scenario=C:/Users/Yeyian PC/Desktop/ParticleSim-master/ParticleSim/measurement_configs/eis_validation_flat_symmetric.toml seed=0xC0FFEE
+bodies=3449 foils=2
+dt=5 fs  group_a=[1]  group_b=[2]
+equilibrating 50000 fs (10000 steps)
+zero-current pre-hold 10000 fs (2000 steps)
+[EIS] Started sweep (Galvanostatic): 3 frequencies from 5.00e-6 to 5.00e-7 (1/fs)
+[EIS] Estimated total time: 22659652 fs (22659.7 ps), amplitude=6.0000e-5
+[EIS] Group A (+ perturbation): [1], Group B (- perturbation): [2]
+[EIS] Voltage probes: 0 per group (A=130, B=130)
+EIS sweep started (Galvanostatic)
+[EIS] freq 1/3 (5.00e-6 1/fs) phase=Settling elapsed=5fs/1600001fs cycles=0.00 samples=0 V=-1.5312e-3 I=-9.4248e-9
+[EIS] freq 1/3 (5.00e-6 1/fs) phase=Settling elapsed=50005fs/1600001fs cycles=0.25 samples=0 V=-6.8796e-3 I=-6.0000e-5
+[EIS] freq 1/3 (5.00e-6 1/fs) phase=Settling elapsed=100005fs/1600001fs cycles=0.50 samples=0 V=-8.3457e-3 I=9.3608e-9
+[EIS] freq 1/3 (5.00e-6 1/fs) phase=Settling elapsed=150005fs/1600001fs cycles=0.75 samples=0 V=-2.6655e-3 I=6.0000e-5
+[EIS] freq 1/3 (5.00e-6 1/fs) phase=Settling elapsed=200005fs/1600001fs cycles=1.00 samples=0 V=-2.5997e-3 I=-9.2802e-9
+[EIS] freq 1/3 (5.00e-6 1/fs) phase=Settling elapsed=250005fs/1600001fs cycles=1.25 samples=0 V=-2.1668e-3 I=-6.0000e-5
+[EIS] freq 1/3 (5.00e-6 1/fs) phase=Settling elapsed=300005fs/1600001fs cycles=1.50 samples=0 V=-9.4269e-3 I=9.2139e-9
+[EIS] freq 1/3 (5.00e-6 1/fs) phase=Settling elapsed=350005fs/1600001fs cycles=1.75 samples=0 V=-8.8951e-4 I=6.0000e-5
+[EIS] freq 1/3 (5.00e-6 1/fs) phase=Settling elapsed=400005fs/1600001fs cycles=2.00 samples=0 V=1.3793e-3 I=-9.1763e-9
+[EIS] freq 1/3 (5.00e-6 1/fs) phase=Settling elapsed=450005fs/1600001fs cycles=2.25 samples=0 V=-2.0701e-3 I=-6.0000e-5
+[EIS] freq 1/3 (5.00e-6 1/fs) phase=Settling elapsed=500005fs/1600001fs cycles=2.50 samples=0 V=-5.5635e-3 I=9.0814e-9
+[EIS] freq 1/3 (5.00e-6 1/fs) phase=Settling elapsed=550005fs/1600001fs cycles=2.75 samples=0 V=-7.8543e-3 I=6.0000e-5
+[EIS] freq 1/3 (5.00e-6 1/fs) phase=Settling elapsed=600005fs/1600001fs cycles=3.00 samples=0 V=-6.3484e-3 I=-9.0437e-9
+[EIS] freq 1/3 (5.00e-6 1/fs) phase=Settling elapsed=650005fs/1600001fs cycles=3.25 samples=0 V=-1.4223e-3 I=-6.0000e-5
+[EIS] freq 1/3 (5.00e-6 1/fs) phase=Settling elapsed=700005fs/1600001fs cycles=3.50 samples=0 V=-1.5874e-2 I=8.8916e-9
+[EIS] freq 1/3 (5.00e-6 1/fs) phase=Settling elapsed=750005fs/1600001fs cycles=3.75 samples=0 V=-3.4245e-3 I=6.0000e-5
+[EIS] freq 1/3 (5.00e-6 1/fs) phase=Settling elapsed=800005fs/1600001fs cycles=4.00 samples=0 V=-4.0774e-3 I=-8.8539e-9
+[EIS] Freq 1/3 (5.00e-6): settling complete, now recording
+[EIS] freq 1/3 (5.00e-6 1/fs) phase=Recording elapsed=850005fs/1600001fs cycles=4.25 samples=9999 V=-4.6284e-4 I=-6.0000e-5
+[EIS] freq 1/3 (5.00e-6 1/fs) phase=Recording elapsed=900005fs/1600001fs cycles=4.50 samples=19999 V=-6.6455e-3 I=8.8162e-9
+[EIS] freq 1/3 (5.00e-6 1/fs) phase=Recording elapsed=950005fs/1600001fs cycles=4.75 samples=29999 V=3.2468e-3 I=6.0000e-5
+[EIS] freq 1/3 (5.00e-6 1/fs) phase=Recording elapsed=1000005fs/1600001fs cycles=5.00 samples=39999 V=4.7848e-3 I=-8.7786e-9
+[EIS] freq 1/3 (5.00e-6 1/fs) phase=Recording elapsed=1050005fs/1600001fs cycles=5.25 samples=49999 V=1.2281e-3 I=-6.0000e-5
+[EIS] freq 1/3 (5.00e-6 1/fs) phase=Recording elapsed=1100005fs/1600001fs cycles=5.50 samples=59999 V=-1.2432e-2 I=8.6265e-9
+[EIS] freq 1/3 (5.00e-6 1/fs) phase=Recording elapsed=1150005fs/1600001fs cycles=5.75 samples=69999 V=-2.2489e-3 I=6.0000e-5
+[EIS] freq 1/3 (5.00e-6 1/fs) phase=Recording elapsed=1200005fs/1600001fs cycles=6.00 samples=79999 V=2.7103e-3 I=-8.7032e-9
+[EIS] freq 1/3 (5.00e-6 1/fs) phase=Recording elapsed=1250005fs/1600001fs cycles=6.25 samples=89999 V=8.3656e-3 I=-6.0000e-5
+[EIS] freq 1/3 (5.00e-6 1/fs) phase=Recording elapsed=1300005fs/1600001fs cycles=6.50 samples=99999 V=-1.2229e-2 I=8.5511e-9
+[EIS] freq 1/3 (5.00e-6 1/fs) phase=Recording elapsed=1350005fs/1600001fs cycles=6.75 samples=109999 V=5.0692e-3 I=6.0000e-5
+[EIS] freq 1/3 (5.00e-6 1/fs) phase=Recording elapsed=1400005fs/1600001fs cycles=7.00 samples=119999 V=2.5723e-3 I=-8.3990e-9
+[EIS] freq 1/3 (5.00e-6 1/fs) phase=Recording elapsed=1450005fs/1600001fs cycles=7.25 samples=129999 V=2.7062e-3 I=-6.0000e-5
+[EIS] freq 1/3 (5.00e-6 1/fs) phase=Recording elapsed=1500005fs/1600001fs cycles=7.50 samples=139999 V=-7.0621e-3 I=8.4758e-9
+[EIS] freq 1/3 (5.00e-6 1/fs) phase=Recording elapsed=1550005fs/1600001fs cycles=7.75 samples=149999 V=1.5292e-3 I=6.0000e-5
+[EIS] freq 1/3 (5.00e-6 1/fs) phase=Recording elapsed=1600005fs/1600001fs cycles=8.00 samples=159999 V=3.8424e-3 I=-8.3237e-9
+[EIS] Completed freq 1/3: 5.00e-6 1/fs -> Z = (-1.0017e1, -8.8015e1), |Z|=8.8583e1, phase=-96.5 deg, 160001 samples
+[EIS]   Z_actual = (2.2390e1, -1.3646e2), Z_cap = (2.5000e3, -3.1831e7)
+[EIS] Saved time-series: eis_timeseries\eis_ts_001_5.000e-6.csv (1987 pts, v_dc=-1.376e-3, i_dc=5.889e-11)
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Settling elapsed=49995fs/5059646fs cycles=0.08 samples=0 V=9.3222e-3 I=-2.8591e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Settling elapsed=99995fs/5059646fs cycles=0.16 samples=0 V=-7.7833e-3 I=-5.0273e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Settling elapsed=149995fs/5059646fs cycles=0.24 samples=0 V=-1.3018e-2 I=-5.9805e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Settling elapsed=199995fs/5059646fs cycles=0.32 samples=0 V=-2.3985e-2 I=-5.4881e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Settling elapsed=249995fs/5059646fs cycles=0.40 samples=0 V=-2.3779e-2 I=-3.6692e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Settling elapsed=299995fs/5059646fs cycles=0.47 samples=0 V=-2.7546e-2 I=-9.6341e-6
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Settling elapsed=349995fs/5059646fs cycles=0.55 samples=0 V=-3.4023e-2 I=1.9752e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Settling elapsed=399995fs/5059646fs cycles=0.63 samples=0 V=-2.5185e-2 I=4.4365e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Settling elapsed=449995fs/5059646fs cycles=0.71 samples=0 V=-9.8329e-3 I=5.8253e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Settling elapsed=499995fs/5059646fs cycles=0.79 samples=0 V=8.4574e-3 I=5.8062e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Settling elapsed=549995fs/5059646fs cycles=0.87 samples=0 V=2.3990e-2 I=4.3837e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Settling elapsed=599995fs/5059646fs cycles=0.95 samples=0 V=1.8552e-2 I=1.9015e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Settling elapsed=649995fs/5059646fs cycles=1.03 samples=0 V=1.8815e-2 I=-1.0402e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Settling elapsed=699995fs/5059646fs cycles=1.11 samples=0 V=1.7455e-2 I=-3.7305e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Settling elapsed=749995fs/5059646fs cycles=1.19 samples=0 V=5.6433e-3 I=-5.5191e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Settling elapsed=799995fs/5059646fs cycles=1.26 samples=0 V=-5.5520e-3 I=-5.9737e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Settling elapsed=849995fs/5059646fs cycles=1.34 samples=0 V=-2.5787e-2 I=-4.9844e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Settling elapsed=899995fs/5059646fs cycles=1.42 samples=0 V=-3.2323e-2 I=-2.7904e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Settling elapsed=949995fs/5059646fs cycles=1.50 samples=0 V=-2.6521e-2 I=7.8167e-7
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Settling elapsed=999995fs/5059646fs cycles=1.58 samples=0 V=-3.4975e-2 I=2.9278e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Settling elapsed=1049995fs/5059646fs cycles=1.66 samples=0 V=-2.2952e-2 I=5.0697e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Settling elapsed=1099995fs/5059646fs cycles=1.74 samples=0 V=-4.6334e-3 I=5.9863e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Settling elapsed=1149995fs/5059646fs cycles=1.82 samples=0 V=8.3417e-3 I=5.4559e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Settling elapsed=1199995fs/5059646fs cycles=1.90 samples=0 V=1.1077e-2 I=3.6068e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Settling elapsed=1249995fs/5059646fs cycles=1.98 samples=0 V=1.3321e-2 I=8.8588e-6
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Settling elapsed=1299995fs/5059646fs cycles=2.06 samples=0 V=2.1076e-2 I=-2.0492e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Settling elapsed=1349995fs/5059646fs cycles=2.13 samples=0 V=7.0002e-3 I=-4.4889e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Settling elapsed=1399995fs/5059646fs cycles=2.21 samples=0 V=1.5094e-3 I=-5.8436e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Settling elapsed=1449995fs/5059646fs cycles=2.29 samples=0 V=-3.7110e-3 I=-5.7859e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Settling elapsed=1499995fs/5059646fs cycles=2.37 samples=0 V=-1.3940e-2 I=-4.3297e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Settling elapsed=1549995fs/5059646fs cycles=2.45 samples=0 V=-2.1335e-2 I=-1.8270e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Settling elapsed=1599995fs/5059646fs cycles=2.53 samples=0 V=-3.4329e-2 I=1.1174e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Settling elapsed=1649995fs/5059646fs cycles=2.61 samples=0 V=-1.7925e-2 I=3.7916e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Settling elapsed=1699995fs/5059646fs cycles=2.69 samples=0 V=-5.8927e-3 I=5.5494e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Settling elapsed=1749995fs/5059646fs cycles=2.77 samples=0 V=5.0001e-3 I=5.9659e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Settling elapsed=1799995fs/5059646fs cycles=2.85 samples=0 V=2.0018e-2 I=4.9403e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Settling elapsed=1849995fs/5059646fs cycles=2.93 samples=0 V=2.0688e-2 I=2.7206e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Settling elapsed=1899995fs/5059646fs cycles=3.00 samples=0 V=2.5949e-2 I=-1.5662e-6
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Settling elapsed=1949995fs/5059646fs cycles=3.08 samples=0 V=2.3254e-2 I=-2.9960e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Settling elapsed=1999995fs/5059646fs cycles=3.16 samples=0 V=9.2917e-3 I=-5.1113e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Settling elapsed=2049995fs/5059646fs cycles=3.24 samples=0 V=5.9776e-5 I=-5.9911e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Settling elapsed=2099995fs/5059646fs cycles=3.32 samples=0 V=-1.6391e-2 I=-5.4228e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Settling elapsed=2149995fs/5059646fs cycles=3.40 samples=0 V=-2.2829e-2 I=-3.5438e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Settling elapsed=2199995fs/5059646fs cycles=3.48 samples=0 V=-3.5668e-2 I=-8.0820e-6
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Settling elapsed=2249995fs/5059646fs cycles=3.56 samples=0 V=-3.3621e-2 I=2.1227e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Settling elapsed=2299995fs/5059646fs cycles=3.64 samples=0 V=-2.6761e-2 I=4.5406e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Settling elapsed=2349995fs/5059646fs cycles=3.72 samples=0 V=-7.5491e-3 I=5.8609e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Settling elapsed=2399995fs/5059646fs cycles=3.79 samples=0 V=4.1454e-3 I=5.7647e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Settling elapsed=2449995fs/5059646fs cycles=3.87 samples=0 V=1.1511e-2 I=4.2750e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Settling elapsed=2499995fs/5059646fs cycles=3.95 samples=0 V=2.2572e-2 I=1.7521e-5
+[EIS] Freq 2/3 (1.58e-6): settling complete, now recording
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Recording elapsed=2549995fs/5059646fs cycles=4.03 samples=4033 V=1.7970e-2 I=-1.1944e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Recording elapsed=2599995fs/5059646fs cycles=4.11 samples=14033 V=8.2087e-3 I=-3.8521e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Recording elapsed=2649995fs/5059646fs cycles=4.19 samples=24033 V=2.1591e-4 I=-5.5788e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Recording elapsed=2699995fs/5059646fs cycles=4.27 samples=34033 V=-1.2333e-2 I=-5.9570e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Recording elapsed=2749995fs/5059646fs cycles=4.35 samples=44033 V=-2.1128e-2 I=-4.8954e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Recording elapsed=2799995fs/5059646fs cycles=4.43 samples=54033 V=-2.9366e-2 I=-2.6505e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Recording elapsed=2849995fs/5059646fs cycles=4.51 samples=64033 V=-3.4844e-2 I=2.3505e-6
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Recording elapsed=2899995fs/5059646fs cycles=4.59 samples=74033 V=-3.8637e-2 I=3.0638e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Recording elapsed=2949995fs/5059646fs cycles=4.66 samples=84033 V=-2.7449e-2 I=5.1519e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Recording elapsed=2999995fs/5059646fs cycles=4.74 samples=94033 V=-9.0817e-3 I=5.9949e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Recording elapsed=3049995fs/5059646fs cycles=4.82 samples=104033 V=1.8027e-2 I=5.3888e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Recording elapsed=3099995fs/5059646fs cycles=4.90 samples=114033 V=8.0850e-3 I=3.4802e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Recording elapsed=3149995fs/5059646fs cycles=4.98 samples=124033 V=9.6476e-3 I=7.3038e-6
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Recording elapsed=3199995fs/5059646fs cycles=5.06 samples=134033 V=-5.3499e-5 I=-2.1959e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Recording elapsed=3249995fs/5059646fs cycles=5.14 samples=144033 V=-3.8415e-3 I=-4.5915e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Recording elapsed=3299995fs/5059646fs cycles=5.22 samples=154033 V=-7.6500e-4 I=-5.8772e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Recording elapsed=3349995fs/5059646fs cycles=5.30 samples=164033 V=-1.1090e-2 I=-5.7424e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Recording elapsed=3399995fs/5059646fs cycles=5.38 samples=174033 V=-3.2902e-2 I=-4.2196e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Recording elapsed=3449995fs/5059646fs cycles=5.45 samples=184033 V=-3.7714e-2 I=-1.6769e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Recording elapsed=3499995fs/5059646fs cycles=5.53 samples=194033 V=-3.8465e-2 I=1.2712e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Recording elapsed=3549995fs/5059646fs cycles=5.61 samples=204033 V=-2.5371e-2 I=3.9119e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Recording elapsed=3599995fs/5059646fs cycles=5.69 samples=214033 V=-1.4272e-2 I=5.6072e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Recording elapsed=3649995fs/5059646fs cycles=5.77 samples=224033 V=-6.0895e-3 I=5.9471e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Recording elapsed=3699995fs/5059646fs cycles=5.85 samples=234033 V=1.0637e-2 I=4.8496e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Recording elapsed=3749995fs/5059646fs cycles=5.93 samples=244033 V=1.6103e-2 I=2.5799e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Recording elapsed=3799995fs/5059646fs cycles=6.01 samples=254033 V=1.1511e-2 I=-3.1343e-6
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Recording elapsed=3849995fs/5059646fs cycles=6.09 samples=264033 V=1.5240e-2 I=-3.1310e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Recording elapsed=3899995fs/5059646fs cycles=6.17 samples=274033 V=2.6948e-3 I=-5.1917e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Recording elapsed=3949995fs/5059646fs cycles=6.25 samples=284033 V=8.6989e-4 I=-5.9976e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Recording elapsed=3999995fs/5059646fs cycles=6.32 samples=294033 V=-1.7716e-2 I=-5.3538e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Recording elapsed=4049995fs/5059646fs cycles=6.40 samples=304033 V=-3.8523e-2 I=-3.4160e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Recording elapsed=4099995fs/5059646fs cycles=6.48 samples=314033 V=-2.7398e-2 I=-6.5243e-6
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Recording elapsed=4149995fs/5059646fs cycles=6.56 samples=324033 V=-2.1916e-2 I=2.2688e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Recording elapsed=4199995fs/5059646fs cycles=6.64 samples=334033 V=-2.0460e-2 I=4.6416e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Recording elapsed=4249995fs/5059646fs cycles=6.72 samples=344033 V=-1.3559e-2 I=5.8925e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Recording elapsed=4299995fs/5059646fs cycles=6.80 samples=354033 V=-5.0285e-3 I=5.7192e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Recording elapsed=4349995fs/5059646fs cycles=6.88 samples=364033 V=-2.2053e-3 I=4.1634e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Recording elapsed=4399995fs/5059646fs cycles=6.96 samples=374033 V=1.6817e-2 I=1.6014e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Recording elapsed=4449995fs/5059646fs cycles=7.04 samples=384033 V=1.7087e-2 I=-1.3477e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Recording elapsed=4499995fs/5059646fs cycles=7.12 samples=394033 V=2.3042e-2 I=-3.9711e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Recording elapsed=4549995fs/5059646fs cycles=7.19 samples=404033 V=5.7103e-3 I=-5.6346e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Recording elapsed=4599995fs/5059646fs cycles=7.27 samples=414033 V=-4.8303e-3 I=-5.9362e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Recording elapsed=4649995fs/5059646fs cycles=7.35 samples=424033 V=-2.2744e-2 I=-4.8030e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Recording elapsed=4699995fs/5059646fs cycles=7.43 samples=434033 V=-3.4280e-2 I=-2.5088e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Recording elapsed=4749995fs/5059646fs cycles=7.51 samples=444033 V=-3.2802e-2 I=3.9177e-6
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Recording elapsed=4799995fs/5059646fs cycles=7.59 samples=454033 V=-2.6006e-2 I=3.1976e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Recording elapsed=4849995fs/5059646fs cycles=7.67 samples=464033 V=-1.1368e-2 I=5.2306e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Recording elapsed=4899995fs/5059646fs cycles=7.75 samples=474033 V=-1.3007e-2 I=5.9993e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Recording elapsed=4949995fs/5059646fs cycles=7.83 samples=484033 V=9.5977e-3 I=5.3179e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Recording elapsed=4999995fs/5059646fs cycles=7.91 samples=494033 V=1.5450e-2 I=3.3511e-5
+[EIS] freq 2/3 (1.58e-6 1/fs) phase=Recording elapsed=5049995fs/5059646fs cycles=7.98 samples=504033 V=1.5505e-2 I=5.7438e-6
+[EIS] Completed freq 2/3: 1.58e-6 1/fs -> Z = (7.6891e0, -4.3103e2), |Z|=4.3109e2, phase=-89.0 deg, 505965 samples
+[EIS]   Z_actual = (4.7565e1, -4.4567e2), Z_cap = (2.5000e3, -1.0066e8)
+[EIS] Saved time-series: eis_timeseries\eis_ts_002_1.581e-6.csv (1999 pts, v_dc=-8.524e-3, i_dc=4.184e-11)
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=40345fs/16000005fs cycles=0.02 samples=0 V=2.3138e-2 I=-7.5845e-6
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=90345fs/16000005fs cycles=0.05 samples=0 V=1.5360e-2 I=-1.6802e-5
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=140345fs/16000005fs cycles=0.07 samples=0 V=1.8304e-2 I=-2.5606e-5
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=190345fs/16000005fs cycles=0.10 samples=0 V=5.6106e-3 I=-3.3779e-5
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=240345fs/16000005fs cycles=0.12 samples=0 V=6.1342e-4 I=-4.1120e-5
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=290345fs/16000005fs cycles=0.15 samples=0 V=-3.1011e-3 I=-4.7449e-5
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=340345fs/16000005fs cycles=0.17 samples=0 V=-6.7655e-3 I=-5.2610e-5
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=390345fs/16000005fs cycles=0.20 samples=0 V=-2.3267e-2 I=-5.6475e-5
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=440345fs/16000005fs cycles=0.22 samples=0 V=-3.3006e-2 I=-5.8949e-5
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=490345fs/16000005fs cycles=0.25 samples=0 V=-6.2300e-2 I=-5.9972e-5
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=540345fs/16000005fs cycles=0.27 samples=0 V=-5.8988e-2 I=-5.9519e-5
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=590345fs/16000005fs cycles=0.30 samples=0 V=-5.0225e-2 I=-5.7599e-5
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=640345fs/16000005fs cycles=0.32 samples=0 V=-6.8355e-2 I=-5.4262e-5
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=690345fs/16000005fs cycles=0.35 samples=0 V=-7.9492e-2 I=-4.9588e-5
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=740345fs/16000005fs cycles=0.37 samples=0 V=-9.6053e-2 I=-4.3694e-5
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=790345fs/16000005fs cycles=0.40 samples=0 V=-9.0810e-2 I=-3.6723e-5
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=840345fs/16000005fs cycles=0.42 samples=0 V=-9.8475e-2 I=-2.8848e-5
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=890345fs/16000005fs cycles=0.45 samples=0 V=-9.0447e-2 I=-2.0263e-5
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=940345fs/16000005fs cycles=0.47 samples=0 V=-8.2697e-2 I=-1.1179e-5
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=990345fs/16000005fs cycles=0.50 samples=0 V=-9.2654e-2 I=-1.8197e-6
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=1040345fs/16000005fs cycles=0.52 samples=0 V=-8.2782e-2 I=7.5844e-6
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=1090345fs/16000005fs cycles=0.55 samples=0 V=-6.8441e-2 I=1.6802e-5
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=1140345fs/16000005fs cycles=0.57 samples=0 V=-6.5757e-2 I=2.5606e-5
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=1190345fs/16000005fs cycles=0.60 samples=0 V=-5.9409e-2 I=3.3779e-5
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=1240345fs/16000005fs cycles=0.62 samples=0 V=-6.2429e-2 I=4.1120e-5
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=1290345fs/16000005fs cycles=0.65 samples=0 V=-3.6811e-2 I=4.7449e-5
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=1340345fs/16000005fs cycles=0.67 samples=0 V=-1.9976e-2 I=5.2610e-5
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=1390345fs/16000005fs cycles=0.70 samples=0 V=-8.8581e-3 I=5.6475e-5
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=1440345fs/16000005fs cycles=0.72 samples=0 V=6.2040e-3 I=5.8949e-5
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=1490345fs/16000005fs cycles=0.75 samples=0 V=2.5535e-3 I=5.9972e-5
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=1540345fs/16000005fs cycles=0.77 samples=0 V=1.7255e-2 I=5.9519e-5
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=1590345fs/16000005fs cycles=0.80 samples=0 V=3.7821e-2 I=5.7599e-5
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=1640345fs/16000005fs cycles=0.82 samples=0 V=3.1463e-2 I=5.4262e-5
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=1690345fs/16000005fs cycles=0.85 samples=0 V=3.4230e-2 I=4.9588e-5
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=1740345fs/16000005fs cycles=0.87 samples=0 V=3.9391e-2 I=4.3694e-5
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=1790345fs/16000005fs cycles=0.90 samples=0 V=5.5883e-2 I=3.6723e-5
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=1840345fs/16000005fs cycles=0.92 samples=0 V=3.1660e-2 I=2.8848e-5
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=1890345fs/16000005fs cycles=0.95 samples=0 V=4.2110e-2 I=2.0263e-5
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=1940345fs/16000005fs cycles=0.97 samples=0 V=5.1565e-2 I=1.1179e-5
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=1990345fs/16000005fs cycles=1.00 samples=0 V=4.7075e-2 I=1.8198e-6
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=2040345fs/16000005fs cycles=1.02 samples=0 V=6.2774e-2 I=-7.5844e-6
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=2090345fs/16000005fs cycles=1.05 samples=0 V=4.4259e-2 I=-1.6802e-5
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=2140345fs/16000005fs cycles=1.07 samples=0 V=6.2359e-2 I=-2.5605e-5
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=2190345fs/16000005fs cycles=1.10 samples=0 V=3.6248e-2 I=-3.3779e-5
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=2240345fs/16000005fs cycles=1.12 samples=0 V=2.5955e-2 I=-4.1120e-5
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=2290345fs/16000005fs cycles=1.15 samples=0 V=1.3811e-2 I=-4.7449e-5
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=2340345fs/16000005fs cycles=1.17 samples=0 V=6.6564e-3 I=-5.2610e-5
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=2390345fs/16000005fs cycles=1.20 samples=0 V=-3.3462e-3 I=-5.6475e-5
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=2440345fs/16000005fs cycles=1.22 samples=0 V=-1.3002e-2 I=-5.8949e-5
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=2490345fs/16000005fs cycles=1.25 samples=0 V=-9.0509e-3 I=-5.9972e-5
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=2540345fs/16000005fs cycles=1.27 samples=0 V=-4.2928e-2 I=-5.9519e-5
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=2590345fs/16000005fs cycles=1.30 samples=0 V=-5.4596e-2 I=-5.7599e-5
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=2640345fs/16000005fs cycles=1.32 samples=0 V=-4.8467e-2 I=-5.4262e-5
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=2690345fs/16000005fs cycles=1.35 samples=0 V=-6.3138e-2 I=-4.9588e-5
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=2740345fs/16000005fs cycles=1.37 samples=0 V=-7.3922e-2 I=-4.3694e-5
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=2790345fs/16000005fs cycles=1.40 samples=0 V=-7.8634e-2 I=-3.6723e-5
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=2840345fs/16000005fs cycles=1.42 samples=0 V=-7.8109e-2 I=-2.8848e-5
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=2890345fs/16000005fs cycles=1.45 samples=0 V=-8.0052e-2 I=-2.0263e-5
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=2940345fs/16000005fs cycles=1.47 samples=0 V=-6.3704e-2 I=-1.1179e-5
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=2990345fs/16000005fs cycles=1.50 samples=0 V=-7.6849e-2 I=-1.8198e-6
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=3040345fs/16000005fs cycles=1.52 samples=0 V=-6.7491e-2 I=7.5843e-6
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=3090345fs/16000005fs cycles=1.55 samples=0 V=-6.0427e-2 I=1.6802e-5
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=3140345fs/16000005fs cycles=1.57 samples=0 V=-6.2202e-2 I=2.5605e-5
+[EIS] freq 3/3 (5.00e-7 1/fs) phase=Settling elapsed=3190345fs/16000005fs cycles=1.60 samples=0 V=-5.6724e-2 I=3.3779e-5
+[run_job] end=2026-05-02T23:39:38Z rc=127

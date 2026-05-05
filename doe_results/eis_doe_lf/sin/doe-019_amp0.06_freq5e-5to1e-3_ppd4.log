@@ -1,0 +1,69 @@
+[run_job] id=doe-019
+[run_job] workdir=/c/Users/Yeyian PC/Desktop/ParticleSim-master/ParticleSim/runs/doe-019
+[run_job] exe=/c/Users/Yeyian PC/Desktop/ParticleSim-master/ParticleSim/target/release/eis_quick_sweep.exe
+[run_job] log=/c/Users/Yeyian PC/Desktop/ParticleSim-master/ParticleSim/doe_results/eis_doe_lf/doe-019_amp0.06_freq5e-5to1e-3_ppd4.log
+[run_job] args: --amplitude 0.06 --f-min 5e-5 --f-max 1e-3 --points-per-decade 4 --scenario /c/Users/Yeyian PC/Desktop/ParticleSim-master/ParticleSim/measurement_configs/eis_validation_flat_symmetric.toml
+[run_job] start=2026-05-02T14:08:40Z
+Successfully placed 86 random bodies
+Successfully placed 86 random bodies
+Successfully placed 598 random bodies
+Successfully placed 599 random bodies
+scenario=C:/Users/Yeyian PC/Desktop/ParticleSim-master/ParticleSim/measurement_configs/eis_validation_flat_symmetric.toml seed=0xC0FFEE
+bodies=3449 foils=2
+dt=5 fs  group_a=[1]  group_b=[2]
+equilibrating 50000 fs (10000 steps)
+zero-current pre-hold 10000 fs (2000 steps)
+[EIS] Started sweep (Galvanostatic): 7 frequencies from 1.00e-3 to 5.00e-5 (1/fs)
+[EIS] Estimated total time: 394731 fs (394.7 ps), amplitude=6.0000e-2
+[EIS] Group A (+ perturbation): [1], Group B (- perturbation): [2]
+[EIS] Voltage probes: 0 per group (A=130, B=130)
+EIS sweep started (Galvanostatic)
+[EIS] freq 1/7 (1.00e-3 1/fs) phase=Settling elapsed=5fs/8000fs cycles=0.01 samples=0 V=-3.3755e-3 I=-1.8846e-3
+[EIS] Freq 1/7 (1.00e-3): settling complete, now recording
+[EIS] Completed freq 1/7: 1.00e-3 1/fs -> Z = (-6.9789e-2, -7.8812e-1), |Z|=7.9120e-1, phase=-95.1 deg, 800 samples
+[EIS]   Z_actual = (-2.9125e-3, -7.8171e-1), Z_cap = (2.5000e3, -1.5914e5)
+[EIS] Saved time-series: eis_timeseries\eis_ts_001_1.000e-3.csv (1600 pts, v_dc=-3.254e-2, i_dc=7.745e-9)
+[EIS] Freq 2/7 (6.07e-4): settling complete, now recording
+[EIS] Completed freq 2/7: 6.07e-4 1/fs -> Z = (-5.3444e-2, -1.2461e0), |Z|=1.2472e0, phase=-92.5 deg, 1319 samples
+[EIS]   Z_actual = (-1.1132e-3, -1.2337e0), Z_cap = (2.5000e3, -2.6221e5)
+[EIS] Saved time-series: eis_timeseries\eis_ts_002_6.070e-4.csv (1319 pts, v_dc=-6.500e-2, i_dc=-3.298e-6)
+[EIS] Freq 3/7 (3.68e-4): settling complete, now recording
+[EIS] Completed freq 3/7: 3.68e-4 1/fs -> Z = (-6.1053e-2, -2.0490e0), |Z|=2.0499e0, phase=-91.7 deg, 2172 samples
+[EIS]   Z_actual = (-6.0114e-3, -2.0559e0), Z_cap = (2.5000e3, -4.3201e5)
+[EIS] Saved time-series: eis_timeseries\eis_ts_003_3.684e-4.csv (1448 pts, v_dc=-1.049e-1, i_dc=-3.264e-7)
+[EIS] freq 4/7 (2.24e-4 1/fs) phase=Settling elapsed=7095fs/35777fs cycles=1.59 samples=0 V=-3.7269e-1 I=3.1025e-2
+[EIS] Freq 4/7 (2.24e-4): settling complete, now recording
+[EIS] Completed freq 4/7: 2.24e-4 1/fs -> Z = (-1.1683e-2, -3.5121e0), |Z|=3.5121e0, phase=-90.2 deg, 3578 samples
+[EIS]   Z_actual = (4.7992e-2, -3.4908e0), Z_cap = (2.5000e3, -7.1176e5)
+[EIS] Saved time-series: eis_timeseries\eis_ts_004_2.236e-4.csv (1789 pts, v_dc=-2.069e-1, i_dc=-3.872e-7)
+[EIS] freq 5/7 (1.36e-4 1/fs) phase=Settling elapsed=21315fs/58945fs cycles=2.89 samples=0 V=-1.0111e-1 I=3.7400e-2
+[EIS] Freq 5/7 (1.36e-4): settling complete, now recording
+[EIS] Completed freq 5/7: 1.36e-4 1/fs -> Z = (4.7642e-2, -5.8508e0), |Z|=5.8510e0, phase=-89.5 deg, 5895 samples
+[EIS]   Z_actual = (1.6896e-1, -5.7756e0), Z_cap = (2.5000e3, -1.1727e6)
+[EIS] Saved time-series: eis_timeseries\eis_ts_005_1.357e-4.csv (1965 pts, v_dc=-3.476e-1, i_dc=-3.576e-7)
+[EIS] freq 6/7 (8.24e-5 1/fs) phase=Settling elapsed=12365fs/97114fs cycles=1.02 samples=0 V=3.5588e-2 I=-6.9949e-3
+[EIS] Freq 6/7 (8.24e-5): settling complete, now recording
+[EIS] freq 6/7 (8.24e-5 1/fs) phase=Recording elapsed=62365fs/97114fs cycles=5.14 samples=2760 V=-1.4943e-1 I=-4.5617e-2
+[EIS] Completed freq 6/7: 8.24e-5 1/fs -> Z = (3.0514e-1, -9.5186e0), |Z|=9.5235e0, phase=-88.2 deg, 9712 samples
+[EIS]   Z_actual = (4.6467e-1, -9.3820e0), Z_cap = (2.5000e3, -1.9320e6)
+[EIS] Saved time-series: eis_timeseries\eis_ts_006_8.238e-5.csv (1942 pts, v_dc=-4.803e-1, i_dc=6.454e-8)
+[EIS] freq 7/7 (5.00e-5 1/fs) phase=Settling elapsed=15245fs/160000fs cycles=0.76 samples=0 V=-7.0867e-1 I=5.9822e-2
+[EIS] freq 7/7 (5.00e-5 1/fs) phase=Settling elapsed=65245fs/160000fs cycles=3.26 samples=0 V=-9.9879e-1 I=-5.9822e-2
+[EIS] Freq 7/7 (5.00e-5): settling complete, now recording
+[EIS] freq 7/7 (5.00e-5 1/fs) phase=Recording elapsed=115245fs/160000fs cycles=5.76 samples=7047 V=-8.1083e-1 I=5.9822e-2
+[EIS] Completed freq 7/7: 5.00e-5 1/fs -> Z = (7.3666e-1, -1.5815e1), |Z|=1.5832e1, phase=-87.3 deg, 16001 samples
+[EIS]   Z_actual = (1.1661e0, -1.5355e1), Z_cap = (2.5000e3, -3.1831e6)
+[EIS] Saved time-series: eis_timeseries\eis_ts_007_5.000e-5.csv (1882 pts, v_dc=-9.755e-1, i_dc=7.038e-8)
+[EIS] Sweep complete! 7 points collected
+sweep finished in 78954 steps (1680.6s wall, sim time 3.95e5 fs)
+
+=== 7 EisPoints ===
+   i        freq       z_real       z_imag         |Z|     phase     R²(V)     R²(I)       V_amp       I_amp
+   0    1.000e-3    -6.979e-2    -7.881e-1    7.912e-1    -95.1°    0.9626    1.0000    4.747e-2    6.000e-2
+   1    6.070e-4    -5.344e-2     -1.246e0     1.247e0    -92.5°    0.9756    1.0000    7.483e-2    6.000e-2
+   2    3.684e-4    -6.105e-2     -2.049e0     2.050e0    -91.7°    0.9910    1.0000    1.230e-1    6.000e-2
+   3    2.236e-4    -1.168e-2     -3.512e0     3.512e0    -90.2°    0.9948    1.0000    2.107e-1    6.000e-2
+   4    1.357e-4    +4.764e-2     -5.851e0     5.851e0    -89.5°    0.9965    1.0000    3.511e-1    6.000e-2
+   5    8.238e-5    +3.051e-1     -9.519e0     9.523e0    -88.2°    0.9965    1.0000    5.714e-1    6.000e-2
+   6    5.000e-5    +7.367e-1     -1.581e1     1.583e1    -87.3°    0.9956    1.0000    9.499e-1    6.000e-2
+[run_job] end=2026-05-02T14:38:22Z rc=0

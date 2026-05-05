@@ -1,0 +1,29 @@
+[run_job] id=dcr-pulse-006-retry
+[run_job] binary=dcr_pulse_sweep
+[run_job] workdir=/c/Users/Yeyian PC/Desktop/ParticleSim-master/ParticleSim
+[run_job] exe=/c/Users/Yeyian PC/Desktop/ParticleSim-master/ParticleSim/target/release/dcr_pulse_sweep.exe
+[run_job] log=/c/Users/Yeyian PC/Desktop/ParticleSim-master/ParticleSim/doe_results/dcr_pulse_sweep/dcr-006r_amp1e-1/run.log
+[run_job] args: --amplitude 0.10 --duration-on-fs 2000 --duration-rest-fs 5000 --num-pulses 5 --equilibrate-fs 20000 --pre-hold-fs 5000 --log-stride 2 --run-id dcr-006r_amp1e-1 --scenario /c/Users/Yeyian PC/Desktop/ParticleSim-master/ParticleSim/measurement_configs/eis_validation_flat_symmetric.toml
+[run_job] start=2026-05-05T12:54:43Z
+Successfully placed 86 random bodies
+Successfully placed 86 random bodies
+Successfully placed 598 random bodies
+Successfully placed 599 random bodies
+scenario=C:/Users/Yeyian PC/Desktop/ParticleSim-master/ParticleSim/measurement_configs/eis_validation_flat_symmetric.toml seed=0xC0FFEE
+bodies=3449 foils=2
+probe bodies: A=130 B=130
+dt=5 fs  group_a=[1]  group_b=[2]
+equilibrating 20000 fs (4000 steps)
+zero-current pre-hold 5000 fs (1000 steps)
+pulses=5 duration_on=2000 fs (400 steps)  duration_rest=5000 fs (1000 steps)
+pulse 0: V_pre=-0.0019 V_post_onset=-0.0019 V_pulse_end=-0.9384 V_relax_end=-0.8852 R0=-7.933e-5
+pulse 1: V_pre=-0.8852 V_post_onset=-0.8804 V_pulse_end=-2.0242 V_relax_end=-1.9395 R0=4.767e-2
+pulse 2: V_pre=-1.9395 V_post_onset=-1.8789 V_pulse_end=-3.0158 V_relax_end=-2.8814 R0=6.060e-1
+pulse 3: V_pre=-2.8814 V_post_onset=-2.9585 V_pulse_end=-3.6428 V_relax_end=-4.0704 R0=-7.704e-1
+pulse 4: V_pre=-4.0704 V_post_onset=-4.0560 V_pulse_end=-4.0762 V_relax_end=-3.7637 R0=1.432e-1
+
+DCR pulse sweep finished: 5 pulses, 7000 steps, 115.2s wall, sim time 35000 fs
+wrote doe_results/dcr_pulse_sweep/dcr-006r_amp1e-1\dense_series.csv
+wrote doe_results/dcr_pulse_sweep/dcr-006r_amp1e-1\pulse_summary.csv
+wrote doe_results/dcr_pulse_sweep/dcr-006r_amp1e-1\summary.txt
+[run_job] end=2026-05-05T12:57:29Z rc=0

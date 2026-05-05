@@ -336,13 +336,24 @@ impl EisState {
     }
 
     /// Get the sinusoidal perturbation current for the current time.
+    ///
+    /// Uses **cosine** rather than sine so the integrated charge over each
+    /// cycle is symmetric about zero. With a sine input
+    /// (I = A·sin(ωt)), ΔQ(t) = A·(1−cos(ωt))/ω is **always ≥ 0**: the
+    /// cell accumulates positive charge throughout every cycle and never
+    /// crosses back through equilibrium, biasing the steady state to a
+    /// permanently positively-charged configuration. With cosine
+    /// (I = A·cos(ωt)), ΔQ(t) = A·sin(ωt)/ω swings symmetrically between
+    /// −A/ω and +A/ω and the cell oscillates around true equilibrium.
+    /// The lock-in (re·cos + im·sin + dc fit) is waveform-agnostic and
+    /// extracts Z correctly either way.
     pub fn get_perturbation(&self, time: f32) -> f32 {
         if self.finished {
             return 0.0;
         }
         let freq = self.config.frequencies[self.current_freq_idx];
         let omega = 2.0 * std::f32::consts::PI * freq;
-        self.config.amplitude * (omega * (time - self.t_start)).sin()
+        self.config.amplitude * (omega * (time - self.t_start)).cos()
     }
 
     /// Record one simulation step's voltage and current data.
@@ -860,9 +871,12 @@ impl EisState {
     /// perturbation, making them look one-sided.  Use v_ac / i_ac to see the
     /// symmetric AC oscillation directly.
     fn save_timeseries_csv(freq_idx: usize, freq: f32, shared: &EisSharedState) {
-        let dir = std::path::Path::new("eis_timeseries");
+        // EIS_TS_DIR env var lets parallel DOE runs target unique output dirs;
+        // unset → default `eis_timeseries/`.
+        let dir_str = std::env::var("EIS_TS_DIR").unwrap_or_else(|_| "eis_timeseries".to_string());
+        let dir = std::path::Path::new(&dir_str);
         if let Err(e) = std::fs::create_dir_all(dir) {
-            eprintln!("[EIS] Could not create eis_timeseries/: {}", e);
+            eprintln!("[EIS] Could not create {}: {}", dir.display(), e);
             return;
         }
         let filename = format!("eis_ts_{:03}_{:.3e}.csv", freq_idx + 1, freq);

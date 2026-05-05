@@ -1,0 +1,9 @@
+[run_job] id=dcr-potentio-1
+[run_job] binary=dcr_pulse_sweep
+[run_job] workdir=/c/Users/Yeyian PC/Desktop/ParticleSim-master/ParticleSim
+[run_job] exe=/c/Users/Yeyian PC/Desktop/ParticleSim-master/ParticleSim/target/release/dcr_pulse_sweep.exe
+[run_job] log=/c/Users/Yeyian PC/Desktop/ParticleSim-master/ParticleSim/doe_results/dcr_pulse_sweep/dcr-potentio-1_amp1e-2/run.log
+[run_job] args: --mode potentiostatic --amplitude 0.01 --duration-on-fs 500000 --duration-rest-fs 500000 --num-pulses 1 --equilibrate-fs 20000 --pre-hold-fs 5000 --log-stride 50 --run-id dcr-potentio-1_amp1e-2 --scenario /c/Users/Yeyian PC/Desktop/ParticleSim-master/ParticleSim/measurement_configs/eis_validation_flat_symmetric.toml
+[run_job] start=2026-05-05T18:14:32Z
+Unknown arg: --mode
+[run_job] end=2026-05-05T18:14:32Z rc=2

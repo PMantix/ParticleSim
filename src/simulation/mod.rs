@@ -7,6 +7,8 @@ pub mod eis;
 mod electron_hopping;
 pub mod forces;
 pub mod intercalation;
+pub mod morphology;
+pub mod morphology_log;
 pub mod sei;
 pub mod simulation;
 pub mod thermal;

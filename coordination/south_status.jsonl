@@ -1,0 +1,158 @@
+{"id":"doe-001","ts":"2026-05-02T12:54:49Z","status":"running","host":"DESKTOP-F1RA637"}
+{"id":"doe-002","ts":"2026-05-02T13:08:07Z","status":"running","host":"DESKTOP-F1RA637","note":"parallel with doe-001 via scripts/run_job.sh (cd-wrapper, RAYON_NUM_THREADS=8); pre-EIS_TS_DIR binary so EIS_TS_DIR can't apply yet — rebuild after doe-001 lands"}
+{"id": "doe-001", "ts": "2026-05-02T13:17:16Z", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-001_amp0.6_freq5e-5to5e-4.log", "wall_seconds": 1168}
+{"id": "doe-003", "ts": "2026-05-02T13:22:18Z", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-004", "ts": "2026-05-02T13:24:33Z", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-005", "ts": "2026-05-02T13:25:35Z", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-004", "ts": "2026-05-02T13:26:37Z", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-004_amp0.6_freq5e-3to5e-2.log", "wall_seconds": 94}
+{"id": "doe-006", "ts": "2026-05-02T13:26:39Z", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-007", "ts": "2026-05-02T13:31:31Z", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-008", "ts": "2026-05-02T13:32:33Z", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-007", "ts": "2026-05-02T13:33:35Z", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-007_amp5_freq5e-3to5e-2.log", "wall_seconds": 101}
+{"id": "doe-009", "ts": "2026-05-02T13:33:37Z", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-008", "ts": "2026-05-02T13:34:40Z", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-008_amp2_freq5e-3to5e-2.log", "wall_seconds": 103}
+{"id": "doe-010", "ts": "2026-05-02T13:34:42Z", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-009", "ts": "2026-05-02T13:35:44Z", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-009_amp10_freq1e-2to5e-2.log", "wall_seconds": 101}
+{"id": "doe-011", "ts": "2026-05-02T13:35:46Z", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-012", "ts": "2026-05-02T13:36:48Z", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-003", "ts": "2026-05-02T13:39:51Z", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-003_amp0.06_freq5e-5to5e-4.log", "wall_seconds": 1040}
+{"id": "doe-005", "ts": "2026-05-02T13:44:55Z", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-005_amp2.0_freq5e-5to5e-4.log", "wall_seconds": 1137}
+{"id": "doe-012", "ts": "2026-05-02T13:55:42Z", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-012_amp0.6_freq5e-5to5e-4_seedDEADBEEF.log", "wall_seconds": 1122}
+{"id": "doe-013", "ts": "2026-05-02T14:00:14Z", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-014", "ts": "2026-05-02T14:00:31Z", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-015", "ts": "2026-05-02T14:00:48Z", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-016", "ts": "2026-05-02T14:01:05Z", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-017", "ts": "2026-05-02T14:01:14Z", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-018", "ts": "2026-05-02T14:01:32Z", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-013", "ts": "2026-05-02T14:03:37Z", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-013_amp0.6_freq5e-4to5e-3.log", "wall_seconds": 198}
+{"id": "doe-014", "ts": "2026-05-02T14:04:10Z", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-014_amp0.06_freq5e-4to5e-3.log", "wall_seconds": 202}
+{"id": "doe-015", "ts": "2026-05-02T14:04:28Z", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-015_amp0.006_freq5e-4to5e-3.log", "wall_seconds": 207}
+{"id": "doe-018", "ts": "2026-05-02T14:05:47Z", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-018_amp0.06_freq5e-4to5e-3_periods8.log", "wall_seconds": 247}
+{"id": "doe-019", "ts": "2026-05-02T14:08:38Z", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-020", "ts": "2026-05-02T14:08:56Z", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-017", "ts": "2026-05-02T14:22:19Z", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-017_amp0.06_freq5e-5to5e-4_seedC0FFEE99.log", "wall_seconds": 1259}
+{"id": "doe-019", "ts": "2026-05-02T14:38:34Z", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-019_amp0.06_freq5e-5to1e-3_ppd4.log", "wall_seconds": 1782}
+{"id": "doe-002", "ts": "2026-05-02T15:30:22Z", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-002_amp0.6_freq5e-6to5e-5.log", "wall_seconds": 8515}
+{"id": "doe-006", "ts": "2026-05-02T15:48:08Z", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-006_amp0.06_freq5e-6to5e-5.log", "wall_seconds": 8474}
+{"id": "doe-021", "ts": "2026-05-02T15:50:29Z", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-010", "ts": "2026-05-02T15:53:05Z", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-010_amp0.006_freq5e-6to5e-5.log", "wall_seconds": 8297}
+{"id": "doe-016", "ts": "2026-05-02T16:14:57Z", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-016_amp0.0006_freq5e-6to5e-5.log", "wall_seconds": 8025}
+{"id": "doe-022", "ts": "2026-05-02T16:17:02Z", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-023", "ts": "2026-05-02T16:17:20Z", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-024", "ts": "2026-05-02T16:58:14Z", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-021", "ts": "2026-05-02T13:56:49-04:00", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-021_amp0.002_freq5e-6to5e-5.log", "wall_seconds": 7563}
+{"id": "doe-025", "ts": "2026-05-02T14:22:19-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-026", "ts": "2026-05-02T14:22:37-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-024", "ts": "2026-05-02T15:03:53-04:00", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-024_amp0.006_freq1.58e-5to5e-5_ppd10.log", "wall_seconds": 7532}
+{"id": "doe-027", "ts": "2026-05-02T16:31:15-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-028", "ts": "2026-05-02T16:31:32-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-029", "ts": "2026-05-02T16:31:50-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-030", "ts": "2026-05-02T16:32:07-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-026", "ts": "2026-05-02T16:40:56-04:00", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-026_amp0.0006_freq5e-6to5e-5_seedDEADBEEF.log", "wall_seconds": 8297}
+{"id": "doe-025", "ts": "2026-05-02T16:41:13-04:00", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-025_amp0.0003_freq5e-6to5e-5.log", "wall_seconds": 8330}
+{"id": "doe-027", "ts": "2026-05-02T17:04:25-04:00", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-027_amp0.02_freq5e-5to2e-4_ppd6.log", "wall_seconds": 1979}
+{"id": "doe-028", "ts": "2026-05-02T17:05:13-04:00", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-028_amp0.04_freq5e-5to2e-4_ppd6.log", "wall_seconds": 2015}
+{"id": "doe-029", "ts": "2026-05-02T17:06:01-04:00", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-029_amp0.08_freq5e-5to2e-4_ppd6.log", "wall_seconds": 2042}
+{"id": "doe-030", "ts": "2026-05-02T17:06:19-04:00", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-030_amp0.10_freq5e-5to2e-4_ppd6.log", "wall_seconds": 2043}
+{"id": "doe-011", "ts": "2026-05-02T19:39:46-04:00", "status": "failed", "exit_code": 127, "log": "doe_results/eis_doe_lf/doe-011_amp0.0006_freq5e-7to5e-6.log", "wall_seconds": 36230, "error": "binary exited with code 127"}
+{"id": "doe-020", "ts": "2026-05-02T19:39:48-04:00", "status": "failed", "exit_code": 127, "log": "doe_results/eis_doe_lf/doe-020_amp6e-5_freq5e-7to5e-6.log", "wall_seconds": 34241, "error": "binary exited with code 127"}
+{"id": "doe-022", "ts": "2026-05-02T19:39:50-04:00", "status": "failed", "exit_code": 127, "log": "doe_results/eis_doe_lf/doe-022_amp2e-5_freq5e-7to5e-6.log", "wall_seconds": 26554, "error": "binary exited with code 127"}
+{"id": "doe-023", "ts": "2026-05-02T19:39:52-04:00", "status": "failed", "exit_code": 127, "log": "doe_results/eis_doe_lf/doe-023_amp2e-4_freq5e-7to5e-6.log", "wall_seconds": 26536, "error": "binary exited with code 127"}
+{"id":"doe-011","ts":"2026-05-02T19:40:32-04:00","status":"skipped","host":"DESKTOP-F1RA637","reason":"intentionally killed before completion: sin->cos waveform bugfix (commit 6c40728); pre-fix Z values would not be comparable. Re-run on cos waveform when North queues replacements."}
+{"id":"doe-020","ts":"2026-05-02T19:40:32-04:00","status":"skipped","host":"DESKTOP-F1RA637","reason":"intentionally killed before completion: sin->cos waveform bugfix (commit 6c40728); pre-fix Z values would not be comparable. Re-run on cos waveform when North queues replacements."}
+{"id":"doe-022","ts":"2026-05-02T19:40:32-04:00","status":"skipped","host":"DESKTOP-F1RA637","reason":"intentionally killed before completion: sin->cos waveform bugfix (commit 6c40728); pre-fix Z values would not be comparable. Re-run on cos waveform when North queues replacements."}
+{"id":"doe-023","ts":"2026-05-02T19:40:32-04:00","status":"skipped","host":"DESKTOP-F1RA637","reason":"intentionally killed before completion: sin->cos waveform bugfix (commit 6c40728); pre-fix Z values would not be comparable. Re-run on cos waveform when North queues replacements."}
+{"id": "doe-cos-001", "ts": "2026-05-02T19:40:55-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-cos-002", "ts": "2026-05-02T19:41:12-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-cos-003", "ts": "2026-05-02T19:41:30-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-cos-004", "ts": "2026-05-02T19:41:47-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-cos-005", "ts": "2026-05-02T19:42:04-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-cos-006", "ts": "2026-05-02T19:42:22-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-cos-007", "ts": "2026-05-02T19:42:39-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-cos-008", "ts": "2026-05-02T19:42:56-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-cos-003", "ts": "2026-05-02T19:45:48-04:00", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-cos-003_amp0.02_freq5e-4to5e-3_cos.log", "wall_seconds": 246}
+{"id": "doe-cos-006", "ts": "2026-05-02T19:46:37-04:00", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-cos-006_amp0.06_freq5e-4to5e-3_cos.log", "wall_seconds": 245}
+{"id": "doe-cos-001", "ts": "2026-05-02T20:05:57-04:00", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-cos-001_amp0.02_freq5e-5to5e-4_cos.log", "wall_seconds": 1485}
+{"id": "doe-cos-004", "ts": "2026-05-02T20:07:01-04:00", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-cos-004_amp0.06_freq5e-5to5e-4_cos.log", "wall_seconds": 1501}
+{"id": "doe-cos-007", "ts": "2026-05-02T20:08:51-04:00", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-cos-007_amp0.04_freq5e-5to2e-4_cos.log", "wall_seconds": 1565}
+{"id": "doe-cos-008", "ts": "2026-05-02T20:09:08-04:00", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-cos-008_amp0.10_freq5e-5to2e-4_cos.log", "wall_seconds": 1562}
+{"id": "doe-cos-002", "ts": "2026-05-02T22:14:48-04:00", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-cos-002_amp0.02_freq5e-6to5e-5_cos.log", "wall_seconds": 9213}
+{"id": "doe-cos-005", "ts": "2026-05-02T22:15:52-04:00", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-cos-005_amp0.06_freq5e-6to5e-5_cos.log", "wall_seconds": 9225}
+{"id": "doe-cos-009", "ts": "2026-05-03T06:05:28-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-cos-010", "ts": "2026-05-03T06:22:12-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-cos-011", "ts": "2026-05-03T06:22:30-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-cos-012", "ts": "2026-05-03T06:22:47-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-cos-013", "ts": "2026-05-03T06:23:04-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-cos-014", "ts": "2026-05-03T06:23:22-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-cos-015", "ts": "2026-05-03T06:23:39-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-cos-016", "ts": "2026-05-03T06:23:56-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-cos-017", "ts": "2026-05-03T06:24:14-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-cos-012", "ts": "2026-05-03T06:26:20-04:00", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-cos-012_amp0.04_freq5e-4to5e-3_cos.log", "wall_seconds": 198}
+{"id": "doe-cos-014", "ts": "2026-05-03T06:26:53-04:00", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-cos-014_amp0.10_freq5e-4to5e-3_cos.log", "wall_seconds": 200}
+{"id": "doe-cos-010", "ts": "2026-05-03T06:43:24-04:00", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-cos-010_amp0.005_freq5e-5to5e-4_cos.log", "wall_seconds": 1255}
+{"id": "doe-cos-015", "ts": "2026-05-03T06:44:59-04:00", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-cos-015_amp0.20_freq5e-5to5e-4_cos.log", "wall_seconds": 1265}
+{"id": "doe-cos-016", "ts": "2026-05-03T06:45:16-04:00", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-cos-016_amp0.40_freq5e-5to5e-4_cos.log", "wall_seconds": 1265}
+{"id": "doe-cos-017", "ts": "2026-05-03T06:45:18-04:00", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-cos-017_amp3e-4_freq5e-5to5e-4_cos.log", "wall_seconds": 1251}
+{"id": "doe-cos-018", "ts": "2026-05-03T07:59:38-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-cos-019", "ts": "2026-05-03T07:59:55-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-cos-020", "ts": "2026-05-03T08:00:12-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-cos-021", "ts": "2026-05-03T08:00:29-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-cos-022", "ts": "2026-05-03T08:00:47-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-cos-023", "ts": "2026-05-03T08:01:04-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-cos-018", "ts": "2026-05-03T08:46:30-04:00", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-cos-018_amp0.04_freq5e-5to5e-4_ppd10_cos.log", "wall_seconds": 2802}
+{"id": "doe-cos-019", "ts": "2026-05-03T08:46:32-04:00", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-cos-019_amp0.05_freq5e-5to5e-4_ppd10_cos.log", "wall_seconds": 2792}
+{"id": "doe-cos-020", "ts": "2026-05-03T08:47:05-04:00", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-cos-020_amp0.06_freq5e-5to5e-4_ppd10_cos.log", "wall_seconds": 2803}
+{"id": "doe-cos-021", "ts": "2026-05-03T08:47:23-04:00", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-cos-021_amp0.07_freq5e-5to5e-4_ppd10_cos.log", "wall_seconds": 2809}
+{"id": "doe-cos-022", "ts": "2026-05-03T08:47:40-04:00", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-cos-022_amp0.08_freq5e-5to5e-4_ppd10_cos.log", "wall_seconds": 2809}
+{"id": "doe-cos-023", "ts": "2026-05-03T08:47:57-04:00", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-cos-023_amp0.10_freq5e-5to5e-4_ppd10_cos.log", "wall_seconds": 2807}
+{"id": "doe-cos-013", "ts": "2026-05-03T08:56:12-04:00", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-cos-013_amp0.04_freq5e-6to5e-5_cos.log", "wall_seconds": 9174}
+{"id": "doe-cos-011", "ts": "2026-05-03T08:56:45-04:00", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-cos-011_amp0.005_freq5e-6to5e-5_cos.log", "wall_seconds": 9252}
+{"id": "doe-cos-009", "ts": "2026-05-03T09:11:58-04:00", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-cos-009_amp0.001_freq5e-6to1e-5_cos.log", "wall_seconds": 11187}
+{"id": "doe-cos-024", "ts": "2026-05-03T14:19:14-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-cos-024", "ts": "2026-05-04T02:40:24-04:00", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-cos-024_amp3e-4_freq1e-6to3e-6_cos.log", "wall_seconds": 44465}
+{"id": "doe-cos-025", "ts": "2026-05-04T19:28:55-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-cos-026", "ts": "2026-05-04T19:29:13-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-cos-027", "ts": "2026-05-04T19:29:30-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "doe-cos-025", "ts": "2026-05-05T02:45:28-04:00", "status": "done", "exit_code": 0, "log": "doe_results/eis_doe_lf/doe-cos-025_amp1.5e-4_freq2e-6to1e-5_cos.log", "wall_seconds": 26186}
+{"id": "dcr-pulse-001", "ts": "2026-05-05T08:40:02-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "dcr-pulse-001", "ts": "2026-05-05T08:40:20-04:00", "status": "failed", "exit_code": 3, "log": "doe_results/dcr_pulse_sweep/dcr-001_amp5e-3/run.log", "wall_seconds": 1, "error": "binary exited with code 3"}
+{"id": "dcr-pulse-002", "ts": "2026-05-05T08:40:22-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "dcr-pulse-002", "ts": "2026-05-05T08:40:39-04:00", "status": "failed", "exit_code": 3, "log": "doe_results/dcr_pulse_sweep/dcr-002_amp1e-2/run.log", "wall_seconds": 0, "error": "binary exited with code 3"}
+{"id": "dcr-pulse-003", "ts": "2026-05-05T08:40:41-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "dcr-pulse-003", "ts": "2026-05-05T08:40:59-04:00", "status": "failed", "exit_code": 3, "log": "doe_results/dcr_pulse_sweep/dcr-003_amp2e-2/run.log", "wall_seconds": 0, "error": "binary exited with code 3"}
+{"id": "dcr-pulse-004", "ts": "2026-05-05T08:41:01-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "dcr-pulse-004", "ts": "2026-05-05T08:41:18-04:00", "status": "failed", "exit_code": 3, "log": "doe_results/dcr_pulse_sweep/dcr-004_amp4e-2/run.log", "wall_seconds": 0, "error": "binary exited with code 3"}
+{"id": "dcr-pulse-005", "ts": "2026-05-05T08:41:20-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "dcr-pulse-005", "ts": "2026-05-05T08:41:37-04:00", "status": "failed", "exit_code": 3, "log": "doe_results/dcr_pulse_sweep/dcr-005_amp6e-2/run.log", "wall_seconds": 0, "error": "binary exited with code 3"}
+{"id": "dcr-pulse-006", "ts": "2026-05-05T08:41:39-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "dcr-pulse-006", "ts": "2026-05-05T08:41:57-04:00", "status": "failed", "exit_code": 3, "log": "doe_results/dcr_pulse_sweep/dcr-006_amp1e-1/run.log", "wall_seconds": 0, "error": "binary exited with code 3"}
+{"id": "dcr-pulse-007", "ts": "2026-05-05T08:43:50-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "dcr-pulse-008", "ts": "2026-05-05T08:44:07-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "dcr-pulse-007", "ts": "2026-05-05T08:46:29-04:00", "status": "done", "exit_code": 0, "log": "doe_results/dcr_pulse_sweep/dcr-007_amp2e-1/run.log", "wall_seconds": 153}
+{"id": "dcr-pulse-008", "ts": "2026-05-05T08:48:49-04:00", "status": "done", "exit_code": 0, "log": "doe_results/dcr_pulse_sweep/dcr-008_amp1e-3_long/run.log", "wall_seconds": 271}
+{"id": "dcr-pulse-001-retry", "ts": "2026-05-05T08:53:14-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "dcr-pulse-002-retry", "ts": "2026-05-05T08:53:32-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "dcr-pulse-003-retry", "ts": "2026-05-05T08:53:49-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "dcr-pulse-004-retry", "ts": "2026-05-05T08:54:06-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "dcr-pulse-005-retry", "ts": "2026-05-05T08:54:24-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "dcr-pulse-006-retry", "ts": "2026-05-05T08:54:41-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "dcr-pulse-001-retry", "ts": "2026-05-05T08:56:01-04:00", "status": "done", "exit_code": 0, "log": "doe_results/dcr_pulse_sweep/dcr-001r_amp5e-3/run.log", "wall_seconds": 162}
+{"id": "dcr-pulse-002-retry", "ts": "2026-05-05T08:56:18-04:00", "status": "done", "exit_code": 0, "log": "doe_results/dcr_pulse_sweep/dcr-002r_amp1e-2/run.log", "wall_seconds": 163}
+{"id": "dcr-pulse-003-retry", "ts": "2026-05-05T08:56:51-04:00", "status": "done", "exit_code": 0, "log": "doe_results/dcr_pulse_sweep/dcr-003r_amp2e-2/run.log", "wall_seconds": 166}
+{"id": "dcr-pulse-004-retry", "ts": "2026-05-05T08:57:09-04:00", "status": "done", "exit_code": 0, "log": "doe_results/dcr_pulse_sweep/dcr-004r_amp4e-2/run.log", "wall_seconds": 166}
+{"id": "dcr-pulse-005-retry", "ts": "2026-05-05T08:57:26-04:00", "status": "done", "exit_code": 0, "log": "doe_results/dcr_pulse_sweep/dcr-005r_amp6e-2/run.log", "wall_seconds": 165}
+{"id": "dcr-pulse-006-retry", "ts": "2026-05-05T08:57:43-04:00", "status": "done", "exit_code": 0, "log": "doe_results/dcr_pulse_sweep/dcr-006r_amp1e-1/run.log", "wall_seconds": 166}
+{"id": "doe-cos-026", "ts": "2026-05-05T09:18:39-04:00", "status": "failed", "exit_code": 2, "log": "doe_results/eis_doe_lf/doe-cos-026_amp1.5e-4_freq1e-6to3e-6_cos.log", "wall_seconds": 49758, "error": "binary exited with code 2"}
+{"id": "dcr-galvano-extreme-1", "ts": "2026-05-05T14:13:51-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "dcr-galvano-extreme-1", "ts": "2026-05-05T14:14:08-04:00", "status": "failed", "exit_code": 2, "log": "doe_results/dcr_pulse_sweep/dcr-galvano-extreme-1_amp1e-5/run.log", "wall_seconds": 0, "error": "binary exited with code 2"}
+{"id": "dcr-galvano-extreme-2", "ts": "2026-05-05T14:14:10-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "dcr-galvano-extreme-2", "ts": "2026-05-05T14:14:28-04:00", "status": "failed", "exit_code": 2, "log": "doe_results/dcr_pulse_sweep/dcr-galvano-extreme-2_amp5e-5/run.log", "wall_seconds": 1, "error": "binary exited with code 2"}
+{"id": "dcr-potentio-1", "ts": "2026-05-05T14:14:30-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "dcr-potentio-1", "ts": "2026-05-05T14:14:47-04:00", "status": "failed", "exit_code": 2, "log": "doe_results/dcr_pulse_sweep/dcr-potentio-1_amp1e-2/run.log", "wall_seconds": 0, "error": "binary exited with code 2"}
+{"id": "dcr-potentio-2", "ts": "2026-05-05T14:14:49-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "dcr-galvano-extreme-1-r", "ts": "2026-05-05T14:16:13-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "dcr-galvano-extreme-2-r", "ts": "2026-05-05T14:16:30-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "dcr-potentio-1-r", "ts": "2026-05-05T14:16:51-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "dcr-potentio-1-r", "ts": "2026-05-05T14:53:09-04:00", "status": "done", "exit_code": 0, "log": "doe_results/dcr_pulse_sweep/dcr-potentio-1-r_amp1e-2/run.log", "wall_seconds": 2172}
+{"id": "dcr-galvano-extreme-1-r", "ts": "2026-05-05T16:30:10-04:00", "status": "done", "exit_code": 0, "log": "doe_results/dcr_pulse_sweep/dcr-galvano-extreme-1-r_amp1e-5/run.log", "wall_seconds": 8033}
+{"id": "dcr-galvano-extreme-2-r", "ts": "2026-05-05T16:32:00-04:00", "status": "done", "exit_code": 0, "log": "doe_results/dcr_pulse_sweep/dcr-galvano-extreme-2-r_amp5e-5/run.log", "wall_seconds": 8118}

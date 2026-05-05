@@ -73,6 +73,8 @@ pub struct Simulation {
     pub active_regions: Vec<ActiveMaterialRegion>,
     // EIS state machine (None when not running)
     pub eis_state: Option<super::eis::EisState>,
+    // Phase 4.2: per-run morphology metrics CSV writer (None when disabled).
+    pub morphology_logger: Option<super::morphology_log::MorphologyLogger>,
     // Scratch buffers reused each step (avoid per-frame allocation)
     scratch_foil_current_recipients: Vec<bool>,
 }
@@ -129,6 +131,7 @@ impl Simulation {
             foil_metrics_current_base: None,
             active_regions: Vec::new(),
             eis_state: None,
+            morphology_logger: None,
             scratch_foil_current_recipients: Vec::new(),
         };
         sim.initialize_history();
@@ -1300,6 +1303,13 @@ impl Simulation {
             self.write_foil_metrics_if_due(self.frame, simulation_time_fs);
         }
 
+        // Phase 4.2: morphology metrics log + live snapshot.
+        if let Some(logger) = self.morphology_logger.as_mut() {
+            if let Some(metrics) = logger.write_if_due(self.frame, self.time, &self.bodies) {
+                *crate::renderer::state::MORPHOLOGY_LATEST.lock() = Some(metrics);
+            }
+        }
+
         // Capture history with lightweight ring buffer approach
         // Only capture every 10 frames and keep limited history for good performance
         if self.frame % 10 == 0 {
@@ -1363,6 +1373,47 @@ impl Simulation {
     /// of those particles) and physically we want the potential *seen by* the
     /// electrode from the rest of the system (counter-electrode + electrolyte).
     /// A softcore cutoff r_min prevents blowup from any remaining nearby bodies.
+    /// Spatially-averaged Coulomb potential at a set of probe body positions.
+    /// Each probe excludes the IDs in `exclude_ids` from the sum (typically
+    /// the probe's own foil bodies, or the probe IDs themselves to avoid
+    /// self-interaction). Same softcore cutoff as `compute_eis_voltage_by_potential`.
+    ///
+    /// Returns 0.0 if `probe_ids` is empty.
+    pub fn compute_potential_at_probes(
+        &self,
+        probe_ids: &[u64],
+        exclude_ids: &std::collections::HashSet<u64>,
+    ) -> f32 {
+        if probe_ids.is_empty() {
+            return 0.0;
+        }
+        let k = self.config.coulomb_constant;
+        const R_MIN: f32 = 5.0;
+        let mut total_v = 0.0f64;
+        let mut n_probes = 0u32;
+        for &pid in probe_ids {
+            let Some(probe_body) = self.bodies.iter().find(|b| b.id == pid) else {
+                continue;
+            };
+            let probe = probe_body.pos;
+            let mut v = 0.0f32;
+            for body in &self.bodies {
+                if exclude_ids.contains(&body.id) {
+                    continue;
+                }
+                let r = (probe - body.pos).mag().max(R_MIN);
+                v += k * body.charge / r;
+            }
+            total_v += v as f64;
+            n_probes += 1;
+        }
+        if n_probes > 0 {
+            (total_v / n_probes as f64) as f32
+        } else {
+            0.0
+        }
+    }
+
     pub fn compute_eis_voltage_by_potential(
         &self,
         group_a_ids: &[u64],

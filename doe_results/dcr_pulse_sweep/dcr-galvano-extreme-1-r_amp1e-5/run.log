@@ -1,0 +1,27 @@
+warning: particle_sim@0.1.6: Quarkstrom dependency found at ../quarkstrom/quarkstrom
+    Finished `release` profile [optimized] target(s) in 0.21s
+[run_job] id=dcr-galvano-extreme-1-r
+[run_job] binary=dcr_pulse_sweep
+[run_job] workdir=/c/Users/Yeyian PC/Desktop/ParticleSim-master/ParticleSim
+[run_job] exe=/c/Users/Yeyian PC/Desktop/ParticleSim-master/ParticleSim/target/release/dcr_pulse_sweep.exe
+[run_job] log=/c/Users/Yeyian PC/Desktop/ParticleSim-master/ParticleSim/doe_results/dcr_pulse_sweep/dcr-galvano-extreme-1-r_amp1e-5/run.log
+[run_job] args: --mode galvanostatic --amplitude 0.00001 --duration-on-fs 2000000 --duration-rest-fs 2000000 --num-pulses 1 --equilibrate-fs 20000 --pre-hold-fs 5000 --log-stride 100 --run-id dcr-galvano-extreme-1-r_amp1e-5 --scenario /c/Users/Yeyian PC/Desktop/ParticleSim-master/ParticleSim/measurement_configs/eis_validation_flat_symmetric.toml
+[run_job] start=2026-05-05T18:16:15Z
+Successfully placed 86 random bodies
+Successfully placed 86 random bodies
+Successfully placed 598 random bodies
+Successfully placed 599 random bodies
+scenario=C:/Users/Yeyian PC/Desktop/ParticleSim-master/ParticleSim/measurement_configs/eis_validation_flat_symmetric.toml seed=0xC0FFEE
+bodies=3449 foils=2
+probe bodies: A=130 B=130
+dt=5 fs  group_a=[1]  group_b=[2]  mode=Galvanostatic
+equilibrating 20000 fs (4000 steps)
+pre-hold 5000 fs (1000 steps)
+pulses=1 duration_on=2000000 fs (400000 steps)  duration_rest=2000000 fs (400000 steps)
+pulse 0: V_pre=-0.0050 V_post_onset=-0.0048 V_pulse_end=-0.0293 V_relax_end=-0.0204 R0=1.733e1
+
+DCR pulse sweep finished: 1 pulses, 801000 steps, 7986.4s wall, sim time 4005000 fs
+wrote doe_results/dcr_pulse_sweep/dcr-galvano-extreme-1-r_amp1e-5\dense_series.csv
+wrote doe_results/dcr_pulse_sweep/dcr-galvano-extreme-1-r_amp1e-5\pulse_summary.csv
+wrote doe_results/dcr_pulse_sweep/dcr-galvano-extreme-1-r_amp1e-5\summary.txt
+[run_job] end=2026-05-05T20:30:08Z rc=0

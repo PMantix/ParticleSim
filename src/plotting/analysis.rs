@@ -189,19 +189,28 @@ fn compute_potential_at_point(pos: Vec2, bodies: &[Body], coulomb_constant: f32)
 }
 
 /// Calculate cell voltage as V_positive_centroid - V_negative_centroid.
-/// Classifies foils as positive/negative using the same heuristic as simulation.rs.
+///
+/// Foil classification uses **stable spatial geometry** (foils with smaller
+/// centroid x are "pos", larger x are "neg"). Earlier versions used the
+/// instantaneous sign of `dc_current` to decide polarity, which is correct for
+/// DC measurements but flips every half-cycle in AC mode (e.g. EIS Galvanostatic
+/// sweeps), producing a 1.4-V discontinuity in the displayed V_cell whenever
+/// `dc_current` crosses zero. The spatial classification is invariant to the
+/// drive waveform and matches the standard 2-foil cell convention (left foil =
+/// "pos", right foil = "neg") that the rest of the codebase implicitly uses.
+///
+/// The DC sign convention is preserved: for the validation scenario, foil A
+/// (left, x≈-150) is "pos" by spatial rule, and applying +I to foil A still
+/// produces V_cell < 0 (consistent with prior `find_amplitude_floor` and
+/// `verify_galvanostatic_amplitude` measurements).
 pub fn calculate_cell_voltage(bodies: &[Body], foils: &[Foil], coulomb_constant: f32) -> f32 {
     if foils.len() < 2 {
         return 0.0;
     }
 
-    let mut pos_centroid = Vec2::zero();
-    let mut neg_centroid = Vec2::zero();
-    let mut pos_count = 0u32;
-    let mut neg_count = 0u32;
-
+    // Compute centroid for each foil
+    let mut foil_centroids: Vec<(Vec2, &Foil)> = Vec::with_capacity(foils.len());
     for foil in foils {
-        // Compute foil centroid
         let mut c = Vec2::zero();
         let mut n = 0.0f32;
         for id in &foil.body_ids {
@@ -211,38 +220,27 @@ pub fn calculate_cell_voltage(bodies: &[Body], foils: &[Foil], coulomb_constant:
             }
         }
         if n > 0.0 {
-            c /= n;
-        } else {
-            continue;
-        }
-
-        // Classify by charging mode (same heuristic as simulation.rs)
-        let is_pos = match foil.charging_mode {
-            crate::body::foil::ChargingMode::Current => foil.dc_current > 0.0,
-            crate::body::foil::ChargingMode::Overpotential => {
-                if let Some(ctrl) = &foil.overpotential_controller {
-                    ctrl.target_ratio >= 1.0
-                } else {
-                    false
-                }
-            }
-        };
-
-        if is_pos {
-            pos_centroid += c;
-            pos_count += 1;
-        } else {
-            neg_centroid += c;
-            neg_count += 1;
+            foil_centroids.push((c / n, foil));
         }
     }
-
-    if pos_count == 0 || neg_count == 0 {
+    if foil_centroids.len() < 2 {
         return 0.0;
     }
 
-    pos_centroid /= pos_count as f32;
-    neg_centroid /= neg_count as f32;
+    // Stable classification: split foils by median x. Smaller x → "pos".
+    foil_centroids.sort_by(|a, b| a.0.x.partial_cmp(&b.0.x).unwrap_or(std::cmp::Ordering::Equal));
+    let median_idx = foil_centroids.len() / 2;
+    let (pos_group, neg_group) = foil_centroids.split_at(median_idx);
+
+    let avg_centroid = |group: &[(Vec2, &Foil)]| -> Vec2 {
+        let mut s = Vec2::zero();
+        for (c, _) in group {
+            s += *c;
+        }
+        s / group.len() as f32
+    };
+    let pos_centroid = avg_centroid(pos_group);
+    let neg_centroid = avg_centroid(neg_group);
 
     let v_pos = compute_potential_at_point(pos_centroid, bodies, coulomb_constant);
     let v_neg = compute_potential_at_point(neg_centroid, bodies, coulomb_constant);
