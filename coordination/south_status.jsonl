@@ -150,3 +150,4 @@
 {"id": "dcr-potentio-1", "ts": "2026-05-05T14:14:30-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
 {"id": "dcr-potentio-1", "ts": "2026-05-05T14:14:47-04:00", "status": "failed", "exit_code": 2, "log": "doe_results/dcr_pulse_sweep/dcr-potentio-1_amp1e-2/run.log", "wall_seconds": 0, "error": "binary exited with code 2"}
 {"id": "dcr-potentio-2", "ts": "2026-05-05T14:14:49-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "dcr-galvano-extreme-1-r", "ts": "2026-05-05T14:16:13-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
