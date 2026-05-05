@@ -55,8 +55,24 @@ pub fn compute_morphology_metrics(bodies: &[Body]) -> MorphologyMetrics {
         interface_arc_length_per_unit_lateral: stub_arc_length(bodies),
         interface_roughness_rms_angstroms: roughness_rms_angstroms(bodies),
         dead_li_fraction: stub_dead_li_fraction(bodies),
-        accessible_surface_atoms: stub_accessible_surface_atoms(bodies),
+        accessible_surface_atoms: accessible_surface_atoms(bodies),
     }
+}
+
+/// True if `s` is a *liquid* electrolyte species (ions or solvent molecules).
+/// Excludes solid electrolytes (LLZO/LLZT/S40B) and SEI — those represent
+/// passivation, not the bulk electrolyte the metal is "exposed" to.
+fn is_liquid_electrolyte(s: Species) -> bool {
+    matches!(
+        s,
+        Species::LithiumIon
+            | Species::ElectrolyteAnion
+            | Species::EC
+            | Species::DMC
+            | Species::VC
+            | Species::FEC
+            | Species::EMC
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -154,10 +170,42 @@ fn stub_dead_li_fraction(_bodies: &[Body]) -> f32 {
     f32::NAN
 }
 
-fn stub_accessible_surface_atoms(_bodies: &[Body]) -> u32 {
-    // TODO Phase 4: count LithiumMetal particles within one neighbor
-    // radius of any electrolyte-species particle.
-    0
+/// Count LithiumMetal particles that have at least one *liquid electrolyte*
+/// neighbor (ion or solvent molecule) within `(r_self + r_other) * CONTACT_FACTOR`.
+///
+/// `CONTACT_FACTOR = 1.3` — i.e. neighbor centers within 30% past pure
+/// geometric contact. Wide enough to catch first-shell solvation/passivation
+/// neighbors, narrow enough that an atom several Å inside the bulk metal
+/// won't be falsely flagged.
+///
+/// Solid-electrolyte and SEI species don't count: they represent passivation,
+/// not the "exposed-to-electrolyte" surface this metric tries to measure.
+///
+/// Naive O(N_li × N_electrolyte). For the validation cell (~10³ Li metal,
+/// ~10⁴ electrolyte) that's ~10⁷ comparisons — well under the per-frame cost
+/// of one collision pass. If it ever becomes hot, switch to `cell_list`.
+fn accessible_surface_atoms(bodies: &[Body]) -> u32 {
+    const CONTACT_FACTOR: f32 = 1.3;
+
+    let electrolyte: Vec<&Body> = bodies
+        .iter()
+        .filter(|b| is_liquid_electrolyte(b.species))
+        .collect();
+    if electrolyte.is_empty() {
+        return 0;
+    }
+
+    let mut count: u32 = 0;
+    for li in bodies.iter().filter(|b| b.species == Species::LithiumMetal) {
+        for e in &electrolyte {
+            let cutoff = (li.radius + e.radius) * CONTACT_FACTOR;
+            if (li.pos - e.pos).mag_sq() < cutoff * cutoff {
+                count += 1;
+                break;
+            }
+        }
+    }
+    count
 }
 
 #[cfg(all(test, feature = "unit_tests"))]
