@@ -154,3 +154,4 @@
 {"id": "dcr-galvano-extreme-2-r", "ts": "2026-05-05T14:16:30-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
 {"id": "dcr-potentio-1-r", "ts": "2026-05-05T14:16:51-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
 {"id": "dcr-potentio-1-r", "ts": "2026-05-05T14:53:09-04:00", "status": "done", "exit_code": 0, "log": "doe_results/dcr_pulse_sweep/dcr-potentio-1-r_amp1e-2/run.log", "wall_seconds": 2172}
+{"id": "dcr-galvano-extreme-1-r", "ts": "2026-05-05T16:30:10-04:00", "status": "done", "exit_code": 0, "log": "doe_results/dcr_pulse_sweep/dcr-galvano-extreme-1-r_amp1e-5/run.log", "wall_seconds": 8033}
