@@ -138,6 +138,66 @@ def render_accessible_panel(ax, scenario):
     ax.set_ylabel("y (Å)")
 
 
+def render_arc_length_panel(ax, scenario):
+    """One scenario panel for interface_arc_length: particle scatter +
+    per-side frontier polyline overlay."""
+    particles = scenario["particles"]
+    if not particles:
+        ax.set_title(f"{scenario['name']} (empty)\nratio={scenario['computed']:.3f}")
+        ax.set_aspect("equal")
+        return
+
+    xs = [p["x"] for p in particles]
+    ys = [p["y"] for p in particles]
+    x_min, x_max = min(xs), max(xs)
+    y_min, y_max = min(ys), max(ys)
+    base_pad = max((x_max - x_min) * 0.1, (y_max - y_min) * 0.1, 5.0)
+    cx, cy = (x_min + x_max) * 0.5, (y_min + y_max) * 0.5
+    half = max((x_max - x_min) * 0.5 + base_pad, (y_max - y_min) * 0.5 + base_pad)
+    ax.set_xlim(cx - half, cx + half)
+    ax.set_ylim(cy - half, cy + half)
+    ax.set_aspect("equal")
+
+    seen_species = set()
+    for p in particles:
+        species = p["species"]
+        color = SPECIES_COLOR.get(species, "#cccccc")
+        ax.add_patch(Circle((p["x"], p["y"]), p["r"], color=color, ec="none", alpha=0.7))
+        seen_species.add(species)
+
+    # Frontier polylines.
+    frontiers = scenario.get("frontiers", {})
+    for label, color in [("left", "#cc0000"), ("right", "#0066cc")]:
+        pts = frontiers.get(label, [])
+        if len(pts) >= 2:
+            fx = [p["x"] for p in pts]
+            fy = [p["y"] for p in pts]
+            ax.plot(fx, fy, color=color, lw=2.0, marker="o", markersize=3,
+                    label=f"{label} frontier")
+
+    judgment = scenario.get("judgment", "?")
+    if judgment == "PASS":
+        judgment_color = "tab:green"
+    elif judgment == "FAIL":
+        judgment_color = "tab:red"
+    else:
+        judgment_color = "tab:blue"
+
+    expected = scenario.get("expected")
+    expected_str = f"{expected:.3f}" if isinstance(expected, (int, float)) else "n/a"
+    ax.set_title(
+        f"{scenario['name']}\n"
+        f"expected={expected_str}  computed={scenario['computed']:.3f}  [{judgment}]",
+        color=judgment_color,
+        fontsize=10,
+    )
+
+    if frontiers.get("left") or frontiers.get("right"):
+        ax.legend(loc="upper right", fontsize=7, frameon=True)
+    ax.set_xlabel("x (Å)")
+    ax.set_ylabel("y (Å)")
+
+
 def render_metric(data, out_path: Path):
     metric = data["metric"]
     scenarios = data["scenarios"]
@@ -158,6 +218,8 @@ def render_metric(data, out_path: Path):
         ax = axes[r][c]
         if metric == "accessible_surface_atoms":
             render_accessible_panel(ax, sc)
+        elif metric == "interface_arc_length":
+            render_arc_length_panel(ax, sc)
         else:
             ax.set_title(f"renderer not implemented: {metric}")
     # Blank any unused slots.
@@ -168,11 +230,18 @@ def render_metric(data, out_path: Path):
     judged = [sc for sc in scenarios if sc.get("judgment") in ("PASS", "FAIL")]
     pass_count = sum(1 for sc in judged if sc.get("judgment") == "PASS")
     info_count = sum(1 for sc in scenarios if sc.get("judgment") == "INFO")
-    contact = data.get("contact_factor", "?")
     info_suffix = f", {info_count} INFO" if info_count else ""
+
+    if metric == "accessible_surface_atoms":
+        param = f"contact_factor={data.get('contact_factor', '?')}"
+    elif metric == "interface_arc_length":
+        param = f"y_bin={data.get('y_bin_angstroms', '?')} Å"
+    else:
+        param = ""
+
     fig.suptitle(
         f"morphology metric: {metric}   "
-        f"(contact_factor={contact}, {pass_count}/{len(judged)} PASS{info_suffix})",
+        f"({param}, {pass_count}/{len(judged)} PASS{info_suffix})",
         fontsize=12,
     )
     fig.tight_layout(rect=(0, 0, 1, 0.97))

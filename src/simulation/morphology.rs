@@ -6,11 +6,14 @@
 //
 // Design per docs/EIS_AMPLITUDE_STUDY_PLAN.md Phase 4.1.
 //
-// Status: SCAFFOLDING.
-//   - `interface_roughness_rms_angstroms` is implemented and exercised in
-//     a unit test against the flat validation scenario (expect < 5 Å).
-//   - The other three metrics are stubbed with sentinel values; the
-//     stub returns and inline TODOs document what they should do.
+// Status: in-progress.
+//   - `interface_roughness_rms_angstroms` is implemented and tested.
+//   - `accessible_surface_atoms` (#3) is implemented and tested
+//     (see docs/PHASE_4_MORPHOLOGY_VALIDATION.md).
+//   - `interface_arc_length_per_unit_lateral` (#1) is implemented as a
+//     frontier-trace algorithm (single-valued y → x); does not yet
+//     handle overhangs/islands. See report for the limitation note.
+//   - `dead_li_fraction` (#2) remains a stub returning NaN.
 //   - There is no CSV / GUI integration yet (Phase 4.2). The metrics
 //     are pure functions on `&[Body]` so they can be wired into either
 //     when the time comes.
@@ -52,7 +55,7 @@ pub struct MorphologyMetrics {
 /// significant simulation slowdown.
 pub fn compute_morphology_metrics(bodies: &[Body]) -> MorphologyMetrics {
     MorphologyMetrics {
-        interface_arc_length_per_unit_lateral: stub_arc_length(bodies),
+        interface_arc_length_per_unit_lateral: interface_arc_length(bodies),
         interface_roughness_rms_angstroms: roughness_rms_angstroms(bodies),
         dead_li_fraction: stub_dead_li_fraction(bodies),
         accessible_surface_atoms: accessible_surface_atoms(bodies),
@@ -93,6 +96,138 @@ pub fn is_li_metal_accessible(li: &Body, bodies: &[Body]) -> bool {
             (li.pos - e.pos).mag_sq() < cutoff * cutoff
         }
     })
+}
+
+// ---------------------------------------------------------------------------
+// Shared frontier-extraction helper (used by roughness + arc length)
+// ---------------------------------------------------------------------------
+
+/// Default Y-bin width for the arc-length metric. The metric depends weakly
+/// on this for moderately rough interfaces and more strongly for highly
+/// dendritic ones (smaller bins resolve finer features). 5 Å is the
+/// scaffold's documented default; see the grid-resolution DOE in
+/// `docs/PHASE_4_MORPHOLOGY_VALIDATION.md`.
+pub const ARC_LENGTH_DEFAULT_Y_BIN_ANGSTROMS: f32 = 5.0;
+
+/// One frontier point: y-bin center plus extreme-x position of the metal
+/// frontier facing the electrolyte at that y.
+#[derive(Clone, Copy, Debug)]
+pub struct FrontierPoint {
+    pub y: f32,
+    pub x: f32,
+}
+
+/// Extract the per-y-bin frontier for the left (x < 0) and right (x ≥ 0)
+/// foil groups. Returns `(left_frontier, right_frontier)`, each sorted by y.
+///
+/// "Frontier" = the metal coordinate at each y-bin facing the electrolyte —
+/// rightmost x for the left foil, leftmost x for the right foil. Builds on
+/// the same convention as the roughness metric so the two are directly
+/// comparable.
+pub fn extract_metal_frontiers(
+    bodies: &[Body],
+    y_bin: f32,
+) -> (Vec<FrontierPoint>, Vec<FrontierPoint>) {
+    use std::collections::HashMap;
+    let mut left_max: HashMap<i32, f32> = HashMap::new();
+    let mut right_min: HashMap<i32, f32> = HashMap::new();
+
+    for b in bodies
+        .iter()
+        .filter(|b| matches!(b.species, Species::LithiumMetal | Species::FoilMetal))
+    {
+        let bin = (b.pos.y / y_bin).floor() as i32;
+        if b.pos.x < 0.0 {
+            left_max
+                .entry(bin)
+                .and_modify(|x| {
+                    if b.pos.x > *x {
+                        *x = b.pos.x;
+                    }
+                })
+                .or_insert(b.pos.x);
+        } else {
+            right_min
+                .entry(bin)
+                .and_modify(|x| {
+                    if b.pos.x < *x {
+                        *x = b.pos.x;
+                    }
+                })
+                .or_insert(b.pos.x);
+        }
+    }
+
+    let to_sorted = |m: HashMap<i32, f32>| -> Vec<FrontierPoint> {
+        let mut v: Vec<FrontierPoint> = m
+            .into_iter()
+            .map(|(bin, x)| FrontierPoint {
+                y: (bin as f32 + 0.5) * y_bin,
+                x,
+            })
+            .collect();
+        v.sort_by(|a, b| a.y.partial_cmp(&b.y).unwrap());
+        v
+    };
+    (to_sorted(left_max), to_sorted(right_min))
+}
+
+// ---------------------------------------------------------------------------
+// Implemented metric: interface arc length per unit lateral extent
+// ---------------------------------------------------------------------------
+
+/// Arc length of the Li-metal frontier per side, normalized by lateral extent,
+/// averaged across the two foil groups. Flat foils → 1.0; mossy/dendritic ≫ 1.0.
+///
+/// Algorithm v1 (frontier-trace):
+/// 1. Extract per-y-bin frontier for left/right foil groups via
+///    [`extract_metal_frontiers`] using
+///    [`ARC_LENGTH_DEFAULT_Y_BIN_ANGSTROMS`] as bin width.
+/// 2. For each side, sum segment lengths between consecutive frontier
+///    points: `Σ √((Δx)² + (Δy)²)`.
+/// 3. Normalize by `(y_max − y_min)` of the side's frontier.
+/// 4. Average across sides.
+///
+/// **Limitation vs true marching squares:** assumes the interface is a
+/// single-valued function `y → x`. Overhangs, isolated dendrite tips, and
+/// detached islands are collapsed to their extreme-x point per y-bin and
+/// the connecting contour between them is ignored. For moderate-roughness
+/// regimes (the validation cell + early-cycle plating) this is fine; for
+/// late-stage dendritic morphology, switch to true marching squares.
+pub fn interface_arc_length(bodies: &[Body]) -> f32 {
+    interface_arc_length_with_bin(bodies, ARC_LENGTH_DEFAULT_Y_BIN_ANGSTROMS)
+}
+
+/// Configurable-bin variant of [`interface_arc_length`] for resolution
+/// sweeps and tuning.
+pub fn interface_arc_length_with_bin(bodies: &[Body], y_bin: f32) -> f32 {
+    let (left, right) = extract_metal_frontiers(bodies, y_bin);
+
+    let per_side = |frontier: &[FrontierPoint]| -> Option<f32> {
+        if frontier.len() < 2 {
+            return None;
+        }
+        let total: f32 = frontier
+            .windows(2)
+            .map(|w| {
+                let dx = w[1].x - w[0].x;
+                let dy = w[1].y - w[0].y;
+                (dx * dx + dy * dy).sqrt()
+            })
+            .sum();
+        let y_extent = frontier.last().unwrap().y - frontier.first().unwrap().y;
+        if y_extent <= 0.0 {
+            return None;
+        }
+        Some(total / y_extent)
+    };
+
+    match (per_side(&left), per_side(&right)) {
+        (Some(l), Some(r)) => 0.5 * (l + r),
+        (Some(l), None) => l,
+        (None, Some(r)) => r,
+        (None, None) => 0.0,
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -175,13 +310,6 @@ fn roughness_rms_angstroms(bodies: &[Body]) -> f32 {
 // ---------------------------------------------------------------------------
 // Stubs — to implement in Phase 4 follow-up
 // ---------------------------------------------------------------------------
-
-fn stub_arc_length(_bodies: &[Body]) -> f32 {
-    // TODO Phase 4: marching squares on Li-metal occupancy grid.
-    // Return 1.0 (flat reference) until implemented so callers don't
-    // mistake an unimplemented stub for a "perfectly flat" measurement.
-    f32::NAN
-}
 
 fn stub_dead_li_fraction(_bodies: &[Body]) -> f32 {
     // TODO Phase 4: connected-component analysis on a particle-proximity
@@ -387,6 +515,115 @@ mod tests {
         assert_eq!(
             m.accessible_surface_atoms, 10,
             "all 10 atoms in an isolated Li island surrounded by EC should count"
+        );
+    }
+
+    // -------------------------------------------------------------------
+    // Tests for interface_arc_length
+    // -------------------------------------------------------------------
+
+    #[test]
+    fn arc_length_one_for_flat_foils() {
+        let mut bodies = flat_foil_column(-150.0, 50, Species::FoilMetal);
+        bodies.extend(flat_foil_column(150.0, 50, Species::FoilMetal));
+        let m = compute_morphology_metrics(&bodies);
+        // Frontier is exactly vertical → segments are pure Δy → ratio = 1.0.
+        assert!(
+            (m.interface_arc_length_per_unit_lateral - 1.0).abs() < 1e-3,
+            "flat 2-foil should give 1.0, got {}",
+            m.interface_arc_length_per_unit_lateral
+        );
+    }
+
+    #[test]
+    fn arc_length_one_for_single_flat_foil() {
+        let bodies = flat_foil_column(-150.0, 50, Species::FoilMetal);
+        let m = compute_morphology_metrics(&bodies);
+        assert!(
+            (m.interface_arc_length_per_unit_lateral - 1.0).abs() < 1e-3,
+            "single flat foil should give 1.0, got {}",
+            m.interface_arc_length_per_unit_lateral
+        );
+    }
+
+    #[test]
+    fn arc_length_zero_for_empty_bodies() {
+        let bodies: Vec<Body> = Vec::new();
+        let m = compute_morphology_metrics(&bodies);
+        assert_eq!(m.interface_arc_length_per_unit_lateral, 0.0);
+    }
+
+    #[test]
+    fn arc_length_grows_with_bump() {
+        // Baseline: flat 2-foil → 1.0.
+        let mut bodies = flat_foil_column(-150.0, 50, Species::FoilMetal);
+        bodies.extend(flat_foil_column(150.0, 50, Species::FoilMetal));
+        let baseline = compute_morphology_metrics(&bodies).interface_arc_length_per_unit_lateral;
+
+        // Bump one body of left foil rightward by 5 Å (toward electrolyte).
+        bodies[10].pos.x += 5.0;
+        let perturbed = compute_morphology_metrics(&bodies).interface_arc_length_per_unit_lateral;
+
+        assert!(
+            perturbed > baseline,
+            "bump should increase arc length ({} -> {})",
+            baseline,
+            perturbed
+        );
+        assert!(
+            perturbed < 1.5,
+            "single 5 Å bump should not blow up the metric ({})",
+            perturbed
+        );
+    }
+
+    #[test]
+    fn arc_length_large_for_dendritic_spike() {
+        // Flat foil + a long spike protruding 30 Å outward at y=0.
+        let mut bodies = flat_foil_column(-150.0, 50, Species::FoilMetal);
+        // Spike: 5 atoms marching from x=-145 down to x=-120, all at y close to 0.
+        for i in 0..6 {
+            let mut b = Body::new(
+                Vec2::new(-145.0 + (i as f32) * 5.0, 0.0),
+                Vec2::zero(),
+                Species::FoilMetal.mass(),
+                Species::FoilMetal.radius(),
+                0.0,
+                Species::FoilMetal,
+            );
+            b.id = (50_000 + i) as u64;
+            bodies.push(b);
+        }
+        let m = compute_morphology_metrics(&bodies);
+        assert!(
+            m.interface_arc_length_per_unit_lateral > 1.3,
+            "30 Å dendritic spike should drive arc length well above 1.0, got {}",
+            m.interface_arc_length_per_unit_lateral
+        );
+    }
+
+    #[test]
+    fn arc_length_grows_with_perturbation() {
+        // Same flat baseline, then perturb several bodies outward by random
+        // amounts ≈ 3 Å. Should give a small but consistent increase.
+        let mut bodies = flat_foil_column(-150.0, 50, Species::FoilMetal);
+        let baseline = compute_morphology_metrics(&bodies).interface_arc_length_per_unit_lateral;
+
+        for i in (0..50).step_by(3) {
+            bodies[i].pos.x += 3.0;
+        }
+        let perturbed = compute_morphology_metrics(&bodies).interface_arc_length_per_unit_lateral;
+
+        assert!(
+            perturbed > baseline + 0.05,
+            "multiple 3 Å perturbations should give a measurable increase ({} -> {})",
+            baseline,
+            perturbed
+        );
+        assert!(
+            perturbed < 1.5,
+            "moderate perturbations should not push past 1.5 ({})",
+            perturbed
         );
     }
 

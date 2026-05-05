@@ -16,7 +16,8 @@
 use particle_sim::body::{Body, Species};
 use particle_sim::io::load_state;
 use particle_sim::simulation::morphology::{
-    self, compute_morphology_metrics, is_li_metal_accessible,
+    self, compute_morphology_metrics, extract_metal_frontiers, interface_arc_length_with_bin,
+    is_li_metal_accessible, ARC_LENGTH_DEFAULT_Y_BIN_ANGSTROMS,
 };
 use std::fs;
 use std::path::PathBuf;
@@ -24,33 +25,43 @@ use ultraviolet::Vec2;
 
 fn print_usage_and_exit() -> ! {
     eprintln!(
-        "Usage: morphology_demo --metric <name> [--out <path>] [--load-state <path>]\n\
+        "Usage: morphology_demo --metric <name> [--out <path>] [--load-state <path>] \
+         [--y-bin <float>]\n\
          \n\
          metrics:\n\
            accessible_surface_atoms  (#3, implemented)\n\
-           interface_arc_length      (#1, stub — not yet implemented)\n\
+           interface_arc_length      (#1, implemented — frontier-trace v1)\n\
            dead_li_fraction          (#2, stub — not yet implemented)\n\
          \n\
          --load-state: load a SavedScenario .bin.gz, evaluate the metric on\n\
                        its bodies, and append it as an extra scenario named\n\
                        'real_sim:<filename>' so the visualizer renders both\n\
                        synthetic and real-snapshot panels in one figure.\n\
+         --y-bin:      arc-length only. Bin width in Å (default 5.0).\n\
          \n\
          Default --out: images/morphology_validation/<metric>.json"
     );
     std::process::exit(2);
 }
 
-fn parse_args() -> (String, PathBuf, Option<PathBuf>) {
+fn parse_args() -> (String, PathBuf, Option<PathBuf>, Option<f32>) {
     let mut metric: Option<String> = None;
     let mut out: Option<PathBuf> = None;
     let mut load_state_path: Option<PathBuf> = None;
+    let mut y_bin: Option<f32> = None;
     let mut args = std::env::args().skip(1);
     while let Some(a) = args.next() {
         match a.as_str() {
             "--metric" => metric = args.next(),
             "--out" => out = args.next().map(PathBuf::from),
             "--load-state" => load_state_path = args.next().map(PathBuf::from),
+            "--y-bin" => {
+                y_bin = args.next().and_then(|s| s.parse::<f32>().ok());
+                if y_bin.is_none() {
+                    eprintln!("--y-bin requires a positive float");
+                    std::process::exit(2);
+                }
+            }
             "-h" | "--help" => print_usage_and_exit(),
             other => {
                 eprintln!("unknown arg: {other}");
@@ -62,7 +73,7 @@ fn parse_args() -> (String, PathBuf, Option<PathBuf>) {
     let out = out.unwrap_or_else(|| {
         PathBuf::from(format!("images/morphology_validation/{metric}.json"))
     });
-    (metric, out, load_state_path)
+    (metric, out, load_state_path, y_bin)
 }
 
 fn make_body(species: Species, pos: Vec2) -> Body {
@@ -403,8 +414,217 @@ fn append_real_sim_scenario(scenarios: &mut Vec<Scenario>, path: &PathBuf) {
     });
 }
 
+// ---------------------------------------------------------------------------
+// interface_arc_length scenarios + run loop
+// ---------------------------------------------------------------------------
+
+/// Build a flat foil column at fixed x with N bodies stacked vertically
+/// (matches the test helper convention).
+fn flat_foil_column(x: f32, n: usize, dy: f32, y0: f32, species: Species) -> Vec<Body> {
+    (0..n)
+        .map(|i| make_body(species, Vec2::new(x, y0 + (i as f32) * dy)))
+        .collect()
+}
+
+fn build_scenarios_arc_length() -> Vec<Scenario> {
+    let mut scenarios = Vec::new();
+
+    // (1) Flat 2-foil baseline → expected 1.0.
+    let mut s1 = flat_foil_column(-150.0, 50, 2.0, -50.0, Species::FoilMetal);
+    s1.extend(flat_foil_column(150.0, 50, 2.0, -50.0, Species::FoilMetal));
+    scenarios.push(Scenario {
+        name: "flat_2_foil",
+        description: "Two flat foil columns at x=±150. Frontier is purely vertical → ratio = 1.0.",
+        expected: 1.0,
+        tolerance: 0.02,
+        bodies: s1,
+    });
+
+    // (2) Sinusoidal perturbation: flat foil with x = -150 + A·sin(2πy/λ).
+    // A=3 Å, λ=20 Å. Predicted ratio ≈ 1.05–1.15 depending on bin alignment.
+    let mut s2 = Vec::new();
+    let lambda = 20.0_f32;
+    let amp = 3.0_f32;
+    for i in 0..200 {
+        let y = -50.0 + (i as f32) * 0.5; // dense particle sampling
+        let x = -150.0 + amp * (2.0 * std::f32::consts::PI * y / lambda).sin();
+        s2.push(make_body(Species::FoilMetal, Vec2::new(x, y)));
+    }
+    // Also add a flat right foil for two-sided averaging.
+    s2.extend(flat_foil_column(150.0, 50, 2.0, -50.0, Species::FoilMetal));
+    scenarios.push(Scenario {
+        name: "sinusoidal_perturbation",
+        description: "Left foil with sinusoidal x perturbation (A=3 Å, λ=20 Å), flat right foil. \
+                      Per-side ratio ≈ 1.07 left + 1.0 right. Average ≈ 1.04.",
+        expected: 1.04,
+        tolerance: 0.05,
+        bodies: s2,
+    });
+
+    // (3) Mossy random: flat foil + random ±5 Å bumps every few atoms.
+    // Use a deterministic small LCG so the test is reproducible without rand.
+    let mut rng_state: u32 = 0xC0FFEEu32;
+    let mut next_rand = || -> f32 {
+        rng_state = rng_state.wrapping_mul(1103515245).wrapping_add(12345);
+        ((rng_state >> 16) & 0x7fff) as f32 / 32767.0 // [0, 1)
+    };
+    let mut s3 = Vec::new();
+    for i in 0..50 {
+        let y = -50.0 + (i as f32) * 2.0;
+        let x_perturb = (next_rand() - 0.5) * 10.0; // ±5 Å
+        s3.push(make_body(Species::FoilMetal, Vec2::new(-150.0 + x_perturb, y)));
+    }
+    s3.extend(flat_foil_column(150.0, 50, 2.0, -50.0, Species::FoilMetal));
+    scenarios.push(Scenario {
+        name: "mossy_random",
+        description: "Left foil with random ±5 Å bumps every 2 Å, flat right foil. \
+                      The metric's per-bin max smooths out fine-grained random noise: \
+                      with 2-3 particles per 5 Å bin, the max-x is biased toward the \
+                      population's extreme so adjacent-bin maxes track each other. \
+                      Expected modest increase ≈ 1.05.",
+        expected: 1.05,
+        tolerance: 0.05,
+        bodies: s3,
+    });
+
+    // (4) Dendritic spike: flat foil + a single 30 Å spike at y=0.
+    let mut s4 = flat_foil_column(-150.0, 50, 2.0, -50.0, Species::FoilMetal);
+    for i in 0..6 {
+        s4.push(make_body(
+            Species::FoilMetal,
+            Vec2::new(-145.0 + (i as f32) * 5.0, 0.0),
+        ));
+    }
+    s4.extend(flat_foil_column(150.0, 50, 2.0, -50.0, Species::FoilMetal));
+    scenarios.push(Scenario {
+        name: "dendritic_spike",
+        description: "Flat foils + one 30 Å spike protruding from left foil at y=0. \
+                      Per-y-bin frontier jumps inward at one bin. Ratio strongly > 1.",
+        expected: 1.6,
+        tolerance: 0.5,
+        bodies: s4,
+    });
+
+    // (5) Empty scenario.
+    scenarios.push(Scenario {
+        name: "empty",
+        description: "No bodies. Degenerate; expected = 0.0 (no foils to measure).",
+        expected: 0.0,
+        tolerance: 0.0,
+        bodies: Vec::new(),
+    });
+
+    scenarios
+}
+
+/// Frontier polylines (per side) used for the arc_length JSON dump.
+#[derive(Clone)]
+struct ArcLengthSnapshot {
+    y_bin: f32,
+    left: Vec<(f32, f32)>,  // (y, x)
+    right: Vec<(f32, f32)>, // (y, x)
+}
+
+fn snapshot_frontiers(bodies: &[Body], y_bin: f32) -> ArcLengthSnapshot {
+    let (left, right) = extract_metal_frontiers(bodies, y_bin);
+    ArcLengthSnapshot {
+        y_bin,
+        left: left.iter().map(|p| (p.y, p.x)).collect(),
+        right: right.iter().map(|p| (p.y, p.x)).collect(),
+    }
+}
+
+fn run_arc_length(scenarios: &[Scenario], out_path: &PathBuf, y_bin: f32) {
+    let mut json = String::new();
+    json.push_str("{\n");
+    json.push_str("  \"metric\": \"interface_arc_length\",\n");
+    json.push_str(&format!("  \"y_bin_angstroms\": {},\n", y_bin));
+    json.push_str("  \"scenarios\": [\n");
+
+    for (si, s) in scenarios.iter().enumerate() {
+        let computed = interface_arc_length_with_bin(&s.bodies, y_bin) as f64;
+        let is_info = s.expected.is_nan() || s.tolerance.is_nan();
+        let pass = !is_info && (computed - s.expected).abs() <= s.tolerance;
+        let judgment = if is_info {
+            "INFO"
+        } else if pass {
+            "PASS"
+        } else {
+            "FAIL"
+        };
+
+        let snap = snapshot_frontiers(&s.bodies, y_bin);
+
+        let expected_str = if s.expected.is_nan() {
+            "n/a".to_string()
+        } else {
+            format!("{:>6.3}", s.expected)
+        };
+        println!(
+            "[{}/{}] {:30} expected={}  computed={:>6.3}  Bin={:.1} Å  {}",
+            si + 1,
+            scenarios.len(),
+            s.name,
+            expected_str,
+            computed,
+            y_bin,
+            judgment
+        );
+
+        let expected_json = if s.expected.is_nan() {
+            "null".to_string()
+        } else {
+            format!("{}", s.expected)
+        };
+        json.push_str("    {\n");
+        json.push_str(&format!("      \"name\": \"{}\",\n", s.name));
+        json.push_str(&format!(
+            "      \"description\": \"{}\",\n",
+            s.description.replace('"', "\\\"")
+        ));
+        json.push_str(&format!("      \"expected\": {},\n", expected_json));
+        json.push_str(&format!("      \"computed\": {},\n", computed));
+        json.push_str(&format!("      \"judgment\": \"{}\",\n", judgment));
+        // Per-particle for the visualizer (no accessibility flag for this metric).
+        json.push_str("      \"particles\": [\n");
+        for (i, b) in s.bodies.iter().enumerate() {
+            let sep = if i + 1 == s.bodies.len() { "" } else { "," };
+            json.push_str(&format!(
+                "        {{\"species\":\"{}\",\"x\":{:.4},\"y\":{:.4},\"r\":{:.4}}}{}\n",
+                species_str(b.species),
+                b.pos.x,
+                b.pos.y,
+                b.radius,
+                sep
+            ));
+        }
+        json.push_str("      ],\n");
+        // Per-side frontier polyline.
+        json.push_str("      \"frontiers\": {\n");
+        for (label, points) in [("left", &snap.left), ("right", &snap.right)] {
+            json.push_str(&format!("        \"{label}\": ["));
+            for (i, (y, x)) in points.iter().enumerate() {
+                let sep = if i + 1 == points.len() { "" } else { "," };
+                json.push_str(&format!("{{\"y\":{:.3},\"x\":{:.3}}}{}", y, x, sep));
+            }
+            let trailing = if label == "right" { "" } else { "," };
+            json.push_str(&format!("]{}\n", trailing));
+        }
+        json.push_str("      }\n");
+        let comma = if si + 1 == scenarios.len() { "" } else { "," };
+        json.push_str(&format!("    }}{comma}\n"));
+    }
+    json.push_str("  ]\n}\n");
+
+    if let Some(parent) = out_path.parent() {
+        fs::create_dir_all(parent).expect("create output dir");
+    }
+    fs::write(out_path, json).expect("write json");
+    println!("\nwrote {}", out_path.display());
+}
+
 fn main() {
-    let (metric, out_path, load_state_path) = parse_args();
+    let (metric, out_path, load_state_path, y_bin_override) = parse_args();
     match metric.as_str() {
         "accessible_surface_atoms" => {
             let mut scenarios = build_scenarios_accessible();
@@ -413,11 +633,16 @@ fn main() {
             }
             run_accessible(&scenarios, &out_path);
         }
-        "interface_arc_length" | "dead_li_fraction" => {
-            eprintln!(
-                "metric '{metric}' is not implemented yet. Currently only \
-                 'accessible_surface_atoms' has scenarios."
-            );
+        "interface_arc_length" => {
+            let mut scenarios = build_scenarios_arc_length();
+            if let Some(p) = load_state_path {
+                append_real_sim_scenario(&mut scenarios, &p);
+            }
+            let y_bin = y_bin_override.unwrap_or(ARC_LENGTH_DEFAULT_Y_BIN_ANGSTROMS);
+            run_arc_length(&scenarios, &out_path, y_bin);
+        }
+        "dead_li_fraction" => {
+            eprintln!("metric 'dead_li_fraction' is not implemented yet.");
             std::process::exit(2);
         }
         other => {
