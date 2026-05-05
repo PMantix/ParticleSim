@@ -94,11 +94,25 @@ if [[ $HAS_SCENARIO -eq 0 ]]; then
   ABS_ARGS+=("--scenario" "$SCENARIO_DEFAULT")
 fi
 
-WORKDIR="$REPO_ROOT/runs/$ID"
-mkdir -p "$WORKDIR" "$(dirname "$LOG")"
+# Only eis_quick_sweep needs CWD isolation: it writes to a hardcoded
+# CWD-relative `eis_timeseries/` path that would collide between concurrent
+# jobs. Other binaries (e.g. dcr_pulse_sweep) use unique --run-id-derived
+# output dirs under doe_results/, so they should run from the repo root
+# so their default output paths land where users expect.
+case "$BINARY" in
+  eis_quick_sweep)
+    WORKDIR="$REPO_ROOT/runs/$ID"
+    mkdir -p "$WORKDIR"
+    ;;
+  *)
+    WORKDIR="$REPO_ROOT"
+    ;;
+esac
+mkdir -p "$(dirname "$LOG")"
 
 {
   echo "[run_job] id=$ID"
+  echo "[run_job] binary=$BINARY"
   echo "[run_job] workdir=$WORKDIR"
   echo "[run_job] exe=$EXE"
   echo "[run_job] log=$LOG"
