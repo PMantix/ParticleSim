@@ -61,8 +61,14 @@ LOG="$(absolutize "$LOG")"
 EXE="$REPO_ROOT/target/release/${BINARY}.exe"
 [[ -x "$EXE" ]] || EXE="$REPO_ROOT/target/release/${BINARY}"
 if [[ ! -x "$EXE" ]]; then
-  echo "run_job.sh: binary not found at target/release/${BINARY}[.exe]; build first with cargo build --release --bin ${BINARY}" >&2
-  exit 3
+  echo "run_job.sh: binary not found at target/release/${BINARY}[.exe]; attempting auto-build..." >&2
+  mkdir -p "$(dirname "${LOG}")"
+  (cd "$REPO_ROOT" && cargo build --release --bin "$BINARY") >>"$LOG" 2>&1
+  [[ -x "$EXE" ]] || EXE="$REPO_ROOT/target/release/${BINARY}.exe"
+  if [[ ! -x "$EXE" ]]; then
+    echo "run_job.sh: auto-build failed for $BINARY" >&2
+    exit 3
+  fi
 fi
 
 SCENARIO_DEFAULT="$REPO_ROOT/measurement_configs/eis_validation_flat_symmetric.toml"
