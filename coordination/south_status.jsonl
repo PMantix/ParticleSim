@@ -128,3 +128,4 @@
 {"id": "dcr-pulse-006", "ts": "2026-05-05T08:41:57-04:00", "status": "failed", "exit_code": 3, "log": "doe_results/dcr_pulse_sweep/dcr-006_amp1e-1/run.log", "wall_seconds": 0, "error": "binary exited with code 3"}
 {"id": "dcr-pulse-007", "ts": "2026-05-05T08:43:50-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
 {"id": "dcr-pulse-008", "ts": "2026-05-05T08:44:07-04:00", "status": "running", "host": "DESKTOP-F1RA637", "note": "south_controller.py: scripts/run_job.sh, RAYON_NUM_THREADS=4"}
+{"id": "dcr-pulse-007", "ts": "2026-05-05T08:46:29-04:00", "status": "done", "exit_code": 0, "log": "doe_results/dcr_pulse_sweep/dcr-007_amp2e-1/run.log", "wall_seconds": 153}
