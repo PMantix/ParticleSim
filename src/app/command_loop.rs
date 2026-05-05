@@ -396,11 +396,28 @@ pub fn handle_command(cmd: SimCommand, simulation: &mut Simulation) {
                 }
                 simulation.group_b.insert(id);
             }
+            // Publish current group state so the GUI (Charging-tab manual
+            // assignment, EIS-tab readout) reflects it without needing to
+            // start an EIS sweep first.
+            {
+                let mut shared = crate::simulation::eis::EIS_RESULTS.lock();
+                let mut a_sorted: Vec<u64> = simulation.group_a.iter().copied().collect();
+                let mut b_sorted: Vec<u64> = simulation.group_b.iter().copied().collect();
+                a_sorted.sort_unstable();
+                b_sorted.sort_unstable();
+                shared.group_a_ids = a_sorted;
+                shared.group_b_ids = b_sorted;
+            }
             mark_dirty(simulation);
         }
         SimCommand::ClearFoilGroups => {
             simulation.group_a.clear();
             simulation.group_b.clear();
+            {
+                let mut shared = crate::simulation::eis::EIS_RESULTS.lock();
+                shared.group_a_ids.clear();
+                shared.group_b_ids.clear();
+            }
             mark_dirty(simulation);
         }
         SimCommand::ConventionalSetCurrent { current } => {

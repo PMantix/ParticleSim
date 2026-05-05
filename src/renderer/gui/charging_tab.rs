@@ -132,13 +132,61 @@ impl super::super::Renderer {
 
                 ui.group(|ui| {
                     ui.label("Preset groups:");
-                    ui.small("Anodes (Group A): 1, 3, 5 | Cathodes (Group B): 2, 4");
+                    // Compute current spatial assignment preview so the user
+                    // can see which foils will land in which group.
+                    let foils_for_preview = crate::renderer::state::FOILS.lock().clone();
+                    let bodies_for_preview = crate::renderer::state::BODIES.lock().clone();
+                    let foil_centroid_x = |foil: &crate::body::foil::Foil| -> f32 {
+                        let mut sx = 0.0f32;
+                        let mut n = 0.0f32;
+                        for bid in &foil.body_ids {
+                            if let Some(b) = bodies_for_preview.iter().find(|b| b.id == *bid) {
+                                sx += b.pos.x;
+                                n += 1.0;
+                            }
+                        }
+                        if n > 0.0 { sx / n } else { 0.0 }
+                    };
+                    let mut auto_a: Vec<u64> = Vec::new();
+                    let mut auto_b: Vec<u64> = Vec::new();
+                    for foil in &foils_for_preview {
+                        if foil_centroid_x(foil) < 0.0 {
+                            auto_a.push(foil.id);
+                        } else {
+                            auto_b.push(foil.id);
+                        }
+                    }
+                    auto_a.sort_unstable();
+                    auto_b.sort_unstable();
+                    let fmt_ids = |v: &[u64]| -> String {
+                        if v.is_empty() {
+                            "—".to_string()
+                        } else {
+                            v.iter().map(|id| id.to_string()).collect::<Vec<_>>().join(", ")
+                        }
+                    };
+                    ui.small(format!(
+                        "Auto (by x-pos): A (x<0) = {} | B (x≥0) = {}",
+                        fmt_ids(&auto_a),
+                        fmt_ids(&auto_b)
+                    ));
                     ui.horizontal(|ui| {
-                        if ui.button("Apply Conventional Preset").clicked() {
-                            // Determine which preset IDs actually exist in the current sim
-                            let foils = crate::renderer::state::FOILS.lock();
+                        if ui.button("Apply Auto (by x-position)").clicked() {
+                            if let Some(tx) =
+                                crate::renderer::state::SIM_COMMAND_SENDER.lock().as_ref()
+                            {
+                                let _ =
+                                    tx.send(crate::renderer::state::SimCommand::SetFoilGroups {
+                                        group_a: auto_a.clone(),
+                                        group_b: auto_b.clone(),
+                                    });
+                            }
+                        }
+                        if ui.button("Apply Default IDs (1,3,5 / 2,4)").clicked() {
+                            // Legacy ID-based preset for the canonical
+                            // pre-seeded scenario.
                             let have: std::collections::HashSet<u64> =
-                                foils.iter().map(|f| f.id).collect();
+                                foils_for_preview.iter().map(|f| f.id).collect();
                             let mut group_a: Vec<u64> = [1_u64, 3, 5]
                                 .into_iter()
                                 .filter(|id| have.contains(id))
@@ -168,6 +216,64 @@ impl super::super::Renderer {
                             }
                         }
                     });
+                    // Manual per-foil assignment list. Useful when neither
+                    // preset matches (e.g. >2 foils, or asymmetric layouts).
+                    ui.add_space(6.0);
+                    ui.label("Manual assignment:");
+                    // Current groups are persisted in EIS_RESULTS for cross-thread access.
+                    let current = crate::simulation::eis::EIS_RESULTS.lock().clone();
+                    let mut manual_a: Vec<u64> = current.group_a_ids.clone();
+                    let mut manual_b: Vec<u64> = current.group_b_ids.clone();
+                    let mut changed = false;
+                    egui::Grid::new("manual_foil_assignment_grid")
+                        .num_columns(4)
+                        .striped(true)
+                        .show(ui, |ui| {
+                            ui.label("Foil");
+                            ui.label("x̄");
+                            ui.label("Group");
+                            ui.label("");
+                            ui.end_row();
+                            for foil in &foils_for_preview {
+                                let id = foil.id;
+                                let cx = foil_centroid_x(foil);
+                                ui.label(format!("{}", id));
+                                ui.label(format!("{:.1}", cx));
+                                let in_a = manual_a.contains(&id);
+                                let in_b = manual_b.contains(&id);
+                                let mut role: u8 = if in_a { 1 } else if in_b { 2 } else { 0 };
+                                let prev_role = role;
+                                ui.horizontal(|ui| {
+                                    ui.radio_value(&mut role, 0, "—");
+                                    ui.radio_value(&mut role, 1, "A");
+                                    ui.radio_value(&mut role, 2, "B");
+                                });
+                                if role != prev_role {
+                                    manual_a.retain(|x| *x != id);
+                                    manual_b.retain(|x| *x != id);
+                                    if role == 1 {
+                                        manual_a.push(id);
+                                    } else if role == 2 {
+                                        manual_b.push(id);
+                                    }
+                                    changed = true;
+                                }
+                                ui.label("");
+                                ui.end_row();
+                            }
+                        });
+                    if changed {
+                        manual_a.sort_unstable();
+                        manual_b.sort_unstable();
+                        if let Some(tx) =
+                            crate::renderer::state::SIM_COMMAND_SENDER.lock().as_ref()
+                        {
+                            let _ = tx.send(crate::renderer::state::SimCommand::SetFoilGroups {
+                                group_a: manual_a,
+                                group_b: manual_b,
+                            });
+                        }
+                    }
                 });
 
                 ui.add_space(8.0);
