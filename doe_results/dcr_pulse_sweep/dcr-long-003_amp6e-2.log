@@ -1,0 +1,19 @@
+Successfully placed 86 random bodies
+Successfully placed 86 random bodies
+Successfully placed 598 random bodies
+Successfully placed 599 random bodies
+scenario=measurement_configs/eis_validation_flat_symmetric.toml seed=0xC0FFEE
+bodies=3449 foils=2
+probe bodies: A=130 B=130
+dt=5 fs  group_a=[1]  group_b=[2]
+equilibrating 20000 fs (4000 steps)
+zero-current pre-hold 5000 fs (1000 steps)
+pulses=3 duration_on=10000 fs (2000 steps)  duration_rest=20000 fs (4000 steps)
+pulse 0: V_pre=-0.0042 V_post_onset=-0.0042 V_pulse_end=-3.2395 V_relax_end=-2.2983 R0=1.423e-5
+pulse 1: V_pre=-2.2983 V_post_onset=-2.2872 V_pulse_end=-3.5532 V_relax_end=-1.1384 R0=1.848e-1
+pulse 2: V_pre=-1.1384 V_post_onset=-1.1335 V_pulse_end=-2.8565 V_relax_end=-2.6950 R0=8.292e-2
+
+DCR pulse sweep finished: 3 pulses, 18000 steps, 227.4s wall, sim time 90000 fs
+wrote doe_results/dcr_pulse_sweep/dcr-long-003_amp6e-2/dense_series.csv
+wrote doe_results/dcr_pulse_sweep/dcr-long-003_amp6e-2/pulse_summary.csv
+wrote doe_results/dcr_pulse_sweep/dcr-long-003_amp6e-2/summary.txt

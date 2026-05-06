@@ -1,0 +1,12 @@
+[C] cycle3 started Sat May  2 07:44:20 EDT 2026
+warning: particle_sim@0.1.6: Quarkstrom dependency found at ../quarkstrom/quarkstrom
+    Finished `release` profile [optimized] target(s) in 0.32s
+     Running `target/release/eis_quick_sweep --amplitude 0.05`
+Successfully placed 86 random bodies
+Successfully placed 86 random bodies
+Successfully placed 598 random bodies
+Successfully placed 599 random bodies
+scenario=measurement_configs/eis_validation_flat_symmetric.toml seed=0xC0FFEE
+bodies=3449 foils=2
+dt=5 fs  group_a=[1]  group_b=[2]
+equilibrating 50000 fs (10000 steps)

@@ -1,0 +1,41 @@
+{
+  "details": {
+    "bond_k": 100.0,
+    "bond_length_post_mean": 282.01203501383463,
+    "bond_length_post_std": 6.357357960818557,
+    "bond_length_pre_mean": 282.1699185180664,
+    "bond_length_pre_std": 6.407551356563122,
+    "delta_from_baseline": -2.18,
+    "dipole_charge": 1.0,
+    "domain_h": 200.0,
+    "domain_w": 200.0,
+    "equilibrate_fs": 10000.0,
+    "g_min": 0.0,
+    "g_peak": 0.0,
+    "measure_fs": 10000.0,
+    "n_coord_first_shell": 0.0,
+    "n_dipole_pairs": 300,
+    "n_dmc": 300,
+    "n_free_anion": 50,
+    "n_free_li": 50,
+    "n_samples": 51,
+    "phase_2_2_baseline": 2.18,
+    "r_eq": 2.5,
+    "r_min_angstrom": 14.9,
+    "r_peak_angstrom": 0.1,
+    "rho_dipole_neg_per_a2": 0.0075,
+    "sample_every_fs": 200.0,
+    "seed": "0xC0FFEE"
+  },
+  "pass": false,
+  "test": "dipole_spike",
+  "tolerance": {
+    "kind": "range",
+    "literature_source": "liquid carbonate Li⁺ coordination, 3D bulk",
+    "max": 6.0,
+    "min": 3.0
+  },
+  "unit": "dipole_neg_per_li",
+  "value": 0.0,
+  "value_label": "li_dipole_neg_first_shell_coordination_number"
+}

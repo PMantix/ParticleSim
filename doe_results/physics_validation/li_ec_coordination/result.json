@@ -1,0 +1,34 @@
+{
+  "details": {
+    "bin_width": 0.2,
+    "domain_h": 200.0,
+    "domain_w": 200.0,
+    "equilibrate_fs": 10000.0,
+    "g_min": 0.012065762091780754,
+    "g_peak": 43.23131352927911,
+    "measure_fs": 20000.0,
+    "n_bins": 75,
+    "n_coord_first_shell": 2.181094527363184,
+    "n_ec_avg": 300.0,
+    "n_li_avg": 50.0,
+    "n_samples": 201,
+    "r_max": 15.0,
+    "r_min_angstrom": 3.5,
+    "r_peak_angstrom": 2.9000000000000004,
+    "rho_ec_per_a2": 0.0075,
+    "sample_every_fs": 100.0,
+    "scenario": "measurement_configs/physics_invariants/li_ec_coordination_dense.toml",
+    "seed": "0xC0FFEE"
+  },
+  "pass": false,
+  "test": "li_ec_coordination",
+  "tolerance": {
+    "kind": "range",
+    "literature_source": "liquid carbonate Li⁺ coordination, 3D bulk",
+    "max": 6.0,
+    "min": 3.0
+  },
+  "unit": "ec_per_li",
+  "value": 2.181094527363184,
+  "value_label": "li_ec_first_shell_coordination_number"
+}

@@ -1,0 +1,13 @@
+scenario=measurement_configs/eis_validation_flat_symmetric.toml
+seed=0xC0FFEE
+amplitude=0.002
+freq=0.0000158
+period_fs=63291.137
+dt_fs=5
+settle_steps=25316
+capture_steps=12658
+snapshots_taken=33
+snapshot_step_interval=395
+n_bodies=3449
+group_a=[1]
+group_b=[2]
