@@ -1,0 +1,33 @@
+{
+  "csv_path": "doe_results/physics_validation/mb_velocity_distribution/histogram.csv",
+  "details": {
+    "bin_width": 0.00246860858052969,
+    "boltzmann_constant_sim_units": 8.314462434100278e-7,
+    "chi2": 12852.637444658907,
+    "chi2_per_dof": 1071.0531203882422,
+    "dof": 12.0,
+    "empirical_temperature_K": 854.4261462559278,
+    "mean_speed": 0.005665534862219276,
+    "mean_speed_squared": 0.00020472893478918055,
+    "n_bins": 30,
+    "n_bodies": 120,
+    "n_speed_samples": 1020,
+    "n_target_species": 20,
+    "species_mass_amu": 6.940000057220459,
+    "target_species": "LithiumIon",
+    "target_temperature_K": 300.0,
+    "used_bins": 13,
+    "v_max_obs": 0.07053167372941971
+  },
+  "pass": true,
+  "scenario": "measurement_configs/physics_invariants/nve_energy_drift.toml",
+  "seed": "0xC0FFEE",
+  "test": "mb_velocity_distribution",
+  "tolerance": {
+    "kind": "absolute",
+    "value": 2500.0
+  },
+  "unit": "dimensionless",
+  "value": 1071.0531203882422,
+  "value_label": "chi2_per_dof"
+}

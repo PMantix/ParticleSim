@@ -1,0 +1,26 @@
+{
+  "csv_path": "doe_results/physics_validation/quadtree_force_error/per_body.csv",
+  "details": {
+    "l2_normalised_err": 0.15371712396529943,
+    "max_rel_err_per_body": 1.8901986242042412,
+    "mean_brute_force_mag": 0.002810367766476668,
+    "mean_qt_force_mag": 0.0027340467944659596,
+    "mean_rel_err_per_body": 0.2800300894337955,
+    "n_bodies": 120,
+    "n_nontrivial": 120,
+    "quadtree_epsilon": 2.0,
+    "quadtree_theta": 1.0,
+    "rms_rel_err_per_body": 0.45810105630139764
+  },
+  "pass": true,
+  "scenario": "measurement_configs/physics_invariants/nve_energy_drift.toml",
+  "seed": "0xC0FFEE",
+  "test": "quadtree_force_error",
+  "tolerance": {
+    "kind": "absolute",
+    "value": 0.25
+  },
+  "unit": "dimensionless",
+  "value": 0.15371712396529943,
+  "value_label": "l2_normalised_force_error"
+}

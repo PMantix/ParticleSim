@@ -1,0 +1,34 @@
+# Phase-2 dimensionless test: li_ec_coordination (denser bulk variant)
+# Same composition ratio as the EIS-validation cell but bulk-only (no metals
+# or foils), tuned to give better RDF statistics for solvation analysis.
+#
+# Density target: ~7.5e-3 EC/Å² to match the EIS scenario's bulk EC density.
+#   electrolyte volume = 200×200 = 40000 Å²
+#   300 EC → 7.5e-3 Å⁻²
+#
+# 1 M LiPF6 / 1:1 EC:DMC composition scaled to volume:
+#   Li⁺ ≈ 50, anion ≈ 50, EC ≈ 300, DMC ≈ 300
+
+[simulation]
+domain_width = 200.0
+domain_height = 200.0
+initial_temperature = 300.0
+enable_out_of_plane = false
+
+[particles]
+
+[[particles.random]]
+count = 50
+species = "LithiumIon"
+
+[[particles.random]]
+count = 50
+species = "ElectrolyteAnion"
+
+[[particles.random]]
+count = 300
+species = "EC"
+
+[[particles.random]]
+count = 300
+species = "DMC"

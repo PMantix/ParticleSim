@@ -1,0 +1,29 @@
+# Phase-1 invariant: charge_balance
+# See docs/PHYSICS_VALIDATION_PLAN.md §Test 1.1.
+#
+# Closed bulk-electrolyte cell — no electrodes, no foils, no metals. The only
+# allowed species are Li⁺, electrolyte anion, and the carbonate solvents
+# (EC/DMC/VC/FEC/EMC). Adding a metal/electrode opens electron-creation paths
+# (intercalation, SEI) that the binary will reject.
+#
+# Net initial charge: 30·(+1) + 30·(-1) + 100·(0) = 0.
+
+[simulation]
+domain_width = 200.0
+domain_height = 200.0
+initial_temperature = 300.0
+enable_out_of_plane = false
+
+[particles]
+
+[[particles.random]]
+count = 30
+species = "LithiumIon"
+
+[[particles.random]]
+count = 30
+species = "ElectrolyteAnion"
+
+[[particles.random]]
+count = 100
+species = "EC"

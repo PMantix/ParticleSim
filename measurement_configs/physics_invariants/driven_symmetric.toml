@@ -1,0 +1,70 @@
+# Phase-1 plausibility test: driven_symmetric
+# Sibling of zero_emf_symmetric. Same geometry, but foils carry opposing DC
+# currents to verify the hopping/Butler-Volmer kinetics actually engage when
+# driven. zero_emf_symmetric showed exactly zero hops anywhere in 5 ps of
+# equilibrium time, suggesting hopping is gated off in the absence of a field
+# (likely by the alignment-threshold check at electron_hopping.rs:230). This
+# test applies a tiny drive (±1e-3 e/fs) to confirm the kinetic code path
+# fires under non-zero forcing.
+#
+# Drive choice: 1e-3 e/fs is small enough that the system stays in linear
+# response over 10,000 fs (foil accumulates ~10 e total per side over the
+# whole run) but large enough to trigger detectable hop activity.
+#
+# Pass criteria (in src/bin/physics_invariants.rs::run_driven_symmetric):
+#   1. total_electron_flips > 0 over the measurement window — kinetics engage
+#   2. mean measured current at each foil tracks applied current within 50%
+#   3. left and right measured currents are antisymmetric (sum ≈ 0, charge balance)
+
+[simulation]
+domain_width = 300.0
+domain_height = 100.0
+initial_temperature = 300.0
+enable_out_of_plane = false
+
+# Left electrode: drives electrons out (-i_drive)
+[[particles.metal_rectangles]]
+x = -100.0
+y = 0.0
+width = 30.0
+height = 80.0
+species = "LithiumMetal"
+
+[[particles.foil_rectangles]]
+x = -100.0
+y = 0.0
+width = 5.0
+height = 80.0
+current = -0.001
+
+# Right electrode: pulls electrons in (+i_drive)
+[[particles.metal_rectangles]]
+x = 100.0
+y = 0.0
+width = 30.0
+height = 80.0
+species = "LithiumMetal"
+
+[[particles.foil_rectangles]]
+x = 100.0
+y = 0.0
+width = 5.0
+height = 80.0
+current = 0.001
+
+# Electrolyte (matches zero_emf_symmetric for direct comparison)
+[[particles.random]]
+count = 36
+species = "LithiumIon"
+
+[[particles.random]]
+count = 36
+species = "ElectrolyteAnion"
+
+[[particles.random]]
+count = 250
+species = "EC"
+
+[[particles.random]]
+count = 254
+species = "DMC"
