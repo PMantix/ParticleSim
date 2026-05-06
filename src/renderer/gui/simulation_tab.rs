@@ -121,12 +121,34 @@ impl super::super::Renderer {
         ui.group(|ui| {
             ui.label("🔋 Electric Field");
             let mut mag = *FIELD_MAGNITUDE.lock();
-            ui.add(
-                egui::Slider::new(&mut mag, 0.0..=1.0)
-                    .text("Field |E|")
-                    .clamp_to_range(true)
-                    .step_by(0.0001),
-            );
+            // Log-scale slider spans 8 decades so users can reach
+            // linear-response fields (~1e-5 sim ≈ 1 mV/Å) and the
+            // breakdown regime (~1e-2 sim ≈ 1 V/Å). Slider can't include
+            // 0 in log mode, so a separate "Off" button zeroes the field.
+            ui.horizontal(|ui| {
+                let mut slider_val = mag.max(1.0e-7);
+                let resp = ui.add(
+                    egui::Slider::new(&mut slider_val, 1.0e-7..=1.0)
+                        .text("|E| (sim)")
+                        .clamp_to_range(true)
+                        .logarithmic(true)
+                        .smart_aim(false)
+                        .custom_formatter(|n, _| format!("{:.2e}", n)),
+                );
+                if resp.changed() {
+                    mag = slider_val;
+                }
+                if ui.button("Off").clicked() {
+                    mag = 0.0;
+                }
+            });
+            // Show physical-unit equivalent for context.
+            let v_per_a = mag as f64 * crate::units::SIM_FIELD_TO_V_PER_ANGSTROM;
+            ui.small(format!(
+                "≈ {:.3e} V/Å    ({:.3e} mV/Å)",
+                v_per_a,
+                v_per_a * 1.0e3
+            ));
             *FIELD_MAGNITUDE.lock() = mag;
 
             let mut dir = *FIELD_DIRECTION.lock();
