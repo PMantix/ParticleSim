@@ -8,12 +8,14 @@ pub const ELECTRON_SPRING_K_METAL: f32 = ELECTRON_SPRING_K; // Metal-specific sp
 pub const ELECTRON_SPRING_K_EC: f32 = ELECTRON_SPRING_K; // EC-specific spring constant
 pub const ELECTRON_SPRING_K_DMC: f32 = ELECTRON_SPRING_K; // DMC-specific spring constant
 
-// Effective polarization charge (in units of e) for solvent molecules
-pub const POLAR_CHARGE_EC: f32 = 0.40;
-pub const POLAR_CHARGE_DMC: f32 = 0.11; //0.054;
-pub const POLAR_CHARGE_VC: f32 = 0.42;
-pub const POLAR_CHARGE_FEC: f32 = 0.45;
-pub const POLAR_CHARGE_EMC: f32 = 0.11;
+// Effective polarization charge (in units of e) for solvent molecules.
+// EC and DMC values calibrated 2026-05 against literature CIP/SIP/S2IP/FD
+// fractions for 1M LiPF6 in EC/DMC at 300K, in the ConjugatePair dipole model.
+pub const POLAR_CHARGE_EC: f32 = 0.80;
+pub const POLAR_CHARGE_DMC: f32 = 0.20;
+pub const POLAR_CHARGE_VC: f32 = 0.80;
+pub const POLAR_CHARGE_FEC: f32 = 0.80;
+pub const POLAR_CHARGE_EMC: f32 = 0.20;
 pub const POLAR_CHARGE_LLZO: f32 = 0.05;
 pub const POLAR_CHARGE_LLZT: f32 = 0.06;
 pub const POLAR_CHARGE_S40B: f32 = 0.04;
@@ -35,11 +37,11 @@ pub fn electron_spring_k(species: Species) -> f32 {
 // ====================
 // Butler-Volmer Parameters
 // ====================
-pub const ELECTRON_DRIFT_RADIUS_FACTOR_EC: f32 = 1.0; // Max electron speed as a factor of body radius per
-pub const ELECTRON_DRIFT_RADIUS_FACTOR_DMC: f32 = 0.73; // DMC-specific drift radius factor
-pub const ELECTRON_DRIFT_RADIUS_FACTOR_VC: f32 = 1.0; // VC-specific drift radius factor
-pub const ELECTRON_DRIFT_RADIUS_FACTOR_FEC: f32 = 0.90; // FEC-specific drift radius factor
-pub const ELECTRON_DRIFT_RADIUS_FACTOR_EMC: f32 = 0.75; // EMC-specific drift radius factor
+pub const ELECTRON_DRIFT_RADIUS_FACTOR_EC: f32 = 0.85; // Calibrated 2026-05 with POLAR_CHARGE_EC=0.80 for literature solvation
+pub const ELECTRON_DRIFT_RADIUS_FACTOR_DMC: f32 = 0.60; // Calibrated 2026-05 with POLAR_CHARGE_DMC=0.20
+pub const ELECTRON_DRIFT_RADIUS_FACTOR_VC: f32 = 0.85; // Inferred from EC calibration (similar μ ≈ 4.5 D)
+pub const ELECTRON_DRIFT_RADIUS_FACTOR_FEC: f32 = 0.85; // Inferred from EC calibration (similar μ ≈ 4.7 D)
+pub const ELECTRON_DRIFT_RADIUS_FACTOR_EMC: f32 = 0.60; // Inferred from DMC calibration (similar μ ≈ 0.9 D)
 pub const ELECTRON_DRIFT_RADIUS_FACTOR_LLZO: f32 = 0.20; // LLZO-specific drift radius factor
 pub const ELECTRON_DRIFT_RADIUS_FACTOR_LLZT: f32 = 0.20; // LLZT-specific drift radius factor
 pub const ELECTRON_DRIFT_RADIUS_FACTOR_S40B: f32 = 0.22; // S40B solid electrolyte drift radius
@@ -267,7 +269,7 @@ pub enum DipoleModel {
 
 impl Default for DipoleModel {
     fn default() -> Self {
-        DipoleModel::SingleOffset
+        DipoleModel::ConjugatePair
     }
 }
 
@@ -483,8 +485,8 @@ impl Default for SimConfig {
             // Vacancy polarization bias (disabled by default)
             hop_vacancy_polarization_gain: 300.0,
 
-            // Dipole model default: original SingleOffset
-            dipole_model: DipoleModel::SingleOffset,
+            // Dipole model default: ConjugatePair (correct long-range dipolar 1/r² physics)
+            dipole_model: DipoleModel::ConjugatePair,
 
             // SEI formation defaults (enabled by default with proper thresholds)
             sei_formation_enabled: true,

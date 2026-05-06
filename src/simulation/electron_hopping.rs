@@ -13,6 +13,69 @@ use std::sync::atomic::{AtomicU64, Ordering};
 // Debug counters for electrode hopping diagnostics
 static DEBUG_FRAME_COUNTER: AtomicU64 = AtomicU64::new(0);
 
+// ---- Hop-gate diagnostic counters ----------------------------------------
+// Pure observation — incrementing these atomics never changes any control flow
+// or numerical result. Read them via `read_hop_diag()` and zero them via
+// `reset_hop_diag()` from outside (e.g. the physics_invariants binary).
+//
+// Counted for every (src, dst) pair that *reaches* the candidate-filter or
+// per-dst predicate. Filter passes are short-circuited by `find()` once a hop
+// succeeds, so candidates_reached_predicate undercounts when `accepted > 0`.
+pub static HOP_DIAG_DST_FILTERED_BY_SPECIES: AtomicU64 = AtomicU64::new(0);
+pub static HOP_DIAG_DST_FILTERED_OTHER: AtomicU64 = AtomicU64::new(0);
+pub static HOP_DIAG_CANDIDATES_REACHED_PREDICATE: AtomicU64 = AtomicU64::new(0);
+pub static HOP_DIAG_REJ_ALIGNMENT: AtomicU64 = AtomicU64::new(0);
+pub static HOP_DIAG_REJ_DPHI: AtomicU64 = AtomicU64::new(0);
+pub static HOP_DIAG_REJ_RATE: AtomicU64 = AtomicU64::new(0);
+pub static HOP_DIAG_REJ_RANDOM: AtomicU64 = AtomicU64::new(0);
+pub static HOP_DIAG_ACCEPTED: AtomicU64 = AtomicU64::new(0);
+
+// `HopDiag` and the read/reset helpers below are consumed by the diagnostic
+// binaries `tafel_slope` and `physics_invariants` (separate compilation
+// units in this crate). Rust's dead-code lint runs per-binary and flags
+// these as unused when compiling the main `particle_sim` binary, even
+// though they are live cross-bin API. The `#[allow(dead_code)]` is
+// documentation of that fact, not blanket suppression — removing or
+// inlining them would force duplication across both diagnostic bins.
+#[allow(dead_code)]
+#[derive(Clone, Copy, Debug, Default)]
+pub struct HopDiag {
+    pub dst_filtered_by_species: u64,
+    pub dst_filtered_other: u64,
+    pub candidates_reached_predicate: u64,
+    pub rejected_by_alignment: u64,
+    pub rejected_by_dphi: u64,
+    pub rejected_by_rate: u64,
+    pub rejected_by_random: u64,
+    pub accepted: u64,
+}
+
+#[allow(dead_code)]
+pub fn read_hop_diag() -> HopDiag {
+    HopDiag {
+        dst_filtered_by_species: HOP_DIAG_DST_FILTERED_BY_SPECIES.load(Ordering::Relaxed),
+        dst_filtered_other: HOP_DIAG_DST_FILTERED_OTHER.load(Ordering::Relaxed),
+        candidates_reached_predicate: HOP_DIAG_CANDIDATES_REACHED_PREDICATE.load(Ordering::Relaxed),
+        rejected_by_alignment: HOP_DIAG_REJ_ALIGNMENT.load(Ordering::Relaxed),
+        rejected_by_dphi: HOP_DIAG_REJ_DPHI.load(Ordering::Relaxed),
+        rejected_by_rate: HOP_DIAG_REJ_RATE.load(Ordering::Relaxed),
+        rejected_by_random: HOP_DIAG_REJ_RANDOM.load(Ordering::Relaxed),
+        accepted: HOP_DIAG_ACCEPTED.load(Ordering::Relaxed),
+    }
+}
+
+#[allow(dead_code)]
+pub fn reset_hop_diag() {
+    HOP_DIAG_DST_FILTERED_BY_SPECIES.store(0, Ordering::Relaxed);
+    HOP_DIAG_DST_FILTERED_OTHER.store(0, Ordering::Relaxed);
+    HOP_DIAG_CANDIDATES_REACHED_PREDICATE.store(0, Ordering::Relaxed);
+    HOP_DIAG_REJ_ALIGNMENT.store(0, Ordering::Relaxed);
+    HOP_DIAG_REJ_DPHI.store(0, Ordering::Relaxed);
+    HOP_DIAG_REJ_RATE.store(0, Ordering::Relaxed);
+    HOP_DIAG_REJ_RANDOM.store(0, Ordering::Relaxed);
+    HOP_DIAG_ACCEPTED.store(0, Ordering::Relaxed);
+}
+
 impl Simulation {
     /// Attempts electron hopping between particles, with optional exclusions for donors
     /// (used for foil current sources). When `use_butler_volmer` is enabled
@@ -125,7 +188,7 @@ impl Simulation {
                         dst_body.electrons.len() as i32 - dst_body.neutral_electron_count() as i32;
                     // Allow hop if donor is more excess than recipient
                     if src_diff >= dst_diff {
-                        match dst_body.species {
+                        let kept = match dst_body.species {
                             // Standard species that can receive electrons
                             Species::LithiumMetal | Species::FoilMetal | Species::LithiumIon => {
                                 can_transfer_electron(src_body, dst_body)
@@ -139,9 +202,26 @@ impl Simulation {
                             | Species::LMFP
                             | Species::NMC
                             | Species::NCA => can_transfer_electron(src_body, dst_body),
+                            // Solvents (EC/DMC/VC/FEC/EMC), anions, SEI, solid electrolytes
+                            // are not eligible electron acceptors via this hop path.
                             _ => false,
+                        };
+                        if !kept {
+                            // Distinguish "wrong species class" from "right species but
+                            // can_transfer rejected" — both are diagnostic signals.
+                            if matches!(dst_body.species,
+                                Species::LithiumMetal | Species::FoilMetal | Species::LithiumIon
+                                | Species::Graphite | Species::HardCarbon | Species::SiliconOxide
+                                | Species::LTO | Species::LFP | Species::LMFP | Species::NMC | Species::NCA)
+                            {
+                                HOP_DIAG_DST_FILTERED_OTHER.fetch_add(1, Ordering::Relaxed);
+                            } else {
+                                HOP_DIAG_DST_FILTERED_BY_SPECIES.fetch_add(1, Ordering::Relaxed);
+                            }
                         }
+                        kept
                     } else {
+                        HOP_DIAG_DST_FILTERED_OTHER.fetch_add(1, Ordering::Relaxed);
                         false
                     }
                 })
@@ -163,6 +243,7 @@ impl Simulation {
 
             // Only check until the first successful hop
             if let Some(&dst_idx) = candidate_neighbors.iter().find(|&&dst_idx| {
+                HOP_DIAG_CANDIDATES_REACHED_PREDICATE.fetch_add(1, Ordering::Relaxed);
                 let dst_body = &self.bodies[dst_idx];
                 let dst_is_foil = dst_body.species == Species::FoilMetal;
                 let dst_is_electrode = matches!(
@@ -172,7 +253,7 @@ impl Simulation {
                 );
                 let is_electrode_hop = (src_is_foil || src_is_electrode) && dst_is_electrode;
                 let is_electrode_to_foil = src_is_electrode && dst_is_foil;
-                
+
                 if is_electrode_hop {
                     electrode_hops_attempted += 1;
                 }
@@ -228,6 +309,7 @@ impl Simulation {
                 }
                 
                 if alignment < 1e-3 {
+                    HOP_DIAG_REJ_ALIGNMENT.fetch_add(1, Ordering::Relaxed);
                     if is_electrode_hop {
                         electrode_hops_failed_alignment += 1;
                     }
@@ -283,6 +365,7 @@ impl Simulation {
                     i0 * (forward - backward)
                 } else {
                     if d_phi <= 0.0 {
+                        HOP_DIAG_REJ_DPHI.fetch_add(1, Ordering::Relaxed);
                         if is_electrode_hop {
                             electrode_hops_failed_dphi += 1;
                         }
@@ -295,6 +378,7 @@ impl Simulation {
                 };
 
                 if rate <= 0.0 {
+                    HOP_DIAG_REJ_RATE.fetch_add(1, Ordering::Relaxed);
                     if is_electrode_hop {
                         electrode_hops_failed_rate += 1;
                     }
@@ -302,6 +386,11 @@ impl Simulation {
                 }
                 let p_hop = alignment * polarization_factor * (1.0 - (-rate * self.dt).exp());
                 let succeeded = rand::random::<f32>() < p_hop;
+                if succeeded {
+                    HOP_DIAG_ACCEPTED.fetch_add(1, Ordering::Relaxed);
+                } else {
+                    HOP_DIAG_REJ_RANDOM.fetch_add(1, Ordering::Relaxed);
+                }
                 if is_electrode_hop {
                     if succeeded {
                         electrode_hops_succeeded += 1;

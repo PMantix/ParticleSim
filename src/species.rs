@@ -111,7 +111,7 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
             lj_cutoff: crate::config::LJ_FORCE_CUTOFF,
             polar_offset: crate::config::ELECTRON_DRIFT_RADIUS_FACTOR_EC,
             polar_charge: crate::config::POLAR_CHARGE_EC,
-            enable_repulsion: true,
+            enable_repulsion: false,
             repulsion_strength: 5.0, // Reduced from 100.0 - represents osmotic pressure
             repulsion_cutoff: 5.0,   // Reduced from 11.0 - shorter range interaction
         },
@@ -129,7 +129,7 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
             lj_cutoff: crate::config::LJ_FORCE_CUTOFF,
             polar_offset: crate::config::ELECTRON_DRIFT_RADIUS_FACTOR_DMC,
             polar_charge: crate::config::POLAR_CHARGE_DMC,
-            enable_repulsion: true,
+            enable_repulsion: false,
             repulsion_strength: 5.0, // Reduced from 100.0 - represents osmotic pressure
             repulsion_cutoff: 5.0,   // Reduced from 11.0 - shorter range interaction
         },
@@ -147,7 +147,7 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
             lj_cutoff: crate::config::LJ_FORCE_CUTOFF,
             polar_offset: crate::config::ELECTRON_DRIFT_RADIUS_FACTOR_VC,
             polar_charge: crate::config::POLAR_CHARGE_VC,
-            enable_repulsion: true,
+            enable_repulsion: false,
             repulsion_strength: 5.0,
             repulsion_cutoff: 5.0,
         },
@@ -165,7 +165,7 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
             lj_cutoff: crate::config::LJ_FORCE_CUTOFF,
             polar_offset: crate::config::ELECTRON_DRIFT_RADIUS_FACTOR_FEC,
             polar_charge: crate::config::POLAR_CHARGE_FEC,
-            enable_repulsion: true,
+            enable_repulsion: false,
             repulsion_strength: 6.0,
             repulsion_cutoff: 5.0,
         },
@@ -183,7 +183,7 @@ pub static SPECIES_PROPERTIES: Lazy<HashMap<Species, SpeciesProps>> = Lazy::new(
             lj_cutoff: crate::config::LJ_FORCE_CUTOFF,
             polar_offset: crate::config::ELECTRON_DRIFT_RADIUS_FACTOR_EMC,
             polar_charge: crate::config::POLAR_CHARGE_EMC,
-            enable_repulsion: true,
+            enable_repulsion: false,
             repulsion_strength: 4.5,
             repulsion_cutoff: 5.5,
         },
