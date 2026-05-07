@@ -1,0 +1,48 @@
+{
+  "csv_path": "doe_results/physics_validation/zero_emf_symmetric/timeseries.csv",
+  "details": {
+    "dt_fs": 5.0,
+    "equilibrate_fs": 5000.0,
+    "hop_activity": {
+      "distinct_bodies_flipped": 0,
+      "flips_by_species": {},
+      "max_single_step_abs_dcharge": 0.0,
+      "total_electron_flips": 0
+    },
+    "hop_gates": {
+      "accepted": 0,
+      "candidates_reached_predicate": 0,
+      "dst_filtered_by_species": 22017,
+      "dst_filtered_other": 3328904,
+      "rejected_by_alignment": 0,
+      "rejected_by_dphi": 0,
+      "rejected_by_random": 0,
+      "rejected_by_rate": 0
+    },
+    "mean_i_left_e_per_fs": 0.0,
+    "mean_i_right_e_per_fs": 0.0,
+    "mean_q_diff_e": 0.0,
+    "mean_q_left_e": -0.0,
+    "mean_q_right_e": -0.0,
+    "measure_fs": 5000.0,
+    "n_bodies": 1044,
+    "n_foils": 2,
+    "n_samples_tail": 50,
+    "n_samples_total": 100,
+    "sample_every_fs": 50.0,
+    "std_i_left_e_per_fs": 0.0,
+    "std_i_right_e_per_fs": 0.0,
+    "std_q_diff_e": 0.0
+  },
+  "pass": true,
+  "scenario": "measurement_configs/physics_invariants/zero_emf_symmetric.toml",
+  "seed": "0xC0FFEE",
+  "test": "zero_emf_symmetric",
+  "tolerance": {
+    "kind": "absolute",
+    "value": 1.0
+  },
+  "unit": "e",
+  "value": 0.0,
+  "value_label": "abs_mean_foil_charge_asymmetry"
+}

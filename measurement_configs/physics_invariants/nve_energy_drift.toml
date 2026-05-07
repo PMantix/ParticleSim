@@ -1,0 +1,32 @@
+# Phase-1 invariant: nve_energy_drift
+# See docs/PHYSICS_VALIDATION_PLAN.md §Test 1.4.
+#
+# Bulk electrolyte, equilibrated with the thermostat ON, then thermostat
+# disabled (config.temperature = 0.0) for the measurement window. We track
+# total mechanical energy KE + PE_coulomb over time and look for bounded
+# drift — strict NVE conservation is not expected because the soft-core
+# repulsion force law isn't Hamiltonian, but the drift should be small and
+# not depend strongly on dt or COLLISION_PASSES.
+#
+# Smaller scenario than charge_balance for fast iteration on dt and
+# collision-pass sub-tests later.
+
+[simulation]
+domain_width = 120.0
+domain_height = 120.0
+initial_temperature = 300.0
+enable_out_of_plane = false
+
+[particles]
+
+[[particles.random]]
+count = 20
+species = "LithiumIon"
+
+[[particles.random]]
+count = 20
+species = "ElectrolyteAnion"
+
+[[particles.random]]
+count = 80
+species = "EC"

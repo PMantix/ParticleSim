@@ -68,6 +68,13 @@ impl super::Renderer {
             self.selected_foil_ids.clear();
         }
 
+        // `.` (Period) — request a single simulation step. Only meaningful
+        // while paused; the simulation loop checks STEP_ONCE and runs one
+        // step when set, then clears the flag.
+        if input.key_pressed(VirtualKeyCode::Period) {
+            STEP_ONCE.store(true, Ordering::Relaxed);
+        }
+
         // Camera zoom and pan
         if let Some((mx, my)) = input.mouse() {
             // Scroll steps to double/halve the scale

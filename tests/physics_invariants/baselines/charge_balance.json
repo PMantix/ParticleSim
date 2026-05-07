@@ -1,0 +1,21 @@
+{
+  "details": {
+    "dt_fs": 5.0,
+    "final_charge_sum": 0.0,
+    "initial_charge_sum": 0.0,
+    "max_step_deviation": 0.0,
+    "n_bodies": 160,
+    "n_steps": 200
+  },
+  "pass": true,
+  "scenario": "measurement_configs/physics_invariants/charge_balance.toml",
+  "seed": "0xC0FFEE",
+  "test": "charge_balance",
+  "tolerance": {
+    "kind": "absolute",
+    "value": 0.0001
+  },
+  "unit": "e",
+  "value": 0.0,
+  "value_label": "max_step_charge_deviation"
+}

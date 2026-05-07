@@ -216,6 +216,16 @@ pub struct Renderer {
     pub transference_number_diagnostic: Option<TransferenceNumberDiagnostic>,
     pub foil_electron_fraction_diagnostic: Option<FoilElectronFractionDiagnostic>,
     pub solvation_diagnostic: Option<crate::diagnostics::SolvationDiagnostic>,
+    /// Per-foil EMA-smoothed overpotential (V), keyed by foil id.
+    pub foil_eta_smoothed: std::collections::HashMap<u64, f32>,
+    /// EMA coefficient for foil η. α = 1.0 disables smoothing.
+    pub eta_lpf_alpha: f32,
+    /// Last sim_time at which η smoothing advanced. EMA only updates when
+    /// sim_time has progressed, so pause/playback freezes the readout.
+    pub eta_lpf_last_sim_time: f32,
+    /// Toggle: highlight Li metals by their `surrounded_by_metal` flag.
+    /// Blue = bulk (protected), orange = surface (eligible to oxidize).
+    pub show_surround_diagnostic: bool,
 
     // Solvation visualization flags
     pub show_cip_ions: bool,
@@ -532,6 +542,10 @@ impl quarkstrom::Renderer for Renderer {
             transference_number_diagnostic: Some(TransferenceNumberDiagnostic::new()),
             foil_electron_fraction_diagnostic: Some(FoilElectronFractionDiagnostic::new()),
             solvation_diagnostic: Some(crate::diagnostics::SolvationDiagnostic::new()),
+            foil_eta_smoothed: std::collections::HashMap::new(),
+            eta_lpf_alpha: 0.05,
+            eta_lpf_last_sim_time: f32::NEG_INFINITY,
+            show_surround_diagnostic: false,
 
             // Solvation visualization flags - default to false
             show_cip_ions: false,

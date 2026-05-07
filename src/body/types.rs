@@ -56,6 +56,11 @@ pub struct Body {
     /// Lithium content for intercalation electrode materials (0.0 = delithiated, 1.0 = fully lithiated)
     /// Used for SOC visualization and intercalation physics
     pub lithium_content: f32,
+    /// Sim-time (fs) until which `apply_redox` is forbidden from changing
+    /// this body's species. Set whenever a transition fires; protects
+    /// against single-step ping-pong (oxidation immediately followed by
+    /// reduction at the same atom). NEG_INFINITY = no active lock.
+    pub species_lock_until: f32,
 }
 
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -109,6 +114,7 @@ impl Body {
             last_surround_pos: pos,
             last_surround_frame: 0,
             lithium_content: 0.0, // Start delithiated, will be set based on initial SOC
+            species_lock_until: f32::NEG_INFINITY,
         }
     }
 
@@ -255,7 +261,10 @@ impl Body {
             config::SURROUND_CHECK_INTERVAL
         };
         if moved || frame_diff >= config::SURROUND_CHECK_INTERVAL {
-            let radius = self.radius * config::SURROUND_RADIUS_FACTOR;
+            // Read runtime-mutable factor (default = config constant);
+            // GUI Charging tab can adjust live for diagnostic tuning.
+            let factor = *crate::renderer::state::SURROUND_RADIUS_FACTOR.lock();
+            let radius = self.radius * factor;
             let count = if use_cell {
                 cell_list.metal_neighbor_count(bodies, index, radius)
             } else {
@@ -270,7 +279,9 @@ impl Body {
                     })
                     .count()
             };
-            self.surrounded_by_metal = count >= config::SURROUND_NEIGHBOR_THRESHOLD;
+            // Read runtime-mutable threshold (default = config constant).
+            let threshold = *crate::renderer::state::SURROUND_NEIGHBOR_THRESHOLD.lock();
+            self.surrounded_by_metal = count >= threshold;
             self.last_surround_pos = self.pos;
             self.last_surround_frame = frame;
         }

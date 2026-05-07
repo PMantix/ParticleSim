@@ -36,6 +36,46 @@ use std::sync::mpsc::channel;
 use std::time::Instant;
 use ultraviolet::Vec2;
 
+/// Spatially-averaged Coulomb potential at a set of probe body positions.
+/// Each probe excludes the IDs in `exclude_ids` from the sum (typically the
+/// probe's own foil bodies, or the probe IDs themselves to avoid self-interaction).
+/// Same softcore cutoff (R_MIN = 5.0) as `compute_eis_voltage_by_potential`.
+/// Returns 0.0 if `probe_ids` is empty.
+fn compute_potential_at_probes(
+    sim: &Simulation,
+    probe_ids: &[u64],
+    exclude_ids: &std::collections::HashSet<u64>,
+) -> f32 {
+    if probe_ids.is_empty() {
+        return 0.0;
+    }
+    let k = sim.config.coulomb_constant;
+    const R_MIN: f32 = 5.0;
+    let mut total_v = 0.0f64;
+    let mut n_probes = 0u32;
+    for &pid in probe_ids {
+        let Some(probe_body) = sim.bodies.iter().find(|b| b.id == pid) else {
+            continue;
+        };
+        let probe = probe_body.pos;
+        let mut v = 0.0f32;
+        for body in &sim.bodies {
+            if exclude_ids.contains(&body.id) {
+                continue;
+            }
+            let r = (probe - body.pos).mag().max(R_MIN);
+            v += k * body.charge / r;
+        }
+        total_v += v as f64;
+        n_probes += 1;
+    }
+    if n_probes > 0 {
+        (total_v / n_probes as f64) as f32
+    } else {
+        0.0
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum DcrMode {
     Galvanostatic,
@@ -376,10 +416,10 @@ fn main() {
     // Each potential is averaged over its probe positions, with appropriate
     // self/foil exclusion.
     let read_v_components = |sim: &Simulation| -> (f32, f32, f32, f32) {
-        let v_ma = sim.compute_potential_at_probes(&probe_a, &exclude_metal_a);
-        let v_mb = sim.compute_potential_at_probes(&probe_b, &exclude_metal_b);
-        let v_ba = sim.compute_potential_at_probes(&probe_bulk_a, &exclude_bulk_a);
-        let v_bb = sim.compute_potential_at_probes(&probe_bulk_b, &exclude_bulk_b);
+        let v_ma = compute_potential_at_probes(sim, &probe_a, &exclude_metal_a);
+        let v_mb = compute_potential_at_probes(sim, &probe_b, &exclude_metal_b);
+        let v_ba = compute_potential_at_probes(sim, &probe_bulk_a, &exclude_bulk_a);
+        let v_bb = compute_potential_at_probes(sim, &probe_bulk_b, &exclude_bulk_b);
         (v_ma, v_mb, v_ba, v_bb)
     };
 

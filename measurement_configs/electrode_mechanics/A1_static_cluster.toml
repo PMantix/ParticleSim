@@ -1,0 +1,55 @@
+# Electrode mechanics validation — A.1 Static cluster
+#
+# Purpose: verify the foundational invariants of an isolated metal+foil
+# cluster with no driving and no electrolyte. Nothing should change in
+# this scenario; if anything does, we have a foundational bug.
+#
+# Setup: a single 20×20 Å Li metal rectangle with a 5×20 foil rectangle
+# embedded along the left edge of the metal block (foil current = 0).
+# No solvents, no ions, no anions. Domain large enough that the cluster
+# is well away from boundaries (~3× cluster size each side).
+#
+# Run procedure (GUI):
+#   1. Load this scenario.
+#   2. Don't apply any field, current, or external driving.
+#   3. Let it run at 300 K for ~10 ps (10,000 fs).
+#
+# What to verify visually / via the existing diagnostics:
+#   1. Cluster shape is stable — no slow drift apart, no compression.
+#   2. Total particle count is constant (no new ions appearing, no metals
+#      disappearing).
+#   3. No spurious species transitions (foil stays foil, Li metal stays
+#      Li metal — check the Charging tab Foil Status row should show
+#      ratio ≈ 1.000 throughout).
+#   4. Each Li metal's center-of-mass stays approximately fixed; only
+#      thermal jitter visible.
+#   5. No electron transfer events firing (Charging tab "Foil Status"
+#      ratio should not move).
+#
+# If anything above changes, that's the bug we need to find before
+# moving on to A.2 (cluster with imposed initial charge).
+
+[simulation]
+domain_width = 60.0
+domain_height = 60.0
+initial_temperature = 300.0
+enable_out_of_plane = false
+
+# Bulk Li metal slab — small enough to count and inspect
+[[particles.metal_rectangles]]
+x = 0.0
+y = 0.0
+width = 20.0
+height = 20.0
+species = "LithiumMetal"
+
+# Embedded foil along the left edge of the metal slab.
+# Zero current — the foil is purely a passive part of the cluster here,
+# with no external drive. We include it to test the cluster+foil
+# topology that real cells use.
+[[particles.foil_rectangles]]
+x = -7.5
+y = 0.0
+width = 5.0
+height = 20.0
+current = 0.0

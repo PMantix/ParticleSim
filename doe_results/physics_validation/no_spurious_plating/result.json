@@ -1,0 +1,39 @@
+{
+  "csv_path": "doe_results/physics_validation/no_spurious_plating/timeseries.csv",
+  "details": {
+    "dt_fs": 5.0,
+    "equilibrate_fs": 5000.0,
+    "final_counts": {
+      "DMC": 254,
+      "EC": 250,
+      "ElectrolyteAnion": 36,
+      "FoilMetal": 52,
+      "LithiumIon": 36,
+      "LithiumMetal": 416
+    },
+    "initial_counts": {
+      "DMC": 254,
+      "EC": 250,
+      "ElectrolyteAnion": 36,
+      "FoilMetal": 52,
+      "LithiumIon": 36,
+      "LithiumMetal": 416
+    },
+    "measure_fs": 5000.0,
+    "n_bodies": 1044,
+    "n_foils": 2,
+    "total_transitions": 0,
+    "transitions_by_pair": {}
+  },
+  "pass": true,
+  "scenario": "measurement_configs/physics_invariants/zero_emf_symmetric.toml",
+  "seed": "0xC0FFEE",
+  "test": "no_spurious_plating",
+  "tolerance": {
+    "kind": "absolute",
+    "value": 0.0
+  },
+  "unit": "events",
+  "value": 0.0,
+  "value_label": "total_species_transitions"
+}

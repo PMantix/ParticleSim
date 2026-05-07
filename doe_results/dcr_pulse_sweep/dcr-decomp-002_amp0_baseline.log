@@ -1,0 +1,18 @@
+Successfully placed 86 random bodies
+Successfully placed 86 random bodies
+Successfully placed 598 random bodies
+Successfully placed 599 random bodies
+scenario=measurement_configs/eis_validation_flat_symmetric.toml seed=0xC0FFEE
+bodies=3449 foils=2
+metal probe bodies: A=130 B=130
+bulk probe bodies: A=110 (slab near foil_a_x=-150.5), B=105 (slab near foil_b_x=149.5)
+dt=5 fs  group_a=[1]  group_b=[2]  mode=Galvanostatic
+equilibrating 20000 fs (4000 steps)
+pre-hold 5000 fs (1000 steps)
+pulses=1 duration_on=1000000 fs (200000 steps)  duration_rest=1000000 fs (200000 steps)
+pulse 0: V_pre=-0.0028 V_post_onset=-0.0029 V_pulse_end=-0.0069 V_relax_end=-0.0008 R0=-inf
+
+DCR pulse sweep finished: 1 pulses, 401000 steps, 3828.8s wall, sim time 2005000 fs
+wrote doe_results/dcr_pulse_sweep/dcr-decomp-002_amp0_baseline/dense_series.csv
+wrote doe_results/dcr_pulse_sweep/dcr-decomp-002_amp0_baseline/pulse_summary.csv
+wrote doe_results/dcr_pulse_sweep/dcr-decomp-002_amp0_baseline/summary.txt

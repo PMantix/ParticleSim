@@ -811,6 +811,62 @@ pub fn handle_command(cmd: SimCommand, simulation: &mut Simulation) {
                             crate::body::Species::FoilMetal.radius(),
                             foil.current,
                         );
+                        // Apply initial electron-count offset if specified.
+                        // Positive = surplus, negative = deficit; distributed
+                        // across foil bodies round-robin, respecting FOIL_MAX_ELECTRONS.
+                        if foil.initial_excess_electrons != 0 {
+                            if let Some(new_foil) = simulation.foils.last() {
+                                let body_ids = new_foil.body_ids.clone();
+                                let target = foil.initial_excess_electrons;
+                                let abs_target = target.unsigned_abs() as usize;
+                                let mut applied = 0usize;
+                                let mut guard = 0usize;
+                                while applied < abs_target && guard < abs_target * 4 + 1 {
+                                    let mut made_progress = false;
+                                    for id in &body_ids {
+                                        if applied >= abs_target {
+                                            break;
+                                        }
+                                        if let Some(idx) =
+                                            simulation.bodies.iter().position(|b| b.id == *id)
+                                        {
+                                            let body = &mut simulation.bodies[idx];
+                                            if target > 0 {
+                                                if body.electrons.len()
+                                                    < crate::config::FOIL_MAX_ELECTRONS
+                                                {
+                                                    body.electrons.push(crate::body::Electron {
+                                                        rel_pos: ultraviolet::Vec2::zero(),
+                                                        vel: ultraviolet::Vec2::zero(),
+                                                    });
+                                                    applied += 1;
+                                                    made_progress = true;
+                                                }
+                                            } else if !body.electrons.is_empty() {
+                                                body.electrons.pop();
+                                                applied += 1;
+                                                made_progress = true;
+                                            }
+                                        }
+                                    }
+                                    if !made_progress {
+                                        break;
+                                    }
+                                    guard += 1;
+                                }
+                                for id in &body_ids {
+                                    if let Some(idx) =
+                                        simulation.bodies.iter().position(|b| b.id == *id)
+                                    {
+                                        simulation.bodies[idx].update_charge_from_electrons();
+                                    }
+                                }
+                                println!(
+                                    "  applied initial_excess_electrons={} to foil ({}/{} done)",
+                                    target, applied, abs_target
+                                );
+                            }
+                        }
                     }
                     for entry in &cfg.particles.random {
                         match entry.to_species() {

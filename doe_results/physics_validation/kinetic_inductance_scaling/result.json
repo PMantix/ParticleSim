@@ -1,0 +1,96 @@
+{
+  "details": {
+    "d_anion_cv": 0.2744797527070594,
+    "d_anion_mean": 0.014475511386990547,
+    "d_anion_std": 0.003973234785809387,
+    "d_li_cv": 0.2858748651158818,
+    "d_li_mean": 0.015831294236704707,
+    "d_li_std": 0.004525769104527795,
+    "equilibrate_fs": 5000.0,
+    "ls_angstrom": [
+      100.0,
+      150.0,
+      200.0,
+      300.0
+    ],
+    "measure_fs": 20000.0,
+    "pass_d_const": true,
+    "pass_tau_linear": true,
+    "rows": [
+      {
+        "d_anion": 0.010001587681472301,
+        "d_li": 0.010305945761501789,
+        "l": 100.0,
+        "l_squared": 10000.0,
+        "msd_anion_r2": 0.9263651371002197,
+        "msd_li_r2": 0.955055296421051,
+        "n_anion": 13,
+        "n_dmc": 75,
+        "n_ec": 75,
+        "n_li": 13,
+        "tau_ki_anion": 999841.257056093,
+        "tau_ki_li": 970313.664695902
+      },
+      {
+        "d_anion": 0.011107741855084896,
+        "d_li": 0.012589799240231514,
+        "l": 150.0,
+        "l_squared": 22500.0,
+        "msd_anion_r2": 0.9645951986312866,
+        "msd_li_r2": 0.987337052822113,
+        "n_anion": 28,
+        "n_dmc": 169,
+        "n_ec": 169,
+        "n_li": 28,
+        "tau_ki_anion": 2025614.2331665696,
+        "tau_ki_li": 1787161.1429751636
+      },
+      {
+        "d_anion": 0.0176744032651186,
+        "d_li": 0.019104579463601112,
+        "l": 200.0,
+        "l_squared": 40000.0,
+        "msd_anion_r2": 0.9847531318664551,
+        "msd_li_r2": 0.986751914024353,
+        "n_anion": 50,
+        "n_dmc": 300,
+        "n_ec": 300,
+        "n_li": 50,
+        "tau_ki_anion": 2263159.8589210752,
+        "tau_ki_li": 2093738.837654593
+      },
+      {
+        "d_anion": 0.019118312746286392,
+        "d_li": 0.021324852481484413,
+        "l": 300.0,
+        "l_squared": 90000.0,
+        "msd_anion_r2": 0.9583911895751953,
+        "msd_li_r2": 0.9752790927886963,
+        "n_anion": 113,
+        "n_dmc": 675,
+        "n_ec": 675,
+        "n_li": 113,
+        "tau_ki_anion": 4707528.388847071,
+        "tau_ki_li": 4220427.788569403
+      }
+    ],
+    "sample_every_fs": 500.0,
+    "seed": "0xC0FFEE",
+    "tau_anion_vs_l2_intercept": 704089.1132559052,
+    "tau_anion_vs_l2_r2": 0.9766867662230659,
+    "tau_anion_vs_l2_slope": 44.18330636902884,
+    "tau_li_vs_l2_intercept": 678227.1137150452,
+    "tau_li_vs_l2_r2": 0.9852564494656324,
+    "tau_li_vs_l2_slope": 39.1306644863685
+  },
+  "pass": true,
+  "test": "kinetic_inductance_scaling",
+  "tolerance": {
+    "d_cv_max": 0.3,
+    "kind": "compound",
+    "tau_l2_r2_min": 0.9
+  },
+  "unit": "dimensionless",
+  "value": 0.2801773089114706,
+  "value_label": "mean_d_coefficient_of_variation_across_L"
+}

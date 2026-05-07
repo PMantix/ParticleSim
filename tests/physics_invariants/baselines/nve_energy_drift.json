@@ -1,0 +1,33 @@
+{
+  "csv_path": "doe_results/physics_validation/nve_energy_drift/timeseries.csv",
+  "details": {
+    "drift_fraction": 0.8840770435923669,
+    "drift_over_window": -0.026462247956864058,
+    "dt_fs": 5.0,
+    "e_total_final": -0.784304712611188,
+    "e_total_initial": -0.7455113328765667,
+    "equilibrate_fs": 5000.0,
+    "ke_final": 0.02764885173376632,
+    "ke_initial": 0.029932060954028523,
+    "linear_fit_r2": 0.3638343734646833,
+    "measure_fs": 5000.0,
+    "n_bodies": 120,
+    "n_samples": 51,
+    "pe_final": -0.8119535643449542,
+    "pe_initial": -0.7754433938305952,
+    "sample_every_fs": 100.0,
+    "slope_per_fs": -5.292449591372812e-6,
+    "t_kelvin_initial": 299.9999618262304
+  },
+  "pass": true,
+  "scenario": "measurement_configs/physics_invariants/nve_energy_drift.toml",
+  "seed": "0xC0FFEE",
+  "test": "nve_energy_drift",
+  "tolerance": {
+    "kind": "absolute",
+    "value": 50.0
+  },
+  "unit": "dimensionless",
+  "value": 0.8840770435923669,
+  "value_label": "energy_drift_fraction"
+}

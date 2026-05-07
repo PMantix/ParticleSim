@@ -20,6 +20,12 @@ pub const ENERGY_JOULE: f64 = AMU * ANGSTROM * ANGSTROM / (FEMTOSECOND * FEMTOSE
 /// Convert electronvolts to simulation energy units.
 pub const EV_TO_SIM: f64 = ELEMENTARY_CHARGE / ENERGY_JOULE;
 
+/// One simulation field-magnitude unit expressed in V/Å.
+/// Derivation: a sim field of magnitude 1 doing work over 1 Å on unit
+/// charge equals 1 sim_energy = ENERGY_JOULE J = ENERGY_JOULE/ELEMENTARY_CHARGE V.
+/// Numerically ≈ 103.6 V/Å, so 1e-5 sim ≈ 1 mV/Å (linear-response regime).
+pub const SIM_FIELD_TO_V_PER_ANGSTROM: f64 = ENERGY_JOULE / ELEMENTARY_CHARGE;
+
 /// Coulomb's constant in simulation units.
 /// k = 8.987e9 N⋅m²/C² converted to [AMU⋅Å³/fs²⋅e²]
 /// Dimensional analysis: kg⋅m³/(s²⋅C²) → AMU⋅Å³/(fs²⋅e²)

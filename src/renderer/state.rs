@@ -13,12 +13,31 @@ pub static TIMESTEP: Lazy<Mutex<f32>> = Lazy::new(|| Mutex::new(config::DEFAULT_
 pub static FIELD_MAGNITUDE: Lazy<Mutex<f32>> = Lazy::new(|| Mutex::new(0.0));
 pub static FIELD_DIRECTION: Lazy<Mutex<f32>> = Lazy::new(|| Mutex::new(180.0));
 pub static PAUSED: Lazy<AtomicBool> = Lazy::new(|| AtomicBool::new(false));
+/// One-shot single-step request. When PAUSED is true, setting this to true
+/// runs exactly one simulation step on the next loop iteration, then resets
+/// itself. Triggered by the `.` hotkey in the renderer input handler.
+pub static STEP_ONCE: Lazy<AtomicBool> = Lazy::new(|| AtomicBool::new(false));
 pub static UPDATE_LOCK: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(false));
 pub static BODIES: Lazy<Mutex<Vec<Body>>> = Lazy::new(|| Mutex::new(Vec::new()));
 pub static QUADTREE: Lazy<Mutex<Vec<Node>>> = Lazy::new(|| Mutex::new(Vec::new()));
 pub static FOILS: Lazy<Mutex<Vec<Foil>>> = Lazy::new(|| Mutex::new(Vec::new()));
 pub static SPAWN: Lazy<Mutex<Vec<Body>>> = Lazy::new(|| Mutex::new(Vec::new()));
 pub static COLLISION_PASSES: Lazy<Mutex<usize>> = Lazy::new(|| Mutex::new(config::COLLISION_PASSES));
+/// Runtime-mutable surround-neighbor threshold for electron-sea protection.
+/// Default initialized from `config::SURROUND_NEIGHBOR_THRESHOLD`. Read each
+/// surround check by the physics loop; mutable from the Charging tab slider
+/// for live diagnostic tuning. Default value unchanged from the constant.
+pub static SURROUND_NEIGHBOR_THRESHOLD: Lazy<Mutex<usize>> =
+    Lazy::new(|| Mutex::new(config::SURROUND_NEIGHBOR_THRESHOLD));
+/// Runtime-mutable surround search-radius factor. Search radius for the
+/// neighbor count is `body.radius × this factor`. Default initialized from
+/// `config::SURROUND_RADIUS_FACTOR`. Mutable from Charging tab slider.
+pub static SURROUND_RADIUS_FACTOR: Lazy<Mutex<f32>> =
+    Lazy::new(|| Mutex::new(config::SURROUND_RADIUS_FACTOR));
+/// Minimum sim-time (fs) gap between two species transitions on the same
+/// body. Set in the Charging tab; protects against single-step
+/// oxidize/reduce ping-pong. Default 10 fs.
+pub static SPECIES_LOCK_FS: Lazy<Mutex<f32>> = Lazy::new(|| Mutex::new(10.0));
 pub static SIM_TIME: Lazy<Mutex<f32>> = Lazy::new(|| Mutex::new(0.0));
 // Current switching step index (0..3) for history playback highlighting
 pub static SWITCH_STEP: Lazy<Mutex<Option<u8>>> = Lazy::new(|| Mutex::new(None));

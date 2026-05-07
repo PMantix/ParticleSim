@@ -1,0 +1,55 @@
+{
+  "details": {
+    "abs_i_measured_e_per_fs": [
+      0.00006666666666666667,
+      0.00013333333333333334,
+      0.0003333333333333334,
+      0.0010666666666666667,
+      0.0034000000000000015
+    ],
+    "alpha_relative_error": 0.6834871823610189,
+    "amplitudes_e_per_fs": [
+      0.00003,
+      0.0001,
+      0.0003,
+      0.001,
+      0.003
+    ],
+    "configured_alpha": 0.5,
+    "configured_bv_overpotential_scale": 0.02500000037252903,
+    "default_hop_rate_k0": 1.0,
+    "equilibrate_fs": 10000.0,
+    "eta_proxy_volts": [
+      -0.0002564102564102564,
+      -0.002564102564102564,
+      -0.014871794871794871,
+      -0.09256410256410257,
+      -0.42628205128205127
+    ],
+    "hop_rate_k0_override": 0.0010000000474974513,
+    "linear_regime_amps": [
+      0.0001,
+      0.0003,
+      0.001,
+      0.003
+    ],
+    "measure_fs": 30000.0,
+    "n_amps_in_linear_regime": 4,
+    "n_amps_total": 5,
+    "scenario": "measurement_configs/physics_invariants/driven_symmetric.toml",
+    "seed": "0xC0FFEE",
+    "tafel_fit_r2": 0.8007538933784621,
+    "tafel_intercept": -8.212756320950657,
+    "tafel_slope_per_volt": 6.330256258451454
+  },
+  "pass": false,
+  "test": "tafel_slope",
+  "tolerance": {
+    "configured_alpha": 0.5,
+    "kind": "relative_to_configured",
+    "value": 0.2
+  },
+  "unit": "dimensionless",
+  "value": 0.15825640881949057,
+  "value_label": "recovered_butler_volmer_alpha"
+}

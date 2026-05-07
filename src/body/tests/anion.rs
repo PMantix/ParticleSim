@@ -50,7 +50,7 @@ mod electrolyte_anion {
         {
             //let bodies_clone = bodies.clone();
             let (first, _rest) = bodies.split_at_mut(1);
-            first[0].apply_redox();
+            first[0].apply_redox(0.0, 0.0);
         }
         assert_eq!(bodies[0].species, Species::ElectrolyteAnion);
     }

@@ -119,9 +119,11 @@ impl super::super::Renderer {
             if current_props.lj_enabled {
                 if ui
                     .add(
-                        egui::Slider::new(&mut current_props.lj_epsilon, 0.0..=15000.0)
-                            .text("LJ Epsilon (depth)")
-                            .step_by(1.0),
+                        egui::Slider::new(&mut current_props.lj_epsilon, 1.0e-4..=10000.0)
+                            .logarithmic(true)
+                            .smart_aim(false)
+                            .custom_formatter(|n, _| format!("{:.4}", n))
+                            .text("LJ Epsilon (depth)"),
                     )
                     .changed()
                 {

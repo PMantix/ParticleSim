@@ -1372,48 +1372,6 @@ impl Simulation {
     /// sum: including them would cause divergence (the probe sits at the centroid
     /// of those particles) and physically we want the potential *seen by* the
     /// electrode from the rest of the system (counter-electrode + electrolyte).
-    /// A softcore cutoff r_min prevents blowup from any remaining nearby bodies.
-    /// Spatially-averaged Coulomb potential at a set of probe body positions.
-    /// Each probe excludes the IDs in `exclude_ids` from the sum (typically
-    /// the probe's own foil bodies, or the probe IDs themselves to avoid
-    /// self-interaction). Same softcore cutoff as `compute_eis_voltage_by_potential`.
-    ///
-    /// Returns 0.0 if `probe_ids` is empty.
-    pub fn compute_potential_at_probes(
-        &self,
-        probe_ids: &[u64],
-        exclude_ids: &std::collections::HashSet<u64>,
-    ) -> f32 {
-        if probe_ids.is_empty() {
-            return 0.0;
-        }
-        let k = self.config.coulomb_constant;
-        const R_MIN: f32 = 5.0;
-        let mut total_v = 0.0f64;
-        let mut n_probes = 0u32;
-        for &pid in probe_ids {
-            let Some(probe_body) = self.bodies.iter().find(|b| b.id == pid) else {
-                continue;
-            };
-            let probe = probe_body.pos;
-            let mut v = 0.0f32;
-            for body in &self.bodies {
-                if exclude_ids.contains(&body.id) {
-                    continue;
-                }
-                let r = (probe - body.pos).mag().max(R_MIN);
-                v += k * body.charge / r;
-            }
-            total_v += v as f64;
-            n_probes += 1;
-        }
-        if n_probes > 0 {
-            (total_v / n_probes as f64) as f32
-        } else {
-            0.0
-        }
-    }
-
     pub fn compute_eis_voltage_by_potential(
         &self,
         group_a_ids: &[u64],

@@ -129,6 +129,38 @@ Append-only. Date-stamp every entry. Reference commits where possible.
 - No implementation work yet; this doc precedes any code.
 - Companion morphology work (`src/simulation/morphology.rs#accessible_surface_atoms`) landed unrelated to this plan but is a Phase 5 dependency here.
 
+### 2026-05-05 — Phase 1 implementation + DCR exploration
+- `src/bin/dcr_pulse_sweep.rs` (commit 60d14aa) and `scripts/fit_dcr_2rc.py` landed.
+- 14 DCR runs across amplitude {1e-5, 5e-5, 1e-4, 3e-4, 5e-3, 1e-2, 2e-2, 4e-2, 6e-2, 1e-1, 2e-1} and pulse durations {200 fs, 2000 fs, 50 ks, 200 ks, 1 Ms, 2 Ms} on north + south.
+- South CSV-commit and run_job.sh always-build infra in place.
+- `--mode galvanostatic|potentiostatic` added (commit 9b9e7ad). Potentiostatic mode actively drives V back to neutral via PID during rest — a different physical question from galvano passive relaxation.
+
+### 2026-05-05 — Finding: 2-RC ECM is over-parameterized for our regime
+- At all tested amplitudes/durations, V(t) during pulse-on is **near-linear** with no visible exponential turnover. The cell behaves as a near-pure capacitor + small kinetic inductance on our sim's compressed time scales.
+- 2-RC fits collapse: τ₁ undefined (R₁ → 0) and τ₂ pegs to upper bound. Honest model is `R₀ + C` with τ_relax > 1 Ms.
+- The 2-RC structure visible in the experimental cell would require either much longer pulses (≫ 1 Ms) or different physics parameters that produce two distinct charge-transfer + diffusion timescales. Neither is reachable with current DCR protocol exploration.
+
+### 2026-05-06 — Finding: spatial decomposition reveals asymmetric BV runaway
+Commit 37af2d8 added a 4-probe decomposition: V_cell = Galvani_A + Bulk_drop + Galvani_B, where Galvani_X = V at foil-X bodies − V at electrolyte-bulk probes 10–50 Å past foil X. New CSV columns: `v_metal_a, v_metal_b, v_bulk_a, v_bulk_b`.
+
+Two runs confirmed:
+- **dcr-decomp-001 (amp=1e-4, 1 Ms pulse + 1 Ms rest):** During rest (current = 0!), Galvani A drifts from −41 → −110 mV while Galvani B recovers from −57 → −22 mV. The cell continues to polarize at one interface even after current is off.
+- **dcr-decomp-002 (amp=0 baseline, 2 Ms zero current):** V_cell stable at −3 mV throughout. Galvani A holds cleanly at +6 mV. Pulse-induced Galvani A runaway is **not** baseline drift.
+
+This is the **asymmetric Butler-Volmer signature** we have been chasing across protocols (pre-hold offset, EIS persistent in-phase voltage, V_cell never returning to zero in DCR rest). It is now spatially localized: forward and reverse electron-hopping rates at the foil-A interface are non-reciprocal. Foil B does not show the same stuck-state.
+
+**Concrete handoff to physics-validation chat** (`docs/PHYSICS_VALIDATION_PLAN.md`): the bug is in `src/simulation/electron_hopping.rs` — the BV-style hopping kinetics produce different forward and reverse rate constants under our parameter set. A targeted invariant test:
+- Apply a current pulse, then zero current
+- Measure Galvani_A and Galvani_B drift during rest
+- For symmetric BV, both should decay toward equilibrium with the same time constant
+- Currently Galvani_A drifts further away while Galvani_B decays — clear failure
+
+This finding closes Phase 1 of this plan with a documented limitation: **further DCR work waits on physics-parameter fixes**. Phase 2 (8-amp Tafel sweep) is moot until BV symmetry is restored. Phase 3 (multi-cycle protocol) would amplify the asymmetry effect destructively. Phase 5 (morphology coupling) is independent and can proceed.
+
+Artifacts:
+- `doe_results/dcr_pulse_sweep/dcr-decomp-001_amp1e-4/` and `dcr-decomp-002_amp0_baseline/`
+- Decomposition figures: `*_decomp.png` rendered by `scripts/dcr_decomp.py`
+
 ## References
 
 - `docs/EIS_AMPLITUDE_STUDY_PLAN.md` — frequency-domain master plan; Phase 4 morphology and Phase 5 conditioning are dependencies of this doc's Phase 5.

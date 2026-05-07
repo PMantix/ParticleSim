@@ -1,0 +1,12 @@
+scenario=measurement_configs/eis_validation_flat_symmetric.toml
+seed=0xC0FFEE
+amplitude=0.001
+duration_on_fs=15000
+duration_rest_fs=15000
+num_pulses=1
+log_stride=2
+equilibrate_fs=20000
+pre_hold_fs=15000
+dt_fs=5
+n_steps=6000
+wall_seconds=71.6

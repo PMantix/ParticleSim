@@ -1,0 +1,76 @@
+# Phase-1 invariant: zero_emf_symmetric
+# See docs/PHYSICS_VALIDATION_PLAN.md §Test 1.2.
+#
+# Mirror-symmetric Li | electrolyte | Li cell, both foils at zero applied
+# current. With perfect left/right symmetry the time-averaged foil charges
+# should match (zero EMF) and the per-foil net current should average to zero.
+#
+# Scaled-down version of measurement_configs/eis_validation_flat_symmetric.toml
+# for fast first-cut runtime (~few seconds at default dt).
+#
+# Geometry:
+#   inter-electrode separation:  200 Å (foils at x=±100)
+#   lateral electrode height:    80 Å
+#   metal-block dims:            30 × 80 Å each side
+#   foil dims (embedded):         5 × 80 Å each side
+#   domain:                      300 × 100 Å  (50 Å buffer outside each electrode)
+#
+# Electrolyte sized to match the bulk_electrolyte.toml density (~0.023 particles/Å²)
+# in the available volume:
+#   electrolyte volume = 300×100 - 2×30×80 = 30000 - 4800 = 25200 Å²
+#   25200 × 0.023 ≈ 580 particles total
+#   1M LiPF6 / 1:1 EC:DMC composition:
+#     ~36 Li⁺ + 36 anion + 250 EC + 254 DMC
+
+[simulation]
+domain_width = 300.0
+domain_height = 100.0
+initial_temperature = 300.0
+enable_out_of_plane = false
+
+# Left electrode (Li metal, centered at x = -100)
+[[particles.metal_rectangles]]
+x = -100.0
+y = 0.0
+width = 30.0
+height = 80.0
+species = "LithiumMetal"
+
+[[particles.foil_rectangles]]
+x = -100.0
+y = 0.0
+width = 5.0
+height = 80.0
+current = 0.0
+
+# Right electrode (Li metal, centered at x = +100)
+[[particles.metal_rectangles]]
+x = 100.0
+y = 0.0
+width = 30.0
+height = 80.0
+species = "LithiumMetal"
+
+[[particles.foil_rectangles]]
+x = 100.0
+y = 0.0
+width = 5.0
+height = 80.0
+current = 0.0
+
+# Electrolyte
+[[particles.random]]
+count = 36
+species = "LithiumIon"
+
+[[particles.random]]
+count = 36
+species = "ElectrolyteAnion"
+
+[[particles.random]]
+count = 250
+species = "EC"
+
+[[particles.random]]
+count = 254
+species = "DMC"

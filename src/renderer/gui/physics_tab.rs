@@ -101,12 +101,29 @@ impl super::super::Renderer {
 
             // Basic field magnitude and direction (duplicate of Simulation tab for convenience)
             let mut mag = *FIELD_MAGNITUDE.lock();
-            ui.add(
-                egui::Slider::new(&mut mag, 0.0..=1000.0)
-                    .text("Field Magnitude |E|")
-                    .clamp_to_range(true)
-                    .step_by(1.0),
-            );
+            ui.horizontal(|ui| {
+                let mut slider_val = mag.max(1.0e-7);
+                let resp = ui.add(
+                    egui::Slider::new(&mut slider_val, 1.0e-7..=1.0)
+                        .text("|E| (sim)")
+                        .clamp_to_range(true)
+                        .logarithmic(true)
+                        .smart_aim(false)
+                        .custom_formatter(|n, _| format!("{:.2e}", n)),
+                );
+                if resp.changed() {
+                    mag = slider_val;
+                }
+                if ui.button("Off").clicked() {
+                    mag = 0.0;
+                }
+            });
+            let v_per_a = mag as f64 * crate::units::SIM_FIELD_TO_V_PER_ANGSTROM;
+            ui.small(format!(
+                "≈ {:.3e} V/Å    ({:.3e} mV/Å)",
+                v_per_a,
+                v_per_a * 1.0e3
+            ));
             *FIELD_MAGNITUDE.lock() = mag;
 
             let mut dir = *FIELD_DIRECTION.lock();

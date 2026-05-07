@@ -651,6 +651,18 @@ impl super::Renderer {
                         }
                     }
 
+                    // Surround diagnostic: tint Li metal by its surrounded flag.
+                    // Bulk (surrounded) → blue, surface (unsurrounded) → orange.
+                    if self.show_surround_diagnostic
+                        && body.species == Species::LithiumMetal
+                    {
+                        if body.surrounded_by_metal {
+                            color = [80, 130, 220, 255]; // blue — protected bulk
+                        } else {
+                            color = [240, 150, 60, 255]; // orange — eligible to oxidize
+                        }
+                    }
+
                     if body.species == Species::FoilMetal {
                         if let Some(foil) =
                             self.foils.iter().find(|f| f.body_ids.contains(&body.id))

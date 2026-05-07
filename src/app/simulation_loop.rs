@@ -1,5 +1,5 @@
 use crate::profile_scope;
-use crate::renderer::state::{SimCommand, BODIES, FOILS, PAUSED, QUADTREE, SPAWN, UPDATE_LOCK};
+use crate::renderer::state::{SimCommand, BODIES, FOILS, PAUSED, QUADTREE, SPAWN, STEP_ONCE, UPDATE_LOCK};
 use crate::simulation::{PlaybackProgress, Simulation};
 use crate::switch_charging;
 use std::sync::atomic::Ordering;
@@ -87,8 +87,13 @@ pub fn run_simulation_loop(
 
         let is_paused = PAUSED.load(Ordering::Relaxed);
         let is_viewing_history = simulation.is_viewing_history();
+        // Single-step request: only honored when paused and not viewing
+        // history. Consume the flag whether or not we run, so the request
+        // is one-shot per keypress.
+        let step_request = STEP_ONCE.swap(false, Ordering::Relaxed);
+        let do_single_step = step_request && is_paused && !is_viewing_history;
 
-        if is_paused || is_viewing_history {
+        if (is_paused && !do_single_step) || is_viewing_history {
             // debug log removed
             if let PlaybackProgress::ReachedLive { should_resume_live } =
                 simulation.advance_playback(Instant::now())
