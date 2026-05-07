@@ -1,0 +1,66 @@
+# Electrode mechanics validation — A.2 Charged cluster (electron-deficit)
+#
+# Same geometry as A.1 (single 20×20 Li metal slab + embedded 5×20 foil,
+# no electrolyte), but the foil starts with 5 electrons removed.
+# Cluster total charge = +5e at t=0.
+#
+# Purpose: verify that imposed cluster-level charge redistributes
+# correctly. Real metals delocalize the electron sea — the deficit
+# should end up at surface atoms, not stay localized on foil bodies.
+# `apply_redox` should then convert surface +1 metals to ions over time.
+#
+# Run procedure (GUI):
+#   1. Load this scenario.
+#   2. Don't apply any field, current, or external driving.
+#   3. Let it run at 300 K.
+#
+# What to look for:
+#   1. Initial state: 5 foil bodies show +1 charge (their η column should
+#      blip immediately after load — Ratio < 1.0).
+#   2. Within a few hundred fs: hops redistribute the deficit through
+#      the cluster. The η on the foil should relax toward 0 as the
+#      cluster equilibrates.
+#   3. With electron-sea protection enabled (default threshold=4,
+#      radius=3.5), surface Li metals (those with <4 metal neighbors)
+#      that end up with +1 charge should oxidize → 5 new Li⁺ ions appear,
+#      one per missing electron.
+#   4. Long-time steady state: cluster has 5 fewer Li metal atoms,
+#      5 free Li⁺ ions floating in the domain, foil neutral again.
+#   5. No driving force is sustaining anything — once equilibrated,
+#      nothing further should happen.
+#
+# Pass criterion: total ion count grows from 0 to ~5, then stops.
+# Failure modes to flag:
+#   - No ions ever appear (electron-sea protection over-blocking)
+#   - More than 5 ions appear (cluster losing extra electrons spuriously)
+#   - Cluster blows apart from internal Coulomb (LJ cohesion + protection
+#     interplay broken)
+#   - +1 charge stays localized on foil bodies indefinitely (intra-cluster
+#     electron transport not working)
+#
+# Use the "Highlight surrounded metals" diagnostic in the Charging tab to
+# watch the surround-flag dynamics during equilibration.
+
+[simulation]
+domain_width = 60.0
+domain_height = 60.0
+initial_temperature = 300.0
+enable_out_of_plane = false
+
+# Bulk Li metal slab — same as A.1
+[[particles.metal_rectangles]]
+x = 0.0
+y = 0.0
+width = 20.0
+height = 20.0
+species = "LithiumMetal"
+
+# Foil with 5 missing electrons → cluster starts at +5e total charge.
+# Zero applied current; the only driver is the imposed initial charge.
+[[particles.foil_rectangles]]
+x = -7.5
+y = 0.0
+width = 5.0
+height = 20.0
+current = 0.0
+initial_excess_electrons = -5

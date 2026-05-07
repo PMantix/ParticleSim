@@ -12,20 +12,43 @@ impl super::super::Renderer {
             ui.horizontal(|ui| {
                 ui.label("Preset:");
                 let preset_dir = std::path::Path::new("measurement_configs");
-                let mut presets: Vec<String> = match std::fs::read_dir(preset_dir) {
-                    Ok(rd) => rd
-                        .filter_map(|e| e.ok())
-                        .filter(|e| {
-                            e.path()
-                                .extension()
-                                .and_then(|s| s.to_str())
-                                .map(|s| s.eq_ignore_ascii_case("toml"))
-                                .unwrap_or(false)
-                        })
-                        .filter_map(|e| e.file_name().into_string().ok())
-                        .collect(),
-                    Err(_) => Vec::new(),
+                // Collect .toml files at the top level and one level deep
+                // (e.g. measurement_configs/electrode_mechanics/foo.toml).
+                // Names are stored relative to preset_dir so that
+                // `preset_dir.join(name)` resolves correctly.
+                let is_toml = |p: &std::path::Path| {
+                    p.extension()
+                        .and_then(|s| s.to_str())
+                        .map(|s| s.eq_ignore_ascii_case("toml"))
+                        .unwrap_or(false)
                 };
+                let mut presets: Vec<String> = Vec::new();
+                if let Ok(rd) = std::fs::read_dir(preset_dir) {
+                    for entry in rd.flatten() {
+                        let path = entry.path();
+                        if path.is_file() && is_toml(&path) {
+                            if let Some(name) = path.file_name().and_then(|s| s.to_str()) {
+                                presets.push(name.to_string());
+                            }
+                        } else if path.is_dir() {
+                            if let (Some(subdir), Ok(sub_rd)) = (
+                                path.file_name().and_then(|s| s.to_str()),
+                                std::fs::read_dir(&path),
+                            ) {
+                                for sub in sub_rd.flatten() {
+                                    let sub_path = sub.path();
+                                    if sub_path.is_file() && is_toml(&sub_path) {
+                                        if let Some(fname) =
+                                            sub_path.file_name().and_then(|s| s.to_str())
+                                        {
+                                            presets.push(format!("{}/{}", subdir, fname));
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
                 presets.sort();
                 let selected_label = self
                     .init_config_selected
@@ -33,6 +56,7 @@ impl super::super::Renderer {
                     .unwrap_or_else(|| "Select…".to_string());
                 egui::ComboBox::from_id_source("init_config_combo")
                     .selected_text(selected_label)
+                    .width(360.0)
                     .show_ui(ui, |ui| {
                         for name in &presets {
                             ui.selectable_value(

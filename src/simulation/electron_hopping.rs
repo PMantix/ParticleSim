@@ -112,8 +112,19 @@ impl Simulation {
         let mut electrode_to_foil_attempted = 0usize;
         let mut electrode_to_foil_succeeded = 0usize;
 
+        // Capture sim_time for the species-change lock checks below.
+        let hop_current_time = *crate::renderer::state::SIM_TIME.lock();
+
         for &src_idx in &src_indices {
             if donated_electron[src_idx] || exclude_donor[src_idx] {
+                continue;
+            }
+            // Skip recently-transitioned bodies as donors. A body whose
+            // species_lock_until is still in the future shouldn't be
+            // shuffling electrons — combined with the dst-side gate below,
+            // this fully isolates a freshly-converted ion from hops until
+            // its lock expires.
+            if self.bodies[src_idx].species_lock_until > hop_current_time {
                 continue;
             }
             let src_body = &self.bodies[src_idx];
@@ -245,6 +256,14 @@ impl Simulation {
             if let Some(&dst_idx) = candidate_neighbors.iter().find(|&&dst_idx| {
                 HOP_DIAG_CANDIDATES_REACHED_PREDICATE.fetch_add(1, Ordering::Relaxed);
                 let dst_body = &self.bodies[dst_idx];
+                // Skip recently-transitioned bodies as destinations. A
+                // freshly-formed ion shouldn't accept electrons until its
+                // species_lock has expired; this is what prevents the
+                // weird "Li⁺ with extra electrons" intermediate state and
+                // the runaway charge accumulation that follows.
+                if dst_body.species_lock_until > hop_current_time {
+                    return false;
+                }
                 let dst_is_foil = dst_body.species == Species::FoilMetal;
                 let dst_is_electrode = matches!(
                     dst_body.species,
@@ -447,8 +466,12 @@ impl Simulation {
 
         // Split immutable borrows for rayon safety
         profile_scope!("apply_redox");
+        // Capture sim time and lock duration once, outside the parallel loop,
+        // so each body call doesn't acquire global locks.
+        let current_time = *crate::renderer::state::SIM_TIME.lock();
+        let lock_duration = *crate::renderer::state::SPECIES_LOCK_FS.lock();
         self.bodies.par_iter_mut().for_each(|body| {
-            body.apply_redox();
+            body.apply_redox(current_time, lock_duration);
         });
     }
 }

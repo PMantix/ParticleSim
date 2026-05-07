@@ -11,11 +11,24 @@ impl super::super::Renderer {
             if foils.is_empty() {
                 ui.small("No foils available.");
             } else {
+                // Charge lookup for the η column.
+                let id_to_charge: std::collections::HashMap<u64, f32> = self
+                    .bodies
+                    .iter()
+                    .map(|b| (b.id, b.charge))
+                    .collect();
+                // EMA only advances when sim_time has progressed.
+                let current_sim_time = *crate::renderer::state::SIM_TIME.lock();
+                let sim_advanced = current_sim_time > self.eta_lpf_last_sim_time;
+                if sim_advanced {
+                    self.eta_lpf_last_sim_time = current_sim_time;
+                }
                 egui::Grid::new("foil_status_grid_top")
                     .striped(true)
                     .show(ui, |ui| {
                         ui.label("Foil");
                         ui.label("Ratio");
+                        ui.label("η (V)");
                         ui.label("Mode");
                         ui.label("Setpoint");
                         ui.end_row();
@@ -34,6 +47,41 @@ impl super::super::Renderer {
                                 } else {
                                     ui.label("N/A");
                                 }
+                            } else {
+                                ui.label("N/A");
+                            }
+                            // η = mean(charge per foil body) × POTENTIAL_PER_CHARGE,
+                            // EMA-smoothed in self.foil_eta_smoothed.
+                            let n = foil.body_ids.len();
+                            if n > 0 {
+                                let total_q: f32 = foil
+                                    .body_ids
+                                    .iter()
+                                    .filter_map(|id| id_to_charge.get(id))
+                                    .sum();
+                                let mean_q = total_q / n as f32;
+                                let eta_raw = mean_q * crate::config::POTENTIAL_PER_CHARGE;
+                                let alpha = self.eta_lpf_alpha.clamp(1.0e-4, 1.0);
+                                let prev = self
+                                    .foil_eta_smoothed
+                                    .get(&foil.id)
+                                    .copied()
+                                    .unwrap_or(eta_raw);
+                                let eta = if sim_advanced {
+                                    let updated = alpha * eta_raw + (1.0 - alpha) * prev;
+                                    self.foil_eta_smoothed.insert(foil.id, updated);
+                                    updated
+                                } else {
+                                    prev
+                                };
+                                let eta_color = if eta.abs() > 0.5 {
+                                    egui::Color32::LIGHT_RED
+                                } else if eta.abs() > 0.05 {
+                                    egui::Color32::LIGHT_YELLOW
+                                } else {
+                                    egui::Color32::WHITE
+                                };
+                                ui.colored_label(eta_color, format!("{:+.3}", eta));
                             } else {
                                 ui.label("N/A");
                             }
@@ -60,6 +108,67 @@ impl super::super::Renderer {
                         }
                     });
             }
+            // η smoothing + electron-sea-protection knobs.
+            ui.horizontal(|ui| {
+                ui.label("η smoothing α:");
+                ui.add(
+                    egui::Slider::new(&mut self.eta_lpf_alpha, 0.001..=1.0)
+                        .logarithmic(true)
+                        .smart_aim(false)
+                        .custom_formatter(|n, _| format!("{:.3}", n)),
+                );
+                if ui.button("Reset").clicked() {
+                    self.foil_eta_smoothed.clear();
+                }
+            });
+            ui.small("α = 1.0 disables smoothing. EMA only advances when sim_time progresses.");
+            ui.separator();
+            ui.label("Electron-sea protection");
+            ui.horizontal(|ui| {
+                let mut threshold =
+                    *crate::renderer::state::SURROUND_NEIGHBOR_THRESHOLD.lock() as i32;
+                ui.label("Threshold (neighbors):");
+                if ui
+                    .add(egui::Slider::new(&mut threshold, 1..=8).integer())
+                    .changed()
+                {
+                    *crate::renderer::state::SURROUND_NEIGHBOR_THRESHOLD.lock() =
+                        threshold.max(1) as usize;
+                }
+            });
+            ui.horizontal(|ui| {
+                let mut factor = *crate::renderer::state::SURROUND_RADIUS_FACTOR.lock();
+                ui.label("Search radius (× body radius):");
+                if ui
+                    .add(egui::Slider::new(&mut factor, 1.5..=5.0).fixed_decimals(2))
+                    .changed()
+                {
+                    *crate::renderer::state::SURROUND_RADIUS_FACTOR.lock() = factor.max(1.0);
+                }
+            });
+            ui.checkbox(
+                &mut self.show_surround_diagnostic,
+                "Highlight surrounded metals (blue=bulk, orange=surface)",
+            );
+            ui.horizontal(|ui| {
+                let mut lock_fs = *crate::renderer::state::SPECIES_LOCK_FS.lock();
+                ui.label("Species-change lock (fs):");
+                if ui
+                    .add(
+                        egui::Slider::new(&mut lock_fs, 0.0..=500.0)
+                            .logarithmic(true)
+                            .fixed_decimals(1),
+                    )
+                    .changed()
+                {
+                    *crate::renderer::state::SPECIES_LOCK_FS.lock() = lock_fs.max(0.0);
+                }
+            });
+            ui.small(
+                "After a species transition, the body can't change species \
+                 again until this many fs have elapsed. Breaks single-step \
+                 oxidation↔reduction ping-pong. 0 = disabled.",
+            );
         });
         ui.add_space(6.0);
         ui.separator();

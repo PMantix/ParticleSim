@@ -108,7 +108,21 @@ impl Body {
             }
         }
     }
-    pub fn apply_redox(&mut self) {
+    /// Run redox conversion logic for this body.
+    ///
+    /// `current_time` is the current sim_time in fs. `lock_duration` is the
+    /// minimum gap (in fs) between two species transitions on the same body —
+    /// after a transition fires, this body refuses further species changes
+    /// until `current_time >= species_lock_until`. This breaks the
+    /// oxidize/reduce ping-pong that would otherwise occur on consecutive
+    /// timesteps when a freshly-formed ion is still in hop range of a
+    /// neighboring metal-with-electron. `lock_duration = 0` disables the
+    /// lock and matches pre-lock behavior (used in unit tests).
+    pub fn apply_redox(&mut self, current_time: f32, lock_duration: f32) {
+        // If still locked, no species change permitted this call.
+        if current_time < self.species_lock_until {
+            return;
+        }
         let old_species = self.species;
 
         match self.species {
@@ -162,9 +176,11 @@ impl Body {
             }
         }
 
-        // Update radius if species changed
+        // Update radius if species changed, and arm the lock so the next
+        // transition can't fire until lock_duration fs have elapsed.
         if old_species != self.species {
             self.radius = self.species.radius();
+            self.species_lock_until = current_time + lock_duration;
         }
     }
 }
@@ -196,7 +212,7 @@ mod tests {
             rel_pos: Vec2::zero(),
             vel: Vec2::zero(),
         });
-        ion.apply_redox();
+        ion.apply_redox(0.0, 0.0);
 
         assert_eq!(ion.species, Species::LithiumMetal);
         assert_eq!(ion.radius, metal_radius);
@@ -215,7 +231,7 @@ mod tests {
 
         // Remove all electrons to make it become ion
         metal.electrons.clear();
-        metal.apply_redox();
+        metal.apply_redox(0.0, 0.0);
 
         assert_eq!(metal.species, Species::LithiumIon);
         assert_eq!(metal.radius, ion_radius);
@@ -240,7 +256,7 @@ mod tests {
         assert_eq!(surrounded_metal.electrons.len(), 0); // No electrons, would normally oxidize
 
         // Apply redox - should NOT convert to ion due to electron sea protection
-        surrounded_metal.apply_redox();
+        surrounded_metal.apply_redox(0.0, 0.0);
 
         if crate::config::ENABLE_ELECTRON_SEA_PROTECTION {
             assert_eq!(
@@ -264,7 +280,7 @@ mod tests {
         assert_eq!(isolated_metal.electrons.len(), 0); // No electrons
 
         // Apply redox - should convert to ion
-        isolated_metal.apply_redox();
+        isolated_metal.apply_redox(0.0, 0.0);
 
         assert_eq!(
             isolated_metal.species,

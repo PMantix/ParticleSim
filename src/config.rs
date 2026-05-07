@@ -110,6 +110,14 @@ pub const LJ_SIGMA_A: f32 = 1.80;
 pub const LJ_CUTOFF_A: f32 = 2.2;
 /// Lennard-Jones epsilon converted to simulation energy units.
 pub const LJ_FORCE_EPSILON: f32 = (LJ_EPSILON_EV as f64 * units::EV_TO_SIM) as f32;
+/// LJ epsilon for `LithiumMetal` bodies, calibrated 2026-05 against the
+/// A.2 electrode-mechanics test. Modest cohesion that holds the cluster
+/// against thermal motion without forbidding surface oxidation.
+pub const LJ_FORCE_EPSILON_LITHIUM_METAL: f32 = 0.1;
+/// LJ epsilon for `FoilMetal` bodies, calibrated 2026-05. Foils are
+/// current collectors and should stay rigid — much stronger cohesion than
+/// `LithiumMetal` so the foil retains its geometry under driving.
+pub const LJ_FORCE_EPSILON_FOIL: f32 = 10.0;
 /// Lennard-Jones sigma in simulation length units (angstroms).
 pub const LJ_FORCE_SIGMA: f32 = LJ_SIGMA_A;
 /// Lennard-Jones cutoff in simulation length units (angstroms).
@@ -170,10 +178,14 @@ pub const ENABLE_POTENTIAL_GATING: bool = true;
 //pub const IONIZATION_FIELD_THRESHOLD: f32 = 1.0e3;
 /// Enable electron sea protection: metals surrounded by other metals resist oxidation
 pub const ENABLE_ELECTRON_SEA_PROTECTION: bool = true;
-/// Radius factor (times body radius) for determining metal surroundings
-pub const SURROUND_RADIUS_FACTOR: f32 = 3.5;
-/// Neighbor count threshold for considering a body "surrounded" by metal
-pub const SURROUND_NEIGHBOR_THRESHOLD: usize = 4;
+/// Radius factor (times body radius) for determining metal surroundings.
+/// Calibrated 2026-05: 2.8 catches just past the 1st neighbor shell at
+/// ~3 Å spacing without grabbing the 2nd shell at ~5.3 Å.
+pub const SURROUND_RADIUS_FACTOR: f32 = 2.8;
+/// Neighbor count threshold for considering a body "surrounded" by metal.
+/// Calibrated 2026-05: 3 protects only deeply-coordinated atoms, leaving
+/// edges and corners eligible to oxidize.
+pub const SURROUND_NEIGHBOR_THRESHOLD: usize = 3;
 /// Minimum displacement before recomputing `surrounded_by_metal`
 pub const SURROUND_MOVE_THRESHOLD: f32 = 0.5;
 /// Maximum number of frames between surround checks

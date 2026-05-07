@@ -69,6 +69,14 @@ pub struct FoilRectangleConfig {
     pub width: f32,
     pub height: f32,
     pub current: f32,
+    /// One-time initial offset to apply to the foil's electron count after
+    /// spawn. Positive = electron surplus distributed across foil bodies
+    /// (cluster starts negatively charged); negative = deficit distributed
+    /// (cluster starts positively charged). Useful for electrode-mechanics
+    /// validation tests that need a specific starting charge state.
+    /// Default 0 (no offset).
+    #[serde(default)]
+    pub initial_excess_electrons: i32,
 }
 
 #[derive(Debug, Deserialize, Serialize)]

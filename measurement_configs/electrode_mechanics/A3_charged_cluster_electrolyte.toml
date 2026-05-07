@@ -1,0 +1,86 @@
+# Electrode mechanics validation — A.3 Charged cluster + electrolyte
+#
+# Same geometry and initial-charge perturbation as A.2 (single 20×20 Li
+# metal slab + embedded foil with `initial_excess_electrons = -5`), but
+# now the remaining domain is filled with a moderate-density electrolyte
+# (Li⁺, PF6⁻, EC, DMC).
+#
+# Purpose: verify the calibrated electrode mechanics still behave
+# correctly when polar solvents and free ions are present in the
+# surrounding electrolyte.
+#
+# Run procedure (GUI):
+#   1. Load this scenario.
+#   2. Don't apply any field, current, or external driving.
+#   3. Let it run at 300 K for ~20 ps to give solvation shells time to form.
+#
+# What to verify:
+#   1. Cluster integrity is preserved — same as A.1/A.2, no slow drift
+#      apart, no spontaneous dissolution.
+#   2. The 5 imposed deficits still produce ~5 Li⁺ ions, mirroring A.2.
+#      The presence of electrolyte may slightly slow the ejection rate
+#      (solvent drag) and change where ions settle, but the count should
+#      still match.
+#   3. Newly-shed ions and any pre-existing free Li⁺ ions develop solvent
+#      shells (CIP/SIP/S2IP visible in Measurements tab if you enable
+#      the diagnostic).
+#   4. Solvent doesn't get spuriously oxidized or reduced — total EC and
+#      DMC counts stay constant. (No SEI formation expected without an
+#      applied potential.)
+#   5. Free ions don't randomly reduce on contact with the cluster
+#      surface — the Coulomb landscape should keep them solvated unless
+#      driven by an applied current.
+#
+# Pass criterion: cluster sheds 4–5 ions (matching A.2 success) with
+# no spurious solvent reduction or cluster dissolution. Solvation shells
+# form normally around free Li⁺.
+#
+# Failure modes to flag:
+#   - Solvent atoms changing species (unexpected redox)
+#   - Cluster atoms migrating into electrolyte without losing electrons
+#   - Free Li⁺ randomly converting to Li metal at the cluster surface
+#   - Cluster slowly dissolving from electrolyte contact alone
+
+[simulation]
+domain_width = 60.0
+domain_height = 60.0
+initial_temperature = 300.0
+enable_out_of_plane = false
+
+# Bulk Li metal slab — same as A.1/A.2
+[[particles.metal_rectangles]]
+x = 0.0
+y = 0.0
+width = 20.0
+height = 20.0
+species = "LithiumMetal"
+
+# Foil with 5 missing electrons → cluster starts at +5e total charge
+[[particles.foil_rectangles]]
+x = -7.5
+y = 0.0
+width = 5.0
+height = 20.0
+current = 0.0
+initial_excess_electrons = -5
+
+# Electrolyte: ~1 M LiPF6 in 1:1 EC:DMC, scaled to fit the 60×60 domain
+# minus the 20×20 cluster region (~3200 Å² of free space).
+# Counts chosen to match the bulk-electrolyte densities used in
+# li_ec_coordination_dense.toml (50 / 50 / 300 / 300 in 200×200), scaled
+# to ~3200 Å² of free space here.
+[[particles.random]]
+count = 5
+species = "LithiumIon"
+
+[[particles.random]]
+count = 5
+species = "ElectrolyteAnion"
+
+[[particles.random]]
+count = 30
+species = "EC"
+
+[[particles.random]]
+count = 30
+species = "DMC"
