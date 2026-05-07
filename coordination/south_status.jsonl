@@ -156,3 +156,4 @@
 {"id": "dcr-potentio-1-r", "ts": "2026-05-05T14:53:09-04:00", "status": "done", "exit_code": 0, "log": "doe_results/dcr_pulse_sweep/dcr-potentio-1-r_amp1e-2/run.log", "wall_seconds": 2172}
 {"id": "dcr-galvano-extreme-1-r", "ts": "2026-05-05T16:30:10-04:00", "status": "done", "exit_code": 0, "log": "doe_results/dcr_pulse_sweep/dcr-galvano-extreme-1-r_amp1e-5/run.log", "wall_seconds": 8033}
 {"id": "dcr-galvano-extreme-2-r", "ts": "2026-05-05T16:32:00-04:00", "status": "done", "exit_code": 0, "log": "doe_results/dcr_pulse_sweep/dcr-galvano-extreme-2-r_amp5e-5/run.log", "wall_seconds": 8118}
+{"id": "doe-cos-027", "ts": "2026-05-07T16:45:39-04:00", "status": "failed", "exit_code": 2, "log": "doe_results/eis_doe_lf/doe-cos-027_amp1e-4_freq3e-7to1e-6_cos.log", "wall_seconds": 249357, "error": "binary exited with code 2"}
