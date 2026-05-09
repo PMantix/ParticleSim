@@ -223,6 +223,12 @@ pub struct Renderer {
     /// Last sim_time at which η smoothing advanced. EMA only updates when
     /// sim_time has progressed, so pause/playback freezes the readout.
     pub eta_lpf_last_sim_time: f32,
+    /// Per-foil rolling window of (sim_time, η_raw) samples.
+    pub foil_eta_ring: std::collections::HashMap<u64, std::collections::VecDeque<(f32, f32)>>,
+    /// Rolling window duration (fs). 0 = use EMA instead.
+    pub eta_window_fs: f32,
+    /// Smoothed max_abs for charge density heatmap color normalization.
+    pub charge_density_max_abs_smoothed: f32,
     /// Toggle: highlight Li metals by their `surrounded_by_metal` flag.
     /// Blue = bulk (protected), orange = surface (eligible to oxidize).
     pub show_surround_diagnostic: bool,
@@ -545,6 +551,9 @@ impl quarkstrom::Renderer for Renderer {
             foil_eta_smoothed: std::collections::HashMap::new(),
             eta_lpf_alpha: 0.05,
             eta_lpf_last_sim_time: f32::NEG_INFINITY,
+            foil_eta_ring: std::collections::HashMap::new(),
+            eta_window_fs: 500.0,
+            charge_density_max_abs_smoothed: 0.0,
             show_surround_diagnostic: false,
 
             // Solvation visualization flags - default to false
@@ -754,15 +763,39 @@ impl Renderer {
     }
     fn available_scenarios() -> Vec<String> {
         let mut list = vec!["Default".to_string()];
-        if let Ok(entries) = fs::read_dir("saved_state") {
-            for entry in entries.flatten() {
-                if let Some(name) = entry.file_name().to_str() {
-                    if name.ends_with(".json") {
-                        list.push(name.trim_end_matches(".json").to_string());
+        let is_toml = |p: &std::path::Path| {
+            p.extension()
+                .and_then(|s| s.to_str())
+                .map(|s| s.eq_ignore_ascii_case("toml"))
+                .unwrap_or(false)
+        };
+        let preset_dir = std::path::Path::new("measurement_configs");
+        if let Ok(rd) = fs::read_dir(preset_dir) {
+            for entry in rd.flatten() {
+                let path = entry.path();
+                if path.is_file() && is_toml(&path) {
+                    if let Some(name) = path.file_name().and_then(|s| s.to_str()) {
+                        list.push(name.to_string());
+                    }
+                } else if path.is_dir() {
+                    if let (Some(subdir), Ok(sub_rd)) =
+                        (path.file_name().and_then(|s| s.to_str()), fs::read_dir(&path))
+                    {
+                        for sub in sub_rd.flatten() {
+                            let sub_path = sub.path();
+                            if sub_path.is_file() && is_toml(&sub_path) {
+                                if let Some(fname) =
+                                    sub_path.file_name().and_then(|s| s.to_str())
+                                {
+                                    list.push(format!("{}/{}", subdir, fname));
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
+        list.sort();
         list
     }
 
@@ -1151,9 +1184,16 @@ impl Renderer {
             }
         } else {
             let name = &self.scenarios[self.selected_scenario];
-            let path = format!("saved_state/{}.json", name);
-            if let Some(tx) = SIM_COMMAND_SENDER.lock().as_ref() {
-                let _ = tx.send(SimCommand::LoadState { path });
+            if name.ends_with(".toml") {
+                let path = std::path::PathBuf::from(format!("measurement_configs/{}", name));
+                if let Some(tx) = SIM_COMMAND_SENDER.lock().as_ref() {
+                    let _ = tx.send(SimCommand::LoadInitConfigToml { path });
+                }
+            } else {
+                let path = format!("saved_state/{}.json", name);
+                if let Some(tx) = SIM_COMMAND_SENDER.lock().as_ref() {
+                    let _ = tx.send(SimCommand::LoadState { path });
+                }
             }
         }
         self.show_splash = false;

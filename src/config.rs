@@ -179,13 +179,9 @@ pub const ENABLE_POTENTIAL_GATING: bool = true;
 /// Enable electron sea protection: metals surrounded by other metals resist oxidation
 pub const ENABLE_ELECTRON_SEA_PROTECTION: bool = true;
 /// Radius factor (times body radius) for determining metal surroundings.
-/// Calibrated 2026-05: 2.8 catches just past the 1st neighbor shell at
-/// ~3 Å spacing without grabbing the 2nd shell at ~5.3 Å.
-pub const SURROUND_RADIUS_FACTOR: f32 = 2.8;
+pub const SURROUND_RADIUS_FACTOR: f32 = 4.0;
 /// Neighbor count threshold for considering a body "surrounded" by metal.
-/// Calibrated 2026-05: 3 protects only deeply-coordinated atoms, leaving
-/// edges and corners eligible to oxidize.
-pub const SURROUND_NEIGHBOR_THRESHOLD: usize = 3;
+pub const SURROUND_NEIGHBOR_THRESHOLD: usize = 8;
 /// Minimum displacement before recomputing `surrounded_by_metal`
 pub const SURROUND_MOVE_THRESHOLD: f32 = 0.5;
 /// Maximum number of frames between surround checks

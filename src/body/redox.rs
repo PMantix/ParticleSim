@@ -176,8 +176,6 @@ impl Body {
             }
         }
 
-        // Update radius if species changed, and arm the lock so the next
-        // transition can't fire until lock_duration fs have elapsed.
         if old_species != self.species {
             self.radius = self.species.radius();
             self.species_lock_until = current_time + lock_duration;

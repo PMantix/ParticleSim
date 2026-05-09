@@ -4,7 +4,7 @@ use ultraviolet::Vec2;
 
 impl Renderer {
     /// Draw a simple charge density heatmap.
-    pub fn draw_charge_density(&self, ctx: &mut quarkstrom::RenderContext) {
+    pub fn draw_charge_density(&mut self, ctx: &mut quarkstrom::RenderContext) {
         let grid_spacing = 5.0;
         let smoothing = 5.0;
 
@@ -40,7 +40,16 @@ impl Renderer {
             })
             .reduce(|| 0.0f32, f32::max);
 
-        let max_abs = max_abs.max(1e-6);
+        let raw_max = max_abs.max(1e-6);
+        // Smooth the normalization scale: rise fast (track peaks),
+        // decay slowly (prevent flickering when peaks disappear).
+        let alpha_rise = 0.3;
+        let alpha_decay = 0.005;
+        let prev = self.charge_density_max_abs_smoothed;
+        let alpha = if raw_max > prev { alpha_rise } else { alpha_decay };
+        let smoothed = prev + alpha * (raw_max - prev);
+        self.charge_density_max_abs_smoothed = smoothed.max(1e-6);
+        let max_abs = self.charge_density_max_abs_smoothed;
 
         for ix in 0..nx - 1 {
             for iy in 0..ny - 1 {

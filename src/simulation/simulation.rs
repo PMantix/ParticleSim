@@ -1214,10 +1214,12 @@ impl Simulation {
                 let has_liquid = self.bodies.iter().any(|b| {
                     matches!(
                         b.species,
-                        crate::body::Species::LithiumIon
-                            | crate::body::Species::ElectrolyteAnion
+                        crate::body::Species::ElectrolyteAnion
                             | crate::body::Species::EC
                             | crate::body::Species::DMC
+                            | crate::body::Species::VC
+                            | crate::body::Species::FEC
+                            | crate::body::Species::EMC
                     )
                 });
                 if has_liquid {

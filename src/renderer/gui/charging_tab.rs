@@ -50,8 +50,8 @@ impl super::super::Renderer {
                             } else {
                                 ui.label("N/A");
                             }
-                            // η = mean(charge per foil body) × POTENTIAL_PER_CHARGE,
-                            // EMA-smoothed in self.foil_eta_smoothed.
+                            // η = mean(charge per foil body) × POTENTIAL_PER_CHARGE.
+                            // Two modes: EMA (α-based) or time-window average.
                             let n = foil.body_ids.len();
                             if n > 0 {
                                 let total_q: f32 = foil
@@ -61,18 +61,46 @@ impl super::super::Renderer {
                                     .sum();
                                 let mean_q = total_q / n as f32;
                                 let eta_raw = mean_q * crate::config::POTENTIAL_PER_CHARGE;
-                                let alpha = self.eta_lpf_alpha.clamp(1.0e-4, 1.0);
-                                let prev = self
-                                    .foil_eta_smoothed
-                                    .get(&foil.id)
-                                    .copied()
-                                    .unwrap_or(eta_raw);
-                                let eta = if sim_advanced {
+
+                                let eta = if self.eta_window_fs > 0.0 {
+                                    if sim_advanced {
+                                        let ring = self
+                                            .foil_eta_ring
+                                            .entry(foil.id)
+                                            .or_insert_with(std::collections::VecDeque::new);
+                                        ring.push_back((current_sim_time, eta_raw));
+                                        let cutoff = current_sim_time - self.eta_window_fs;
+                                        while ring.front().map_or(false, |s| s.0 < cutoff) {
+                                            ring.pop_front();
+                                        }
+                                    }
+                                    // Display current rolling average (frozen when paused)
+                                    if let Some(ring) = self.foil_eta_ring.get(&foil.id) {
+                                        if ring.is_empty() {
+                                            eta_raw
+                                        } else {
+                                            let sum: f64 =
+                                                ring.iter().map(|s| s.1 as f64).sum();
+                                            (sum / ring.len() as f64) as f32
+                                        }
+                                    } else {
+                                        eta_raw
+                                    }
+                                } else if sim_advanced {
+                                    let alpha = self.eta_lpf_alpha.clamp(1.0e-4, 1.0);
+                                    let prev = self
+                                        .foil_eta_smoothed
+                                        .get(&foil.id)
+                                        .copied()
+                                        .unwrap_or(eta_raw);
                                     let updated = alpha * eta_raw + (1.0 - alpha) * prev;
                                     self.foil_eta_smoothed.insert(foil.id, updated);
                                     updated
                                 } else {
-                                    prev
+                                    self.foil_eta_smoothed
+                                        .get(&foil.id)
+                                        .copied()
+                                        .unwrap_or(eta_raw)
                                 };
                                 let eta_color = if eta.abs() > 0.5 {
                                     egui::Color32::LIGHT_RED
@@ -108,20 +136,43 @@ impl super::super::Renderer {
                         }
                     });
             }
-            // η smoothing + electron-sea-protection knobs.
+            // η smoothing controls.
             ui.horizontal(|ui| {
-                ui.label("η smoothing α:");
+                ui.label("η window (fs):");
                 ui.add(
-                    egui::Slider::new(&mut self.eta_lpf_alpha, 0.001..=1.0)
-                        .logarithmic(true)
+                    egui::Slider::new(&mut self.eta_window_fs, 0.0..=5000.0)
                         .smart_aim(false)
-                        .custom_formatter(|n, _| format!("{:.3}", n)),
+                        .custom_formatter(|n, _| {
+                            if n <= 0.0 {
+                                "EMA".to_string()
+                            } else {
+                                format!("{:.0}", n)
+                            }
+                        }),
                 );
                 if ui.button("Reset").clicked() {
                     self.foil_eta_smoothed.clear();
+                    self.foil_eta_ring.clear();
                 }
             });
-            ui.small("α = 1.0 disables smoothing. EMA only advances when sim_time progresses.");
+            if self.eta_window_fs > 0.0 {
+                let sample_count: usize = self.foil_eta_ring.values().map(|r| r.len()).max().unwrap_or(0);
+                ui.small(format!(
+                    "Rolling average over {:.0} fs ({} samples).",
+                    self.eta_window_fs, sample_count
+                ));
+            } else {
+                ui.horizontal(|ui| {
+                    ui.label("η EMA α:");
+                    ui.add(
+                        egui::Slider::new(&mut self.eta_lpf_alpha, 0.001..=1.0)
+                            .logarithmic(true)
+                            .smart_aim(false)
+                            .custom_formatter(|n, _| format!("{:.3}", n)),
+                    );
+                });
+                ui.small("α = 1.0 disables smoothing.");
+            }
             ui.separator();
             ui.label("Electron-sea protection");
             ui.horizontal(|ui| {
