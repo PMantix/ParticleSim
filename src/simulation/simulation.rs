@@ -1804,7 +1804,7 @@ impl Simulation {
     /// Calculate the proper foil electron ratio (same as diagnostic)
     /// This is the ratio of actual electrons to neutral electron count in the foil network
     /// OPTIMIZED: Uses spatial data structures and index-based BFS to avoid O(N) id scans
-    fn calculate_foil_electron_ratio(&self, foil: &crate::body::foil::Foil) -> f32 {
+    pub fn calculate_foil_electron_ratio(&self, foil: &crate::body::foil::Foil) -> f32 {
         let mut total_electrons = 0usize;
         let mut total_neutral = 0usize;
 

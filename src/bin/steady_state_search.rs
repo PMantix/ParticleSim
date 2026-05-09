@@ -118,28 +118,19 @@ fn build_cell(cfg: &CellConfig, current: f32) -> Simulation {
     sim
 }
 
-fn mean_foil_eta(sim: &Simulation) -> (f32, f32) {
-    let mut eta_a = 0.0f32;
-    let mut eta_b = 0.0f32;
-    let mut n_a = 0usize;
-    let mut n_b = 0usize;
-
-    if sim.foils.len() >= 2 {
-        let foil_a = &sim.foils[0];
-        let foil_b = &sim.foils[1];
-        for b in &sim.bodies {
-            if foil_a.body_ids.contains(&b.id) {
-                eta_a += b.charge;
-                n_a += 1;
-            } else if foil_b.body_ids.contains(&b.id) {
-                eta_b += b.charge;
-                n_b += 1;
-            }
-        }
+/// Electrode-level overpotential from the electron ratio of the full
+/// connected cluster (foil + all attached Li metal). ratio > 1 means
+/// excess electrons (deposition-ready), < 1 means deficit (stripping).
+/// η = (ratio - 1.0) × POTENTIAL_PER_CHARGE gives a voltage proxy.
+fn electrode_eta(sim: &Simulation) -> (f32, f32) {
+    if sim.foils.len() < 2 {
+        return (0.0, 0.0);
     }
+    let ratio_a = sim.calculate_foil_electron_ratio(&sim.foils[0]);
+    let ratio_b = sim.calculate_foil_electron_ratio(&sim.foils[1]);
     let pot = particle_sim::config::POTENTIAL_PER_CHARGE;
-    let ea = if n_a > 0 { (eta_a / n_a as f32) * pot } else { 0.0 };
-    let eb = if n_b > 0 { (eta_b / n_b as f32) * pot } else { 0.0 };
+    let ea = (ratio_a - 1.0) * pot;
+    let eb = (ratio_b - 1.0) * pot;
     (ea, eb)
 }
 
@@ -188,7 +179,7 @@ fn main() {
             for step in 1..=measure_steps {
                 sim.step();
                 if step % log_stride == 0 {
-                    let (ea, eb) = mean_foil_eta(&sim);
+                    let (ea, eb) = electrode_eta(&sim);
                     let avg = (ea + eb) / 2.0;
                     println!(
                         "{},{},{},{:.1},{:.6},{:.6},{:.6}",
