@@ -12,6 +12,11 @@ Endpoints (all require Authorization: Bearer <DOE_AUTH_TOKEN>):
     GET  /index                                   -> JSON {file: line_count}
     GET  /files/<name>                            -> full file contents
     GET  /files/<name>?after=<n>                  -> lines past line index n
+    GET  /poll/<name>?after=<n>[&timeout=<s>]     -> long-poll: blocks until
+                                                     file has more than n
+                                                     lines (or timeout, def
+                                                     30s, max 120s) then
+                                                     returns lines past n
     POST /files/<name>                            -> append body (one+ JSON
                                                      lines) to <name>
 
@@ -21,6 +26,10 @@ north_to_south.jsonl, south_to_north.jsonl.
 POST is restricted by file ownership (North can only write to north_*; the
 South controller writes to south_* directly on disk and doesn't need this
 endpoint, but it's exposed in case the inverse direction is ever wanted).
+
+Two-way usage: North POSTs to /files/north_to_south.jsonl to send, and
+GETs /poll/south_to_north.jsonl?after=N to receive south's outbound
+messages with sub-second latency.
 
 Token is read from `DOE_AUTH_TOKEN` env var; if unset, the server fails to
 start (no anonymous access). The token can be generated with
@@ -134,6 +143,30 @@ class Handler(BaseHTTPRequestHandler):
                 lines = f.readlines()
             content = "".join(lines[after:]).encode("utf-8")
             self.reply(200, content, "application/x-ndjson")
+            return
+
+        if u.path.startswith("/poll/"):
+            name = u.path.split("/", 2)[2]
+            if name not in ALLOWED:
+                self.reply(404, b"file not allowed\n")
+                return
+            params = parse_qs(u.query)
+            after = int(params.get("after", ["0"])[0])
+            timeout_s = min(int(params.get("timeout", ["30"])[0]), 120)
+            p = COORD / name
+            import time as _time
+            deadline = _time.monotonic() + timeout_s
+            while _time.monotonic() < deadline:
+                if p.exists():
+                    with p.open(encoding="utf-8") as f:
+                        lines = f.readlines()
+                    if len(lines) > after:
+                        content = "".join(lines[after:]).encode("utf-8")
+                        self.reply(200, content, "application/x-ndjson")
+                        return
+                _time.sleep(0.5)
+            # timed out with no new content
+            self.reply(204, b"")
             return
 
         self.reply(404, b"not found\n")
