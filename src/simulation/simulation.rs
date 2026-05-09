@@ -1884,15 +1884,7 @@ impl Simulation {
         }
 
         if total_neutral > 0 {
-            let ratio = total_electrons as f32 / total_neutral as f32;
-            // Debug output occasionally
-            if rand::random::<f32>() < 0.001 {
-                println!(
-                    "Foil {} electron ratio: {:.3} (electrons: {}, neutral: {})",
-                    foil.id, ratio, total_electrons, total_neutral
-                );
-            }
-            ratio
+            total_electrons as f32 / total_neutral as f32
         } else {
             1.0 // Neutral if no reference
         }
