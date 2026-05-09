@@ -50,13 +50,20 @@ fn build_cell(cfg: &CellConfig, current: f32) -> Simulation {
         .update_domain_size(sim.domain_width, sim.domain_height);
 
     let half_sep = cfg.domain_width / 4.0;
+    let half_e = cfg.electrode_size / 2.0;
+
+    // Coordinates are center-based; convert to bottom-left origin for
+    // AddRectangle/AddFoil which expect origin coords.
+    let left_cx = -half_sep;
+    let right_cx = half_sep;
 
     // Left electrode (deposition side, +current)
+    // Metal centered at left_cx, foil embedded at its left edge
     handle_command(
         SimCommand::AddRectangle {
             body: template_body(Species::LithiumMetal),
-            x: -half_sep,
-            y: 0.0,
+            x: left_cx - half_e,
+            y: -half_e,
             width: cfg.electrode_size,
             height: cfg.electrode_size,
         },
@@ -66,8 +73,8 @@ fn build_cell(cfg: &CellConfig, current: f32) -> Simulation {
         SimCommand::AddFoil {
             width: cfg.foil_width,
             height: cfg.electrode_size,
-            x: -half_sep - cfg.electrode_size / 2.0 + cfg.foil_width / 2.0,
-            y: 0.0,
+            x: left_cx - half_e,
+            y: -half_e,
             particle_radius: Species::FoilMetal.radius(),
             current,
         },
@@ -75,11 +82,12 @@ fn build_cell(cfg: &CellConfig, current: f32) -> Simulation {
     );
 
     // Right electrode (stripping side, -current)
+    // Metal centered at right_cx, foil embedded at its right edge
     handle_command(
         SimCommand::AddRectangle {
             body: template_body(Species::LithiumMetal),
-            x: half_sep,
-            y: 0.0,
+            x: right_cx - half_e,
+            y: -half_e,
             width: cfg.electrode_size,
             height: cfg.electrode_size,
         },
@@ -89,8 +97,8 @@ fn build_cell(cfg: &CellConfig, current: f32) -> Simulation {
         SimCommand::AddFoil {
             width: cfg.foil_width,
             height: cfg.electrode_size,
-            x: half_sep + cfg.electrode_size / 2.0 - cfg.foil_width / 2.0,
-            y: 0.0,
+            x: right_cx + half_e - cfg.foil_width,
+            y: -half_e,
             particle_radius: Species::FoilMetal.radius(),
             current: -current,
         },
