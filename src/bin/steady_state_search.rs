@@ -146,7 +146,7 @@ fn main() {
     let electrode_sizes: Vec<f32> = vec![50.0, 65.0, 80.0];
     let currents: Vec<f32> = vec![0.00005, 0.00007, 0.00009, 0.00011];
 
-    let equilibrate_steps = 2000;  // 10k fs at dt=5
+    let equilibrate_steps = 1000;  // 5k fs at dt=5
     let measure_steps = 30000;    // 150k fs = 150 ps
     let log_stride = 20;          // log every 100 fs
 
