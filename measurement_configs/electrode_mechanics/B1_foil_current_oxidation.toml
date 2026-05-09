@@ -1,0 +1,79 @@
+# Electrode mechanics validation — B.1 Foil-driven current (two-electrode)
+#
+# Two mirrored electrode assemblies: left cluster (working) and right
+# cluster (counter). Each is a 20×20 Li metal slab with an embedded
+# 5×20 foil. The left foil is the deposition side (+0.001 A, adding
+# electrons to the foil); the right foil is the stripping side
+# (-0.001 A, removing electrons from the foil). This completes the
+# external circuit so current can flow.
+#
+# Purpose: verify that applied foil current drives proportional surface
+# stripping on the stripping-side electrode. If the right foil removes
+# N electrons over time T, we should see ~N Li⁺ ions shed from the
+# right cluster. The left cluster should accumulate electrons (no ion
+# shedding).
+#
+# Run procedure (GUI):
+#   1. Load this scenario.
+#   2. Let it run at 300 K for 50–100 ps.
+#   3. Current is set to 0.001 A. Tune via Charging tab if needed.
+#
+# What to verify:
+#   1. Right cluster (stripping side) sheds ions gradually over time.
+#   2. Left cluster (deposition side) stays intact (accumulating electrons,
+#      not shedding).
+#   3. Ion shedding rate tracks the applied current.
+#   4. Clusters stay cohesive; ions shed from the surface, not the bulk.
+#   5. No ping-pong at the surface (species_lock should prevent this).
+#   6. After pausing, no further stripping events occur.
+#
+# Pass criterion: right cluster ion count grows steadily, proportional to
+# integrated current. Left cluster remains neutral. Both clusters intact.
+#
+# Failure modes to flag:
+#   - No ions shed despite current flowing
+#   - Both clusters shed ions (current direction not respected)
+#   - Cluster dissolution or explosion
+#   - Ions shed then immediately re-reduce (ping-pong regression)
+
+[simulation]
+domain_width = 120.0
+domain_height = 60.0
+initial_temperature = 300.0
+enable_out_of_plane = false
+
+# --- Left electrode (deposition side, +current adds electrons) ---
+
+[[particles.metal_rectangles]]
+x = -25.0
+y = 0.0
+width = 20.0
+height = 20.0
+species = "LithiumMetal"
+
+# Left foil: +0.001 A adds electrons to foil → deposition side (electron surplus)
+[[particles.foil_rectangles]]
+x = -32.5
+y = 0.0
+width = 5.0
+height = 20.0
+current = 0.001
+initial_excess_electrons = 0
+
+# --- Right electrode (stripping side, -current removes electrons) ---
+
+[[particles.metal_rectangles]]
+x = 25.0
+y = 0.0
+width = 20.0
+height = 20.0
+species = "LithiumMetal"
+
+# Right foil: -0.001 A removes electrons from foil → stripping side (electron deficit)
+[[particles.foil_rectangles]]
+x = 32.5
+y = 0.0
+width = 5.0
+height = 20.0
+current = -0.001
+initial_excess_electrons = 0

@@ -456,7 +456,18 @@ impl Simulation {
             eprintln!("  Total hops this frame: {}", hops.len());
         }
 
+        // Track reduction hops (Li⁺ receiving electron) so we can snap
+        // the newly-formed metal toward the donor after apply_redox.
+        let mut reduction_snaps: Vec<(usize, Vec2, f32)> = vec![];
+
         for (src_idx, dst_idx) in hops {
+            if self.bodies[dst_idx].species == Species::LithiumIon {
+                reduction_snaps.push((
+                    dst_idx,
+                    self.bodies[src_idx].pos,
+                    self.bodies[src_idx].radius,
+                ));
+            }
             if let Some(electron) = self.bodies[src_idx].electrons.pop() {
                 self.bodies[dst_idx].electrons.push(electron);
                 self.bodies[src_idx].update_charge_from_electrons();
@@ -473,5 +484,60 @@ impl Simulation {
         self.bodies.par_iter_mut().for_each(|body| {
             body.apply_redox(current_time, lock_duration);
         });
+
+        // Snap newly-reduced metals to the cluster surface. After
+        // apply_redox converts Li⁺ → Li metal, the atom is still at
+        // its pre-hop ion position (potentially far from the cluster).
+        // Place it adjacent to the donor atom, on the outward-facing
+        // side — this mimics electrodeposition at the surface.
+        // Collect snap actions first (immutable borrow for quadtree search),
+        // then apply position/velocity changes (mutable borrow).
+        let hop_radius_factor = self.config.hop_radius_factor;
+        let mut snap_actions: Vec<(usize, Vec2, Vec2, Vec<usize>)> = Vec::new();
+        for (dst_idx, donor_pos, donor_radius) in &reduction_snaps {
+            let dst_idx = *dst_idx;
+            if self.bodies[dst_idx].species != Species::LithiumMetal {
+                continue;
+            }
+            let dst_pos = self.bodies[dst_idx].pos;
+            let dir = dst_pos - *donor_pos;
+            let dist = dir.mag();
+            if dist < 1e-6 {
+                continue;
+            }
+            let touching = *donor_radius + self.bodies[dst_idx].radius;
+            if dist > touching {
+                let new_pos = *donor_pos + dir.normalized() * touching;
+                let lost_momentum = self.bodies[dst_idx].vel * self.bodies[dst_idx].mass;
+                let neighbors: Vec<usize> = if lost_momentum.mag_sq() > 1e-12 {
+                    let search_r = hop_radius_factor * *donor_radius;
+                    self.quadtree
+                        .find_neighbors_within(&self.bodies, dst_idx, search_r)
+                        .into_iter()
+                        .filter(|&i| {
+                            i != dst_idx
+                                && !matches!(
+                                    self.bodies[i].species,
+                                    Species::LithiumMetal | Species::FoilMetal
+                                )
+                        })
+                        .collect()
+                } else {
+                    Vec::new()
+                };
+                snap_actions.push((dst_idx, new_pos, lost_momentum, neighbors));
+            }
+        }
+        for (dst_idx, new_pos, lost_momentum, neighbors) in snap_actions {
+            self.bodies[dst_idx].pos = new_pos;
+            self.bodies[dst_idx].vel = Vec2::zero();
+            if !neighbors.is_empty() && lost_momentum.mag_sq() > 1e-12 {
+                let share = lost_momentum / neighbors.len() as f32;
+                for ni in neighbors {
+                    let m = self.bodies[ni].mass;
+                    self.bodies[ni].vel += share / m;
+                }
+            }
+        }
     }
 }

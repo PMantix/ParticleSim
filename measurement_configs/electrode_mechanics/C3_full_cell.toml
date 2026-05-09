@@ -1,0 +1,103 @@
+# Electrode mechanics validation — C.3 Full cell with electrolyte
+#
+# Two-electrode geometry with electrolyte filling the gap. Left electrode
+# is the deposition side (+0.001 A, adds electrons), right electrode is
+# the stripping side (-0.001 A, removes electrons). Electrolyte provides
+# the ion transport medium with solvation, matching a simplified real cell.
+#
+# Purpose: verify all mechanisms working together:
+#   - Current-driven stripping (right) and deposition (left)
+#   - Ion transport through electrolyte
+#   - Solvation shell formation around shed/free ions
+#   - Thermostat maintaining solvent temperature without disturbing ions
+#   - Momentum redistribution on deposition
+#   - No spurious solvent redox
+#
+# Run procedure (GUI):
+#   1. Load this scenario.
+#   2. Let it run at 300 K for 50–100 ps.
+#
+# What to verify:
+#   1. Right cluster (stripping side) strips ions into the electrolyte.
+#   2. Shed ions develop solvation shells (EC/DMC coordination).
+#   3. Solvated ions migrate through electrolyte toward left electrode.
+#   4. Ions arriving at left electrode (deposition side) reduce and
+#      deposit on surface.
+#   5. Solvent species counts remain constant (no spurious redox).
+#   6. Both clusters stay cohesive.
+#   7. Thermostat maintains solvent temperature without ion chugging.
+#   8. Pre-existing free Li⁺ behave normally alongside shed ions.
+#
+# Pass criterion: full stripping → solvation → transport → desolvation →
+# deposition cycle observed. All species counts conserved except Li metal
+# (decreasing on right, increasing on left) and Li⁺ (transient in gap).
+#
+# Failure modes to flag:
+#   - Solvent molecules changing species
+#   - Ions not developing solvation shells
+#   - Transport stalling in the electrolyte
+#   - Cluster dissolution from electrolyte contact
+#   - Thermostat chugging regression
+
+[simulation]
+domain_width = 120.0
+domain_height = 60.0
+initial_temperature = 300.0
+enable_out_of_plane = false
+
+# --- Left electrode (deposition side, +current adds electrons) ---
+
+[[particles.metal_rectangles]]
+x = -25.0
+y = 0.0
+width = 20.0
+height = 20.0
+species = "LithiumMetal"
+
+# Left foil: +0.001 A adds electrons to foil → deposition side (electron surplus)
+[[particles.foil_rectangles]]
+x = -32.5
+y = 0.0
+width = 5.0
+height = 20.0
+current = 0.001
+initial_excess_electrons = 0
+
+# --- Right electrode (stripping side, -current removes electrons) ---
+
+[[particles.metal_rectangles]]
+x = 25.0
+y = 0.0
+width = 20.0
+height = 20.0
+species = "LithiumMetal"
+
+# Right foil: -0.001 A removes electrons from foil → stripping side (electron deficit)
+[[particles.foil_rectangles]]
+x = 32.5
+y = 0.0
+width = 5.0
+height = 20.0
+current = -0.001
+initial_excess_electrons = 0
+
+# --- Electrolyte fill ---
+# ~1 M LiPF6 in 1:1 EC:DMC, scaled to the ~10400 Å² of free space
+# (120×60 domain minus two 20×20 clusters).
+# Counts scaled from the A.3 densities (5/5/30/30 in ~3200 Å² free space).
+
+[[particles.random]]
+count = 15
+species = "LithiumIon"
+
+[[particles.random]]
+count = 15
+species = "ElectrolyteAnion"
+
+[[particles.random]]
+count = 90
+species = "EC"
+
+[[particles.random]]
+count = 90
+species = "DMC"

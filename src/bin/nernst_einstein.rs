@@ -431,7 +431,11 @@ fn main() {
             let mut count_li = 0u64;
             let mut sum_v_an_x = 0.0_f64;
             let mut count_an = 0u64;
+            let mut sum_v_all_x = 0.0_f64;
+            let mut sum_m_all = 0.0_f64;
             for b in &sim_b.bodies {
+                sum_v_all_x += b.vel.x as f64 * b.mass as f64;
+                sum_m_all += b.mass as f64;
                 if b.species == Species::LithiumIon {
                     sum_v_li_x += b.vel.x as f64;
                     count_li += 1;
@@ -440,13 +444,14 @@ fn main() {
                     count_an += 1;
                 }
             }
+            let v_com_x = if sum_m_all > 0.0 { sum_v_all_x / sum_m_all } else { 0.0 };
             let v_li_x = if count_li > 0 {
-                sum_v_li_x / count_li as f64
+                sum_v_li_x / count_li as f64 - v_com_x
             } else {
                 0.0
             };
             let v_an_x = if count_an > 0 {
-                sum_v_an_x / count_an as f64
+                sum_v_an_x / count_an as f64 - v_com_x
             } else {
                 0.0
             };

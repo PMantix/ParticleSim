@@ -42,7 +42,8 @@ impl Simulation {
         let mut _anion_count = 0;
         for body in &self.bodies {
             match body.species {
-                Species::LithiumIon | Species::ElectrolyteAnion | Species::EC | Species::DMC => {
+                Species::ElectrolyteAnion | Species::EC | Species::DMC
+                | Species::VC | Species::FEC | Species::EMC => {
                     liquid_ke += 0.5 * body.mass * body.vel.mag_sq();
                     liquid_count += 1;
                     if body.species == Species::EC {
@@ -51,14 +52,11 @@ impl Simulation {
                     if body.species == Species::DMC {
                         _dmc_count += 1;
                     }
-                    if body.species == Species::LithiumIon {
-                        _li_count += 1;
-                    }
                     if body.species == Species::ElectrolyteAnion {
                         _anion_count += 1;
                     }
                 }
-                _ => {} // Skip metals (LithiumMetal, FoilMetal)
+                _ => {}
             }
         }
         tdbg!(
@@ -145,13 +143,15 @@ impl Simulation {
         tdbg!("[thermostat-scale] frame={} current_temp={:.6} target_temp={:.2} scale={:.4} safe_scale={:.4}", 
             self.frame, current_temp, target_temp, scale, safe_scale);
         *crate::renderer::state::LAST_THERMOSTAT_SCALE.lock() = safe_scale;
-        // Scale velocities for liquid particles only using the safe scale
+        // Scale velocities for solvent/anion particles only; Li⁺ excluded
+        // because their velocity is Coulomb-driven, not thermal.
         for body in &mut self.bodies {
             match body.species {
-                Species::LithiumIon | Species::ElectrolyteAnion | Species::EC | Species::DMC => {
+                Species::ElectrolyteAnion | Species::EC | Species::DMC
+                | Species::VC | Species::FEC | Species::EMC => {
                     body.vel *= safe_scale;
                 }
-                _ => {} // Don't thermostat ions - they're electrostatically constrained
+                _ => {}
             }
         }
         // Recompute liquid temperature after scaling (debug builds only)
@@ -160,7 +160,8 @@ impl Simulation {
             let mut new_liquid_ke = 0.0f32;
             for body in &self.bodies {
                 match body.species {
-                    Species::LithiumIon | Species::ElectrolyteAnion | Species::EC | Species::DMC => {
+                    Species::ElectrolyteAnion | Species::EC | Species::DMC
+                    | Species::VC | Species::FEC | Species::EMC => {
                         new_liquid_ke += 0.5 * body.mass * body.vel.mag_sq();
                     }
                     _ => {}

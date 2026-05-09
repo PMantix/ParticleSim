@@ -1,0 +1,81 @@
+# Electrode mechanics validation — C.1 Deposition pathway
+#
+# Two electrodes with free Li⁺ ions in the domain. The right electrode
+# is the deposition side (+0.001 A, adds electrons to foil, electron
+# surplus), pulling Li⁺ from solution and depositing them as metal on
+# the cluster surface. The left electrode is the stripping side
+# (-0.001 A, removes electrons from foil) to complete the circuit.
+#
+# Purpose: verify the complete deposition pathway end-to-end:
+#   foil current → electron accumulation in cluster → electron hop
+#   to nearby Li⁺ → Li⁺ converts to Li metal → snaps to surface
+#
+# Run procedure (GUI):
+#   1. Load this scenario.
+#   2. Let it run at 300 K for 50–100 ps.
+#
+# What to verify:
+#   1. Free Li⁺ ions migrate toward the deposition-side electrode
+#      (right).
+#   2. Li⁺ ions near the right cluster surface get reduced to Li metal.
+#   3. Newly-reduced metal deposits on the cluster surface (snap).
+#   4. Ion count decreases over time as ions are consumed.
+#   5. Left electrode (stripping side) strips to supply the circuit.
+#   6. No spurious behavior — clusters stay cohesive, no explosion.
+#
+# Pass criterion: Li⁺ ions are consumed by deposition on the
+# deposition-side electrode at a rate tracking the applied current.
+#
+# Failure modes to flag:
+#   - Li⁺ ions don't approach the cluster (no Coulomb attraction)
+#   - Reduction happens but metal floats away (snap not working)
+#   - Stripping-side electrode fails to strip (circuit incomplete)
+#   - Cluster dissolves or explodes
+
+[simulation]
+domain_width = 120.0
+domain_height = 60.0
+initial_temperature = 300.0
+enable_out_of_plane = false
+
+# --- Left electrode (stripping side, -current removes electrons) ---
+
+[[particles.metal_rectangles]]
+x = -25.0
+y = 0.0
+width = 20.0
+height = 20.0
+species = "LithiumMetal"
+
+# Left foil: -0.001 A removes electrons from foil → stripping side (electron deficit)
+[[particles.foil_rectangles]]
+x = -32.5
+y = 0.0
+width = 5.0
+height = 20.0
+current = -0.001
+initial_excess_electrons = 0
+
+# --- Right electrode (deposition side, +current adds electrons) ---
+
+[[particles.metal_rectangles]]
+x = 25.0
+y = 0.0
+width = 20.0
+height = 20.0
+species = "LithiumMetal"
+
+# Right foil: +0.001 A adds electrons to foil → deposition side (electron surplus)
+[[particles.foil_rectangles]]
+x = 32.5
+y = 0.0
+width = 5.0
+height = 20.0
+current = 0.001
+initial_excess_electrons = 0
+
+# --- Free Li⁺ ions scattered in the domain ---
+# 10 ions provides enough to observe deposition events
+[[particles.random]]
+count = 10
+species = "LithiumIon"

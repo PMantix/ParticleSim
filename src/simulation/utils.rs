@@ -74,7 +74,8 @@ pub fn compute_liquid_temperature(bodies: &[Body]) -> f32 {
     for b in bodies.iter() {
         if matches!(
             b.species,
-            Species::LithiumIon | Species::ElectrolyteAnion | Species::EC | Species::DMC
+            Species::ElectrolyteAnion | Species::EC | Species::DMC
+            | Species::VC | Species::FEC | Species::EMC
         ) {
             total_mass += b.mass;
             momentum += b.vel * b.mass;
@@ -93,7 +94,8 @@ pub fn compute_liquid_temperature(bodies: &[Body]) -> f32 {
     for b in bodies.iter() {
         if matches!(
             b.species,
-            Species::LithiumIon | Species::ElectrolyteAnion | Species::EC | Species::DMC
+            Species::ElectrolyteAnion | Species::EC | Species::DMC
+            | Species::VC | Species::FEC | Species::EMC
         ) {
             let rel_v = b.vel - com_vel;
             kinetic += 0.5 * b.mass * rel_v.mag_sq();
@@ -114,7 +116,8 @@ pub fn initialize_liquid_velocities_to_temperature(bodies: &mut [Body], target_t
     // In simulation units: (1/2) m (vx^2 + vy^2) = T => each component variance = T / m
     for b in bodies.iter_mut() {
         match b.species {
-            Species::LithiumIon | Species::ElectrolyteAnion | Species::EC | Species::DMC => {
+            Species::ElectrolyteAnion | Species::EC | Species::DMC
+            | Species::VC | Species::FEC | Species::EMC => {
                 let sigma = (target_temp / b.mass).sqrt();
                 // Box-Muller
                 let r1: f32 = rng.random::<f32>().max(1e-12);

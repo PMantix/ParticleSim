@@ -1,0 +1,68 @@
+# Electrode mechanics validation — B.2 Foil-driven current (reversed polarity)
+#
+# Same two-electrode geometry as B.1, but with reversed current polarity.
+# Left foil is now the stripping side (-0.001 A, removes electrons from
+# foil, electron deficit); right foil is now the deposition side
+# (+0.001 A, adds electrons to foil, electron surplus).
+#
+# Purpose: verify that reversing current direction reverses the
+# stripping/deposition behavior. The left cluster should strip and
+# the right cluster should accumulate deposited metal.
+#
+# Run procedure (GUI):
+#   1. Load this scenario.
+#   2. Let it run at 300 K for 50–100 ps.
+#   3. Current is set to 0.001 A. Tune via Charging tab if needed.
+#
+# What to verify:
+#   1. Left cluster (stripping side) sheds ions gradually (mirror of
+#      B.1 right).
+#   2. Right cluster (deposition side) stays intact, accumulates
+#      deposited metal.
+#   3. No asymmetric artifacts — behavior should mirror B.1.
+#   4. No ping-pong or cluster dissolution.
+#
+# Pass criterion: left cluster strips, right cluster deposits,
+# mirroring B.1 behavior with reversed polarity.
+
+[simulation]
+domain_width = 120.0
+domain_height = 60.0
+initial_temperature = 300.0
+enable_out_of_plane = false
+
+# --- Left electrode (stripping side, -current removes electrons) ---
+
+[[particles.metal_rectangles]]
+x = -25.0
+y = 0.0
+width = 20.0
+height = 20.0
+species = "LithiumMetal"
+
+# Left foil: -0.001 A removes electrons from foil → stripping side (electron deficit)
+[[particles.foil_rectangles]]
+x = -32.5
+y = 0.0
+width = 5.0
+height = 20.0
+current = -0.001
+initial_excess_electrons = 0
+
+# --- Right electrode (deposition side, +current adds electrons) ---
+
+[[particles.metal_rectangles]]
+x = 25.0
+y = 0.0
+width = 20.0
+height = 20.0
+species = "LithiumMetal"
+
+# Right foil: +0.001 A adds electrons to foil → deposition side (electron surplus)
+[[particles.foil_rectangles]]
+x = 32.5
+y = 0.0
+width = 5.0
+height = 20.0
+current = 0.001
+initial_excess_electrons = 0

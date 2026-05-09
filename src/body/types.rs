@@ -57,9 +57,7 @@ pub struct Body {
     /// Used for SOC visualization and intercalation physics
     pub lithium_content: f32,
     /// Sim-time (fs) until which `apply_redox` is forbidden from changing
-    /// this body's species. Set whenever a transition fires; protects
-    /// against single-step ping-pong (oxidation immediately followed by
-    /// reduction at the same atom). NEG_INFINITY = no active lock.
+    /// this body's species. NEG_INFINITY = no active lock.
     pub species_lock_until: f32,
 }
 
