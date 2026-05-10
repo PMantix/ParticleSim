@@ -50,12 +50,16 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   .node.neighbor circle { stroke: #6cf; stroke-width: 2.5px; }
   .node circle:hover { stroke: #fff; stroke-width: 3px; }
 
-  .node text { font-size: 11px; font-weight: 400; pointer-events: none;
-               fill: #d8d8d8;
+  :root { --label-size: 11px; --label-opacity: 1; }
+  .node text { font-size: var(--label-size); font-weight: 400; pointer-events: none;
+               fill: #d8d8d8; opacity: var(--label-opacity);
                text-shadow: 0 0 2px #000, 1px 1px 2px #000, -1px -1px 2px #000; }
-  .node.selected text { font-size: 14px; font-weight: 700; fill: #fff;
+  .node.selected text { font-size: calc(var(--label-size) + 3px); font-weight: 700;
+                        fill: #fff; opacity: 1;
                         text-shadow: 0 0 4px #6cf, 1px 1px 2px #000; }
-  .node.neighbor text { fill: #cfe8ff; font-size: 12px; }
+  .node.neighbor text { fill: #cfe8ff; font-size: calc(var(--label-size) + 1px);
+                        opacity: 1; }
+  .labels-off .node text { display: none; }
 
   /* Dimmed (group filter or search non-match): still visible, clearly de-emphasized. */
   .node.dimmed circle { opacity: 0.18; filter: saturate(0.2); }
@@ -164,6 +168,21 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       <label><input type="checkbox" data-edge="uses_type" checked>uses_type</label>
       <label><input type="checkbox" data-edge="calls" checked>calls</label>
     </div>
+    <div class="row" style="font-weight:bold;color:#ddd;margin-top:8px;margin-bottom:4px;">Labels</div>
+    <div class="row">
+      <label><input type="radio" name="labelmode" value="off">off</label>
+      <label><input type="radio" name="labelmode" value="simplified">simplified</label>
+      <label><input type="radio" name="labelmode" value="short" checked>short</label>
+      <label><input type="radio" name="labelmode" value="full">full</label>
+    </div>
+    <div class="row" style="margin-top:4px;">
+      <label style="display:block;">Size <span id="label-size-val">11</span>px
+        <input type="range" id="label-size" min="6" max="24" value="11" style="vertical-align:middle;width:120px;"></label>
+    </div>
+    <div class="row">
+      <label style="display:block;">Opacity <span id="label-opacity-val">100</span>%
+        <input type="range" id="label-opacity" min="0" max="100" value="100" style="vertical-align:middle;width:120px;"></label>
+    </div>
   </div>
   <div id="graph"></div>
   <div id="info"><em>Click a node to see details. Drag to reposition. Scroll to zoom.</em></div>
@@ -225,7 +244,58 @@ node.append('circle')
   .on('mouseover', (e,d) => highlightNeighbors(d, true))
   .on('mouseout', (e,d) => highlightNeighbors(d, false));
 
-node.append('text').text(d => d.label).attr('x', d => r(degree[d.id] || 0) + 3).attr('y', 4);
+const nodeText = node.append('text')
+  .attr('x', d => r(degree[d.id] || 0) + 3).attr('y', 4)
+  .text(d => labelFor(d, 'short'));
+
+let labelMode = 'short';
+function labelFor(d, mode) {
+  if (mode === 'off') return '';
+  if (mode === 'simplified') {
+    // Last meaningful segment: after last :: (for fns/types) or last / (for files).
+    let s = d.label || d.id || '';
+    const colon = s.lastIndexOf('::');
+    if (colon >= 0) s = s.slice(colon + 2);
+    const slash = s.lastIndexOf('/');
+    if (slash >= 0) s = s.slice(slash + 1);
+    return s;
+  }
+  if (mode === 'full') {
+    let s = d.label || '';
+    if (d.description) {
+      const desc = String(d.description).split(/\r?\n/)[0].trim();
+      if (desc) s += ' — ' + (desc.length > 60 ? desc.slice(0, 57) + '…' : desc);
+    } else if (d.kind) {
+      s += ` [${d.kind}]`;
+    }
+    return s;
+  }
+  // 'short' (default): the existing label.
+  return d.label || d.id || '';
+}
+
+function applyLabelMode() {
+  document.body.classList.toggle('labels-off', labelMode === 'off');
+  if (labelMode !== 'off') nodeText.text(d => labelFor(d, labelMode));
+}
+
+document.querySelectorAll('input[name="labelmode"]').forEach(r => {
+  r.addEventListener('change', () => { labelMode = r.value; applyLabelMode(); });
+});
+
+const sizeSlider = document.getElementById('label-size');
+const sizeVal = document.getElementById('label-size-val');
+sizeSlider.addEventListener('input', () => {
+  sizeVal.textContent = sizeSlider.value;
+  document.documentElement.style.setProperty('--label-size', sizeSlider.value + 'px');
+});
+
+const opacitySlider = document.getElementById('label-opacity');
+const opacityVal = document.getElementById('label-opacity-val');
+opacitySlider.addEventListener('input', () => {
+  opacityVal.textContent = opacitySlider.value;
+  document.documentElement.style.setProperty('--label-opacity', opacitySlider.value / 100);
+});
 
 const sim = d3.forceSimulation(DATA.nodes)
   .force('link', d3.forceLink(DATA.links).id(d => d.id).distance(100).strength(0.4))
