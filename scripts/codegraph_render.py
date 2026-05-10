@@ -244,15 +244,10 @@ node.append('circle')
   .on('mouseover', (e,d) => highlightNeighbors(d, true))
   .on('mouseout', (e,d) => highlightNeighbors(d, false));
 
-const nodeText = node.append('text')
-  .attr('x', d => r(degree[d.id] || 0) + 3).attr('y', 4)
-  .text(d => labelFor(d, 'short'));
-
 let labelMode = 'short';
 function labelFor(d, mode) {
   if (mode === 'off') return '';
   if (mode === 'simplified') {
-    // Last meaningful segment: after last :: (for fns/types) or last / (for files).
     let s = d.label || d.id || '';
     const colon = s.lastIndexOf('::');
     if (colon >= 0) s = s.slice(colon + 2);
@@ -263,16 +258,19 @@ function labelFor(d, mode) {
   if (mode === 'full') {
     let s = d.label || '';
     if (d.description) {
-      const desc = String(d.description).split(/\r?\n/)[0].trim();
+      const desc = String(d.description).split(/[\\r\\n]/)[0].trim();
       if (desc) s += ' — ' + (desc.length > 60 ? desc.slice(0, 57) + '…' : desc);
     } else if (d.kind) {
-      s += ` [${d.kind}]`;
+      s += ' [' + d.kind + ']';
     }
     return s;
   }
-  // 'short' (default): the existing label.
   return d.label || d.id || '';
 }
+
+const nodeText = node.append('text')
+  .attr('x', d => r(degree[d.id] || 0) + 3).attr('y', 4)
+  .text(d => labelFor(d, labelMode));
 
 function applyLabelMode() {
   document.body.classList.toggle('labels-off', labelMode === 'off');
