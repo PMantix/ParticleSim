@@ -61,9 +61,15 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   .node.dimmed circle { opacity: 0.18; filter: saturate(0.2); }
   .node.dimmed text   { opacity: 0.25; }
 
+  /* Approved / rejected: a colored ring around the circle so the
+     review state is visible on the graph itself, not only in the popup. */
+  .node.approved circle { stroke: #5dd870; stroke-width: 3px; }
+  .node.rejected circle { stroke: #d85d5d; stroke-width: 3px; stroke-dasharray: 4 3; }
+
   .link { stroke: #888; stroke-opacity: 0.35; }
-  .link.dimmed { stroke-opacity: 0.05; }
-  .link.highlight { stroke: #6cf; stroke-opacity: 0.9; stroke-width: 2px; }
+  .link.dimmed { stroke-opacity: 0.04; }
+  .link.highlight { stroke: #6cf; stroke-opacity: 0.95; stroke-width: 2.5px; }
+  .link.fade { stroke-opacity: 0.06; }
 
   #info { position: fixed; top: 10px; right: 10px; width: 360px; padding: 16px;
           background: rgba(28,28,28,0.97); border: 1px solid #555;
@@ -79,6 +85,31 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   #info li { font-size: 13px; color: #ccc; word-break: break-all; line-height: 1.4; }
   #info code { background: #333; padding: 1px 5px; border-radius: 2px;
                color: #cfc; font-size: 13px; }
+  #info pre { background: #111; padding: 10px; border: 1px solid #333;
+              border-radius: 3px; font-size: 12px; line-height: 1.4;
+              color: #d0e0d0; overflow-x: auto; max-height: 320px;
+              white-space: pre; margin: 4px 0 8px 0; }
+  #info .rationale { background: rgba(102,153,255,0.08); border-left: 3px solid #6cf;
+                     padding: 8px 10px; margin: 8px 0; font-size: 13px;
+                     color: #e0e8f0; white-space: pre-wrap; }
+  #info .rationale.empty { background: rgba(255,255,255,0.04); border-left-color: #555;
+                           color: #888; font-style: italic; }
+  #info .actions { display: flex; gap: 8px; margin: 12px 0 6px 0; }
+  #info .actions button { flex: 1; padding: 8px 10px; border: 1px solid #555;
+                          background: #2a2a2a; color: #ddd; border-radius: 3px;
+                          cursor: pointer; font-size: 13px; font-weight: 500; }
+  #info .actions button.approve:hover { background: #2a4a30; border-color: #5dd870; color: #5dd870; }
+  #info .actions button.reject:hover  { background: #4a2a2a; border-color: #d85d5d; color: #d85d5d; }
+  #info .actions button.active.approve { background: #2a4a30; border-color: #5dd870; color: #5dd870; }
+  #info .actions button.active.reject  { background: #4a2a2a; border-color: #d85d5d; color: #d85d5d; }
+  #info a { color: #6cf; text-decoration: none; }
+  #info a:hover { text-decoration: underline; }
+  #info .links a { display: inline-block; margin-right: 10px; font-size: 12px; }
+  #info .neighbor-link { color: #6cf; cursor: pointer; text-decoration: underline dotted; }
+  #info .neighbor-link:hover { color: #fff; }
+  details > summary { cursor: pointer; color: #aaa; font-size: 12px;
+                      text-transform: uppercase; letter-spacing: 0.5px; padding: 4px 0; }
+  details[open] > summary { color: #ddd; }
 
   #search { position: fixed; top: 10px; left: 10px; padding: 9px 12px;
             background: rgba(28,28,28,0.97); border: 1px solid #555;
@@ -198,40 +229,118 @@ function clearInfo() {
   d3.select('#info').html('<em>Click a node to see details. Drag to reposition. Scroll to zoom.</em>');
 }
 
+// Persistent approval/rejection state in localStorage, keyed by node id.
+const APPROVAL_KEY = 'codegraph.review.v1';
+function loadApprovals() {
+  try { return JSON.parse(localStorage.getItem(APPROVAL_KEY) || '{}'); }
+  catch (e) { return {}; }
+}
+function saveApprovals(obj) {
+  localStorage.setItem(APPROVAL_KEY, JSON.stringify(obj));
+}
+let approvals = loadApprovals();
+
+function setApproval(id, status) {
+  if (status === null || approvals[id] === status) {
+    delete approvals[id];
+  } else {
+    approvals[id] = status;
+  }
+  saveApprovals(approvals);
+  applyClasses();
+  // Re-render info panel to reflect new state.
+  const n = DATA.nodes.find(x => x.id === id);
+  if (n) showInfo(n);
+}
+
+function escapeHtml(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 function showInfo(d) {
   const info = d3.select('#info');
-  let html = `<h3>${d.label}</h3><div class="group-tag">${d.group}</div>`;
-  if (d.description) html += `<p>${d.description}</p>`;
-  if (d.files && d.files.length) {
-    html += `<h4>Files (${d.files.length})</h4><ul>`;
-    d.files.forEach(f => html += `<li><code>${f}</code></li>`);
+  const status = approvals[d.id] || null;
+  let html = `<h3>${escapeHtml(d.label)}</h3>`;
+  html += `<div class="group-tag">${escapeHtml(d.kind || '')} &middot; ${escapeHtml(d.group)}</div>`;
+
+  // Approve/Reject actions — these are how the user defends the choice.
+  html += `<div class="actions">`;
+  html += `<button class="approve${status === 'approved' ? ' active' : ''}" onclick="setApproval(${JSON.stringify(d.id)}, 'approved')">${status === 'approved' ? 'Approved' : 'Approve'}</button>`;
+  html += `<button class="reject${status === 'rejected' ? ' active' : ''}" onclick="setApproval(${JSON.stringify(d.id)}, 'rejected')">${status === 'rejected' ? 'Rejected' : 'Reject'}</button>`;
+  html += `</div>`;
+
+  if (d.description) html += `<p>${escapeHtml(d.description)}</p>`;
+
+  // Rationale block — the "why" defense, taken from leading doc-comments.
+  html += `<h4>Rationale</h4>`;
+  if (d.rationale && d.rationale.trim()) {
+    html += `<div class="rationale">${escapeHtml(d.rationale)}</div>`;
+  } else {
+    html += `<div class="rationale empty">No leading doc-comment found. The "why" needs to be inferred from the source below or from CLAUDE.md / other docs.</div>`;
+  }
+
+  // Reference links — open the actual file in editor.
+  if (d.abs_path) {
+    html += `<h4>References</h4><div class="links">`;
+    html += `<a href="vscode://file/${encodeURI(d.abs_path)}" title="Open in VS Code">VS Code</a>`;
+    html += `<a href="file:///${encodeURI(d.abs_path)}" title="Open via file://">file://</a>`;
+    html += `<a href="#" onclick="navigator.clipboard.writeText(${JSON.stringify(d.abs_path)});return false;" title="Copy path">copy path</a>`;
+    html += `</div>`;
+  }
+
+  // Source excerpt — the "evidence".
+  if (d.excerpt) {
+    html += `<details${(d.kind === 'file') ? '' : ' open'}><summary>Source excerpt</summary>`;
+    html += `<pre><code>${escapeHtml(d.excerpt)}</code></pre></details>`;
+  }
+
+  if (d.files && d.files.length && d.kind !== 'file') {
+    html += `<h4>Defined in</h4><ul>`;
+    d.files.forEach(f => html += `<li><code>${escapeHtml(f)}</code></li>`);
     html += `</ul>`;
   }
   if (d.types && d.types.length) {
-    html += `<h4>Key Types</h4><ul>`;
-    d.types.forEach(t => html += `<li><code>${t}</code></li>`);
+    html += `<h4>Types in this file</h4><ul>`;
+    d.types.forEach(t => html += `<li><code>${escapeHtml(t)}</code></li>`);
     html += `</ul>`;
   }
   if (d.functions && d.functions.length) {
-    html += `<h4>Public Functions</h4><ul>`;
-    d.functions.forEach(f => html += `<li><code>${f}</code></li>`);
+    html += `<h4>Public functions in this file</h4><ul>`;
+    d.functions.forEach(f => html += `<li><code>${escapeHtml(f)}</code></li>`);
     html += `</ul>`;
   }
-  // Show neighbors.
+
+  // Neighbors — clickable to jump to that node.
   const neighbors = DATA.links
     .map(l => {
       const s = typeof l.source === 'object' ? l.source.id : l.source;
       const t = typeof l.target === 'object' ? l.target.id : l.target;
-      if (s === d.id) return {dir: '->', other: t, type: l.type};
-      if (t === d.id) return {dir: '<-', other: s, type: l.type};
+      if (s === d.id) return {dir: '→', other: t, type: l.type};
+      if (t === d.id) return {dir: '←', other: s, type: l.type};
       return null;
     }).filter(x => x);
   if (neighbors.length) {
-    html += `<h4>Connections</h4><ul>`;
-    neighbors.forEach(n => html += `<li>${n.dir} <code>${n.other}</code> <small>(${n.type || 'link'})</small></li>`);
+    html += `<h4>Connections (${neighbors.length})</h4><ul>`;
+    neighbors.forEach(n => {
+      const otherNode = DATA.nodes.find(nn => nn.id === n.other);
+      const ostatus = approvals[n.other];
+      const marker = ostatus === 'approved' ? ' ✓' : (ostatus === 'rejected' ? ' ✗' : '');
+      html += `<li>${n.dir} <span class="neighbor-link" onclick="jumpTo(${JSON.stringify(n.other)})">${escapeHtml(otherNode ? otherNode.label : n.other)}</span><small>${marker} (${escapeHtml(n.type || 'link')})</small></li>`;
+    });
     html += `</ul>`;
   }
   info.html(html);
+}
+
+function jumpTo(id) {
+  const n = DATA.nodes.find(x => x.id === id);
+  if (!n) return;
+  selectedId = id;
+  applyClasses();
+  showInfo(n);
 }
 
 function highlightNeighbors(d, on) {
@@ -251,22 +360,30 @@ function nodeMatchesSearch(d) {
   return hay.toLowerCase().includes(q);
 }
 
+// Build a fast id->node lookup for class application.
+const nodeById = {};
+DATA.nodes.forEach(n => { nodeById[n.id] = n; });
+
 function applyClasses() {
-  // Per-node classes: dimmed (filtered out), selected (clicked), neighbor.
+  // Per-node classes: dimmed (filtered out), selected (clicked), neighbor,
+  // approved/rejected (review state).
   const sel = selectedId;
   const neighbors = sel ? neighborIndex[sel] : null;
   node.classed('dimmed', d =>
     dimmedGroups.has(d.group) || !nodeMatchesSearch(d));
   node.classed('selected', d => d.id === sel);
   node.classed('neighbor', d => neighbors && d.id !== sel && neighbors.has(d.id));
+  node.classed('approved', d => approvals[d.id] === 'approved');
+  node.classed('rejected', d => approvals[d.id] === 'rejected');
 
-  // Link classes: dimmed if either endpoint is dimmed, highlight if
-  // touches the selected node.
+  // Link classes: dimmed if either endpoint is dimmed; highlight if
+  // touches the selected node; faded if a node is selected but this
+  // link doesn't touch it (so the selected node's edges pop out).
   link.classed('dimmed', l => {
     const s = typeof l.source === 'object' ? l.source.id : l.source;
     const t = typeof l.target === 'object' ? l.target.id : l.target;
-    const sNode = DATA.nodes.find(n => n.id === s);
-    const tNode = DATA.nodes.find(n => n.id === t);
+    const sNode = nodeById[s];
+    const tNode = nodeById[t];
     return (sNode && (dimmedGroups.has(sNode.group) || !nodeMatchesSearch(sNode))) ||
            (tNode && (dimmedGroups.has(tNode.group) || !nodeMatchesSearch(tNode)));
   });
@@ -275,6 +392,12 @@ function applyClasses() {
     const s = typeof l.source === 'object' ? l.source.id : l.source;
     const t = typeof l.target === 'object' ? l.target.id : l.target;
     return s === sel || t === sel;
+  });
+  link.classed('fade', l => {
+    if (!sel) return false;
+    const s = typeof l.source === 'object' ? l.source.id : l.source;
+    const t = typeof l.target === 'object' ? l.target.id : l.target;
+    return !(s === sel || t === sel);
   });
 }
 

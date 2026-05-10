@@ -131,6 +131,69 @@ def find_impl_for_function(fn_decl_pos: int, src: str) -> str | None:
     return best
 
 
+def extract_leading_rationale(raw_src: str, decl_start: int) -> str:
+    """Walk backwards from a declaration to collect contiguous leading
+    doc comments (``///`` or ``//!``) and regular comments (``//``),
+    stopping at the first blank line or non-comment code line.
+    This is the 'why I made this choice' rationale block that should
+    accompany each node in the knowledge graph."""
+    # Find the start of the declaration's line.
+    line_start = raw_src.rfind("\n", 0, decl_start) + 1
+    # Walk upward line by line.
+    rationale_lines = []
+    pos = line_start - 1  # at the previous newline
+    while pos > 0:
+        prev_line_start = raw_src.rfind("\n", 0, pos) + 1
+        line = raw_src[prev_line_start:pos]
+        stripped = line.strip()
+        if not stripped:
+            break  # blank line ends rationale block
+        if stripped.startswith("///") or stripped.startswith("//!") or stripped.startswith("//"):
+            rationale_lines.append(line.rstrip())
+            pos = prev_line_start - 1
+        elif stripped.startswith("#[") or stripped.startswith("#!["):
+            # Skip attributes (e.g. #[derive(...)]) — keep walking up.
+            pos = prev_line_start - 1
+        else:
+            break
+    rationale_lines.reverse()
+    return "\n".join(rationale_lines).strip()
+
+
+def extract_block_body(clean: str, decl_start: int) -> tuple[int, int]:
+    """Find the matching `{ ... }` block following a declaration.
+    Returns (body_start, body_end) char indices, or (-1, -1) if no body
+    (e.g., type alias `type X = Y;` or unit struct `struct X;`)."""
+    i = decl_start
+    body_start = None
+    depth = 0
+    while i < len(clean):
+        ch = clean[i]
+        if ch == ";" and body_start is None:
+            return (-1, -1)
+        if ch == "{":
+            if body_start is None:
+                body_start = i
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0 and body_start is not None:
+                return (body_start, i)
+        i += 1
+    return (-1, -1)
+
+
+def excerpt_from_raw(raw_src: str, start: int, end: int, max_chars: int = 1500) -> str:
+    """Pull excerpt from RAW source (with comments preserved) given char
+    offsets that came from the cleaned-source view. Since strip_comments
+    preserves character positions (replaces with spaces/newlines), the
+    same indices work in raw source. Truncates with ellipsis if needed."""
+    text = raw_src[start:end + 1]
+    if len(text) > max_chars:
+        text = text[:max_chars - 12] + "\n  /* ... */"
+    return text
+
+
 def extract_file_node(rel_path: str, src: str, group: str):
     """Returns (file_node, type_nodes, fn_nodes, fn_calls, type_uses, imports)."""
     clean = strip_comments_and_strings(src)
@@ -145,13 +208,31 @@ def extract_file_node(rel_path: str, src: str, group: str):
         for m in rgx.finditer(clean):
             is_pub = bool(m.group(1))
             name = m.group(2)
-            types.append({"name": name, "kind": kind, "is_pub": is_pub})
+            # Body for excerpt (struct/enum/trait — type aliases have no body).
+            decl_line_start = src.rfind("\n", 0, m.start()) + 1
+            if kind == "type":
+                # Type alias: take from decl line to next ;
+                end = src.find(";", m.end())
+                excerpt = src[decl_line_start:end + 1] if end != -1 else src[decl_line_start:m.end() + 80]
+            else:
+                bs, be = extract_block_body(clean, m.end())
+                if bs >= 0:
+                    excerpt = excerpt_from_raw(src, decl_line_start, be, max_chars=1500)
+                else:
+                    # Unit struct or similar.
+                    end = src.find(";", m.end())
+                    excerpt = src[decl_line_start:end + 1] if end != -1 else src[decl_line_start:m.end() + 80]
+            rationale = extract_leading_rationale(src, decl_line_start)
+            types.append({"name": name, "kind": kind, "is_pub": is_pub, "excerpt": excerpt, "rationale": rationale})
 
     fns = []
     for fb in find_function_bodies(clean):
         impl_recv = find_impl_for_function(fb["decl_start"], clean) if fb["indent"] > 0 else None
         # Simple name = name; qualified = "Type::name" if impl.
         qual_name = f"{impl_recv}::{fb['name']}" if impl_recv else fb["name"]
+        decl_line_start = src.rfind("\n", 0, fb["decl_start"]) + 1
+        excerpt = excerpt_from_raw(src, decl_line_start, fb["body_end"], max_chars=2000)
+        rationale = extract_leading_rationale(src, decl_line_start)
         fns.append(
             {
                 "name": fb["name"],
@@ -160,6 +241,8 @@ def extract_file_node(rel_path: str, src: str, group: str):
                 "is_method": impl_recv is not None,
                 "body": fb["body"],
                 "body_lines": fb["body"].count("\n") + 1,
+                "excerpt": excerpt,
+                "rationale": rationale,
             }
         )
 
@@ -238,10 +321,32 @@ def main() -> int:
     type_name_lookup = defaultdict(list)  # type name -> list of (rel, id)
     fn_name_lookup = defaultdict(list)    # fn simple name -> list of (rel, id)
 
+    repo_root = src_root.parent
     for file_node, types, fns, uses in files_data:
         rp = file_node["rel_path"]
         fid = file_id(rp)
         file_node_lookup[rp] = fid
+        abs_path = (repo_root / rp).as_posix()
+        # File-level rationale: top-of-file `//!` doc comment, if any.
+        rp_full = repo_root / rp
+        try:
+            file_text = rp_full.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            file_text = rp_full.read_text(encoding="latin1")
+        file_rationale_lines = []
+        for line in file_text.splitlines():
+            s = line.strip()
+            if s.startswith("//!") or (file_rationale_lines and s.startswith("//")):
+                file_rationale_lines.append(line)
+            elif s.startswith("//"):
+                file_rationale_lines.append(line)
+            elif not s:
+                if file_rationale_lines:
+                    break
+                continue
+            else:
+                break
+        file_rationale = "\n".join(file_rationale_lines).strip()
         nodes.append(
             {
                 "id": fid,
@@ -249,9 +354,12 @@ def main() -> int:
                 "group": file_node["group"],
                 "kind": "file",
                 "files": [rp],
+                "abs_path": abs_path,
                 "types": [t["name"] for t in types if t.get("is_pub") or not args.public_only],
                 "functions": [f["qual_name"] for f in fns if f.get("is_pub") or not args.public_only],
                 "description": f"File {rp}: {len(types)} types, {len(fns)} functions.",
+                "rationale": file_rationale,
+                "excerpt": "\n".join(file_text.splitlines()[:40]),
             }
         )
         for t in types:
@@ -265,7 +373,10 @@ def main() -> int:
                     "group": file_node["group"],
                     "kind": t["kind"],
                     "files": [rp],
+                    "abs_path": abs_path,
                     "description": f"{t['kind']} {t['name']}{'  (pub)' if t['is_pub'] else ''} in {rp}",
+                    "rationale": t.get("rationale", ""),
+                    "excerpt": t.get("excerpt", ""),
                 }
             )
             type_name_lookup[t["name"]].append((rp, tid))
@@ -282,7 +393,10 @@ def main() -> int:
                     "group": file_node["group"],
                     "kind": "method" if f["is_method"] else "function",
                     "files": [rp],
+                    "abs_path": abs_path,
                     "description": f"{'method' if f['is_method'] else 'fn'} {f['qual_name']} in {rp} ({f['body_lines']} body lines{', pub' if f['is_pub'] else ''})",
+                    "rationale": f.get("rationale", ""),
+                    "excerpt": f.get("excerpt", ""),
                 }
             )
             fn_name_lookup[f["name"]].append((rp, fid_n, f["qual_name"]))
