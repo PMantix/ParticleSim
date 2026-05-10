@@ -91,3 +91,43 @@ Lengths in angstroms (Å), time in femtoseconds (fs), mass in amu, charge in ele
 - Use `profile_scope!` macro when `profiling` feature is enabled
 - Physics constants go in `config.rs`, species properties in `species.rs`
 - Unit tests gated behind `#[cfg(feature = "unit_tests")]`; integration tests in `debug/` directory
+
+## DOE Coordination
+
+`feature/eis-amplitude-study` hosts a two-machine Claude-to-Claude DOE
+coordination subsystem. Long-running headless DOE batches are driven by
+append-only JSONL files in `coordination/` plus a polling controller and
+optional LAN messaging server:
+
+- `scripts/south_controller.py` — polls `coordination/north_jobs.jsonl`
+  every 15s, claims un-claimed jobs, runs them via `scripts/run_job.sh`,
+  records completions in `coordination/south_status.jsonl`.
+- `scripts/messaging_server.py` — LAN HTTP server (port 8765,
+  bearer-auth) for sub-second peer-to-peer messaging across the JSONL files.
+- `scripts/_south_run.sh` — internal helper; writes `<id>.meta` on exit
+  so completions are recorded even if the controller restarts.
+
+Full protocol in `coordination/PROTOCOL.md`. If those processes are already
+running at session start, prefer working with them over restarting.
+
+## Operational Pitfalls
+
+Things that aren't visible from reading the code but bit prior sessions:
+
+- **Never `taskkill //F //IM bash.exe`** to clean up DOE subprocesses. It
+  kills the South controller, messaging server, and Monitor as collateral.
+  Target specific PIDs or specific binary names
+  (`taskkill //F //IM e1_baseline_dcr.exe`).
+
+- **Worktrees + `git pull --rebase`**: when a `git worktree` is checked out
+  in a sibling directory, its fetches overwrite the shared
+  `.git/FETCH_HEAD`, causing plain `git pull --rebase` (no args) elsewhere
+  to fail with "Cannot rebase onto multiple branches". `south_controller.py`
+  now uses explicit `git pull --rebase origin <branch>`; do the same for
+  any new automation. Remove unused worktrees with `git worktree remove`.
+
+- **`run_job.sh` auto-build triggers on missing binary, not stale binary**.
+  After pulling a commit that touches a binary's source, manually
+  `cargo build --release --bin <name>` before launching new jobs (and kill
+  any in-flight runs that started on the old binary if their results would
+  be invalidated).
