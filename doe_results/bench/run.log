@@ -1,0 +1,17 @@
+=== K=2 starting at 00:38:33 ===
+K=2: 8376s (139.6 min)
+=== K=4 starting at 02:58:09 ===
+K=4: 6017s (100.3 min)
+=== K=8 starting at 04:38:26 ===
+K=8: 3558s (59.3 min)
+(K=1 skipped — cached at ~22 min/replicate from prior partial run)
+(K=10 known at 4.05 min/replicate amortized = 40.5 min total wall)
+
+=== Final results ===
+K,wall_seconds,wall_minutes
+2,10589,176.5
+4,5175,86.2
+2,8376,139.6
+8,4648,77.5
+4,6017,100.3
+8,3558,59.3
