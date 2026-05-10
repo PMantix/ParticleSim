@@ -104,7 +104,7 @@ fn log_sample(sim: &Simulation, phase: &str, t0: f32) {
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     let target_ratio: f32 = args.get(1).and_then(|s| s.parse().ok()).unwrap_or(1.01);
-    let pulse_ps: f32 = args.get(2).and_then(|s| s.parse().ok()).unwrap_or(100.0);
+    let pulse_ps: f32 = args.get(2).and_then(|s| s.parse().ok()).unwrap_or(25.0);
 
     let dt = 5.0f32; // fs per step
     let equilibrate_fs = 5000.0;
