@@ -1,0 +1,10 @@
+E.1 Baseline DCR: ratio=1.010, equil=5000fs, pre_rest=20000fs, pulse=100000fs, post_rest=50000fs
+Successfully placed 124 random bodies
+Successfully placed 124 random bodies
+Successfully placed 748 random bodies
+Successfully placed 748 random bodies
+Cell: 3096 bodies, 2 foils
+Equilibrated at t=5000 fs
+Pre-rest complete
+Pulse complete
+Post-rest complete. Total sim_time=175000 fs
