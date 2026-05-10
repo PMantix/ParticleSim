@@ -84,38 +84,6 @@ Lengths in angstroms (Å), time in femtoseconds (fs), mass in amu, charge in ele
 4. Update `Body::update_species()` for auto-conversion rules
 5. Update electron hopping rules in `simulation/electron_hopping.rs`
 
-## Headless Binaries (`src/bin/`)
-Measurement and validation binaries that run without the GUI. Auto-discovered by cargo (no Cargo.toml entry needed).
-
-Key binaries:
-- `e1_baseline_dcr` — Potentiostatic DCR: rest→pulse→rest. Args: `<ratio> [pulse_ps] [snap_dir]`
-- `e2_repeatability` — 3 consecutive pulses on same cell with snapshots. Args: `<ratio> [snap_dir]`
-- `potentiostatic_sweep` — Sweep voltage steps, measure steady-state current
-- `steady_state_search` — Galvanostatic sweep across electrode sizes/currents
-- `tafel_slope` — Galvanostatic Tafel sweep, recover BV transfer coefficient α
-- `nernst_einstein` — Haven ratio from MSD + drift velocity
-- `physics_invariants` — Phase 1 invariant tests (charge balance, energy drift, etc.)
-- `bfs_debug` — Verify electrode geometry and BFS body count
-- `ion_motion_diag` — Track ion kinematics step-by-step
-
-### Spawning geometry in headless binaries
-`SimCommand::AddRectangle` and `SimCommand::AddFoil` interpret `x, y` as **bottom-left origin**, not center. The TOML loader converts center→origin via `to_origin_coords()`. Headless binaries must do the same: `origin = center - size/2`. Verify with `bfs_debug` that electrode BFS finds the expected body count.
-
-## Coordinate with South
-South is a compute node (Ryzen 7950X3D) running batch jobs. Communication:
-- **LAN**: `http://192.168.1.184:8765` (token in `.doe_token`), via `scripts/north_p2p.sh`
-- **Git fallback**: `coordination/north_to_south.jsonl` on `feature/eis-amplitude-study`
-- South polls origin every 15s; push jobs via either channel
-- Results land in `doe_results/` subdirectories; South commits and pushes
-
-## Important Physics Notes
-- **Li⁺ excluded from thermostat** — ion velocity is Coulomb-driven. Only solvents + anions are thermostated (`thermal.rs`, `utils.rs`).
-- **Reduction snap** — when Li⁺ reduces to Li metal via electron hop, the new metal is placed adjacent to the donor surface atom. Lost momentum distributed to nearby liquid particles (`electron_hopping.rs`).
-- **Species lock** — `Body.species_lock_until` (default 10 fs) prevents ping-pong oscillation between metal↔ion states.
-- **Foil current signs** — `+current` adds electrons to foil (deposition side), `-current` removes electrons (stripping side). Paired transfers only fire when one foil has surplus and another has deficit.
-- **Electrode η measurement** — use `calculate_foil_electron_ratio()` (BFS from foil through connected cluster), not foil-body charge alone. The foil-only measurement misses charge that hopped into the metal cluster.
-- **Potentiostatic > galvanostatic for DCR** — galvanostatic at particle scale produces ~10¹¹ C-rates. Use overpotential mode for impedance measurements.
-
 ## Coding Conventions
 - `parking_lot::Mutex` over `std::sync::Mutex`
 - `SmallVec` for small fixed-size collections (e.g., bound electrons)
