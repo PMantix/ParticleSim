@@ -102,16 +102,17 @@ fn log_sample(sim: &Simulation, phase: &str, t0: f32) {
 }
 
 fn main() {
-    let target_ratio: f32 = std::env::args()
-        .nth(1)
-        .and_then(|s| s.parse().ok())
-        .unwrap_or(1.01);
+    let args: Vec<String> = std::env::args().collect();
+    let target_ratio: f32 = args.get(1).and_then(|s| s.parse().ok()).unwrap_or(1.01);
+    let pulse_ps: f32 = args.get(2).and_then(|s| s.parse().ok()).unwrap_or(100.0);
 
     let dt = 5.0f32; // fs per step
     let equilibrate_fs = 5000.0;
     let pre_rest_fs = 20000.0;
-    let pulse_fs = 100000.0;
-    let post_rest_fs = 50000.0;
+    let pulse_fs = pulse_ps * 1000.0;
+    let total_experiment_fs = 170000.0; // fixed total length
+    let post_rest_fs = total_experiment_fs - equilibrate_fs - pre_rest_fs - pulse_fs;
+    let post_rest_fs = post_rest_fs.max(5000.0); // at least 5 ps rest
     let log_every_fs = 100.0;
 
     let equilibrate_steps = (equilibrate_fs / dt) as usize;
