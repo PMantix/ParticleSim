@@ -137,7 +137,11 @@ def commit_pending_http_writes() -> None:
 
 def git_pull_rebase() -> None:
     commit_pending_http_writes()
-    r = run_git(["pull", "--rebase"], check=False)
+    # Use explicit branch args. `git pull --rebase` with no args reads
+    # FETCH_HEAD which is shared with any sibling worktree's git ops and
+    # can be left in a confusing state ("Cannot rebase onto multiple
+    # branches"). Specifying origin + branch avoids that race.
+    r = run_git(["pull", "--rebase", "origin", BRANCH], check=False)
     if r.returncode != 0:
         msg = r.stderr.strip()
         # Stale "unstaged changes" race during my own edits is expected and
