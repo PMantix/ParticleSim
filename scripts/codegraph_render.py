@@ -160,6 +160,14 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 </head>
 <body>
   <input type="text" id="search" placeholder="Search nodes (label, type, function)...">
+  <div id="shortcuts" style="position:fixed; top:10px; left:260px; padding:6px 10px;
+       background:rgba(28,28,28,0.85); border:1px solid #444; border-radius:4px;
+       font-size:11px; color:#aaa;">
+    <b style="color:#cfe8ff;">click</b> select &middot;
+    <b style="color:#cfe8ff;">dbl-click</b> collapse (hides neighbors) &middot;
+    <b style="color:#cfe8ff;">F</b> focus on selected &middot;
+    <b style="color:#cfe8ff;">Esc</b> clear focus
+  </div>
   <div id="levels">
     <div class="row" style="font-weight:bold;color:#ddd;margin-bottom:4px;">Detail level</div>
     <div class="row">
@@ -202,7 +210,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     </div>
   </div>
   <div id="graph"></div>
-  <div id="info"><em>Click a node to see details. Drag to reposition. Scroll to zoom.</em></div>
+  <div id="info"><em>Click a node to see details. Drag to reposition. Scroll to zoom. Press <b>F</b> to focus on the selected node, <b>Esc</b> to clear, double-click to collapse neighbors.</em></div>
   <div class="legend" id="legend"></div>
   <div class="stats" id="stats"></div>
 <script>
@@ -387,7 +395,7 @@ function selectNode(d) {
 }
 
 function clearInfo() {
-  d3.select('#info').html('<em>Click a node to see details. Drag to reposition. Scroll to zoom.</em>');
+  d3.select('#info').html('<em>Click a node to see details. Drag to reposition. Scroll to zoom. Press <b>F</b> to focus on the selected node, <b>Esc</b> to clear, double-click to collapse neighbors.</em>');
 }
 
 function escapeHtml(s) {
@@ -477,45 +485,15 @@ const collapsedSet = new Set();
 const hiddenSet = new Set();
 
 function recomputeHidden() {
+  // Aggressive collapse: for every collapsed node, hide all of its
+  // direct neighbors (except other collapsed nodes, so the user can
+  // double-click two nodes without them hiding each other).
   hiddenSet.clear();
-  // For every collapsed node, mark its direct neighbors hidden — UNLESS
-  // the neighbor itself is collapsed (so the user can't accidentally
-  // hide a node they're using as an anchor).
   collapsedSet.forEach(id => {
     (neighborIndex[id] || new Set()).forEach(nid => {
       if (!collapsedSet.has(nid)) hiddenSet.add(nid);
     });
   });
-  // A node should NOT be hidden if it's adjacent to any visible
-  // non-collapsed node. (Otherwise expanding one node also pulls back
-  // siblings of any other expansion.) Iterate to fixed point.
-  let changed = true;
-  while (changed) {
-    changed = false;
-    for (const id of [...hiddenSet]) {
-      const nbrs = neighborIndex[id] || new Set();
-      let anchored = false;
-      for (const nb of nbrs) {
-        if (!hiddenSet.has(nb) && !collapsedSet.has(nb)) {
-          anchored = true; break;
-        }
-      }
-      if (anchored) {
-        // Keep hidden only if EVERY visible neighbor is a collapser
-        // (the original collapsed node). Otherwise un-hide.
-        let onlyCollapser = true;
-        for (const nb of nbrs) {
-          if (!hiddenSet.has(nb) && !collapsedSet.has(nb)) {
-            onlyCollapser = false; break;
-          }
-        }
-        if (!onlyCollapser) {
-          hiddenSet.delete(id);
-          changed = true;
-        }
-      }
-    }
-  }
 }
 
 function toggleCollapse(d) {
@@ -529,9 +507,34 @@ function toggleCollapse(d) {
 function showAll() {
   collapsedSet.clear();
   hiddenSet.clear();
+  focusedId = null;
   applyClasses();
   updateStats();
 }
+
+// Focus mode: hide everything except the focused node and its 1-hop
+// neighbors. Triggered by F key when a node is selected. Esc to clear.
+let focusedId = null;
+function toggleFocus() {
+  if (!selectedId) return;
+  focusedId = (focusedId === selectedId) ? null : selectedId;
+  applyClasses();
+  updateStats();
+}
+function clearFocus() {
+  if (focusedId !== null) {
+    focusedId = null;
+    applyClasses();
+    updateStats();
+  }
+}
+document.addEventListener('keydown', (e) => {
+  // Don't intercept while user is typing in the search box.
+  if (document.activeElement && document.activeElement.tagName === 'INPUT' &&
+      document.activeElement.id === 'search') return;
+  if (e.key === 'f' || e.key === 'F') { toggleFocus(); e.preventDefault(); }
+  else if (e.key === 'Escape') { clearFocus(); }
+});
 
 function updateStats() {
   let visible = 0, kindFiltered = 0;
@@ -562,6 +565,10 @@ function updateStats() {
   }
   if (edgeFiltered > 0) {
     suffix += ` &middot; ${edgeFiltered} edges hidden by type`;
+  }
+  if (focusedId !== null) {
+    const fn = nodeById[focusedId];
+    suffix += ` &middot; <span style="color:#fc6">focused on ${fn ? fn.label : focusedId} (Esc to clear)</span>`;
   }
   document.getElementById('stats').innerHTML =
     `${visible}/${DATA.nodes.length} nodes &middot; ${visibleEdges}/${DATA.links.length} edges &middot; ${groups.length} groups${suffix}`;
@@ -661,9 +668,16 @@ function applyClasses() {
   // Per-node classes: dimmed (filtered out), selected (clicked), neighbor.
   const sel = selectedId;
   const neighbors = sel ? neighborIndex[sel] : null;
-  node.classed('hidden', d => hiddenSet.has(d.id) || isKindHidden(d));
+  // Focus mode: anything not the focused node or one of its 1-hop neighbors
+  // is hidden, overriding everything else.
+  const focusNeighbors = focusedId ? neighborIndex[focusedId] : null;
+  function focusHidden(d) {
+    return focusedId !== null && d.id !== focusedId && !focusNeighbors.has(d.id);
+  }
+  node.classed('hidden', d => focusHidden(d) || hiddenSet.has(d.id) || isKindHidden(d));
   node.classed('dimmed', d =>
-    !hiddenSet.has(d.id) && !isKindHidden(d) && (dimmedGroups.has(d.group) || !nodeMatchesSearch(d)));
+    !focusHidden(d) && !hiddenSet.has(d.id) && !isKindHidden(d) &&
+    (dimmedGroups.has(d.group) || !nodeMatchesSearch(d)));
   node.classed('selected', d => d.id === sel);
   node.classed('neighbor', d => neighbors && d.id !== sel && neighbors.has(d.id)
                                 && !hiddenSet.has(d.id) && !isKindHidden(d));
@@ -673,6 +687,7 @@ function applyClasses() {
   // collapse OR by kind filter).
   function endpointHidden(id) {
     const n = nodeById[id];
+    if (focusedId !== null && id !== focusedId && !focusNeighbors.has(id)) return true;
     return hiddenSet.has(id) || (n && isKindHidden(n));
   }
   link.classed('hidden', l => {
