@@ -42,44 +42,65 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   body { margin: 0; font-family: system-ui, -apple-system, sans-serif;
          background: #1a1a1a; color: #e0e0e0; overflow: hidden; }
   #graph svg { width: 100vw; height: 100vh; display: block; }
-  .node circle { stroke: #fff; stroke-width: 1.5px; cursor: pointer; }
-  .node circle:hover { stroke-width: 3px; }
-  .node text { font-size: 12px; pointer-events: none; fill: #ddd;
-               text-shadow: 1px 1px 2px #000, -1px -1px 2px #000; }
-  .link { stroke: #888; stroke-opacity: 0.4; }
+
+  .node circle { stroke: #222; stroke-width: 1.5px; cursor: pointer;
+                 transition: stroke 0.15s, stroke-width 0.15s; }
+  .node.selected circle { stroke: #fff; stroke-width: 3.5px;
+                          filter: drop-shadow(0 0 6px #6cf); }
+  .node.neighbor circle { stroke: #6cf; stroke-width: 2.5px; }
+  .node circle:hover { stroke: #fff; stroke-width: 3px; }
+
+  .node text { font-size: 14px; font-weight: 500; pointer-events: none;
+               fill: #f0f0f0;
+               text-shadow: 0 0 3px #000, 1px 1px 2px #000, -1px -1px 2px #000; }
+  .node.selected text { font-size: 16px; font-weight: 700; fill: #fff;
+                        text-shadow: 0 0 4px #6cf, 1px 1px 2px #000; }
+  .node.neighbor text { fill: #cfe8ff; }
+
+  /* Dimmed (group filter or search non-match): still visible, clearly de-emphasized. */
+  .node.dimmed circle { opacity: 0.18; filter: saturate(0.2); }
+  .node.dimmed text   { opacity: 0.25; }
+
+  .link { stroke: #888; stroke-opacity: 0.35; }
+  .link.dimmed { stroke-opacity: 0.05; }
   .link.highlight { stroke: #6cf; stroke-opacity: 0.9; stroke-width: 2px; }
 
-  #info { position: fixed; top: 10px; right: 10px; width: 340px; padding: 14px;
-          background: rgba(30,30,30,0.97); border: 1px solid #555;
+  #info { position: fixed; top: 10px; right: 10px; width: 360px; padding: 16px;
+          background: rgba(28,28,28,0.97); border: 1px solid #555;
           border-radius: 4px; max-height: 92vh; overflow-y: auto;
-          font-size: 13px; line-height: 1.45; box-shadow: 0 2px 12px rgba(0,0,0,0.5); }
-  #info h3 { margin: 0 0 6px 0; color: #6cf; font-size: 16px; }
-  #info .group-tag { color: #fc6; font-size: 11px; text-transform: uppercase;
-                     letter-spacing: 0.5px; margin-bottom: 8px; }
-  #info p { margin: 4px 0 10px 0; color: #ccc; }
-  #info h4 { margin: 8px 0 4px 0; color: #aaa; font-size: 11px;
+          font-size: 14px; line-height: 1.5; box-shadow: 0 2px 12px rgba(0,0,0,0.5); }
+  #info h3 { margin: 0 0 6px 0; color: #6cf; font-size: 18px; }
+  #info .group-tag { color: #fc6; font-size: 12px; text-transform: uppercase;
+                     letter-spacing: 0.5px; margin-bottom: 10px; }
+  #info p { margin: 4px 0 10px 0; color: #ddd; }
+  #info h4 { margin: 10px 0 4px 0; color: #bbb; font-size: 12px;
              text-transform: uppercase; letter-spacing: 0.5px; }
-  #info ul { padding-left: 18px; margin: 2px 0 6px 0; }
-  #info li { font-size: 12px; color: #aaa; word-break: break-all; }
-  #info code { background: #333; padding: 1px 4px; border-radius: 2px; color: #cfc; }
+  #info ul { padding-left: 20px; margin: 2px 0 8px 0; }
+  #info li { font-size: 13px; color: #ccc; word-break: break-all; line-height: 1.4; }
+  #info code { background: #333; padding: 1px 5px; border-radius: 2px;
+               color: #cfc; font-size: 13px; }
 
-  #search { position: fixed; top: 10px; left: 10px; padding: 8px 10px;
-            background: rgba(30,30,30,0.97); border: 1px solid #555;
-            border-radius: 4px; color: #ddd; width: 220px; font-size: 13px; }
+  #search { position: fixed; top: 10px; left: 10px; padding: 9px 12px;
+            background: rgba(28,28,28,0.97); border: 1px solid #555;
+            border-radius: 4px; color: #fff; width: 240px; font-size: 14px; }
   #search:focus { outline: none; border-color: #6cf; }
 
-  .legend { position: fixed; bottom: 10px; left: 10px; padding: 10px;
-            background: rgba(30,30,30,0.97); border: 1px solid #555;
-            border-radius: 4px; font-size: 11px; }
-  .legend .row { margin: 3px 0; cursor: pointer; }
-  .legend .row.dimmed { opacity: 0.3; }
-  .legend .swatch { display: inline-block; width: 12px; height: 12px;
-                    margin-right: 6px; vertical-align: middle;
-                    border: 1px solid rgba(255,255,255,0.3); }
+  .legend { position: fixed; bottom: 10px; left: 10px; padding: 10px 12px;
+            background: rgba(28,28,28,0.97); border: 1px solid #555;
+            border-radius: 4px; font-size: 13px; }
+  .legend .row { margin: 4px 0; cursor: pointer; padding: 1px 3px;
+                 border-radius: 2px; transition: background 0.1s; }
+  .legend .row:hover { background: #333; }
+  .legend .row.dimmed { opacity: 0.4; }
+  .legend .row.dimmed .swatch { filter: saturate(0.2); }
+  .legend .swatch { display: inline-block; width: 14px; height: 14px;
+                    margin-right: 8px; vertical-align: middle;
+                    border: 1px solid rgba(255,255,255,0.3);
+                    border-radius: 2px; }
 
-  .stats { position: fixed; bottom: 10px; right: 10px; padding: 8px;
-           background: rgba(30,30,30,0.97); border: 1px solid #555;
-           border-radius: 4px; font-size: 11px; color: #aaa; }
+  .stats { position: fixed; bottom: 10px; right: 10px; padding: 9px 12px;
+           background: rgba(28,28,28,0.97); border: 1px solid #555;
+           border-radius: 4px; font-size: 12px; color: #bbb; }
 </style>
 </head>
 <body>
@@ -111,7 +132,7 @@ groups.forEach(grp => {
     .on('click', function() {
       if (dimmedGroups.has(grp)) dimmedGroups.delete(grp); else dimmedGroups.add(grp);
       d3.select(this).classed('dimmed', dimmedGroups.has(grp));
-      applyFilter();
+      applyClasses();
     });
 });
 
@@ -139,7 +160,7 @@ const r = d3.scaleSqrt().domain([0, d3.max(Object.values(degree)) || 1]).range([
 node.append('circle')
   .attr('r', d => r(degree[d.id] || 0))
   .attr('fill', d => color(d.group))
-  .on('click', (e,d) => showInfo(d))
+  .on('click', (e,d) => selectNode(d))
   .on('mouseover', (e,d) => highlightNeighbors(d, true))
   .on('mouseout', (e,d) => highlightNeighbors(d, false));
 
@@ -155,6 +176,27 @@ const sim = d3.forceSimulation(DATA.nodes)
         .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
     node.attr('transform', d => `translate(${d.x},${d.y})`);
   });
+
+// Build a neighbor index: id -> Set of neighbor ids.
+const neighborIndex = {};
+DATA.nodes.forEach(n => neighborIndex[n.id] = new Set());
+DATA.links.forEach(l => {
+  const s = typeof l.source === 'object' ? l.source.id : l.source;
+  const t = typeof l.target === 'object' ? l.target.id : l.target;
+  neighborIndex[s].add(t);
+  neighborIndex[t].add(s);
+});
+
+let selectedId = null;
+function selectNode(d) {
+  selectedId = (selectedId === d.id) ? null : d.id;
+  applyClasses();
+  if (selectedId) showInfo(d); else clearInfo();
+}
+
+function clearInfo() {
+  d3.select('#info').html('<em>Click a node to see details. Drag to reposition. Scroll to zoom.</em>');
+}
 
 function showInfo(d) {
   const info = d3.select('#info');
@@ -201,20 +243,44 @@ function highlightNeighbors(d, on) {
 }
 
 let searchQuery = '';
-function applyFilter() {
+function nodeMatchesSearch(d) {
+  if (!searchQuery) return true;
   const q = searchQuery.toLowerCase();
-  node.selectAll('circle').attr('opacity', d => {
-    if (dimmedGroups.has(d.group)) return 0.1;
-    if (!q) return 1;
-    const hay = (d.label + ' ' + d.id + ' ' + (d.types||[]).join(' ') + ' '
-                 + (d.functions||[]).join(' ') + ' ' + (d.files||[]).join(' '));
-    return hay.toLowerCase().includes(q) ? 1 : 0.15;
-  });
-  node.selectAll('text').attr('opacity', d => dimmedGroups.has(d.group) ? 0.1 : 1);
+  const hay = (d.label + ' ' + d.id + ' ' + (d.types||[]).join(' ') + ' '
+               + (d.functions||[]).join(' ') + ' ' + (d.files||[]).join(' '));
+  return hay.toLowerCase().includes(q);
 }
+
+function applyClasses() {
+  // Per-node classes: dimmed (filtered out), selected (clicked), neighbor.
+  const sel = selectedId;
+  const neighbors = sel ? neighborIndex[sel] : null;
+  node.classed('dimmed', d =>
+    dimmedGroups.has(d.group) || !nodeMatchesSearch(d));
+  node.classed('selected', d => d.id === sel);
+  node.classed('neighbor', d => neighbors && d.id !== sel && neighbors.has(d.id));
+
+  // Link classes: dimmed if either endpoint is dimmed, highlight if
+  // touches the selected node.
+  link.classed('dimmed', l => {
+    const s = typeof l.source === 'object' ? l.source.id : l.source;
+    const t = typeof l.target === 'object' ? l.target.id : l.target;
+    const sNode = DATA.nodes.find(n => n.id === s);
+    const tNode = DATA.nodes.find(n => n.id === t);
+    return (sNode && (dimmedGroups.has(sNode.group) || !nodeMatchesSearch(sNode))) ||
+           (tNode && (dimmedGroups.has(tNode.group) || !nodeMatchesSearch(tNode)));
+  });
+  link.classed('highlight', l => {
+    if (!sel) return false;
+    const s = typeof l.source === 'object' ? l.source.id : l.source;
+    const t = typeof l.target === 'object' ? l.target.id : l.target;
+    return s === sel || t === sel;
+  });
+}
+
 document.getElementById('search').addEventListener('input', (e) => {
   searchQuery = e.target.value;
-  applyFilter();
+  applyClasses();
 });
 
 document.getElementById('stats').innerHTML =
