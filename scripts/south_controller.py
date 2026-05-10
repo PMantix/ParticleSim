@@ -46,6 +46,23 @@ META_DIR = REPO / "doe_results" / "eis_doe_lf"
 
 POLL_S = 15
 RAYON_THREADS_DEFAULT = 4
+# MAX_CONCURRENT empirically tuned on Ryzen 9 7950X3D (16C/32T) via
+# scripts/bench_concurrency.sh on 2026-05-09/10 against potentiostatic_sweep:
+#
+#   K=1  : 220 min   1.0x   (cached, 6 samples)
+#   K=2  : 139.6 min 1.58x
+#   K=4  : 100.3 min 2.19x
+#   K=8  : 59.3 min  3.71x
+#   K=10 : 40.5 min  5.43x  <- fastest measured
+#
+# Wall time strictly decreased through K=10 (no sweet-spot below it).
+# Setting MAX_CONCURRENT slightly above the validated peak (12 vs K=10) gives
+# the controller headroom to keep claiming when long jobs are still running
+# but won't produce stable oversubscription beyond what we tested.
+#
+# Future experiments worth running: K=12-16 at RAYON_NUM_THREADS=2 (instead of
+# 4). At K=10 we're already at 40 demanded threads on 32 cores; halving Rayon
+# would right-size to ~32, possibly improving throughput further.
 MAX_CONCURRENT = 12
 HOST = os.environ.get("COMPUTERNAME") or socket.gethostname()
 BRANCH = "feature/eis-amplitude-study"
