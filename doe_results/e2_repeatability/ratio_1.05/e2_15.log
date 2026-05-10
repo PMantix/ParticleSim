@@ -1,0 +1,26 @@
+E.2 Repeatability: ratio=1.050, 3 pulses, pulse=25000fs, rest=200000fs
+Successfully placed 124 random bodies
+Successfully placed 124 random bodies
+Successfully placed 748 random bodies
+Successfully placed 748 random bodies
+Cell: 3096 bodies, 2 foils
+Equilibrated at t=5000 fs
+Snapshot: snapshots/p1_rest_mid.csv
+Pulse 1 rest complete
+Snapshot: snapshots/p1_onset.csv
+Snapshot: snapshots/p1_mid.csv
+Snapshot: snapshots/p1_end.csv
+Pulse 1 complete
+Snapshot: snapshots/p2_rest_mid.csv
+Pulse 2 rest complete
+Snapshot: snapshots/p2_onset.csv
+Snapshot: snapshots/p2_mid.csv
+Snapshot: snapshots/p2_end.csv
+Pulse 2 complete
+Snapshot: snapshots/p3_rest_mid.csv
+Pulse 3 rest complete
+Snapshot: snapshots/p3_onset.csv
+Snapshot: snapshots/p3_mid.csv
+Snapshot: snapshots/p3_end.csv
+Pulse 3 complete
+Final rest complete. Total sim_time=880000 fs
