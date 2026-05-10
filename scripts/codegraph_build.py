@@ -447,6 +447,30 @@ def main() -> int:
 
     # function -> function call edges and function -> type use edges
     # (heuristic, name-based).
+    #
+    # Bare-name calls like `name(arg)` are highly ambiguous when multiple
+    # types have a `name` method (e.g. every `::new`). Fanning out to every
+    # candidate produces hub nodes with hundreds of meaningless edges. Two
+    # mitigations:
+    #   1. Prefer qualified `Type::method(` matches — these resolve to a
+    #      specific (type, method) pair (still imperfect when two types
+    #      share a name, but vastly less noisy).
+    #   2. For bare-name matches, only emit edges when there's a clear
+    #      same-file local target OR exactly one global candidate. If
+    #      there are 2+ ambiguous candidates and no local match, drop the
+    #      edge — it's noise.
+    #   3. Skip a stoplist of names that are almost always stdlib/macros
+    #      (e.g. `vec`, `panic`, `format`, `print*`, `write*`, `dbg`,
+    #      `Some`, `None`, `Ok`, `Err`).
+    CALL_NAME_STOPLIST = {
+        "vec", "format", "panic", "assert", "assert_eq", "assert_ne",
+        "print", "println", "eprint", "eprintln", "write", "writeln",
+        "dbg", "todo", "unimplemented", "unreachable", "matches",
+        "Some", "None", "Ok", "Err", "Box",
+    }
+    RE_BARE_CALL = re.compile(r"\b([a-z_][a-zA-Z0-9_]*)\s*\(")
+    RE_QUAL_CALL = re.compile(r"\b([A-Z][A-Za-z0-9_]*)::([a-z_][a-zA-Z0-9_]*)\s*\(")
+
     for file_node, _types, fns, _uses in files_data:
         rp = file_node["rel_path"]
         for f in fns:
@@ -456,18 +480,53 @@ def main() -> int:
                 continue
             sid = fn_id(rp, f["qual_name"])
             body = f["body"]
-            # Tokenize identifiers (letters/digits/_).
-            calls = set(re.findall(r"\b([a-z_][a-zA-Z0-9_]*)\s*\(", body))
-            for callee in calls:
-                if callee == f["name"]:
-                    continue  # ignore self-recursion
-                # Resolve callee: prefer function in same file, else any
-                # other file. If multiple candidates, link to all (small N).
-                candidates = fn_name_lookup.get(callee, [])
+
+            # 1. Qualified calls: `Type::method(` — resolve to fns whose
+            # qualified name ends with `Type::method`.
+            qual_seen = set()
+            for m in RE_QUAL_CALL.finditer(body):
+                tname, mname = m.group(1), m.group(2)
+                key = (tname, mname)
+                if key in qual_seen:
+                    continue
+                qual_seen.add(key)
+                qual_suffix = f"{tname}::{mname}"
+                # Match against fn_name_lookup entries whose qual_name
+                # ends with the suffix.
+                candidates = [
+                    c for c in fn_name_lookup.get(mname, [])
+                    if c[2].endswith(qual_suffix)
+                ]
+                if not candidates:
+                    continue
+                # Prefer same-file.
                 local = [c for c in candidates if c[0] == rp]
                 target_set = local if local else candidates
                 for _, tid, _ in target_set:
                     add_link(sid, tid, "calls")
+
+            # 2. Bare-name calls: `name(` — drop the names already
+            # captured by the qualified pass, then apply the
+            # ambiguity/stoplist filter.
+            qual_method_names = {mname for _, mname in qual_seen}
+            bare_calls = set(RE_BARE_CALL.findall(body)) - qual_method_names
+            for callee in bare_calls:
+                if callee == f["name"]:
+                    continue  # ignore self-recursion
+                if callee in CALL_NAME_STOPLIST:
+                    continue
+                candidates = fn_name_lookup.get(callee, [])
+                if not candidates:
+                    continue
+                local = [c for c in candidates if c[0] == rp]
+                if local:
+                    # Same-file match wins — emit those, no fan-out.
+                    for _, tid, _ in local:
+                        add_link(sid, tid, "calls")
+                elif len(candidates) == 1:
+                    # Unambiguous global match — emit the single edge.
+                    add_link(sid, candidates[0][1], "calls")
+                # else: 2+ candidates and no local match → ambiguous, drop.
             # Type uses (find type names in body).
             type_refs = set(re.findall(r"\b([A-Z][A-Za-z0-9_]+)\b", body))
             for tname in type_refs:

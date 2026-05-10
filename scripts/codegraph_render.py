@@ -50,21 +50,24 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   .node.neighbor circle { stroke: #6cf; stroke-width: 2.5px; }
   .node circle:hover { stroke: #fff; stroke-width: 3px; }
 
-  .node text { font-size: 14px; font-weight: 500; pointer-events: none;
-               fill: #f0f0f0;
-               text-shadow: 0 0 3px #000, 1px 1px 2px #000, -1px -1px 2px #000; }
-  .node.selected text { font-size: 16px; font-weight: 700; fill: #fff;
+  .node text { font-size: 11px; font-weight: 400; pointer-events: none;
+               fill: #d8d8d8;
+               text-shadow: 0 0 2px #000, 1px 1px 2px #000, -1px -1px 2px #000; }
+  .node.selected text { font-size: 14px; font-weight: 700; fill: #fff;
                         text-shadow: 0 0 4px #6cf, 1px 1px 2px #000; }
-  .node.neighbor text { fill: #cfe8ff; }
+  .node.neighbor text { fill: #cfe8ff; font-size: 12px; }
 
   /* Dimmed (group filter or search non-match): still visible, clearly de-emphasized. */
   .node.dimmed circle { opacity: 0.18; filter: saturate(0.2); }
   .node.dimmed text   { opacity: 0.25; }
 
-  /* Approved / rejected: a colored ring around the circle so the
-     review state is visible on the graph itself, not only in the popup. */
-  .node.approved circle { stroke: #5dd870; stroke-width: 3px; }
-  .node.rejected circle { stroke: #d85d5d; stroke-width: 3px; stroke-dasharray: 4 3; }
+  /* Hidden via double-click collapse. */
+  .node.hidden { display: none; }
+  .link.hidden { display: none; }
+
+  /* Collapsed node: gets a small inner ring to signal "branches hidden". */
+  .node.collapsed circle { stroke: #fc6; stroke-width: 2.5px;
+                           stroke-dasharray: 3 2; }
 
   .link { stroke: #888; stroke-opacity: 0.35; }
   .link.dimmed { stroke-opacity: 0.04; }
@@ -94,14 +97,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                      color: #e0e8f0; white-space: pre-wrap; }
   #info .rationale.empty { background: rgba(255,255,255,0.04); border-left-color: #555;
                            color: #888; font-style: italic; }
-  #info .actions { display: flex; gap: 8px; margin: 12px 0 6px 0; }
-  #info .actions button { flex: 1; padding: 8px 10px; border: 1px solid #555;
-                          background: #2a2a2a; color: #ddd; border-radius: 3px;
-                          cursor: pointer; font-size: 13px; font-weight: 500; }
-  #info .actions button.approve:hover { background: #2a4a30; border-color: #5dd870; color: #5dd870; }
-  #info .actions button.reject:hover  { background: #4a2a2a; border-color: #d85d5d; color: #d85d5d; }
-  #info .actions button.active.approve { background: #2a4a30; border-color: #5dd870; color: #5dd870; }
-  #info .actions button.active.reject  { background: #4a2a2a; border-color: #d85d5d; color: #d85d5d; }
   #info a { color: #6cf; text-decoration: none; }
   #info a:hover { text-decoration: underline; }
   #info .links a { display: inline-block; margin-right: 10px; font-size: 12px; }
@@ -115,6 +110,19 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             background: rgba(28,28,28,0.97); border: 1px solid #555;
             border-radius: 4px; color: #fff; width: 240px; font-size: 14px; }
   #search:focus { outline: none; border-color: #6cf; }
+
+  #levels { position: fixed; top: 56px; left: 10px; padding: 8px 10px;
+            background: rgba(28,28,28,0.97); border: 1px solid #555;
+            border-radius: 4px; font-size: 12px; }
+  #levels .row { margin: 3px 0; }
+  #levels button { padding: 5px 9px; margin-right: 4px; border: 1px solid #555;
+                   background: #2a2a2a; color: #ddd; border-radius: 3px;
+                   cursor: pointer; font-size: 12px; }
+  #levels button:hover { background: #383838; border-color: #6cf; }
+  #levels button.active { background: #2a3a4a; border-color: #6cf; color: #cfe8ff; }
+  #levels label { display: inline-block; margin-right: 10px; cursor: pointer;
+                  user-select: none; color: #bbb; }
+  #levels label input { margin-right: 4px; vertical-align: middle; }
 
   .legend { position: fixed; bottom: 10px; left: 10px; padding: 10px 12px;
             background: rgba(28,28,28,0.97); border: 1px solid #555;
@@ -136,6 +144,27 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 </head>
 <body>
   <input type="text" id="search" placeholder="Search nodes (label, type, function)...">
+  <div id="levels">
+    <div class="row" style="font-weight:bold;color:#ddd;margin-bottom:4px;">Detail level</div>
+    <div class="row">
+      <button data-preset="all">All</button>
+      <button data-preset="module">Modules</button>
+      <button data-preset="types">+ Types</button>
+      <button data-preset="functions">Functions</button>
+    </div>
+    <div class="row" style="margin-top:6px;">
+      <label><input type="checkbox" data-kind="file" checked>Files</label>
+      <label><input type="checkbox" data-kind="type" checked>Types</label>
+      <label><input type="checkbox" data-kind="function" checked>Functions</label>
+    </div>
+    <div class="row" style="font-weight:bold;color:#ddd;margin-top:8px;margin-bottom:4px;">Edge types</div>
+    <div class="row">
+      <label><input type="checkbox" data-edge="contains" checked>contains</label>
+      <label><input type="checkbox" data-edge="uses" checked>uses</label>
+      <label><input type="checkbox" data-edge="uses_type" checked>uses_type</label>
+      <label><input type="checkbox" data-edge="calls" checked>calls</label>
+    </div>
+  </div>
   <div id="graph"></div>
   <div id="info"><em>Click a node to see details. Drag to reposition. Scroll to zoom.</em></div>
   <div class="legend" id="legend"></div>
@@ -192,6 +221,7 @@ node.append('circle')
   .attr('r', d => r(degree[d.id] || 0))
   .attr('fill', d => color(d.group))
   .on('click', (e,d) => selectNode(d))
+  .on('dblclick', (e,d) => { e.stopPropagation(); toggleCollapse(d); })
   .on('mouseover', (e,d) => highlightNeighbors(d, true))
   .on('mouseout', (e,d) => highlightNeighbors(d, false));
 
@@ -229,30 +259,6 @@ function clearInfo() {
   d3.select('#info').html('<em>Click a node to see details. Drag to reposition. Scroll to zoom.</em>');
 }
 
-// Persistent approval/rejection state in localStorage, keyed by node id.
-const APPROVAL_KEY = 'codegraph.review.v1';
-function loadApprovals() {
-  try { return JSON.parse(localStorage.getItem(APPROVAL_KEY) || '{}'); }
-  catch (e) { return {}; }
-}
-function saveApprovals(obj) {
-  localStorage.setItem(APPROVAL_KEY, JSON.stringify(obj));
-}
-let approvals = loadApprovals();
-
-function setApproval(id, status) {
-  if (status === null || approvals[id] === status) {
-    delete approvals[id];
-  } else {
-    approvals[id] = status;
-  }
-  saveApprovals(approvals);
-  applyClasses();
-  // Re-render info panel to reflect new state.
-  const n = DATA.nodes.find(x => x.id === id);
-  if (n) showInfo(n);
-}
-
 function escapeHtml(s) {
   if (s == null) return '';
   return String(s)
@@ -262,15 +268,8 @@ function escapeHtml(s) {
 
 function showInfo(d) {
   const info = d3.select('#info');
-  const status = approvals[d.id] || null;
   let html = `<h3>${escapeHtml(d.label)}</h3>`;
   html += `<div class="group-tag">${escapeHtml(d.kind || '')} &middot; ${escapeHtml(d.group)}</div>`;
-
-  // Approve/Reject actions — these are how the user defends the choice.
-  html += `<div class="actions">`;
-  html += `<button class="approve${status === 'approved' ? ' active' : ''}" onclick="setApproval(${JSON.stringify(d.id)}, 'approved')">${status === 'approved' ? 'Approved' : 'Approve'}</button>`;
-  html += `<button class="reject${status === 'rejected' ? ' active' : ''}" onclick="setApproval(${JSON.stringify(d.id)}, 'rejected')">${status === 'rejected' ? 'Rejected' : 'Reject'}</button>`;
-  html += `</div>`;
 
   if (d.description) html += `<p>${escapeHtml(d.description)}</p>`;
 
@@ -326,9 +325,7 @@ function showInfo(d) {
     html += `<h4>Connections (${neighbors.length})</h4><ul>`;
     neighbors.forEach(n => {
       const otherNode = DATA.nodes.find(nn => nn.id === n.other);
-      const ostatus = approvals[n.other];
-      const marker = ostatus === 'approved' ? ' ✓' : (ostatus === 'rejected' ? ' ✗' : '');
-      html += `<li>${n.dir} <span class="neighbor-link" onclick="jumpTo(${JSON.stringify(n.other)})">${escapeHtml(otherNode ? otherNode.label : n.other)}</span><small>${marker} (${escapeHtml(n.type || 'link')})</small></li>`;
+      html += `<li>${n.dir} <span class="neighbor-link" onclick="jumpTo(${JSON.stringify(n.other)})">${escapeHtml(otherNode ? otherNode.label : n.other)}</span> <small>(${escapeHtml(n.type || 'link')})</small></li>`;
     });
     html += `</ul>`;
   }
@@ -341,6 +338,102 @@ function jumpTo(id) {
   selectedId = id;
   applyClasses();
   showInfo(n);
+}
+
+// Collapse: each node tracks whether its direct neighbors are hidden.
+// Double-click toggles. Hidden nodes drop from view; their edges hide too.
+const collapsedSet = new Set();
+const hiddenSet = new Set();
+
+function recomputeHidden() {
+  hiddenSet.clear();
+  // For every collapsed node, mark its direct neighbors hidden — UNLESS
+  // the neighbor itself is collapsed (so the user can't accidentally
+  // hide a node they're using as an anchor).
+  collapsedSet.forEach(id => {
+    (neighborIndex[id] || new Set()).forEach(nid => {
+      if (!collapsedSet.has(nid)) hiddenSet.add(nid);
+    });
+  });
+  // A node should NOT be hidden if it's adjacent to any visible
+  // non-collapsed node. (Otherwise expanding one node also pulls back
+  // siblings of any other expansion.) Iterate to fixed point.
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const id of [...hiddenSet]) {
+      const nbrs = neighborIndex[id] || new Set();
+      let anchored = false;
+      for (const nb of nbrs) {
+        if (!hiddenSet.has(nb) && !collapsedSet.has(nb)) {
+          anchored = true; break;
+        }
+      }
+      if (anchored) {
+        // Keep hidden only if EVERY visible neighbor is a collapser
+        // (the original collapsed node). Otherwise un-hide.
+        let onlyCollapser = true;
+        for (const nb of nbrs) {
+          if (!hiddenSet.has(nb) && !collapsedSet.has(nb)) {
+            onlyCollapser = false; break;
+          }
+        }
+        if (!onlyCollapser) {
+          hiddenSet.delete(id);
+          changed = true;
+        }
+      }
+    }
+  }
+}
+
+function toggleCollapse(d) {
+  if (collapsedSet.has(d.id)) collapsedSet.delete(d.id);
+  else collapsedSet.add(d.id);
+  recomputeHidden();
+  applyClasses();
+  updateStats();
+}
+
+function showAll() {
+  collapsedSet.clear();
+  hiddenSet.clear();
+  applyClasses();
+  updateStats();
+}
+
+function updateStats() {
+  let visible = 0, kindFiltered = 0;
+  DATA.nodes.forEach(d => {
+    if (hiddenSet.has(d.id)) return;
+    if (kindHidden.has(kindBucket(d.kind))) { kindFiltered++; return; }
+    visible++;
+  });
+  let visibleEdges = 0, edgeFiltered = 0;
+  DATA.links.forEach(l => {
+    const s = typeof l.source === 'object' ? l.source.id : l.source;
+    const t = typeof l.target === 'object' ? l.target.id : l.target;
+    const sNode = nodeById[s], tNode = nodeById[t];
+    if (hiddenSet.has(s) || hiddenSet.has(t) ||
+        (sNode && isKindHidden(sNode)) || (tNode && isKindHidden(tNode))) return;
+    if (isEdgeHidden(l)) { edgeFiltered++; return; }
+    visibleEdges++;
+  });
+  let suffix = '';
+  if (hiddenSet.size > 0) {
+    suffix = ` &middot; <a href="#" onclick="showAll();return false;" style="color:#6cf">show all (${hiddenSet.size} hidden)</a>`;
+  }
+  if (collapsedSet.size > 0) {
+    suffix += ` &middot; ${collapsedSet.size} collapsed`;
+  }
+  if (kindFiltered > 0) {
+    suffix += ` &middot; ${kindFiltered} nodes hidden by level`;
+  }
+  if (edgeFiltered > 0) {
+    suffix += ` &middot; ${edgeFiltered} edges hidden by type`;
+  }
+  document.getElementById('stats').innerHTML =
+    `${visible}/${DATA.nodes.length} nodes &middot; ${visibleEdges}/${DATA.links.length} edges &middot; ${groups.length} groups${suffix}`;
 }
 
 function highlightNeighbors(d, on) {
@@ -364,24 +457,102 @@ function nodeMatchesSearch(d) {
 const nodeById = {};
 DATA.nodes.forEach(n => { nodeById[n.id] = n; });
 
+// Coalesce raw 'kind' values into three buckets so users don't have to
+// reason about struct vs enum vs trait separately. Anything we don't
+// recognize falls into 'type' as a safe default.
+function kindBucket(kind) {
+  if (kind === 'file') return 'file';
+  if (kind === 'function' || kind === 'method') return 'function';
+  return 'type'; // struct, enum, trait, type alias, etc.
+}
+const kindHidden = new Set();
+
+function applyPreset(name) {
+  kindHidden.clear();
+  if (name === 'module')    { kindHidden.add('type'); kindHidden.add('function'); }
+  if (name === 'types')     { kindHidden.add('function'); }
+  if (name === 'functions') { kindHidden.add('file'); kindHidden.add('type'); }
+  // 'all' leaves kindHidden empty.
+  syncKindUI();
+  applyClasses();
+  updateStats();
+}
+
+function syncKindUI() {
+  document.querySelectorAll('#levels input[data-kind]').forEach(cb => {
+    cb.checked = !kindHidden.has(cb.dataset.kind);
+  });
+  document.querySelectorAll('#levels button[data-preset]').forEach(btn => {
+    let active = false;
+    const p = btn.dataset.preset;
+    if (p === 'all')       active = kindHidden.size === 0;
+    if (p === 'module')    active = kindHidden.has('type') && kindHidden.has('function') && !kindHidden.has('file');
+    if (p === 'types')     active = kindHidden.has('function') && !kindHidden.has('type') && !kindHidden.has('file');
+    if (p === 'functions') active = kindHidden.has('file') && kindHidden.has('type') && !kindHidden.has('function');
+    btn.classList.toggle('active', active);
+  });
+}
+
+document.querySelectorAll('#levels button[data-preset]').forEach(btn => {
+  btn.addEventListener('click', () => applyPreset(btn.dataset.preset));
+});
+document.querySelectorAll('#levels input[data-kind]').forEach(cb => {
+  cb.addEventListener('change', () => {
+    const k = cb.dataset.kind;
+    if (cb.checked) kindHidden.delete(k); else kindHidden.add(k);
+    syncKindUI();
+    applyClasses();
+    updateStats();
+  });
+});
+
+function isKindHidden(d) {
+  return kindHidden.has(kindBucket(d.kind));
+}
+
+// Edge-type filter — separate from kind filter so users can hide all
+// 'calls' edges (the noisy heuristic) without hiding any nodes.
+const edgeHidden = new Set();
+document.querySelectorAll('#levels input[data-edge]').forEach(cb => {
+  cb.addEventListener('change', () => {
+    const e = cb.dataset.edge;
+    if (cb.checked) edgeHidden.delete(e); else edgeHidden.add(e);
+    applyClasses();
+    updateStats();
+  });
+});
+
+function isEdgeHidden(l) {
+  return edgeHidden.has(l.type);
+}
+
 function applyClasses() {
-  // Per-node classes: dimmed (filtered out), selected (clicked), neighbor,
-  // approved/rejected (review state).
+  // Per-node classes: dimmed (filtered out), selected (clicked), neighbor.
   const sel = selectedId;
   const neighbors = sel ? neighborIndex[sel] : null;
+  node.classed('hidden', d => hiddenSet.has(d.id) || isKindHidden(d));
   node.classed('dimmed', d =>
-    dimmedGroups.has(d.group) || !nodeMatchesSearch(d));
+    !hiddenSet.has(d.id) && !isKindHidden(d) && (dimmedGroups.has(d.group) || !nodeMatchesSearch(d)));
   node.classed('selected', d => d.id === sel);
-  node.classed('neighbor', d => neighbors && d.id !== sel && neighbors.has(d.id));
-  node.classed('approved', d => approvals[d.id] === 'approved');
-  node.classed('rejected', d => approvals[d.id] === 'rejected');
+  node.classed('neighbor', d => neighbors && d.id !== sel && neighbors.has(d.id)
+                                && !hiddenSet.has(d.id) && !isKindHidden(d));
+  node.classed('collapsed', d => collapsedSet.has(d.id));
 
-  // Link classes: dimmed if either endpoint is dimmed; highlight if
-  // touches the selected node; faded if a node is selected but this
-  // link doesn't touch it (so the selected node's edges pop out).
+  // Link classes — a link is hidden if either endpoint is hidden (by
+  // collapse OR by kind filter).
+  function endpointHidden(id) {
+    const n = nodeById[id];
+    return hiddenSet.has(id) || (n && isKindHidden(n));
+  }
+  link.classed('hidden', l => {
+    const s = typeof l.source === 'object' ? l.source.id : l.source;
+    const t = typeof l.target === 'object' ? l.target.id : l.target;
+    return endpointHidden(s) || endpointHidden(t) || isEdgeHidden(l);
+  });
   link.classed('dimmed', l => {
     const s = typeof l.source === 'object' ? l.source.id : l.source;
     const t = typeof l.target === 'object' ? l.target.id : l.target;
+    if (endpointHidden(s) || endpointHidden(t)) return false;
     const sNode = nodeById[s];
     const tNode = nodeById[t];
     return (sNode && (dimmedGroups.has(sNode.group) || !nodeMatchesSearch(sNode))) ||
@@ -406,8 +577,8 @@ document.getElementById('search').addEventListener('input', (e) => {
   applyClasses();
 });
 
-document.getElementById('stats').innerHTML =
-  `${DATA.nodes.length} nodes · ${DATA.links.length} edges · ${groups.length} groups`;
+syncKindUI();
+updateStats();
 </script>
 </body>
 </html>
