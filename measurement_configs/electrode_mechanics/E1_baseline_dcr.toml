@@ -1,0 +1,76 @@
+# Electrode mechanics validation — E.1 Baseline DCR measurement
+#
+# Fresh symmetric Li|electrolyte|Li cell for potentiostatic DCR.
+# 80×80 electrodes with embedded foils, electrolyte fill.
+# This is the reference scenario for impedance tracking — measure
+# R_DC here, then again after cycling/degradation in E.4.
+#
+# Protocol (run via potentiostatic_sweep binary or GUI):
+#   1. Equilibrate 5 ps at zero current
+#   2. Apply voltage step via overpotential mode (ratio 1.005–1.010)
+#   3. Measure steady-state current over 150 ps
+#   4. R_DC = eta / I_steady_state
+#
+# Expected baseline: R_DC ~ 0.025–0.029 V/(e/ps) in linear regime
+# (from E.0 statistical validation, 10 replicates)
+#
+# Pass criterion: R_DC falls within the E.0-established range.
+# Any significant deviation indicates a setup or physics issue.
+
+[simulation]
+domain_width = 400.0
+domain_height = 240.0
+initial_temperature = 300.0
+enable_out_of_plane = false
+
+# --- Left electrode (deposition side) ---
+# Center at x=-100, bottom-left origin for spawning
+[[particles.metal_rectangles]]
+x = -100.0
+y = 0.0
+width = 80.0
+height = 80.0
+species = "LithiumMetal"
+
+[[particles.foil_rectangles]]
+x = -137.5
+y = 0.0
+width = 20.0
+height = 80.0
+current = 0.0
+initial_excess_electrons = 0
+
+# --- Right electrode (stripping side) ---
+# Center at x=+100
+[[particles.metal_rectangles]]
+x = 100.0
+y = 0.0
+width = 80.0
+height = 80.0
+species = "LithiumMetal"
+
+[[particles.foil_rectangles]]
+x = 137.5
+y = 0.0
+width = 20.0
+height = 80.0
+current = 0.0
+initial_excess_electrons = 0
+
+# --- Electrolyte fill ---
+# Scaled to free area (~83200 Å² in 400×240 minus two 80×80 clusters)
+[[particles.random]]
+count = 124
+species = "LithiumIon"
+
+[[particles.random]]
+count = 124
+species = "ElectrolyteAnion"
+
+[[particles.random]]
+count = 748
+species = "EC"
+
+[[particles.random]]
+count = 748
+species = "DMC"
