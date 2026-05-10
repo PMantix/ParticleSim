@@ -74,9 +74,21 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                            stroke-dasharray: 3 2; }
 
   .link { stroke: #888; stroke-opacity: 0.35; }
+  .link.type-contains  { stroke: #888; }   /* gray — structural */
+  .link.type-uses      { stroke: #6cf; }   /* blue — module imports */
+  .link.type-uses_type { stroke: #7d7; }   /* green — type usage */
+  .link.type-calls     { stroke: #fa6; }   /* orange — call edges (heuristic) */
   .link.dimmed { stroke-opacity: 0.04; }
-  .link.highlight { stroke: #6cf; stroke-opacity: 0.95; stroke-width: 2.5px; }
+  .link.highlight { stroke: #fff !important; stroke-opacity: 0.95; stroke-width: 2.5px; }
   .link.fade { stroke-opacity: 0.06; }
+
+  .edge-swatch { display: inline-block; width: 10px; height: 10px;
+                 margin-right: 4px; vertical-align: middle;
+                 border: 1px solid rgba(255,255,255,0.3); border-radius: 2px; }
+  .edge-swatch.sw-contains  { background: #888; }
+  .edge-swatch.sw-uses      { background: #6cf; }
+  .edge-swatch.sw-uses_type { background: #7d7; }
+  .edge-swatch.sw-calls     { background: #fa6; }
 
   #info { position: fixed; top: 10px; right: 10px; width: 360px; padding: 16px;
           background: rgba(28,28,28,0.97); border: 1px solid #555;
@@ -163,10 +175,15 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     </div>
     <div class="row" style="font-weight:bold;color:#ddd;margin-top:8px;margin-bottom:4px;">Edge types</div>
     <div class="row">
-      <label><input type="checkbox" data-edge="contains" checked>contains</label>
-      <label><input type="checkbox" data-edge="uses" checked>uses</label>
-      <label><input type="checkbox" data-edge="uses_type" checked>uses_type</label>
-      <label><input type="checkbox" data-edge="calls" checked>calls</label>
+      <label><span class="edge-swatch sw-contains"></span><input type="checkbox" data-edge="contains" checked>contains</label>
+      <label><span class="edge-swatch sw-uses"></span><input type="checkbox" data-edge="uses" checked>uses</label>
+      <label><span class="edge-swatch sw-uses_type"></span><input type="checkbox" data-edge="uses_type" checked>uses_type</label>
+      <label><span class="edge-swatch sw-calls"></span><input type="checkbox" data-edge="calls" checked>calls</label>
+    </div>
+    <div class="row" style="font-weight:bold;color:#ddd;margin-top:8px;margin-bottom:4px;">Layout</div>
+    <div class="row">
+      <label><input type="radio" name="layout" value="free" checked>free</label>
+      <label><input type="radio" name="layout" value="cluster">by module</label>
     </div>
     <div class="row" style="font-weight:bold;color:#ddd;margin-top:8px;margin-bottom:4px;">Labels</div>
     <div class="row">
@@ -217,7 +234,8 @@ groups.forEach(grp => {
 
 // Render links and nodes.
 const link = g.append('g').attr('stroke-linecap', 'round')
-  .selectAll('line').data(DATA.links).enter().append('line').attr('class', 'link');
+  .selectAll('line').data(DATA.links).enter().append('line')
+  .attr('class', d => 'link type-' + (d.type || 'unknown'));
 
 const node = g.append('g').selectAll('g').data(DATA.nodes).enter().append('g')
   .attr('class', 'node').call(d3.drag()
@@ -295,6 +313,29 @@ opacitySlider.addEventListener('input', () => {
   document.documentElement.style.setProperty('--label-opacity', opacitySlider.value / 100);
 });
 
+// Cluster key: which module/file a node belongs to. File nodes cluster
+// to themselves; functions/types cluster to their containing file.
+function clusterKey(d) {
+  if (d.kind === 'file') return d.id;
+  if (d.files && d.files.length > 0) return 'file:' + d.files[0];
+  return d.group || d.id;
+}
+
+// Place each cluster on a grid, sorted alphabetically so files in the
+// same directory end up next to each other.
+const clusterKeys = [...new Set(DATA.nodes.map(clusterKey))].sort();
+const clusterCols = Math.max(1, Math.ceil(Math.sqrt(clusterKeys.length * width / height)));
+const clusterRows = Math.ceil(clusterKeys.length / clusterCols);
+const clusterPos = {};
+clusterKeys.forEach((k, i) => {
+  const col = i % clusterCols;
+  const row = Math.floor(i / clusterCols);
+  clusterPos[k] = {
+    x: (col + 0.5) * (width / clusterCols),
+    y: (row + 0.5) * (height / clusterRows),
+  };
+});
+
 const sim = d3.forceSimulation(DATA.nodes)
   .force('link', d3.forceLink(DATA.links).id(d => d.id).distance(100).strength(0.4))
   .force('charge', d3.forceManyBody().strength(-280))
@@ -305,6 +346,28 @@ const sim = d3.forceSimulation(DATA.nodes)
         .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
     node.attr('transform', d => `translate(${d.x},${d.y})`);
   });
+
+let layoutMode = 'free';
+function applyLayout() {
+  if (layoutMode === 'cluster') {
+    // Drop the center pull and the global charge — the per-node grid pull
+    // becomes the dominant placement force. Keep link + collide.
+    sim.force('center', null);
+    sim.force('charge', d3.forceManyBody().strength(-60));
+    sim.force('cluster-x', d3.forceX(d => clusterPos[clusterKey(d)].x).strength(0.18));
+    sim.force('cluster-y', d3.forceY(d => clusterPos[clusterKey(d)].y).strength(0.18));
+  } else {
+    sim.force('center', d3.forceCenter(width/2, height/2));
+    sim.force('charge', d3.forceManyBody().strength(-280));
+    sim.force('cluster-x', null);
+    sim.force('cluster-y', null);
+  }
+  sim.alpha(0.6).restart();
+}
+
+document.querySelectorAll('input[name="layout"]').forEach(r => {
+  r.addEventListener('change', () => { layoutMode = r.value; applyLayout(); });
+});
 
 // Build a neighbor index: id -> Set of neighbor ids.
 const neighborIndex = {};
