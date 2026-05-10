@@ -14,6 +14,7 @@ use particle_sim::body::{Body, Species};
 use particle_sim::renderer::state::{SimCommand, SIM_COMMAND_SENDER};
 use particle_sim::simulation::Simulation;
 use std::sync::mpsc::channel;
+use std::io::Write;
 use ultraviolet::Vec2;
 
 fn template_body(species: Species) -> Body {
@@ -96,6 +97,17 @@ fn log_sample(sim: &Simulation, phase: &str, pulse_num: usize, t0: f32) {
     println!("{},{},{:.1},{:.6},{:.6},{},{}", phase, pulse_num, t, eta_a, eta_b, ed_a, ed_b);
 }
 
+fn dump_snapshot(sim: &Simulation, path: &str) {
+    let mut f = std::fs::File::create(path).unwrap();
+    writeln!(f, "x,y,radius,charge,species,electrons").unwrap();
+    for b in &sim.bodies {
+        writeln!(f, "{:.3},{:.3},{:.3},{:.4},{:?},{}",
+            b.pos.x, b.pos.y, b.radius, b.charge,
+            b.species, b.electrons.len()).unwrap();
+    }
+    eprintln!("Snapshot: {}", path);
+}
+
 fn main() {
     let target_ratio: f32 = std::env::args().nth(1)
         .and_then(|s| s.parse().ok()).unwrap_or(1.01);
@@ -114,6 +126,9 @@ fn main() {
 
     eprintln!("E.2 Repeatability: ratio={:.3}, {} pulses, pulse={:.0}fs, rest={:.0}fs",
         target_ratio, n_pulses, pulse_fs, rest_fs);
+
+    let snap_dir = std::env::args().nth(2).unwrap_or_else(|| "snapshots".to_string());
+    let _ = std::fs::create_dir_all(&snap_dir);
 
     let mut sim = build_cell();
     eprintln!("Cell: {} bodies, {} foils", sim.bodies.len(), sim.foils.len());
@@ -135,10 +150,14 @@ fn main() {
             foil.ac_current = 0.0;
             foil.electron_delta_since_measure = 0;
         }
+        let half_rest = rest_steps / 2;
         for step in 1..=rest_steps {
             sim.step();
             if step % log_stride == 0 {
                 log_sample(&sim, "rest", pulse_num, t0);
+            }
+            if step == half_rest {
+                dump_snapshot(&sim, &format!("{}/p{}_rest_mid.csv", snap_dir, pulse_num));
             }
         }
         eprintln!("Pulse {} rest complete", pulse_num);
@@ -151,12 +170,18 @@ fn main() {
         for foil in &mut sim.foils {
             foil.electron_delta_since_measure = 0;
         }
+        dump_snapshot(&sim, &format!("{}/p{}_onset.csv", snap_dir, pulse_num));
+        let half_pulse = pulse_steps / 2;
         for step in 1..=pulse_steps {
             sim.step();
             if step % log_stride == 0 {
                 log_sample(&sim, "pulse", pulse_num, t0);
             }
+            if step == half_pulse {
+                dump_snapshot(&sim, &format!("{}/p{}_mid.csv", snap_dir, pulse_num));
+            }
         }
+        dump_snapshot(&sim, &format!("{}/p{}_end.csv", snap_dir, pulse_num));
         eprintln!("Pulse {} complete", pulse_num);
     }
 
