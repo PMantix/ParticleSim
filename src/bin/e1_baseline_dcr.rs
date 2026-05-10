@@ -167,10 +167,11 @@ fn main() {
     }
     eprintln!("Pulse complete");
 
-    // Phase 3: post-rest — return to neutral
-    if sim.foils.len() >= 2 {
-        sim.foils[0].enable_overpotential_mode(1.0);
-        sim.foils[1].enable_overpotential_mode(1.0);
+    // Phase 3: post-rest — open circuit (current=0, natural relaxation)
+    for foil in &mut sim.foils {
+        foil.disable_overpotential_mode();
+        foil.dc_current = 0.0;
+        foil.ac_current = 0.0;
     }
     for foil in &mut sim.foils {
         foil.electron_delta_since_measure = 0;
