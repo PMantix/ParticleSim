@@ -1,0 +1,27 @@
+E.2 SEI Shell: ratio=1.030, 3 pulses, pulse=25000fs, rest=200000fs
+Successfully placed 124 random bodies
+Successfully placed 124 random bodies
+Successfully placed 748 random bodies
+Successfully placed 748 random bodies
+Added 402 SEI particles (3 layers, both electrodes)
+Cell: 3498 bodies, 2 foils
+Equilibrated at t=5000 fs
+Snapshot: doe_results/e2_repeatability/e2_sei_shell/ratio_1.03/snap_02/p1_rest_mid.csv
+Pulse 1 rest complete
+Snapshot: doe_results/e2_repeatability/e2_sei_shell/ratio_1.03/snap_02/p1_onset.csv
+Snapshot: doe_results/e2_repeatability/e2_sei_shell/ratio_1.03/snap_02/p1_mid.csv
+Snapshot: doe_results/e2_repeatability/e2_sei_shell/ratio_1.03/snap_02/p1_end.csv
+Pulse 1 complete
+Snapshot: doe_results/e2_repeatability/e2_sei_shell/ratio_1.03/snap_02/p2_rest_mid.csv
+Pulse 2 rest complete
+Snapshot: doe_results/e2_repeatability/e2_sei_shell/ratio_1.03/snap_02/p2_onset.csv
+Snapshot: doe_results/e2_repeatability/e2_sei_shell/ratio_1.03/snap_02/p2_mid.csv
+Snapshot: doe_results/e2_repeatability/e2_sei_shell/ratio_1.03/snap_02/p2_end.csv
+Pulse 2 complete
+Snapshot: doe_results/e2_repeatability/e2_sei_shell/ratio_1.03/snap_02/p3_rest_mid.csv
+Pulse 3 rest complete
+Snapshot: doe_results/e2_repeatability/e2_sei_shell/ratio_1.03/snap_02/p3_onset.csv
+Snapshot: doe_results/e2_repeatability/e2_sei_shell/ratio_1.03/snap_02/p3_mid.csv
+Snapshot: doe_results/e2_repeatability/e2_sei_shell/ratio_1.03/snap_02/p3_end.csv
+Pulse 3 complete
+Final rest complete. Total sim_time=880000 fs
