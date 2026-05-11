@@ -94,6 +94,16 @@ name = "debug_measurements"
 path = "src/bin/debug_measurements.rs"
 required-features = ["debug_bins"]
 
+[[bin]]
+name = "e2_sei_shell"
+path = "src/bin/e2_sei_shell.rs"
+required-features = ["debug_bins"]
+
+[[bin]]
+name = "e2_dendrite"
+path = "src/bin/e2_dendrite.rs"
+required-features = ["debug_bins"]
+
 [dependencies]
 quarkstrom = { path = "../quarkstrom/quarkstrom" }
 
